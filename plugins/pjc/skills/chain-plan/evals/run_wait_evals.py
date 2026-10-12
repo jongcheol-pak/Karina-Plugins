@@ -191,12 +191,11 @@ def every_branch_has_action_line():
         run(FakeCli([EMPTY] * 4, [screen('i')] * 4)),
         run(FakeCli(['x'])),
         run(FakeCli([msg_batch()]), lock=FakeLock(owned_until=0)),
-        runp(FakeCli([EMPTY]), prog(FakeGit(logs=[[('h1', '기능: T1 — 하나')]]))),
         ww.place_loop(FakeCli([EMPTY], [workers()]), FakeLock(), 'disp_o', 60000),
     ]
     kinds = [first(o).split(' — ')[0] for o in outs]
     assert kinds == ['RESULT: message', 'RESULT: stall', 'RESULT: error', 'RESULT: superseded',
-                     'RESULT: progress', 'RESULT: freed'], kinds
+                     'RESULT: freed'], kinds
     assert all(len(first(o).split(' — ', 1)[1]) > 10 for o in outs), '다음 행동 문구가 있어야 한다'
 
 
@@ -245,13 +244,18 @@ PLAN5 = '# plan\r\n\r\n### T1. 첫\r\n### T2. 둘\r\n### T3. 셋\r\n### T4. 넷\
 
 
 class FakeGit:
-    """`git -C <repo> <args>` 응답. log 는 호출마다 차례로 소비하고, None 이면 실패를 낸다."""
+    """`git -C <repo> <args>` 응답. log 는 두 모드다 — `logs=` 는 호출마다 차례로 소비하고(None 이면 실패),
+    `history=` 는 실제 git 처럼 기준 범위(`<sha>..HEAD`)로 답한다: log 를 k번째 부를 때 history[:k] 의 커밋이
+    쌓여 있고, 기준이 `head`(시작 HEAD)면 그 전부를, 쌓인 커밋 중 하나면 그 뒤를, 어느 쪽도 아니면 실패를 낸다.
+    저장하지 않은 주기에 같은 커밋이 다시 나오는 것을 흉내 내려면 history 모드를 쓴다."""
 
-    def __init__(self, head='h0', logs=(), head_ok=True, heads=()):
+    def __init__(self, head='h0', logs=(), head_ok=True, heads=(), history=None):
         self.head = head
         self.logs = list(logs)
         self.head_ok = head_ok
         self.heads = list(heads)  # rev-parse 응답 (성공, HEAD) 를 차례로 — 다 쓰면 head_ok·head 고정값
+        self.history = None if history is None else [list(h) for h in history]
+        self.log_count = 0
         self.calls = []
 
     def __call__(self, args):
@@ -260,10 +264,24 @@ class FakeGit:
             if self.heads:
                 return self.heads.pop(0)
             return (self.head_ok, self.head)
+        if self.history is not None:
+            return self._range(args[-1].split('..')[0])
         item = self.logs.pop(0) if self.logs else []
         if item is None:
             return (False, 'fatal: bad revision')
         return (True, '\n'.join('%s\x1f%s' % c for c in item))
+
+    def _range(self, base):
+        self.log_count += 1
+        visible = [c for step in self.history[:self.log_count] for c in step]
+        shas = [c[0] for c in visible]
+        if base == self.head:
+            after = visible
+        elif base in shas:
+            after = visible[shas.index(base) + 1:]
+        else:
+            return (False, 'fatal: bad revision')
+        return (True, '\n'.join('%s\x1f%s' % c for c in after))
 
 
 class FakeStore:
@@ -292,23 +310,23 @@ def runp(cli, progress, lock=None, **kw):
 @case
 def progress_line_with_next():
     git = FakeGit(logs=[[('h1', '기능: T1 — 사각형을 칠한다')]])
-    out = runp(FakeCli([EMPTY]), prog(git))
-    assert first(out).startswith('RESULT: progress — '), out
+    out = runp(FakeCli([msg_batch()]), prog(git))
+    assert first(out).startswith('RESULT: message — '), out
     assert out[1] == 'Plan 2: T1/T5 완료 — 사각형을 칠한다 · T2 시작', out
 
 
 @case
 def progress_last_task_has_no_start():
     git = FakeGit(logs=[[('h5', '문서: T5 — README')]])
-    out = runp(FakeCli([EMPTY]), prog(git))
+    out = runp(FakeCli([msg_batch()]), prog(git))
     assert out[1] == 'Plan 2: T5/T5 완료 — README', out
 
 
 @case
 def progress_two_commits_two_lines():
     git = FakeGit(logs=[[('h1', '기능: T1 — 하나'), ('h2', '수정: T2 — 둘')]])
-    out = runp(FakeCli([EMPTY]), prog(git))
-    assert out[1:] == ['Plan 2: T1/T5 완료 — 하나 · T2 시작', 'Plan 2: T2/T5 완료 — 둘 · T3 시작'], out
+    out = runp(FakeCli([msg_batch()]), prog(git))
+    assert out[1:3] == ['Plan 2: T1/T5 완료 — 하나 · T2 시작', 'Plan 2: T2/T5 완료 — 둘 · T3 시작'], out
 
 
 @case
@@ -333,7 +351,7 @@ def seen_state_prevents_repeat():
 @case
 def no_plan_omits_total():
     git = FakeGit(logs=[[('h3', '기능: T3 — 셋째')]])
-    out = runp(FakeCli([EMPTY]), prog(git, plan=None))
+    out = runp(FakeCli([msg_batch()]), prog(git, plan=None))
     assert out[1] == 'Plan 2: T3 완료 — 셋째', out
 
 
@@ -439,9 +457,10 @@ def lock_lost_during_poll_drops_batch():
 @case
 def invalid_seen_reseeds_head():
     store = FakeStore({'sha': 'gone', 'shown': []})
-    git = FakeGit(head='h7', logs=[None, [('h8', '기능: T2 — 다음')]])
-    out = runp(FakeCli([EMPTY, EMPTY]), prog(git, store))
-    assert first(out).startswith('RESULT: progress — '), out
+    git = FakeGit(head='h7', history=[[], [('h8', '기능: T2 — 다음')]])
+    out = runp(FakeCli([EMPTY, EMPTY, msg_batch()]), prog(git, store))
+    assert first(out).startswith('RESULT: message — '), out
+    assert out[1] == 'Plan 2: T2/T5 완료 — 다음 · T3 시작', out
     log_calls = [c for c in git.calls if c[0] == 'log']
     assert log_calls[1][-1] == 'h7..HEAD', git.calls
 
@@ -449,15 +468,16 @@ def invalid_seen_reseeds_head():
 @case
 def same_task_followup_not_repeated():
     git = FakeGit(logs=[[('h1', '기능: T2 — 둘'), ('h2', '수정: T2 — 둘 보강'), ('h3', '기능: T3 — 셋')]])
-    out = runp(FakeCli([EMPTY]), prog(git))
-    assert out[1:] == ['Plan 2: T2/T5 완료 — 둘 · T3 시작', 'Plan 2: T3/T5 완료 — 셋 · T4 시작'], out
+    out = runp(FakeCli([msg_batch()]), prog(git))
+    assert out[1:3] == ['Plan 2: T2/T5 완료 — 둘 · T3 시작', 'Plan 2: T3/T5 완료 — 셋 · T4 시작'], out
+    assert sum('완료 —' in l for l in out) == 2, out
 
 
 @case
 def gapped_numbers_use_max_and_next():
     plan = '### T0. 영\n### T2. 둘\n### T5. 다섯\n'
     git = FakeGit(logs=[[('h1', '기능: T2 — 둘')]])
-    out = runp(FakeCli([EMPTY]), prog(git, plan=plan))
+    out = runp(FakeCli([msg_batch()]), prog(git, plan=plan))
     assert out[1] == 'Plan 2: T2/T5 완료 — 둘 · T5 시작', out
 
 
@@ -472,18 +492,80 @@ def seeds_head_when_no_state():
 @case
 def head_retried_after_start_failure():
     store = FakeStore(None)
-    git = FakeGit(heads=[(False, ''), (True, 'h9')], logs=[[('h10', '기능: T1 — 하나')]])
+    git = FakeGit(head='h9', heads=[(False, ''), (True, 'h9')], history=[[('h10', '기능: T1 — 하나')]])
     out = runp(FakeCli([EMPTY, EMPTY, msg_batch()]), prog(git, store))
-    assert first(out).startswith('RESULT: progress — '), out
+    assert first(out).startswith('RESULT: message — '), out
     assert out[1] == 'Plan 2: T1/T5 완료 — 하나 · T2 시작', out
-    assert [c[-1] for c in git.calls if c[0] == 'log'] == ['h9..HEAD'], git.calls
+    assert [c[-1] for c in git.calls if c[0] == 'log'] == ['h9..HEAD', 'h9..HEAD'], git.calls
 
 
 @case
 def number_over_total_drops_total():
     git = FakeGit(logs=[[('h7', '기능: T7 — 일곱')]])
-    out = runp(FakeCli([EMPTY]), prog(git))
+    out = runp(FakeCli([msg_batch()]), prog(git))
     assert out[1] == 'Plan 2: T7 완료 — 일곱', out
+
+
+@case
+def progress_held_until_message():
+    # 진행 커밋만 있는 주기는 대기를 끝내지 않는다 — 그 줄은 다음 message 원문 앞에 실린다.
+    git = FakeGit(history=[[('h1', '기능: T1 — 하나')]])
+    out = runp(FakeCli([EMPTY, msg_batch()]), prog(git))
+    assert first(out).startswith('RESULT: message — '), out
+    assert out[1] == 'Plan 2: T1/T5 완료 — 하나 · T2 시작' and 'dlv_1' in out[2], out
+
+
+@case
+def progress_held_on_stall():
+    # 멈춤 결과에도 실린다 — 진행 줄이 먼저, 그다음 구분 줄과 화면 끝 줄이다.
+    git = FakeGit(history=[[('h1', '기능: T1 — 하나')]])
+    cli = FakeCli([EMPTY] * 3, [screen('idle')] * 3)
+    out = runp(cli, prog(git), timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: stall — '), out
+    assert '진행 줄' in first(out), '멈춤 지시도 진행 줄을 먼저 표시하라고 해야 한다'
+    assert out[1] == 'Plan 2: T1/T5 완료 — 하나 · T2 시작', out
+    assert out[-1] == 'idle', '화면 끝 줄이 실려야 한다'
+
+
+@case
+def progress_not_saved_until_output():
+    # 진행만 있던 주기는 상태를 저장하지 않는다 — 그 대기가 물러나도 새 대기가 같은 줄을 낸다.
+    store = FakeStore({'sha': 'h0', 'shown': []})
+    git = FakeGit(history=[[('h1', '기능: T1 — 하나')]])
+    out = runp(FakeCli([EMPTY, EMPTY]), prog(git, store), lock=FakeLock(owned_until=1))
+    assert first(out).startswith('RESULT: superseded — '), out
+    assert store.saves == 0 and store.state == {'sha': 'h0', 'shown': []}, store.state
+    out = runp(FakeCli([msg_batch()]), prog(git, store))
+    assert out[1] == 'Plan 2: T1/T5 완료 — 하나 · T2 시작', out
+    assert store.state == {'sha': 'h1', 'shown': [1]}, store.state
+
+
+@case
+def held_lines_shown_once_each():
+    # 진행만 있는 주기가 둘 이어진 뒤 message 가 오면 각 줄은 정확히 한 번씩 실린다(메모리 누적 구현을 잡는다).
+    git = FakeGit(history=[[('h1', '기능: T1 — 하나')], [('h2', '기능: T2 — 둘')]])
+    out = runp(FakeCli([EMPTY, EMPTY, msg_batch()]), prog(git))
+    assert first(out).startswith('RESULT: message — '), out
+    assert out[1:3] == ['Plan 2: T1/T5 완료 — 하나 · T2 시작', 'Plan 2: T2/T5 완료 — 둘 · T3 시작'], out
+    assert sum('완료 —' in l for l in out) == 2, out
+
+
+@case
+def sweep_removes_week_old_wait_files():
+    # 7일 지난 pjc-chain-wait-* 만 지운다 — 7일 이내 파일과 다른 접두 파일은 남긴다.
+    d = tempfile.mkdtemp(prefix='pjc-wait-eval-')
+    now = 1_000_000_000.0
+    files = {'pjc-chain-wait-a.seen': 8, 'pjc-chain-wait-b.lock': 8, 'pjc-chain-wait-c.seen': 1, 'other.txt': 8}
+    try:
+        for name, days in files.items():
+            p = os.path.join(d, name)
+            with open(p, 'w', encoding='utf-8') as f:
+                f.write('{}')
+            os.utime(p, (now - days * 86400, now - days * 86400))
+        ww.sweep_stale(d, now)
+        assert sorted(os.listdir(d)) == ['other.txt', 'pjc-chain-wait-c.seen'], os.listdir(d)
+    finally:
+        shutil.rmtree(d)
 
 
 @case
@@ -494,8 +576,8 @@ def plan_read_once_per_poll():
         reads.append(1)
         return PLAN5
     git = FakeGit(logs=[[('h1', '기능: T1 — 하나'), ('h2', '기능: T2 — 둘')]])
-    out = runp(FakeCli([EMPTY]), ww.Progress(git, read_plan, FakeStore({'sha': 'h0', 'shown': []}), 'Plan 2'))
-    assert len(out) == 3 and len(reads) == 1, (out, reads)
+    out = runp(FakeCli([msg_batch()]), ww.Progress(git, read_plan, FakeStore({'sha': 'h0', 'shown': []}), 'Plan 2'))
+    assert len(out) == 4 and len(reads) == 1, (out, reads)
 
 
 # ── 자리 대기(--place — 다른 세션 워커가 같은 폴더를 쥐었을 때) ──────────────────

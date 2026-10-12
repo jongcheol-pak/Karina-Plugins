@@ -10,10 +10,11 @@
 - error      CLI 실행 실패 · JSON 아님 · `ok: false`(원문).
 - superseded 같은 dispatch 의 새 대기가 잠금을 가져갔다. 받은 배치는 싣지 않는다 —
              Karina `check` 는 ack 전까지 같은 배치를 다시 주므로 새 대기가 받는다.
-- progress   워커가 task 를 끝냈다(`--repo` 를 줬을 때만) — 표시할 줄 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작`.
-             message 와 같은 주기에 오면 그 줄을 message 원문 앞에 싣는다 — worker_done 뒤에는 대기를 다시
-             띄우지 않아, 따로 내면 마지막 task 줄이 사라진다.
 - freed      (`--place` 만) 지켜보던 다른 세션 워커가 자리를 놓았다(그 dispatch 행 원문).
+
+진행 줄(`--repo` 를 줬을 때만): 워커가 끝낸 task 마다 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작` 한 줄.
+따로 깨우지 않고 message·stall·error 원문 앞에 싣는다 — task 마다 깨우면 코디네이터가 그때마다 큰 컨텍스트를
+다시 읽어, 이 스크립트가 없애려던 폴링 턴이 task 수만큼 되살아난다(2026-10-12 감사).
 
 자리 대기(`--place <dispatch>`): `worker-start` 가 `duplicate_worker` 로 다른 세션 워커를 이름 댔을 때 띄운다.
 주기(`--poll-ms`, 기본 1분)마다 `check --wait` 로 쉬고 `worker-list --json`(전 Run)에서 그 dispatch 행을 본다.
@@ -31,7 +32,9 @@
 (implement 「커밋」 형식)인 커밋을 고른다. 분모는 `<repo>/plan.md` 의 `### T<N>.` 번호 최댓값(implement 의
 `T<N>/T<M>` 과 같은 정의)이고 다음 시작은 N 보다 큰 최소 번호다 — N 이 최댓값보다 크면 분모·다음 시작 없이 낸다.
 본 sha 와 표시한 번호는 dispatch 별 상태 파일에 두어 재기동해도 같은 커밋·같은 task 의 후속 커밋(「수정: T2」)을
-다시 표시하지 않는다. 진행 감지는 잠금 확인보다 먼저 돌고, 잠금을 잃은 대기는 상태를 쓰지 않는다.
+다시 표시하지 않는다. 진행 줄이 있는 갱신은 그 줄을 결과에 실어 낼 때만 저장하고, 그때까지는 주기마다 같은 기준에서
+다시 계산한다. 진행 감지는 잠금 확인보다 먼저 돌고, 잠금을 잃은 대기는 상태를 쓰지 않는다.
+시작할 때 임시 폴더의 7일 지난 `pjc-chain-wait-*` 를 지운다(sweep_stale).
 git 실패는 대기를 끊지 않고, 본 sha 가 무효하면 HEAD 로 다시 채운다. 상태 파일이 없으면(시작 때 HEAD 를
 못 잡음) 주기마다 다시 잡고, 있는데 읽지 못하면 덮어쓰지 않는다. 상태 파일은 임시 파일을 바꿔 넣어 쓰고,
 저장 실패는 대기를 끊지 않는다.
@@ -50,6 +53,8 @@ import time
 
 STALL_TAIL = 40
 RAW_LIMIT = 4000
+WAIT_FILE_PREFIX = 'pjc-chain-wait-'
+SWEEP_AGE_SEC = 7 * 24 * 3600
 
 
 def screen_hash(lines):
@@ -68,13 +73,12 @@ def _action(kind, dispatch, streak=0, on_place=False):
                 '처리하고 ack 한 뒤 대기를 다시 띄운다 (이 배치의 deliveryId 를 이미 ack 했으면 처리하지 않고 대기만 다시 띄운다 · '
                 'worker_done·사후 완료 status 면 다시 띄우지 않고 다음 계획의 worker-start 뒤에 띄운다)')
     if kind == 'stall':
-        return ('같은 화면이 체크포인트마다 %d장 이어졌다 — worker-retain --dispatch %s 후 보고하고 멈춘다 '
+        return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고(화면은 구분 줄 뒤다), '
+                '같은 화면이 체크포인트마다 %d장 이어졌다 — worker-retain --dispatch %s 후 보고하고 멈춘다 '
                 '(보고의 멈춘 사유에 직접 재개 알림 안내를 싣는다 — references/report.md · references/manual-resume.md)'
                 % (streak, dispatch))
     if kind == 'error':
-        return 'references/cli-errors.md 「오류 응답」 을 따른다'
-    if kind == 'progress':
-        return '아래 줄을 그대로 한 줄씩 표시하고 대기를 다시 띄운다'
+        return '앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고, references/cli-errors.md 「오류 응답」 을 따른다'
     return '같은 dispatch 의 새 대기가 이어받았다 — 아무것도 하지 않는다'
 
 
@@ -103,6 +107,14 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
     remaining = timeout_ms
     if progress is not None:
         progress.start()
+
+    def emit(kind, body, lines_done, **kw):
+        # 진행 줄을 실어 내보낼 때만 그 상태를 저장한다 — 진행만 있는 주기에는 깨우지도 저장하지도 않아,
+        # 다음 주기가 같은 기준에서 같은 줄을 다시 계산한다(물러나거나 끊겨도 줄을 잃지 않는다).
+        if progress is not None:
+            progress.commit()
+        return _result(kind, dispatch, lines_done + list(body), **kw)
+
     while True:
         wait = min(poll, remaining)
         try:
@@ -116,13 +128,13 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
             return _result('superseded', dispatch)
         data, err = _parse(raw)
         if err is not None:
-            return _result('error', dispatch, [err])
-        if progress is not None:
-            progress.commit()
+            return emit('error', [err], lines_done)
         if data.get('count', 0) > 0:
-            return _result('message', dispatch, lines_done + [raw[:RAW_LIMIT * 4]])
-        if lines_done:
-            return _result('progress', dispatch, lines_done)
+            return emit('message', [raw[:RAW_LIMIT * 4]], lines_done)
+        if not lines_done and progress is not None:
+            # 줄 없는 갱신(HEAD 시드·무효 기준 복구·비 task 커밋만 지난 sha 전진)은 이 주기에 저장한다 —
+            # 미루면 첫 출력 때 그 사이 task 커밋이 기준 뒤로 묻힌다.
+            progress.commit()
         remaining -= wait
         if remaining > 0:
             continue
@@ -136,14 +148,16 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
             return _result('superseded', dispatch)
         data, err = _parse(raw)
         if err is not None:
-            return _result('error', dispatch, [err])
+            return emit('error', [err], lines_done)
         lines = [str(l) for l in data.get('lines') or []]
         h = screen_hash(lines)
         streak = streak + 1 if h == last_hash else 0
         last_hash = h
         # streak 은 일치한 비교 횟수라 같은 화면 장 수는 그보다 하나 많다 — 첫 화면이 1장이다.
         if streak + 1 >= stall:
-            return _result('stall', dispatch, lines[-STALL_TAIL:], streak=streak + 1)
+            # 진행 줄이 있으면 화면과 섞이지 않게 구분 줄을 둔다 — 화면 끝 40줄은 형식이 정해져 있지 않다.
+            sep = ['— 화면 끝 %d줄 —' % STALL_TAIL] if lines_done else []
+            return emit('stall', sep + lines[-STALL_TAIL:], lines_done, streak=streak + 1)
 
 
 # Karina `Worker::holds_place_at` 이 「자리를 쥐고 있다」로 보는 state — 그 밖이거나 놓았으면(released) 빈자리다.
@@ -287,7 +301,8 @@ class Progress:
 
 
 class FileStore:
-    """dispatch 별 상태 파일(JSON). 대기가 task 마다 재기동돼 지울 시점이 없고 크기가 작아 지우지 않는다."""
+    """dispatch 별 상태 파일(JSON). 대기가 재기동될 때마다 이어 쓰여 그 dispatch 의 마지막 대기를 스크립트가
+    알 수 없으므로 끝에 지우지 않고, 7일 지나면 다음 대기의 시작 정리(sweep_stale)가 지운다."""
 
     def __init__(self, dispatch):
         self.path = os.path.join(tempfile.gettempdir(), 'pjc-chain-wait-%s.seen' % dispatch)
@@ -319,6 +334,25 @@ class FileStore:
                     os.remove(tmp)
                 except OSError:
                     pass
+
+
+def sweep_stale(folder, now):
+    """`folder` 의 `pjc-chain-wait-*`(잠금·상태·쓰다 남은 임시 파일) 중 수정 시각이 SWEEP_AGE_SEC 지난 것을 지운다.
+    대기 수명은 45분 실측이라 그만큼 지난 파일은 죽은 대기의 것이다 — 지우지 않으면 dispatch 마다 하나씩 쌓인다.
+    정리는 부가 기능이라 실패는 삼킨다."""
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return
+    for name in names:
+        if not name.startswith(WAIT_FILE_PREFIX):
+            continue
+        path = os.path.join(folder, name)
+        try:
+            if now - os.path.getmtime(path) > SWEEP_AGE_SEC:
+                os.remove(path)
+        except OSError:
+            pass
 
 
 def make_git(repo):
@@ -361,6 +395,7 @@ def main(argv=None):
         lock.release()
         print('\n'.join(out), flush=True)
         return 0
+    sweep_stale(tempfile.gettempdir(), time.time())
     progress = None
     poll_ms = a.poll_ms
     if a.repo:
