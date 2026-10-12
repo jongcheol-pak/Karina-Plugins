@@ -1173,12 +1173,12 @@
     "mutate": [
       {
         "file": "plugins/pjc/evals/check-stale-refs.py",
-        "find": "DEAD_BASELINE = 28",
-        "replace": "DEAD_BASELINE = 29"
+        "find": "DEAD_BASELINE = 30",
+        "replace": "DEAD_BASELINE = 31"
       }
     ],
     "expect_keywords": [
-      "[FAIL] DEAD 총량이 기준선과 다르다: 28 != 29",
+      "[FAIL] DEAD 총량이 기준선과 다르다: 30 != 31",
       "DEAD_BASELINE"
     ]
   },

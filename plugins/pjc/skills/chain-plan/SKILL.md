@@ -104,7 +104,7 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
 - **대상 레포 경로는 대상 레포에서 `git rev-parse --show-toplevel` 로 얻는다** — `current` 는 Karina 화면의 활성 워크트리 그룹이라 사용자가 다른 그룹을 보고 있으면 다른 레포에 뜬다.
 - **`worker-start` 응답을 갈래로 가른다** — 성공 경로만 두면 권한 프롬프트에 걸리거나 배정문을 못 받은 워커를 끝없이 기다린다.
   - `ok: false` → `references/cli-errors.md`「오류 응답」
-  - `turnStart` 가 `permission` 이거나 `injected: false` 거나 `state: "outcome_unknown"` → `references/worker-start.md`「시작 이상 응답」
+  - `turnStart` 가 `permission` 이거나 `injected: false` 거나 `state: "outcome_unknown"` → `references/cli-errors.md`「시작 이상 응답」
   - 그 밖 → 대기로 간다
 - **대기는 둘째 줄(`<skill>` 은 이 SKILL.md 의 폴더)을 Bash 도구 `run_in_background: true` 로 띄우고(샌드박스를 풀었으면 같은 플래그로) 경과 보고 없이 turn 을 끝낸다 — 완료 알림이 오면 출력 파일을 Read 해 첫 줄 `RESULT: <갈래> — <지시>` 의 지시를 따른다. RESULT 줄이 없으면 `references/wait-exit.md`「RESULT 없음」 을 따른다** — 9분마다 이 세션이 깨어나 큰 컨텍스트를 다시 읽던 폴링을 스크립트가 맡는다.
 - **대기는 한 번에 하나이고 새 대기가 앞 대기를 물린다 — 띄우는 자리는 `worker-start` 직후 · 배치를 처리한 뒤 · 사용자 답을 `reply` 한 직후 · 압축 복원 뒤 · 사용자 입력 turn 에서 대기가 도는지 모를 때다(자리 대기 중이면 `--place` 대기 — `references/cli-errors.md`「오류 응답」). 사용자에게 넘긴 질문이 열려 있는 동안은 띄우지 않는다** — 워커가 `ask` 에 막혀 화면이 그대로라 멈춤으로 오판한다.
@@ -131,7 +131,7 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
   - ② `승인 필요 항목` 이 없거나, 체인 승인 때 명시해 승인받은 것이거나, 사용자 몫 ④ 밖의 추가형(새 API·설정 키 추가)뿐이다
   - ③ `DB 변경` 이 체인 승인의 DB 목록 안이다(위 판정 불릿이 정한 새 DB 포함)
 - **승인 제시 `결정:` 의 `(확인 필요)` 는 봉투 대조와 별개로 위 넷과 판정 기준으로 가른다** — 그 표기는 워커가 답을 받지 못한 결정이라는 뜻이지 사용자 몫이라는 뜻이 아니다.
-- **봉투 대조가 어긋나면 `references/delegation.md`「봉투 밖 승인 요청」 을 읽고 따른다** — 봉투 밖이라는 사실만으로 사용자에게 넘기지 않는다.
+- **봉투 대조가 어긋나면 `references/user-relay.md`「봉투 밖 승인 요청」 을 읽고 따른다** — 봉투 밖이라는 사실만으로 사용자에게 넘기지 않는다.
 - **앞 워커에게 답한 질문이 컨텍스트에 있으면 `references/prior-answers.md`「앞선 답」, 사용자에게 넘길 때는 `references/user-relay.md`「사용자에게 넘기기」 를 읽고 따른다.**
 
 ## 보고

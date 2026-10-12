@@ -1,10 +1,10 @@
 # CLI 오류 응답 (`pjc:chain-plan`)
 
-> `../SKILL.md` 가 `<CLI>` 응답이 `ok: false` 일 때(「오류 응답」)와 「전제조건」에서 해석한 CLI 이름이 PATH 에 없을 때(「CLI 경로」)만 이 파일을 연다. 코드의 뜻과 처방의 정본은 Karina 가이드(`<CLI> skills get karina-orchestration`)의 Errors·Retrying Safely 절이고, 여기는 그 처방을 체인 맥락에 맞춘 것이다.
+> `../SKILL.md` 가 `<CLI>` 응답이 `ok: false` 일 때(「오류 응답」), `worker-start` 응답의 `turnStart` 가 `permission` 이거나 `injected: false` 거나 `state: "outcome_unknown"` 일 때(「시작 이상 응답」 — 셋 다 `ok: true` 인 응답이다), 「전제조건」에서 해석한 CLI 이름이 PATH 에 없을 때(「CLI 경로」)만 이 파일을 연다. 코드의 뜻과 처방의 정본은 Karina 가이드(`<CLI> skills get karina-orchestration`)의 Errors·Retrying Safely 절이고, 여기는 그 처방을 체인 맥락에 맞춘 것이다.
 
 ## 오류 응답
 
-- **판정은 `ok: false` 와 `code` 다** — 오류도 stdout 의 JSON 으로 와서 `2>/dev/null` 아래에서도 보인다. `state: "outcome_unknown"` 은 `ok: true` 인 성공 응답이라 여기가 아니라 `worker-start.md`「시작 이상 응답」 이다.
+- **판정은 `ok: false` 와 `code` 다** — 오류도 stdout 의 JSON 으로 와서 `2>/dev/null` 아래에서도 보인다. `state: "outcome_unknown"` 은 `ok: true` 인 성공 응답이라 여기가 아니라 아래 「시작 이상 응답」 이다.
 - **가이드가 복구 동작을 정했고 코디네이터가 수행할 수 있는 코드는 그 동작을 따른다.**
   - `protocol_error` — 응답이 `--retry-request <id>` 를 이름 대면 같은 명령을 그 id 로 다시 보낸다. id 없이 다시 보내지 않는다 — 응답만 잃고 명령은 이미 실행됐을 수 있어, 새 id 로 보내면 워커·task 가 둘이 된다. id 가 없으면(읽기 명령) 같은 명령을 그대로 다시 실행한다.
   - `runtime_access_denied` — 샌드박스가 파이프를 막은 것이다. 같은 명령을 Bash 도구 `dangerouslyDisableSandbox: true` 로 다시 실행하고, 그 뒤의 `<CLI>` 는 처음부터 그렇게 실행한다. 샌드박스 밖에서도 같은 코드면 곧바로 멈춘다. Karina 를 재시작하지 않는다 — 재시작은 권한을 주지 못한다. 샌드박스 밖 실행이 권한 확인 화면을 띄우면 사용자 확인 대기로 본다.
@@ -23,6 +23,12 @@
   - `app_not_running` — CLI 는 앱을 띄우지 않는다. 앱 실행은 사용자 몫이다.
   - `no_bound_run`·`unknown_*`·`unsupported_capability` 등 — Run 바인딩이나 이 세션이 받은 id 가 어긋났거나 이 빌드에 없는 기능이라, 이어 가면 상태 추적이 깨진다.
 - **예외 — `../SKILL.md` 「전제조건」의 Karina 앱 실행 확인(`run-current`)이 낸 `no_bound_run` 은 통과다** — Run 을 만들기 전의 탭은 이것을 내는 것이 정상이다. 그 밖의 코드는 위 규칙대로 복구하거나 멈춘다.
+
+## 시작 이상 응답
+
+- **`turnStart: "permission"`** → `worker-stop --dispatch <id>` 후 `../SKILL.md` 「전제조건」의 agent 권한 모드가 꺼져 있다고 보고하고 멈춘다
+- **`injected: false`** → 배정문 제출이 실패해 워커가 일을 받지 못했다. `worker-stop --dispatch <id>` 후 사유를 보고하고 멈춘다
+- **`state: "outcome_unknown"`** → `worker-show`·`worker-read` 로 살펴 살아 있으면 `../SKILL.md` 「워커 루프」의 대기를 띄우고, 아니면 `worker-abandon --dispatch <id>` 후 보고하고 멈춘다
 
 ## CLI 경로
 
