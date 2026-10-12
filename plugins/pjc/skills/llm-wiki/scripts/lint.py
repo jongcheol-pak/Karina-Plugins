@@ -1671,7 +1671,8 @@ def _append_log_entries(vault, lines):
 
     반환: `(기록한 줄 수, 실패 사유 또는 None)`. **「적을 것이 없었다」와 「적지 못했다」를
     가른다** — 종전에는 둘 다 0이라 기록 실패가 호출부의 `if written:`에서 조용히 지나갔다.
-    §4 6번이 성공을 보고하지 않으므로 이 기록이 「무엇이 만들어졌는가」의 유일한 자리이고, 비면 5번 원복이 기댈 곳도 함께 빈다."""
+    비 git vault 에서는 §4 6번이 성공을 보고하지 않으므로 이 기록이 「무엇이 만들어졌는가」의 유일한 자리이고,
+    비면 5번 원복이 기댈 곳도 함께 빈다(git vault 는 이 함수를 부르지 않는다 — 원복은 대상 목록과 체크포인트)."""
     path = os.path.join(vault, "log.md")
     if not lines or not os.path.exists(path):
         return 0, None
@@ -2878,14 +2879,20 @@ def auto_split(vault, dry_run):
     #  (재점검 롤오버가 그때 처음 백업했다) 사본에 그 기록이 이미 들어 있었다 — §4 5번대로
     #  원복하면 **되돌려진 분할의 기록만 남은** log.md 가 된다(실측 1건). 이 쓰기는 처방이
     #  아니라 세션이 직접 하는 것이라 맡을 처방이 없어 claim 을 면제한다.
-    ses.backup(os.path.join(vault, "log.md"), require_claim=False)
-    written, log_err = _append_log_entries(vault, [ses.log_line(*a) for a in ses.actions])
+    # **git vault 는 이 기록을 남기지 않는다** — 그 줄을 읽는 절차가 없고, 무엇이 만들어졌는지는 아래 수행
+    #  목록 출력과 체크포인트·절차 커밋의 git 이력이 맡으며 원복도 대상 목록과 체크포인트로 한다(2026-10-12
+    #  감사 — 기록이 log 롤오버만 앞당겼다). 재점검은 1차 pass 의 연쇄를 거두려고 git vault 에서도 그대로 돈다.
+    log_on = not ses.git_root
+    written, log_err = 0, None
+    if log_on:
+        ses.backup(os.path.join(vault, "log.md"), require_claim=False)
+        written, log_err = _append_log_entries(vault, [ses.log_line(*a) for a in ses.actions])
     if log_err:
         # 기록 실패는 파일을 이미 다 쓴 뒤라 원복 대상이 아니지만, 종료 코드로는 알린다 —
-        #  호출측(F-2·A-4·B-3·I-4)이 「되돌리는 방법」을 그 기록에서 찾기 때문이다.
+        #  비 git vault 의 호출측(F-2·A-4·B-3·I-4)이 「되돌리는 방법」을 그 기록에서 찾기 때문이다.
         ses.notes.append(log_err)
         ses.failed = True
-    if written:
+    if written or (not log_on and ses.actions):
         # 재점검은 처방 **목록 전체**를 다시 돌린다 -- 특정 처방을 이름으로 부르지 않는 이유는
         #  그 이름이 이 골격에 없는 심볼에 대한 계약이 되어(정의 위치가 후속 task) 목록과
         #  이름 참조 두 곳이 갈리기 때문이다. 이미 해소된 처방은 발동 조건이 거짓이라 no-op다.
@@ -2897,24 +2904,25 @@ def auto_split(vault, dry_run):
         ses.failed = ses.failed or recheck.failed
         ses.notes.extend(recheck.notes)
         if recheck.actions:
-            # 수행 목록과 기록에 **합류시킨다.** 종전에는 notes 1줄만 남겨 아래 log 기록에도
-            #  §4 7번 기록에도 들어가지 않았다 -- 실측으로 한 실행이 만든 파일이 13개인데
+            # 수행 목록과 (비 git vault 면) 기록에 **합류시킨다.** 종전에는 notes 1줄만 남겨 아래 log
+            #  기록에도 §4 7번 기록에도 들어가지 않았다 -- 실측으로 한 실행이 만든 파일이 13개인데
             #  `[SCHEMA]` 기록은 7건이었다. 되돌리는 방법을 알리는 것이 승인을 없앤 대가인데
             #  (§4 6번) 보고에 없는 파일은 그 대상에서 통째로 빠진다.
             ses.actions.extend(recheck.actions)
-            _rewritten, recheck_err = _append_log_entries(
-                vault, [recheck.log_line(*a) for a in recheck.actions])
-            if recheck_err:
-                ses.notes.append(recheck_err)
-                ses.failed = True
+            if log_on:
+                _rewritten, recheck_err = _append_log_entries(
+                    vault, [recheck.log_line(*a) for a in recheck.actions])
+                if recheck_err:
+                    ses.notes.append(recheck_err)
+                    ses.failed = True
             # **어느 줄이 재점검 몫인지 지목한다** — 「위 N건」은 목록이 여러 줄일 때 무엇을
             #  가리키는지 갈린다(§4 7번 log 기록이 나중에 읽히는 자리다). **위치로 지목하지
             #  않는다** — 재점검분 뒤에 index 분할이 합류할 수 있어 「마지막 N건」이 그쪽을
             #  가리키게 된다. 대상 이름만으로 지목하면 순서가 바뀌어도 어긋나지 않는다.
             ses.notes.append(
-                "위 목록 중 %d건(%s)은 log 기록 후 재점검이 수행했다"
+                "위 목록 중 %d건(%s)은 %s 재점검이 수행했다"
                 "(§8 트리거 점검 — 재점검은 1회 고정이라 여기서 연쇄가 끊긴다)"
-                % (len(recheck.actions),
+                % (len(recheck.actions), "log 기록 후" if log_on else "본 pass 뒤",
                    "·".join(f"{k} — {t}" for k, t, _c in recheck.actions)))
 
     # 신설 하위를 인덱스에 등재한다 -- 이 연쇄가 없으면 분할 직후 §7-6·§7-30ⓒ가 미등록을
@@ -2924,16 +2932,17 @@ def auto_split(vault, dry_run):
     if build_index(vault, False, idx_report) != 0:
         ses.notes.append("생성 마커 없음 — 인덱스 등록은 수기 몫(§4 절차 4번)")
     elif idx_report.get("created"):
-        # **index 계열 신설도 §4 7번 기록의 대상이다.** 종전에는 이 연쇄가 만든 파일이
-        #  `ses.actions` 밖이라 수행 목록에도 `[SCHEMA]` 기록에도 오르지 않았다(실측: 파일 3
-        #  생성 / 기록 2). §4 6번 사후 보고와 5번 원복이 둘 다 「무엇이 만들어졌는가」에
-        #  기대므로, 기록에서 빠진 파일은 되돌릴 대상에서도 빠진다.
+        # **index 계열 신설도 수행 목록과 (비 git vault 면) §4 7번 기록의 대상이다.** 종전에는 이
+        #  연쇄가 만든 파일이 `ses.actions` 밖이라 수행 목록에도 `[SCHEMA]` 기록에도 오르지 않았다
+        #  (실측: 파일 3 생성 / 기록 2). §4 6번 사후 보고와 5번 원복이 둘 다 「무엇이 만들어졌는가」에
+        #  기대므로, 목록에서 빠진 파일은 되돌릴 대상에서도 빠진다.
         idx_act = ("index 분할", "index.md", idx_report["created"])
         ses.actions.append(idx_act)
-        _idx_written, idx_err = _append_log_entries(vault, [ses.log_line(*idx_act)])
-        if idx_err:
-            ses.notes.append(idx_err)
-            ses.failed = True
+        if log_on:
+            _idx_written, idx_err = _append_log_entries(vault, [ses.log_line(*idx_act)])
+            if idx_err:
+                ses.notes.append(idx_err)
+                ses.failed = True
 
     print(f"== --auto-split: {len(ses.actions)}건 수행 ==")
     for kind, target, created in ses.actions:

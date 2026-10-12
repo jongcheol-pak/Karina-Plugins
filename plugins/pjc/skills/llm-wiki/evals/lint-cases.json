@@ -1811,6 +1811,18 @@
       "fixture": "prose-split",
       "auto_split": true,
       "git_vault": true,
+      "expect_keywords": [
+        "산문 분리 — 20_projects/personal/demo/feat-thing.md"
+      ],
+      "expect_file_not_contains": {
+        "log.md": ["[SCHEMA]"]
+      },
+      "rationale": "**git vault 에서는 `--auto-split` 이 log.md 에 `[SCHEMA]` 를 쓰지 않는다**(2026-10-12 감사 — 그 줄을 읽는 절차가 없고 git 이력·체크포인트 커밋과 겹치며 log 롤오버만 앞당겼다). 분할이 실제로 수행됐는지는 키워드가, 기록이 없는지는 log.md 대조가 잰다 — 비 git vault 의 기록은 `split-recheck-log`·`prose-sub-dup` 이 그대로 잰다."
+    },
+    {
+      "fixture": "prose-split",
+      "auto_split": true,
+      "git_vault": true,
       "expect_no_git_maintenance": true,
       "expect_keywords": [
         "산문 분리 — 20_projects/personal/demo/feat-thing.md"
@@ -1927,7 +1939,7 @@
       "expect_keywords": [
         "수정 대상 없음"
       ],
-      "rationale": "**F-2의 두 호출 연쇄가 규약대로면 막히지 않는다**(`procedures-ops.md` :63 `--auto-split` → :65 `--fix`). `lint.py`가 그 둘의 동시 실행을 금지해 별도 호출인데, 선행 처방의 산출물이 미커밋으로 남으면 두 번째 호출이 가드에 걸린다 — 그래서 「커밋 시점」 ①이 호출마다 커밋을 요구하고, 이 케이스는 러너가 그 커밋을 실제로 수행한 뒤 `--fix`가 정상 진입함을 잰다. **가드를 세우면서 정상 절차를 막아 버리는 것이 이 변경의 가장 큰 위험이고 그 자리가 여기다.** 선행 처방이 미커밋을 남기는지는 픽스처마다 갈리므로(재점검 pass가 돌면 그 진입 체크포인트가 앞 pass 결과를 담는다 — 실측: log-guard는 clean, 이 prose-split은 미커밋 3건) **남기는 쪽을 골랐다** — 남지 않는 픽스처로 재면 중간 커밋이 아무 일도 하지 않아 축이 공회전한다."
+      "rationale": "**F-2의 두 호출 연쇄가 규약대로면 막히지 않는다**(`procedures-ops.md` :63 `--auto-split` → :65 `--fix`). `lint.py`가 그 둘의 동시 실행을 금지해 별도 호출인데, 선행 처방의 산출물이 미커밋으로 남으면 두 번째 호출이 가드에 걸린다 — 그래서 「커밋 시점」 ①이 호출마다 커밋을 요구하고, 이 케이스는 러너가 그 커밋을 실제로 수행한 뒤 `--fix`가 정상 진입함을 잰다. **가드를 세우면서 정상 절차를 막아 버리는 것이 이 변경의 가장 큰 위험이고 그 자리가 여기다.** 선행 처방이 미커밋을 남기는지는 픽스처마다 갈리므로(재점검 pass가 돌면 그 진입 체크포인트가 앞 pass 결과를 담는다 — 실측: log-guard는 clean, 이 prose-split은 미커밋 3건 — 2026-10-12 git vault 의 `[SCHEMA]` 기록을 끊어 log.md 가 빠진 뒤 2건(index.md·index-personal.md)) **남기는 쪽을 골랐다** — 남지 않는 픽스처로 재면 중간 커밋이 아무 일도 하지 않아 축이 공회전한다."
     },
     {
       "fixture": "generated-exempt",

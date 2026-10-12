@@ -1047,7 +1047,7 @@ def check_case(case):
         #  커밋을 빼면 그냥 dirty 거부라 `fix-dirty-reject`와 같은 축이 된다. 선행 처방이
         #  미커밋을 실제로 남기는지는 픽스처마다 갈린다(재점검 pass가 돌면 그 진입 체크포인트가
         #  앞 pass 결과를 담아 워킹트리가 깨끗해진다 — 2026-09-16 실측: log-guard는 clean,
-        #  prose-split은 미커밋 3건). 갈리는 쪽을 골라야 이 커밋이 실제로 일을 한다.
+        #  prose-split은 미커밋 3건 — 2026-10-12 `[SCHEMA]` 기록을 끊은 뒤 2건). 갈리는 쪽을 골라야 이 커밋이 실제로 일을 한다.
         if case.get("pre_auto_split"):
             run_lint(dest, ["--auto-split"])
             commit_git_vault(dest, "문서: 선행 처방 결과")
