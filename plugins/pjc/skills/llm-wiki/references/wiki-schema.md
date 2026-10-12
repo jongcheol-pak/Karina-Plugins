@@ -121,14 +121,15 @@ LLM이 지속적으로 위키를 작성·유지·갱신하는 개인 지식베�
 > 새 소스(프로젝트 변경분, 문서 등)를 위키에 반영할 때
 
 ### 필수 단계
-0a. **큐 소비**: vault 루트 `pending.md`를 먼저 읽고 태그별로 소비한다 — 태그별 반영처·등재 게이트·보류/기각·미등록 프로젝트 처리는 `references/queue-consume-rules.md`(절차 B-1 0)가 정본이다.
-0. **교차 sweep (stale 드리프트 차단)**: 갱신 전 변경된 사실을 위키 전체에서 검색해 나온 곳을 모두 갱신한다(`10_sources/` 스텁은 불변이라 제외 — §2.1). 전문은 절차 B-2 0(`references/procedures-content.md`)이 정본이다.
+> 단계마다 본문은 절차 A·B(`references/procedures-content.md`)가 정본이다 — 여기는 번호·이름·게이트만 둔다(번호는 다른 자리가 「§5 0」처럼 인용한다).
+0a. **큐 소비** — 절차 B-1 0(태그별 소비 규칙은 `references/queue-consume-rules.md`).
+0. **교차 sweep (stale 드리프트 차단)** — 절차 B-2 0(`references/procedures-content.md`) · `10_sources/` 스텁은 불변이라 제외(§2.1).
 1. 이 규칙 문서 읽기
-2. 대상 프로젝트의 변경분 확인(git이면 `git log`가 1차, 레포 문서 README.md·CLAUDE.md·작업 기록이 있으면 보조) + **신규 프로젝트 등록 시 UI/기능 진입점 소스 스캔(Views/ViewModels/라우트 등)으로 문서 미기재 기능까지 열거**(전체 기능 목록 도출). feature 망라·누락 검증의 기준이 된다.
-2a. **기존 프로젝트 갱신 시 망라 재대조(경량, 필수)**: 델타만으로는 조용히 제거·이름변경된 기능을 놓치므로, A-1식 진입점 enumeration(Grep/Glob, deep read 아님)으로 현재 기능을 열거해 위키 feature/index와 대조한다. **추가**는 feature 생성, **제거/이름변경 후보**는 **자동 삭제 금지·사용자 확인**(승인 시에만 §C-3에 준해 정리), 불확실 시 question 기록. 무거운 정합은 Lint의 **코드 정합 샘플링**(§7-10, 에이전트 수행)에 위임. (절차: references/procedures-content.md "B-1a")
-2b. **델타 신뢰도 점검**: 허브 `updated`가 오래됐으면 델타만으로 그 사이 변경을 복원하지 못할 수 있다 — 판정 기준과 대조 강도는 절차 B-1 5(`references/procedures-content.md`)가 정본이다.
-3. 해당 프로젝트 허브(`20_projects/`) 및 관련 feature 페이지(`20_projects/{proj}/`) 갱신. **feature의 구현/동작/UI 서술은 신규 작성·갱신 모두 해당 기능의 소스 파일을 실제로 읽은 뒤 작성한다**(§2.3 작성 전제 — enumeration 스캔으로 대체 불가)
-3a. **recipe 승격 확인 (필수 게이트)**: feature 망라/신규 생성 후, 재사용 가능한 비자명 함정(구현 트랩·플랫폼 제약·성능/안정성 트릭)을 후보로 모아 **코드 스니펫 recipe 승격 여부를 항상 사용자에게 묻는다**(에이전트 단독 자동 승격 금지). 승인 시 §2.6 recipe로 작성(스택 폴더 + `[^src-...]` 각주 + index 등록 + feature 상호링크), 거절 시 feature 산문 유지. 후보 0개면 그 사실만 보고하고 질문 생략. (절차: references/procedures-content.md "A-3a")
+2. **변경분 확인 · 신규 등록 시 진입점 소스 스캔** — 절차 B-1(`references/procedures-content.md`)(git 이면 `git log` 1차) · 신규 등록은 A-1(`references/procedures-content.md`)(문서 미기재 기능까지 열거).
+2a. **기존 프로젝트 갱신 시 망라 재대조(경량, 필수)** — 절차 B-1a(`references/procedures-content.md`)(제거·이름변경 후보는 **자동 삭제 금지·사용자 확인**).
+2b. **델타 신뢰도 점검** — 절차 B-1 5(`references/procedures-content.md`).
+3. **허브·feature 페이지 갱신** — 절차 B-2(`references/procedures-content.md`)(구현·동작·UI 서술은 그 기능의 소스 파일을 읽은 뒤 쓴다 — §2.3 작성 전제).
+3a. **recipe 승격 확인 (필수 게이트)** — 절차 A-3a(`references/procedures-content.md`)(승격 여부는 항상 사용자에게 묻는다).
 4. **기능별 인덱스 동기화**: 새/변경 feature는 `index.md`의 "기능별 인덱스"에 행 추가·갱신
 5. 크로스 프로젝트 패턴 발견 시 관련 지식 페이지(`30_knowledge/`) 갱신
 6. `log.md`에 1줄 기록 추가
@@ -165,9 +166,9 @@ LLM이 지속적으로 위키를 작성·유지·갱신하는 개인 지식베�
 > 위키에 질문할 때
 
 1. 이 규칙 문서 읽기
-2. `index.md`의 "기능별 인덱스" / 카탈로그에서 관련 페이지 식별 (`index.md` 상단에 sub-index 파일 목록이 있으면 관련 카테고리 sub-index도 함께 읽음 — 순번 분할된 category는 그 순번 파일(`index-{cat}-1..N`) 전부가 대상이며, 통째 정독 대신 grep으로 관련 행을 특정한다). 결정·이력 질문이면 해당 프로젝트 `decisions.md`(§2.8)를, **오류·증상 질문이면 `## 증상별 인덱스`(아래)를 우선 식별**한다.
+2. **관련 페이지 식별** — 절차 G 1(`references/procedures-ops.md`)(sub-index · 결정·이력이면 `decisions.md`(§2.8) · 오류·증상이면 `## 증상별 인덱스`(아래) 우선).
 3. 관련 feature/guide/지식 페이지 읽고 답변 합성 (출처 각주 필수)
-3a. **출력은 사용자 관점**: 결론 요약 먼저 → 상세 → 출처 순으로 정리하고, 내부 표기(frontmatter 필드·wikilink 원문 문법 등)를 본문에 노출하지 않는다. **합성 재료는 실제로 읽은 페이지 내용뿐 — 근거 없는 부분을 모델 지식으로 메워 위키 정보처럼 서술 금지(추측 금지), 위키 밖 일반 지식 답변은 출처가 아님을 명확히 구분.** **타임라인 질의**("언제/이력") 는 decisions.md + 허브 "최근 주요 변경" + log(아카이브 인덱스로 월 특정)를 시간순 합성한다. (절차 전문: references/procedures-ops.md "G")
+3a. **출력은 사용자 관점 · 추측 금지 · 타임라인 질의** — 절차 G(`references/procedures-ops.md`) 2a·2b·3.
 4. 답변이 유용한 종합이면 → concept 페이지 생성 고려 (§2.5 생성 조건 충족 시)
 5. 모순 발견 시 → question 페이지 생성
 6. `origin: agent-synthesized` 표시 (사용자 미검증)
@@ -209,7 +210,7 @@ LLM이 지속적으로 위키를 작성·유지·갱신하는 개인 지식베�
 
 > 코드 프로젝트 세션에서 기능 구현·버그 수정 전에 위키를 참고할 때.
 > **절차 전문은 스킬 `references/lookup-rules.md` "K. 작업 참조"에 단일 정의** — 인덱스 식별 → 식별 페이지만 read → 소스 점프 → `origin`/`confidence` 반영.
-> 규칙 측 핵심(불변): 이 워크플로는 **read-only**다. 모순·드리프트(위키↔코드 불일치)를 발견해도 위키 본문 페이지·인덱스를 수정하지 않고 사용자에게 보고하며, `log.md`도 남기지 않는다. **유일한 쓰기 예외는 vault 루트 `pending.md` 1줄 append**다 — 태그·형식·vault 폴백·중복 억제는 `references/queue-rules.md`(K 5~6), 소비는 `references/queue-consume-rules.md` 가 정본이다.
+> 규칙 측 핵심(**read-only** · 유일한 쓰기 예외 vault 루트 `pending.md` 1줄 append)도 그 절차가 정본이다 — 기록 형식은 `references/queue-rules.md`(K 5~6), 소비는 `references/queue-consume-rules.md`.
 > **`pending.md`는 소비 대기 큐이지 지식 페이지가 아니다** — 작업 참조(K)·질문(G)의 검색 결과에서 제외하고 계획·디버깅·답변의 근거로 인용하지 않는다(읽기는 중복 억제 판정 목적만). 예외 둘(캘러를 명시한 ⓐ · 캘러를 가리지 않는 ⓑ)과 식별 단계의 대상 범위(`decisions.md`·`conventions.md`·`index.md` 의 tech/·미해결 질문)는 `references/lookup-rules.md` K 2 가 정본이다.
 
 ---
