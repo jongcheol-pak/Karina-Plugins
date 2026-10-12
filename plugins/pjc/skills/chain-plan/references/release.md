@@ -1,11 +1,6 @@
-# 완료 보고 확인·닫기 (`pjc:chain-plan` — succeeded 뒤)
+# 닫기 (`pjc:chain-plan` — succeeded 뒤)
 
-> `../SKILL.md` 「워커 루프」가 `worker_done` 의 `succeeded` 를 받았을 때 이 파일을 연다 — 워커가 최종 보고 텍스트를 다 그렸는지 가른 뒤(「완료 보고 확인」) 그 탭을 닫는다(「닫기」). `continuation.md` 의 이어받기와 `cli-errors.md` 의 `duplicate_worker` 이 Run 갈래도 「닫기」 를 쓴다. 사후 완료 status 를 받았을 때도(`manual-resume.md`「사후 완료」) 두 절(「완료 보고 확인」·「닫기」)을 쓴다.
-
-## 완료 보고 확인
-
-- `worker-read` 는 `--limit` 과 무관하게 지금 보이는 터미널 화면만 준다 — 제목은 `● 완료 보고` 처럼 보이고, 보고 뒤에 인계 프롬프트 코드블록이 붙으면 화면 위로 밀려 안 보인다. 그래서 판정은 둘 중 하나다: `완료 보고` 부분 문자열이 보이거나, 아래 대기 앞뒤로 읽은 화면이 같다(작업 중이면 스피너의 경과 시간이 매초 바뀌어 같을 수 없다).
-- 아니면 `check --wait --timeout-ms 30000` 으로 기다린 뒤 다시 본다 — 그 사이 온 메시지 배치는 `../SKILL.md` 「워커 루프」 규칙대로 처리하고 ack 한다(이 대기는 전경이라 대기 스크립트를 띄우지 않는다). 3회 안에 판정이 서지 않으면 `--body` 가 정본이라 그대로 아래 「닫기」 로 간다.
+> `../SKILL.md` 「워커 루프」가 `worker_done` 의 `succeeded` 를 받았을 때 이 파일을 연다 — 보고의 정본은 `--body` 라 곧바로 그 탭을 닫는다(「닫기」). 워커는 인계·plan 커밋을 마친 뒤 최종 보고 텍스트보다 먼저 `worker_done` 을 보내므로, 닫으면 잘리는 것은 아무도 다시 읽지 않는 화면 텍스트뿐이다. `continuation.md` 의 이어받기와 `cli-errors.md` 의 `duplicate_worker` 이 Run 갈래도 「닫기」 를 쓴다. 사후 완료 status 를 받았을 때도(`manual-resume.md`「사후 완료」) 「닫기」 를 쓴다.
 
 ## 닫기
 
