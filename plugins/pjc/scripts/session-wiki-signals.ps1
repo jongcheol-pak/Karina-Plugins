@@ -1,4 +1,4 @@
-﻿# session-wiki-signals.ps1 — 세션 시작 주입의 위키 신호 2종 — 근거는 `rules/wiki-signals-rationale.md`의 「§1 session-wiki-signals.ps1 — 세션 시작 주입의 위키 신호 2종」
+﻿# session-wiki-signals.ps1 — 세션 시작 주입의 위키 신호 2종 — 근거는 `rules/wiki-signals-rationale.md` §1
 
 # Get-StaleFeatures — 허브가 가리키는 프로젝트의 feature 중 `updated` 이후 소스가 바뀐 것을 고른다.
 #   현행 뒤처짐 신호는 프로젝트 단위 수치(N커밋 미반영)까지만 말해 **어느 페이지를 볼지가 통째로
@@ -97,7 +97,7 @@ function Get-StaleFeatures {
 function Get-WikiSignals {
     param([string]$cwd)
     $vaultLine = $null; $staleLine = $null
-            # ---- 위키 vault 설정 상태 판정 — 근거는 `rules/session-context-rationale-wiki.md`의 「§23 ---- 위키 vault 설정 상태 판정」
+            # ---- 위키 vault 설정 상태 판정 — 근거는 `rules/session-context-rationale-wiki.md` §23
             $vaultLine = $null
             $staleLine = $null                 # 위키 뒤처짐 (프로젝트를 가리지 않는다 — 아래)
             $userHome = [string]$env:USERPROFILE
@@ -111,12 +111,12 @@ function Get-WikiSignals {
                         if (Test-Path -LiteralPath $vaultPath -PathType Container) {
                             $vaultLine = "[pjc 세션 컨텍스트] 위키 vault: 설정됨 ($vaultPath) — 프로젝트 맥락이 필요하면 AGENTS.md의 '## 위키'가 지목한 허브를 먼저 Read하세요(판정 단서는 글로벌 지침 「프로젝트 맥락」). 읽고 쓰는 시점은 skills/WIKI.md 가 정본입니다. `"미설정`"으로 단정하지 마세요."
 
-                            # ---- 위키 뒤처짐 알림 — 근거는 `rules/session-context-rationale-wiki.md`의 「§26 ---- 위키 뒤처짐 알림」
+                            # ---- 위키 뒤처짐 알림 — 근거는 `rules/session-context-rationale-wiki.md` §26
                             try {
                                 $hubDir = Join-Path $vaultPath '20_projects'
                                 if (Test-Path -LiteralPath $hubDir -PathType Container) {
                                     $cwdNorm = ($cwd -replace '\\', '/').TrimEnd('/')
-                                    # cwd 의 origin URL 은 **루프 밖에서 1회만** 읽는다 — 근거는 `rules/session-context-rationale-wiki.md`의 「§27 cwd 의 origin URL 은 **루프 밖에서 1회만** 읽는다」
+                                    # cwd 의 origin URL 은 **루프 밖에서 1회만** 읽는다 — 근거는 `rules/session-context-rationale-wiki.md` §27
                                     $cwdUrl = ''
                                     try {
                                         $urlRaw = (& git -C $cwd remote get-url origin 2>$null | Select-Object -First 1)
@@ -131,10 +131,10 @@ function Get-WikiSignals {
                                         try { $hubText = Get-Content -LiteralPath $hubFile.FullName -Raw -Encoding UTF8 } catch { continue }
                                         if (-not $hubText) { continue }
 
-                                        # 분할 조각은 허브가 아니다 — 근거는 `rules/session-context-rationale-wiki.md`의 「§37 분할 조각은 허브가 아니다」
+                                        # 분할 조각은 허브가 아니다 — 근거는 `rules/session-context-rationale-wiki.md` §37
                                         if ($hubText -match '(?m)^>\s*상위 문서:') { continue }
 
-                                        # 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다. — 근거는 `rules/session-context-rationale-wiki.md`의 「§28 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다.」
+                                        # 축 ① URL — cwd 쪽 URL 을 읽은 경우에만 판정한다. — 근거는 `rules/session-context-rationale-wiki.md` §28
                                         $hubUrl = ''
                                         if ($cwdUrl) {
                                             $urlMatch = [regex]::Match($hubText, '(?m)^repo_url:\s*"?([^"\r\n]+?)"?\s*$')
@@ -162,7 +162,7 @@ function Get-WikiSignals {
                                         $shaMatch = [regex]::Match($hubText, '(?m)^synced_commit:\s*(\S+)')
                                         if ($shaMatch.Success) {
                                             $syncedSha = $shaMatch.Groups[1].Value
-                                            # $LASTEXITCODE 를 게이트로 쓰지 않는다 — 이 hook은 앞서 다른 외부 — 근거는 `rules/session-context-rationale-wiki.md`의 「§29 $LASTEXITCODE 를 게이트로 쓰지 않는다 — 이 hook은 앞서 다른 외부」
+                                            # $LASTEXITCODE 를 게이트로 쓰지 않는다 — 이 hook은 앞서 다른 외부 — 근거는 `rules/session-context-rationale-wiki.md` §29
                                             try {
                                                 $countRaw = (& git -C $cwd rev-list --count "$syncedSha..HEAD" 2>$null | Select-Object -First 1)
                                                 if ("$countRaw" -match '^\d+$') { $behind = [int]$countRaw }
@@ -179,7 +179,7 @@ function Get-WikiSignals {
                                             } catch {}
                                         }
 
-                                        # 계산된 축만 문구에 싣는다. 미계산 sentinel — 근거는 `rules/session-context-rationale-wiki.md`의 「§30 계산된 축만 문구에 싣는다. 미계산 sentinel」
+                                        # 계산된 축만 문구에 싣는다. 미계산 sentinel — 근거는 `rules/session-context-rationale-wiki.md` §30
                                         $behindKnown = ($behind -ge 0)
                                         $daysKnown = ($staleDays -ge 0)
                                         $behindHit = ($behindKnown -and ($behind -ge 30)) -or ($daysKnown -and ($staleDays -ge 14))

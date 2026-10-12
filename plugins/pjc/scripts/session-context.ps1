@@ -1,4 +1,4 @@
-﻿# session-context.ps1 — SessionStart: 로컬 plan 상태 요약 + AGENTS.md 전문 컨텍스트 주입 (비차단) — 근거는 `rules/session-context-rationale.md`의 「§1 session-context.ps1 — SessionStart: 로컬 plan 상태 요약 + AGENTS.md 전문 컨텍스트 주입 (비차단)」
+﻿# session-context.ps1 — SessionStart: 로컬 plan 상태 요약 + AGENTS.md 전문 컨텍스트 주입 (비차단) — 근거는 `rules/session-context-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -6,10 +6,10 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 #   읽으면 한글 경로가 깨져 plan 탐색이 어긋난다. 실패해도 종전 동작 유지.
 try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
-# [고아 프로세스 회수] 세션 시작 시점에 이전 세션이 남긴 — 근거는 `rules/session-context-rationale.md`의 「§2 [고아 프로세스 회수] 세션 시작 시점에 이전 세션이 남긴」
+# [고아 프로세스 회수] 세션 시작 시점에 이전 세션이 남긴 — 근거는 `rules/session-context-rationale.md` §2
 try { . (Join-Path $PSScriptRoot 'session-end-cleanup-lib.ps1'); $null = Invoke-OrphanProcessCleanup -Hook 'session-context' } catch {}
 
-# [상태 마커 정리] 30일 지난 디듑 마커를 세션 시작에 한 번 걷는다 — 근거는 `rules/session-context-rationale.md`의 「§38 [상태 마커 정리] 30일 지난 디듑 마커를 세션 시작에 한 번 걷는다」
+# [상태 마커 정리] 30일 지난 디듑 마커를 세션 시작에 한 번 걷는다 — 근거는 `rules/session-context-rationale.md` §38
 $staleMarkerDirs = @('post-write-warn', 'suggest-agents-record', 'loop-continue', 'trivial-tally')
 $staleMarkerHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
 foreach ($d in $staleMarkerDirs) {
@@ -20,7 +20,7 @@ foreach ($d in $staleMarkerDirs) {
     } catch {}
 }
 
-# [절 추출] 스킬 문서에서 지정 헤딩 사이를 잘라 낸다 — compact 직후 루프 제어 규칙 주입용. — 근거는 `rules/session-context-rationale.md`의 「§3 [절 추출] 스킬 문서에서 지정 헤딩 사이를 잘라 낸다 — compact 직후 루프 제어 규칙 주입용.」
+# [절 추출] 스킬 문서에서 지정 헤딩 사이를 잘라 낸다 — compact 직후 루프 제어 규칙 주입용. — 근거는 `rules/session-context-rationale.md` §3
 $sectionMaxBytes = 20000   # 추출 결과 상한 — 대상 절이 예상 밖으로 커졌을 때 주입이 세션을 잠식하는 것을 막는다
 function Get-SkillSection {
     param([string]$Path, [string]$StartHeading, [string]$StopHeading)
@@ -44,7 +44,7 @@ function Get-SkillSection {
     } catch { return $null }
 }
 
-# plan 탐색과 task 체크박스 불릿 — guard-write 와 같은 규칙의 사본이고 loop-continue.ps1 에 같은 글자로 있다 — 근거는 `rules/session-context-rationale.md`의 「§5 ---- plan 탐색: 상위 탐색과 레포 경계」
+# plan 탐색과 task 체크박스 불릿 — guard-write 와 같은 규칙의 사본이고 loop-continue.ps1 에 같은 글자로 있다 — 근거는 `rules/session-context-rationale.md` §5
 $planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
 function Find-PlanFileUpwards([string]$StartDir, [int]$MaxDepth = 8) {
     if ([string]::IsNullOrEmpty($StartDir)) { return $null }
@@ -87,10 +87,10 @@ try {
     }
 
     if (-not [string]::IsNullOrWhiteSpace($cwd) -and (Test-Path -LiteralPath $cwd -PathType Container)) {
-        # cwd 수집으로 라인이 늘었는지 판정하는 기준 개수 — vault 라인 게이팅에 쓴다. — 근거는 `rules/session-context-rationale.md`의 「§4 cwd 수집으로 라인이 늘었는지 판정하는 기준 개수 — vault 라인 게이팅에 쓴다.」
+        # cwd 수집으로 라인이 늘었는지 판정하는 기준 개수 — vault 라인 게이팅에 쓴다. — 근거는 `rules/session-context-rationale.md` §4
         $cwdBaseCount = $lines.Count
 
-        # ---- plan 탐색: 상위 탐색과 레포 경계 — 근거는 `rules/session-context-rationale.md`의 「§5 ---- plan 탐색: 상위 탐색과 레포 경계」
+        # ---- plan 탐색: 상위 탐색과 레포 경계 — 근거는 `rules/session-context-rationale.md` §5
         $planPath = $null
         $planLabel = $null
         $planHit = Find-PlanFileUpwards -StartDir $cwd
@@ -99,18 +99,18 @@ try {
             $planLabel = $planHit.Label
         }
 
-        # 압축 직후 절 원문 주입이 쓰는 스킬 폴더 — 근거는 `rules/session-context-rationale.md`의 「§6 압축 직후 절 원문 주입이 쓰는 스킬 폴더」
+        # 압축 직후 절 원문 주입이 쓰는 스킬 폴더 — 근거는 `rules/session-context-rationale.md` §6
         $skillsDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'skills'
 
         if ($planPath) {
             $planText = $null
             try { $planText = Get-Content -LiteralPath $planPath -Raw -Encoding UTF8 } catch {}
             if ($planText) {
-                # task 번호가 붙은 체크박스만 센다 — 근거는 `rules/session-context-rationale.md`의 「§5-1 task 계수식」
+                # task 번호가 붙은 체크박스만 센다 — 근거는 `rules/session-context-rationale.md` §5-1
                 $all = [regex]::Matches($planText, $planBulletRx + '\[[ /xX]\][ \t]*\**T\d+').Count
                 $open = [regex]::Matches($planText, $planBulletRx + '\[[ /]\][ \t]*\**T\d+').Count
 
-                # ---- Deferred 미판정 계수 — 근거는 `rules/session-context-rationale.md`의 「§7 ---- Deferred 미판정 계수」
+                # ---- Deferred 미판정 계수 — 근거는 `rules/session-context-rationale.md` §7
                 # 마커의 백틱 코드 스팬을 허용한다 — 형식 정본(deferred-rules.md)이 마커를 표 안에서
                 #   코드 스팬으로 보여 주므로 그대로 따라 적으면 백틱이 붙는다. 정규식이 그것을 안 받으면
                 #   판정을 마친 항목이 통째로 미판정으로 집계된다(v1.233.0 회차가 실제로 그렇게 됐다).
@@ -119,14 +119,14 @@ try {
                 if ($defMatch.Success) {
                     foreach ($defLine in ($defMatch.Groups[1].Value -split "`r?`n")) {
                         if ($defLine -notmatch '^- ') { continue }
-                        # `- ` 접두와 있으면 마커까지 벗겨 낸 뒤 본문을 본다 — 마커 그룹이 — 근거는 `rules/session-context-rationale.md`의 「§8 `- ` 접두와 있으면 마커까지 벗겨 낸 뒤 본문을 본다 — 마커 그룹이」
+                        # `- ` 접두와 있으면 마커까지 벗겨 낸 뒤 본문을 본다 — 마커 그룹이 — 근거는 `rules/session-context-rationale.md` §8
                         if (($defLine -replace ('^- ' + [char]96 + '?(?:\[[^\]]*\]' + [char]96 + '?\s*)?'), '') -match '^<') { continue }   # 템플릿 placeholder
                         if ($defLine -match ('^- ' + [char]96 + '?\[등재\]')) { continue }
-                        # 기호는 닫는 대괄호가 아닌 문자 1자 이상이어야 한다 — 사유 없는 — 근거는 `rules/session-context-rationale.md`의 「§9 기호는 닫는 대괄호가 아닌 문자 1자 이상이어야 한다 — 사유 없는」
+                        # 기호는 닫는 대괄호가 아닌 문자 1자 이상이어야 한다 — 사유 없는 — 근거는 `rules/session-context-rationale.md` §9
                         if ($defLine -match ('^- ' + [char]96 + '?\[미등재:[^\]]+\]')) { continue }
-                        # `[다음 회차]`도 판정을 마친 상태다 — 대장이 아니라 인계 프롬프트가 받는 — 근거는 `rules/session-context-rationale.md`의 「§36 `[다음 회차]`도 판정을 마친 상태다 — 대장이 아니라 인계 프롬프트가 받는」
+                        # `[다음 회차]`도 판정을 마친 상태다 — 대장이 아니라 인계 프롬프트가 받는 — 근거는 `rules/session-context-rationale.md` §36
                         if ($defLine -match ('^- ' + [char]96 + '?\[다음 회차\]')) { continue }
-                        # `[1회 실패]`는 등재 판정 대상이 아니라 재발 판정용 기록이다 — 세지 — 근거는 `rules/session-context-rationale.md`의 「§37 `[1회 실패]`는 등재 판정 대상이 아니라 재발 판정용 기록이다 — 세지」
+                        # `[1회 실패]`는 등재 판정 대상이 아니라 재발 판정용 기록이다 — 세지 — 근거는 `rules/session-context-rationale.md` §37
                         if ($defLine -match ('^- ' + [char]96 + '?\[1회 실패\]')) { continue }
                         $defUnjudged++
                     }
@@ -137,13 +137,13 @@ try {
                 if ($all -gt 0) {
                     if ($open -gt 0) {
                         $lines.Add("[pjc 세션 컨텍스트] ${planLabel}: task ${all}개 중 미완료 ${open}개 — 작업 시작 전 plan.md 진행 상태를 확인하세요.${defNote}")
-                        # 압축 직후 + 미완료 task = 자율 루프가 규칙을 잃은 채 재개될 최위험 조합. — 근거는 `rules/session-context-rationale.md`의 「§10 압축 직후 + 미완료 task = 자율 루프가 규칙을 잃은 채 재개될 최위험 조합.」
+                        # 압축 직후 + 미완료 task = 자율 루프가 규칙을 잃은 채 재개될 최위험 조합. — 근거는 `rules/session-context-rationale.md` §10
                         if ($source -eq 'compact') {
                             # ⚠ 경로 리터럴을 보존한다 — 골든이 ExpectContains로 재고 있어, 문면을 다듬다
                             #   경로가 빠지면 즉시 FAIL한다. 조정 대상은 경로를 감싸는 서술뿐이다.
                             $lines.Add("[pjc 세션 컨텍스트] 진행 중 plan이 있습니다 — 아래에 자율 루프 규칙 원문을 함께 주입했습니다. 그 밖의 절차가 필요하면 Read로 확인하세요(스킬 재invoke로는 복구되지 않습니다): implement/SKILL.md. 그 파일이 참조하는 WIKI.md도 필요하면 함께 읽으세요.")
 
-                            # 경로만 지시하면 실제로 읽었는지 검증할 장치가 없다. 루프가 멈추는 것을 막는 — 근거는 `rules/session-context-rationale.md`의 「§11 경로만 지시하면 실제로 읽었는지 검증할 장치가 없다. 루프가 멈추는 것을 막는」
+                            # 경로만 지시하면 실제로 읽었는지 검증할 장치가 없다. 루프가 멈추는 것을 막는 — 근거는 `rules/session-context-rationale.md` §11
                             $secRules = Get-SkillSection -Path (Join-Path $skillsDir 'implement/SKILL.md') -StartHeading '## 자율 루프' -StopHeading '## 검증'
                             if ($secRules) { $lines.Add("[pjc 세션 컨텍스트] 압축 직후 루프 제어 규칙 (원문 발췌 — implement/SKILL.md 「자율 루프」)`n$secRules") }
                         }
@@ -163,21 +163,21 @@ try {
         $ledgerLine = Get-LedgerSignal -cwd $cwd
         if ($ledgerLine) { $lines.Add($ledgerLine); $cwdBaseCount++ }
 
-        # ---- 계획 세션의 압축 리마인더 — 근거는 `rules/session-context-rationale-plan.md`의 「§17 ---- 계획 세션의 압축 리마인더」
+        # ---- 계획 세션의 압축 리마인더 — 근거는 `rules/session-context-rationale-plan.md` §17
         if ($source -eq 'compact' -and (-not $planPath -or $all -eq 0 -or $open -eq 0) -and ($planPath -or (Test-Path -LiteralPath (Join-Path $cwd 'AGENTS.md')))) {
             $lines.Add("[pjc 세션 컨텍스트] 계획을 세우던 중이었다면 — plan/SKILL.md를 Read로 재확인하세요(스킬 재invoke로는 복구되지 않습니다). 인터뷰 절차·영향 범위 실측·작업 분해가 요약으로 뭉개집니다.")
-            # 이 줄은 compact 리마인더라 vault 게이팅 신호가 아니다 — 기존 리마인더 — 근거는 `rules/session-context-rationale-plan.md`의 「§18 이 줄은 compact 리마인더라 vault 게이팅 신호가 아니다 — 기존 리마인더」
+            # 이 줄은 compact 리마인더라 vault 게이팅 신호가 아니다 — 기존 리마인더 — 근거는 `rules/session-context-rationale-plan.md` §18
             $cwdBaseCount++
 
-            # 경로만 지시하면 읽었는지 검증할 수 없다. 계획이 추측으로 흐르는 것을 막는 절 하나만 — 근거는 `rules/session-context-rationale-plan.md`의 「§19 경로만 지시하면 읽었는지 검증할 수 없다. 계획이 추측으로 흐르는 것을 막는 절 하나만」
+            # 경로만 지시하면 읽었는지 검증할 수 없다. 계획이 추측으로 흐르는 것을 막는 절 하나만 — 근거는 `rules/session-context-rationale-plan.md` §19
             $secPlanRules = Get-SkillSection -Path (Join-Path $skillsDir 'plan/SKILL.md') -StartHeading '## Step 3. 영향 범위 실측' -StopHeading '## Step 4. 작업 분해'
             if ($secPlanRules) {
                 $lines.Add("[pjc 세션 컨텍스트] 압축 직후 계획 규칙 (원문 발췌 — plan/SKILL.md 「영향 범위 실측」)`n$secPlanRules")
-                # 위 리마인더와 같은 이유로 기준선을 함께 올린다 — 근거는 `rules/session-context-rationale-plan.md`의 「§20 위 리마인더와 같은 이유로 기준선을 함께 올린다」
+                # 위 리마인더와 같은 이유로 기준선을 함께 올린다 — 근거는 `rules/session-context-rationale-plan.md` §20
                 $cwdBaseCount++
             }
 
-            # 같은 분기에서 큐 기록 규약도 넣는다 — 계획 세션의 배치 시점 — 근거는 `rules/session-context-rationale-plan.md`의 「§21 같은 분기에서 큐 기록 규약도 넣는다 — 계획 세션의 배치 시점」
+            # 같은 분기에서 큐 기록 규약도 넣는다 — 계획 세션의 배치 시점 — 근거는 `rules/session-context-rationale-plan.md` §21
             $secQueueRules = Get-SkillSection -Path (Join-Path $skillsDir 'llm-wiki/references/queue-rules.md') -StartHeading '### K 5-2. 결정 큐잉 ([DECISION])' -StopHeading '### K 5-5. 증상 큐잉 ([SYMPTOM])'
             if ($secQueueRules) {
                 $lines.Add("[pjc 세션 컨텍스트] 압축 직후 큐 기록 규약 (원문 발췌 — llm-wiki/references/queue-rules.md 「K 5-2~5-3」)`n$secQueueRules")
@@ -185,7 +185,7 @@ try {
                 $cwdBaseCount++
             }
 
-            # 조회 절차는 원문을 싣지 않고 경로만 가리킨다 — 근거는 `rules/session-context-rationale-plan.md`의 「§22 조회 절차는 원문을 싣지 않고 경로만 가리킨다」
+            # 조회 절차는 원문을 싣지 않고 경로만 가리킨다 — 근거는 `rules/session-context-rationale-plan.md` §22
             $lookupPath = "$skillsDir/WIKI.md"
             # 절 추출 awk 두 줄은 홑따옴표 문자열로 만든다 — 큰따옴표 안이면 백틱·$0·따옴표를 전부 이스케이프해야
             #   한다(:284 의 여섯 겹 백틱). 파일째 Read 는 계획 세션이 쓰지 않는 §3 이하까지 싣는다.
@@ -205,10 +205,10 @@ try {
         $vaultLine = $wikiSig.VaultLine
         $staleLine = $wikiSig.StaleLine
 
-        # ---- AGENTS.md 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§31 ---- AGENTS.md 주입」
+        # ---- AGENTS.md 주입 — 근거는 `rules/session-context-rationale-wiki.md` §31
         $agentsMaxBytes = 16384      # 크기 상한 — 전문 주입 상방이자 이관 판정 기준(relocate-agents.py 가 이 변수 이름으로 읽는다)
         $agentsTocMaxBytes = 1048576 # 목차 폴백 상한(1MB) — 초과 시 읽기·목차 스캔 자체를 생략 (비정상 대형 파일 방어)
-        # 임박 신호 2축 — 근거는 `rules/session-context-rationale-wiki.md`의 「§32 임박 신호 2축」
+        # 임박 신호 2축 — 근거는 `rules/session-context-rationale-wiki.md` §32
         $agentsNearRatio = 0.95
         $agentsNearSlack = 500
         $agentsPath = Join-Path $cwd 'AGENTS.md'
@@ -228,7 +228,7 @@ try {
                         #   주입하면 오히려 원문 Read를 막으므로, 주입 대신 직접 Read를 안내한다
                         $lines.Add("[pjc 세션 컨텍스트] AGENTS.md 존재 — UTF-8 디코딩 실패(다른 인코딩으로 보임)로 전문 미주입. 참조 시 파일을 직접 Read하세요 — 앞부분만 읽고 'AGENTS.md에 없다'고 단정하지 마세요.")
                     } else {
-                        # 자체 로드 판정 — 근거는 `rules/session-context-rationale-wiki.md`의 「§33-1 자체 로드 판정」
+                        # 자체 로드 판정 — 근거는 `rules/session-context-rationale-wiki.md` §33-1
                         #   cwd·상위에 CLAUDE.md 류가 하나라도 있으면 Claude Code 는 AGENTS.md 를 읽지 않는다.
                         #   홈의 .claude/CLAUDE.md 는 세지 않는다 — 골든은 USERPROFILE 만 격리하고 작업 폴더가
                         #   실제 홈 아래라, 실제 홈(GetFolderPath)도 함께 빼야 격리 실행에서 판정이 뒤집히지 않는다.
@@ -267,7 +267,7 @@ try {
                         $agentsSelfLoaded = ($claudeFiles.Count -eq 0) -or $agentsImported
                         $agentsNotLoadedMsg = "CLAUDE.md 가 있어 AGENTS.md 는 자동 로드되지 않습니다 — "
 
-                        # 목차 — 근거는 `rules/session-context-rationale-wiki.md`의 「§33 목차 주입 (자체 로드되는 경우)」
+                        # 목차 — 근거는 `rules/session-context-rationale-wiki.md` §33
                         $tocSource = [regex]::Replace($agentsText, '(?ms)^```[^\r\n]*\r?\n.*?^```[^\r\n]*', '')
                         $agentsHeadings = @([regex]::Matches($tocSource, '(?m)^#{1,3} .+') | ForEach-Object { ($_.Value -replace '^#{1,3}\s*', '').Trim() })
                         $agentsToc = if ($agentsHeadings.Count -gt 0) { "섹션: " + ($agentsHeadings -join ' · ') + " " } else { "" }
@@ -294,7 +294,7 @@ try {
             }
         }
 
-        # ---- AGENTS.md 이관처 목차 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§36 ---- AGENTS.md 이관처 목차 주입」
+        # ---- AGENTS.md 이관처 목차 주입 — 근거는 `rules/session-context-rationale-wiki.md` §36
         #   AGENTS.md 는 Claude Code 나 위 주입으로 컨텍스트에 들지만 **그 분할본은 어느 로드 경로에도 없다** — 포인터로만 닿고,
         #   포인터는 그것이 있는 줄 알아야 따라간다. 전문(75KB)은 주입 예산의 4배라 **절 제목만** 싣는다.
         $convTocMaxBytes = 3000       # 주입 상한 — 절이 늘어도 주입이 세션을 잠식하지 않게 한다
@@ -309,7 +309,7 @@ try {
                 $convSrc = [regex]::Replace($convText, '(?ms)^```[^\r\n]*\r?\n.*?^```[^\r\n]*', '')
                 $convHeads = @([regex]::Matches($convSrc, '(?m)^## .+') | ForEach-Object { ($_.Value -replace '^##\s*', '').Trim() })
                 if ($convHeads.Count -gt 0) {
-                    # 절 제목에 순번을 붙인다 — 근거는 `rules/session-context-rationale-wiki.md`의 「§36-1 절 제목에 순번을 붙인다」
+                    # 절 제목에 순번을 붙인다 — 근거는 `rules/session-context-rationale-wiki.md` §36-1
                     #   제목만 주면 "그 파일을 Read" 외에 할 수 있는 것이 없어 82KB 전문이 실렸다.
                     #   순번은 아래 추출 명령의 인자라, 목차와 명령이 함께 있어야 둘 다 쓸모가 생긴다.
                     $convToc = (0..($convHeads.Count - 1) | ForEach-Object { "$($_ + 1) $($convHeads[$_])" }) -join ' · '
@@ -325,7 +325,7 @@ try {
             }
         }
 
-        # ---- vault 라인 주입 — 근거는 `rules/session-context-rationale-wiki.md`의 「§34 ---- vault 라인 주입」
+        # ---- vault 라인 주입 — 근거는 `rules/session-context-rationale-wiki.md` §34
         if ($vaultLine -and ($lines.Count -gt $cwdBaseCount)) {
             $lines.Insert([Math]::Min($vaultInsertAt, $lines.Count), $vaultLine)
             # 뒤처짐 라인은 vault 라인 다음이다.

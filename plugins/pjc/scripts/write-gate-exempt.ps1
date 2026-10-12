@@ -1,4 +1,4 @@
-﻿# write-gate-exempt.ps1 — PLAN-EXEMPT 면제 판정 — 근거는 `rules/plan-exempt-rationale.md`의 「§23 PLAN-EXEMPT 면제 판정」
+﻿# write-gate-exempt.ps1 — PLAN-EXEMPT 면제 판정 — 근거는 `rules/plan-exempt-rationale.md` §23
 
 function Invoke-PlanExemptGate {
     param($data, [string]$targetPath, [string]$projectRoot, [scriptblock]$OnAllow)

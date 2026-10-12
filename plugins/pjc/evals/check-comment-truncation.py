@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
 """잘린 주석 검출 — 근거 이관 스크립트가 표제를 단어 중간에서 자른 자리를 찾는다.
 
-무엇을 재는가: scripts/*.ps1 과 evals/*.py 의 근거 인용 주석(# <표제> - 근거는
-<파일>.md 의 「§N <표제>」 형식)에서 두 축을 본다. rationale 경로는 `rules/` 접두가
-있으면 `scripts/rules/`, 없으면 **인용한 파일과 같은 폴더**로 푼다.
+무엇을 재는가: scripts/*.ps1 과 evals/*.py 의 근거 인용 주석(# <표제> — 근거는
+`<파일>.md` §<id> 형식, id 는 §12·§2-1·§3a 꼴)에서 세 축을 본다. rationale 경로는 `rules/`
+접두가 있으면 `scripts/rules/`, 없으면 **인용한 파일과 같은 폴더**로 푼다.
 
-  축 A (절단)   표제가 길이 상한 근처(>= MIN_CUT_LEN)이면서 종결부 없이 끝난다.
-  축 B (짝)     주석의 「§N …」 인용이 대응 rationale 의 `## §N …` 헤딩과 글자 그대로 같다.
+  축 A (절단)    표제가 길이 상한 근처(>= MIN_CUT_LEN)이면서 종결부 없이 끝난다.
+  축 B (짝)      주석의 §<id> 가 대응 rationale 에 `## §<id>` 헤딩으로 정확히 하나 있다.
+  축 C (옛 형식) 헤딩 제목까지 복제하던 옛 꼴(`.md` 뒤에 「의 낫표+§」)이 남아 있지 않다.
 
 왜 필요한가: v1.225.0 의 근거 이관이 표제를 60자에서 기계적으로 잘라
 `$harnessHo`(→ `$harnessHookName`)·`우회한`(→ `우회한다`)처럼 문장으로 성립하지 않는
 주석 34곳을 남겼다. 실행에는 영향이 없지만 잘린 식별자는 grep 대상이 못 되고,
 남은 문면이 후속 작업을 오도한다.
 
-축 B 가 함께 있는 이유: 주석과 rationale 헤딩은 같은 문자열을 공유하므로 한쪽만
-고치면 짝이 깨진다. 축 A 만 두면 그 파손이 조용히 통과한다.
+축 B 가 함께 있는 이유: 주석이 가리키는 절이 사라지거나 번호가 바뀌면 근거가 끊긴다.
+축 A 만 두면 그 파손이 조용히 통과한다. 번호만 대조하는 이유: 제목까지 복제하면 헤딩을
+고칠 때마다 주석이 함께 바뀌어야 했다(감사 3회차 — 사용자 답).
+축 C 가 있는 이유: 옛 꼴은 축 A·B 의 정규식에 걸리지 않아, 없으면 조용히 빠진다.
 
-exit 0 = 잘림 0건이고 짝도 전건 일치 / 1 = 위반 있음 / 2 = `scripts/` 없음
+exit 0 = 잘림 0건 · 짝 전건 일치 · 옛 형식 0건 / 1 = 위반 있음 / 2 = `scripts/` 없음
 (`evals/` 는 없어도 통과한다 — 검사기 없는 레포가 정상이다).
 """
 import pathlib
@@ -30,10 +33,11 @@ SCRIPTS = ROOT / 'plugins' / 'pjc' / 'scripts'
 RULES = SCRIPTS / 'rules'
 EVALS = ROOT / 'plugins' / 'pjc' / 'evals'
 
-# 표제 안에 「」가 있으면 비탐욕 매칭이 거기서 끊긴다 — 줄 끝 앵커로 마지막 」까지 잡는다.
-#   끊긴 인용은 헤딩의 접두가 되어 축 B가 「접두 일치」로 약화된다(완료 재리뷰 MINOR 2ⓑ).
+# id 는 줄 끝이다 — `§2-1`·`§3a` 꼴이 실재한다.
 #   `rules/` 접두는 선택이다 — 없으면 인용한 파일과 같은 폴더에서 찾는다(검사기 → `evals/*-rationale.md`).
-CITE_RX = re.compile(r'# (.*?) — 근거는 `(rules/)?([a-z0-9\-]+\.md)`의 「(§\d+ .*)」\s*$')
+CITE_RX = re.compile(r'# (.*?) — 근거는 `(rules/)?([a-z0-9\-]+\.md)` (§\d+(?:-\d+|[a-z])?)\s*$')
+# 옛 꼴 — 줄 끝 앵커 없이 찾는다. 낫표와 § 를 이어 쓰지 않는 것은 이 파일 자신도 대상이라 자기 줄에 걸리지 않게 하려는 것이다.
+OLD_RX = re.compile(r'근거는 `[^`]*\.md` *의 「' + '§')
 
 # 절단 판정: 이 길이 이상인데 종결부 없이 끝나면 캡에 눌린 것으로 본다.
 # 60이 관측된 캡이고, 그보다 짧게 끝난 표제는 원래 그 길이였다.
@@ -60,15 +64,17 @@ def targets():
 
 
 def collect():
-    rows = []
+    rows, old = [], []
     for f in targets():
         for n, line in enumerate(f.read_text(encoding='utf-8-sig').splitlines(), 1):
+            if OLD_RX.search(line):
+                old.append((f.name, n))
             m = CITE_RX.search(line)
             if m:
                 # 접두가 있으면 `scripts/rules/`, 없으면 인용한 파일과 같은 폴더다.
                 base = RULES if m.group(2) else f.parent
                 rows.append((f.name, n, m.group(1), base / m.group(3), m.group(4)))
-    return rows
+    return rows, old
 
 
 def main():
@@ -76,7 +82,7 @@ def main():
         print(f'[ANCHOR FAIL] 대상 디렉터리 없음: {SCRIPTS}')
         return 2
 
-    rows = collect()
+    rows, old = collect()
     cut = [r for r in rows
            if len(r[2]) >= MIN_CUT_LEN
            and not SEPARATOR_RX.match(r[2])
@@ -87,13 +93,14 @@ def main():
         if not p.exists():
             mismatch.append((name, n, sec, f'rationale 없음: {p.name}'))
             continue
-        # 완전 일치 — `in` 은 접두만 같아도 통과해 잘린 인용을 녹색으로 만든다
-        heads = {ln.rstrip() for ln in p.read_text(encoding='utf-8').splitlines()
-                 if ln.startswith('## ')}
-        if ('## ' + sec) not in heads:
-            mismatch.append((name, n, sec, f'{p.name}에 완전히 같은 헤딩 없음'))
+        # `## §<id>` 다음에 공백·줄 끝 — `§1` 이 `§11`·`§1-1` 헤딩에 붙지 않게 한다
+        head_rx = re.compile(r'^## ' + re.escape(sec) + r'(\s|$)')
+        found = sum(1 for ln in p.read_text(encoding='utf-8').splitlines() if head_rx.match(ln))
+        if found != 1:
+            why = f'{sec} 헤딩 없음' if not found else f'{sec} 헤딩이 {found}개'
+            mismatch.append((name, n, sec, f'{p.name}에 {why}'))
 
-    print('== 잘린 주석 검사 (절단 · 주석↔rationale 헤딩 짝) ==')
+    print('== 잘린 주석 검사 (절단 · 주석↔rationale 번호 짝 · 옛 형식) ==')
     tg = targets()
     n_ps1 = sum(1 for f in tg if f.suffix == '.ps1')
     print(f'근거 인용 주석 {len(rows)}건 · 대상 스크립트 {n_ps1}개 · 대상 검사기 {len(tg) - n_ps1}개')
@@ -105,11 +112,15 @@ def main():
     if mismatch:
         print(f'\n[FAIL] 짝 불일치 {len(mismatch)}건')
         for name, n, sec, why in mismatch:
-            print(f'  {name}:{n}  「{sec}」 — {why}')
+            print(f'  {name}:{n}  {sec} — {why}')
+    if old:
+        print(f'\n[FAIL] 옛 형식 {len(old)}건 — 헤딩 제목을 복제하던 꼴이다. `— 근거는 `<파일>.md` §<id>` 로 바꾼다')
+        for name, n in old:
+            print(f'  {name}:{n}')
 
-    if cut or mismatch:
+    if cut or mismatch or old:
         return 1
-    print('\n결과: 절단 0건 · 짝 전건 일치')
+    print('\n결과: 절단 0건 · 짝 전건 일치 · 옛 형식 0건')
     return 0
 
 

@@ -1,4 +1,4 @@
-﻿# loop-continue.ps1 — 자율 루프가 plan 미완 task 를 남기고 멈추면 계속을 주입한다 — 근거는 `rules/loop-continue-rationale.md`의 「§1 담당 조항과 설계」
+﻿# loop-continue.ps1 — 자율 루프가 plan 미완 task 를 남기고 멈추면 계속을 주입한다 — 근거는 `rules/loop-continue-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -6,12 +6,12 @@ try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch
 
 $base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
 $stateDir = Join-Path $base '.claude/.state/loop-continue'
-# 같은 미완 집합에 주입하는 횟수의 상한 — 근거는 `rules/loop-continue-rationale.md`의 「§2 주입 조건과 상한」
+# 같은 미완 집합에 주입하는 횟수의 상한 — 근거는 `rules/loop-continue-rationale.md` §2
 $MaxPerSet = 2
 $ImplementRx = '^(pjc:)?implement$'
 $PlanRx = '^(pjc:)?plan$'
 
-# 판정 불가는 전부 침묵이다 — 근거는 `rules/loop-continue-rationale.md`의 「§3 fail-open 은 침묵이다」
+# 판정 불가는 전부 침묵이다 — 근거는 `rules/loop-continue-rationale.md` §3
 try { $data = [Console]::In.ReadToEnd() | ConvertFrom-Json -ErrorAction Stop } catch { exit 0 }
 if (-not $data) { exit 0 }
 $sid = [string]$data.session_id
@@ -28,7 +28,7 @@ function Clear-ActiveMarker {
     try { Remove-Item -LiteralPath $marker -Force -ErrorAction Stop } catch {}
 }
 
-# plan 탐색과 미완 판정식 — session-context.ps1 과 같은 글자의 사본이다 — 근거는 `rules/loop-continue-rationale.md`의 「§4 미완 판정식과 plan 탐색」
+# plan 탐색과 미완 판정식 — session-context.ps1 과 같은 글자의 사본이다 — 근거는 `rules/loop-continue-rationale.md` §4
 $planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
 function Find-PlanFileUpwards([string]$StartDir, [int]$MaxDepth = 8) {
     if ([string]::IsNullOrEmpty($StartDir)) { return $null }
@@ -67,7 +67,7 @@ function Get-SetKey([string[]]$ids) {
 
 $hookEvent = [string]$data.hook_event_name
 
-# 발동 마커는 Skill 도구 호출과 슬래시 직접 입력 두 경로에서 선다 — 근거는 `rules/loop-continue-rationale.md`의 「§6 발동 마커의 두 경로」
+# 발동 마커는 Skill 도구 호출과 슬래시 직접 입력 두 경로에서 선다 — 근거는 `rules/loop-continue-rationale.md` §6
 if ($hookEvent -eq 'PreToolUse') {
     if ([string]$data.tool_name -ne 'Skill') { exit 0 }
     $skill = [string]$data.tool_input.skill

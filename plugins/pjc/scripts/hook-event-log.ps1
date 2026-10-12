@@ -1,4 +1,4 @@
-﻿# hook-event-log.ps1 — 공유 이벤트 로깅 헬퍼 — 근거는 `rules/event-log-rationale.md`의 「§1 hook-event-log.ps1 — 공유 이벤트 로깅 헬퍼」
+﻿# hook-event-log.ps1 — 공유 이벤트 로깅 헬퍼 — 근거는 `rules/event-log-rationale.md` §1
 
 function Write-HookEvent {
     param(

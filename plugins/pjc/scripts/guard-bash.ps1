@@ -1,4 +1,4 @@
-﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 7종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md`의 「§1 검사 7종을 한 프로세스에서 수행하는 이유」
+﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 7종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
 
 # 아래 검사 함수 7종의 판정 근거는 `rules/bash-guard-rationale.md` 가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
@@ -11,14 +11,14 @@ function New-HookResult {
 
 # heredoc 블록 정규식 — 아래 함수들과 커밋 판정 라이브러리의 스트립이 공유한다(dot-source 라 같은 스코프).
 $script:HeredocBlockRx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
-# heredoc 본문 전량 스트립 (커밋 판정 전용) — 근거는 `rules/commit-secrets-rationale.md`의 「§3a 커밋 판정에서 heredoc 본문을 빼는 이유」
+# heredoc 본문 전량 스트립 (커밋 판정 전용) — 근거는 `rules/commit-secrets-rationale.md` §3a
 #   쓰는 쪽은 `guard-commit-secrets.ps1`·`guard-stale-docs.ps1` 둘이다. 여기 두면 한쪽 파일이 없어도 다른 쪽의 스트립이 유지된다.
 function Remove-HeredocBodyForJudge([string]$s) {
     if ([string]::IsNullOrEmpty($s)) { return $s }
     if (-not $script:HeredocBlockRx) { return $s }   # 단독 dot-source 시 fail-open(보수측: 스트립 없이 판정)
     return [regex]::Replace($s, $script:HeredocBlockRx, { param($m) $m.Groups['line'].Value })
 }
-# heredoc 데이터-싱크 본문 스트립 — 근거는 `rules/bash-guard-rationale.md`의 「§16 heredoc 본문이 분할을 깨뜨린다」
+# heredoc 데이터-싱크 본문 스트립 — 근거는 `rules/bash-guard-rationale.md` §16
 #   `block-destructive.ps1` 의 같은 스트립을 복제 이식했다(그쪽은 최상위 인라인 코드라 「복제 사본 동기」 축이 정규식 리터럴만 잰다).
 function Remove-HeredocDataSink([string]$s) {
     if ([string]::IsNullOrEmpty($s)) { return $s }
@@ -29,7 +29,7 @@ function Remove-HeredocDataSink([string]$s) {
         if ($isDataSink) { $line } else { $m.Value }
     })
 }
-# 최상위 구분자 분리(따옴표 인식) — 근거는 `rules/bash-guard-rationale.md`의 「§11 최상위 구분자 분리(따옴표 인식)」
+# 최상위 구분자 분리(따옴표 인식) — 근거는 `rules/bash-guard-rationale.md` §11
 function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
     $parts = New-Object System.Collections.Generic.List[string]
     $cur = ''
@@ -64,7 +64,7 @@ function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
     return $parts
 }
 
-# 셸 접두어를 벗긴 토큰 배열 — 근거는 `rules/bash-guard-rationale.md`의 「§12 셸 접두어를 벗긴 토큰 배열」
+# 셸 접두어를 벗긴 토큰 배열 — 근거는 `rules/bash-guard-rationale.md` §12
 function Get-EffectiveTokens([string]$seg) {
     $tk = @(($seg -split '\s+') | Where-Object { $_ })
     $i = 0
@@ -73,7 +73,7 @@ function Get-EffectiveTokens([string]$seg) {
     return @($tk[$i..($tk.Count - 1)])
 }
 
-# warn-global-find: 루트 전역 탐색 경고 — 근거는 `rules/bash-guard-rationale.md`의 「§3 warn-global-find: 루트 전역 탐색 경고」
+# warn-global-find: 루트 전역 탐색 경고 — 근거는 `rules/bash-guard-rationale.md` §3
 function Invoke-WarnGlobalFind {
     param($data)
     $cmd = $data.tool_input.command
@@ -97,7 +97,7 @@ function Invoke-WarnGlobalFind {
         }
         if ([string]::IsNullOrWhiteSpace($start)) { continue }
 
-        # 루트·홈 최상위·드라이브 루트만 대상. `/usr`·`./src`·`~/.cargo/registry`는 범위가 한정돼 통과한다. — 근거는 `rules/bash-guard-rationale.md`의 「§4 전역 탐색 경고의 대상 범위」
+        # 루트·홈 최상위·드라이브 루트만 대상. `/usr`·`./src`·`~/.cargo/registry`는 범위가 한정돼 통과한다. — 근거는 `rules/bash-guard-rationale.md` §4
         if ($start -match '^(/|~/?|\$HOME/?|/[a-zA-Z]/?|[a-zA-Z]:[\/]?)$') { $hits.Add($start) }
     }
 
@@ -108,13 +108,13 @@ function Invoke-WarnGlobalFind {
     return New-HookResult -Stderr @($msg) -Context $ctx
 }
 
-# warn-dangerous-assignment: 위험 경로를 담은 변수를 삭제 명령에 쓰는 형태 경고 — 근거는 `rules/bash-guard-rationale.md`의 「§5 warn-dangerous-assignment: 위험 경로를 담은 변수를 삭제 명령에 쓰는 형태 경고」
+# warn-dangerous-assignment: 위험 경로를 담은 변수를 삭제 명령에 쓰는 형태 경고 — 근거는 `rules/bash-guard-rationale.md` §5
 function Invoke-WarnDangerousAssignment {
     param($data)
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
-    # 위험값: 루트·홈 최상위·드라이브 루트. — 근거는 `rules/bash-guard-rationale.md`의 「§6 위험값의 정의」
+    # 위험값: 루트·홈 최상위·드라이브 루트. — 근거는 `rules/bash-guard-rationale.md` §6
     $dangerRx = '^(/|~/?|\$HOME/?|/[a-zA-Z]/?|[a-zA-Z]:[\\/]?)$'
     # 삭제 계열만 본다 — chmod·chown 같은 권한 변경까지 넓히면 정상 스크립트에서 자주 발화한다.
     $deleteRx = '(?i)^(.*[\\/])?(rm|rmdir|unlink|shred|del|erase|rd|remove-item|ri)(\.exe)?$'
@@ -156,7 +156,7 @@ function Invoke-WarnDangerousAssignment {
     return New-HookResult -Stderr @($msg) -Context $ctx
 }
 
-# block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 — 근거는 `rules/bash-guard-rationale.md`의 「§10 block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단」
+# block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 — 근거는 `rules/bash-guard-rationale.md` §10
 function Invoke-BlockPlanWrite {
     param($data)
     $cmd = $data.tool_input.command
@@ -226,7 +226,7 @@ function Invoke-WarnExternalOps {
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
-    # 메시지성 값 스트립 — 그 값 속 push/merge/tag 텍스트가 실제 경고를 삼키지 않게(값만 제거, 플래그 토큰 보존). — 근거는 `rules/bash-guard-rationale.md`의 「§7 메시지성 값 스트립」
+    # 메시지성 값 스트립 — 그 값 속 push/merge/tag 텍스트가 실제 경고를 삼키지 않게(값만 제거, 플래그 토큰 보존). — 근거는 `rules/bash-guard-rationale.md` §7
     $scanCmd = $cmd
     if ($scanCmd -match '(?i)(^|\s)git(\s|$)') {
         $scanCmd = $scanCmd -replace '(?i)(^|\s)(-[a-z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', ' '
@@ -235,7 +235,7 @@ function Invoke-WarnExternalOps {
         $scanCmd = $scanCmd -replace '(?i)(^|\s)(--notes|--body)(=|\s+)("[^"]*"|''[^'']*''|\S+)', ' '
     }
 
-    # 판정 데이터·문면 외부화와 로드 실패 격리 — 근거는 `rules/bash-guard-rationale.md`의 「§13 판정 데이터·문면 외부화와 로드 실패 격리」
+    # 판정 데이터·문면 외부화와 로드 실패 격리 — 근거는 `rules/bash-guard-rationale.md` §13
     try {
         $ops = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/external-ops.json') -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
     } catch {
@@ -290,7 +290,7 @@ function Invoke-RequireTaskCheckbox {
 
     if ($cmd -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
 
-    # 완료 커밋 제목 판정 — 근거는 `rules/bash-guard-rationale.md`의 「§14 완료 커밋 제목 판정」
+    # 완료 커밋 제목 판정 — 근거는 `rules/bash-guard-rationale.md` §14
     $msgMatch = [regex]::Match($cmd, '(?i)(?:^|\s)(?:-[a-z]*m|--message)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
     if (-not $msgMatch.Success) { return New-HookResult }
     $msgVal = if ($msgMatch.Groups[1].Success) { $msgMatch.Groups[1].Value }
@@ -324,7 +324,7 @@ function Invoke-RequireTaskCheckbox {
     }
     if ([string]::IsNullOrWhiteSpace($planText)) { return New-HookResult }
 
-    # 미완료 마커 매칭 — 근거는 `rules/bash-guard-rationale.md`의 「§15 미완료 마커 매칭」
+    # 미완료 마커 매칭 — 근거는 `rules/bash-guard-rationale.md` §15
     $unchecked = [regex]::Match($planText, "(?m)^\s*[-*]\s*\[[ /]\]\s*\**T$taskNum(-\d+)?\b")
     if (-not $unchecked.Success) { return New-HookResult }
 
@@ -386,7 +386,7 @@ $script:IsPsTool = ([string]$data.tool_name -eq 'PowerShell')
 
 $cmdText = [string]$data.tool_input.command
 
-# 커밋 시점 검사 둘은 별도 파일이고 로드 실패를 침묵시키지 않는다 — 근거는 `rules/stale-docs-rationale.md`의 「§2 왜 별도 파일인가」
+# 커밋 시점 검사 둘은 별도 파일이고 로드 실패를 침묵시키지 않는다 — 근거는 `rules/stale-docs-rationale.md` §2
 #   존재는 매 호출 확인하고(부재 경고를 커밋 때만 내면 고장이 오래 숨는다), dot-source 는 명령에 commit 이 있을 때만 한다 —
 #   두 검사의 커밋 판정(`git\s+…commit\b`)이 참이면 명령에 commit 이 반드시 있어 이 조건은 그 판정의 상위 집합이다.
 $loadCommitLibs = $cmdText -match 'commit'
@@ -414,8 +414,8 @@ function Write-DispatchEvent {
     } catch {}
 }
 
-# 검사 7종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md`의 「§2 검사 7종을 한 프로세스에 담는 구조」
-# 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md`의 「§8 순서: 원 hooks.json 순서에서 block-destructive」
+# 검사 7종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
+# 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md` §8
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },
     @{ fn = 'Invoke-RequireTaskCheckbox'; name = 'require-task-checkbox' },

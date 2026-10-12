@@ -290,12 +290,48 @@
       {
         "file": "plugins/pjc/scripts/rules/sample-rationale.md",
         "find": "## §1 짧은 표제",
-        "replace": "## §1 표제가 바뀐 절"
+        "replace": "## §9 짧은 표제"
       }
     ],
     "expect_keywords": [
       "[FAIL] 짝 불일치 1건",
-      "완전히 같은 헤딩 없음"
+      "§1 헤딩 없음"
+    ]
+  },
+  {
+    "id": "truncation-title-change-ok",
+    "checker": "truncation",
+    "fixture": "scripts-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plugins/pjc/scripts/rules/sample-rationale.md",
+        "find": "## §1 짧은 표제",
+        "replace": "## §1 표제가 바뀐 절"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 절단 0건 · 짝 전건 일치"
+    ],
+    "expect_absent": [
+      "[FAIL]"
+    ]
+  },
+  {
+    "id": "truncation-old-form",
+    "checker": "truncation",
+    "fixture": "scripts-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plugins/pjc/scripts/sample-hook.ps1",
+        "find": "# 짧은 표제 — 근거는 `rules/sample-rationale.md` §1",
+        "replace": "# 짧은 표제 — 근거는 `rules/sample-rationale.md`의 「§1 짧은 표제」"
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 옛 형식 1건",
+      "sample-hook.ps1"
     ]
   },
   {

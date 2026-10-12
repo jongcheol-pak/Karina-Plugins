@@ -1,4 +1,4 @@
-﻿# PostToolUse hook — 근거는 `rules/post-write-rationale.md`의 「§1 PostToolUse hook」
+﻿# PostToolUse hook — 근거는 `rules/post-write-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -24,14 +24,14 @@ if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { exit 0 }
 # 두 검사의 경고를 합쳐 단일 stderr + 단일 additionalContext로 출력한다(모델 수신 정보는 분리 hook 때와 동일).
 $allMsgs = New-Object System.Collections.Generic.List[string]
 
-# 섹션 1·2가 나눠 쓰는 `git diff` 결과 — 근거는 `rules/post-write-rationale.md`의 「§2-1 섹션 1·2가 나눠 쓰는 `git diff` 결과」
+# 섹션 1·2가 나눠 쓰는 `git diff` 결과 — 근거는 `rules/post-write-rationale.md` §2-1
 #   두 섹션이 같은 파일에 같은 diff를 따로 불러 코드 파일 편집마다 git 호출이 1회 낭비였다.
 #   **두 try 블록 밖에서 초기화한다** — 섹션 1이 통째로 실패해도 섹션 2가 $false를 보고
 #   자기 호출로 폴백해야 하고, try 안에서만 선언하면 그 경로에서 변수가 없다.
 $sharedDiffLines = $null
 $sharedDiffOk = $false
 
-# 경고 디듑 마커 — 근거는 `rules/post-write-rationale.md`의 「§2 경고 디듑 마커」
+# 경고 디듑 마커 — 근거는 `rules/post-write-rationale.md` §2
 $pwStateDir = Join-Path $env:USERPROFILE '.claude/.state/post-write-warn'
 try { New-Item -Force -ItemType Directory -Path $pwStateDir | Out-Null } catch {}
 $pwSid = if ($data.session_id) { ([string]$data.session_id) -replace '[^\w.-]', '_' } else { 'nosid' }
@@ -47,7 +47,7 @@ function Test-WarnOnce {
     } catch { return $true }   # 마커 실패 시 경고 누락보다 중복이 낫다(fail-open)
 }
 
-# H2: 하니스 hook 개조 감지 — 근거는 `rules/post-write-rationale.md`의 「§4 H2: 하니스 hook 개조 감지」
+# H2: 하니스 hook 개조 감지 — 근거는 `rules/post-write-rationale.md` §4
 $normFileH2 = $file -replace '\\', '/'
 # 이름 집합은 `rules/harness-hooks.json`이 단일 정본이다 — 탐지(이 파일)와 차단(guard-harness)이
 #   같은 값을 써야 대칭이 성립하는데, 복제하면 hook 신설 시 한쪽만 갱신돼 그 이름이 무방비가 된다.
@@ -60,7 +60,7 @@ try {
 # 목록을 못 읽으면 빈 문자열이 되어 아래 정규식이 **모든 `.ps1`에 매치**한다 — 그 상태의 경고는
 #   전부 오탐이므로 검사를 건너뛴다(차단 hook 인 guard-harness 도 같은 상황에서 exit 0 으로 빠진다).
 if ([string]::IsNullOrWhiteSpace($harnessHookName)) { $harnessHookName = '(?!)' }
-# 8.3 단축명 마스킹 감지 — 근거는 `rules/post-write-rationale.md`의 「§5 8.3 단축명 마스킹 감지」
+# 8.3 단축명 마스킹 감지 — 근거는 `rules/post-write-rationale.md` §5
 $has83H2 = ($normFileH2 -match '(?i)/CLAUDE~[0-9]+(/|$)')
 $suspect83H2 = $has83H2 -and
     ($normFileH2 -match ('(?i)/(' + $harnessHookName + ')(\.ps1)?(/|$)')) -and
@@ -78,13 +78,13 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
     $allMsgs.Add("  설치본 hook 경로를 단축명으로 숨긴 개조 시도일 수 있습니다 — 의도된 것인지 확인하세요.")
     $allMsgs.Add("")
 } elseif ($normFileH2 -match '/\.claude/settings\.json$') {
-    # M2 — 근거는 `rules/post-write-rationale.md`의 「§21 settings.json 감지」
+    # M2 — 근거는 `rules/post-write-rationale.md` §21
     $allMsgs.Add("[HARNESS] .claude/settings.json 변경 감지: $file")
     $allMsgs.Add("  enabledPlugins로 하니스 전체를 끄는 변경일 수 있습니다 — 의도된 설정 변경인지 확인하세요.")
     $allMsgs.Add("")
 }
 
-# ============================================================ — 근거는 `rules/post-write-rationale.md`의 「§6 ============================================================」
+# ============================================================ — 근거는 `rules/post-write-rationale.md` §6
     try {
         $utf8Warnings = New-Object System.Collections.Generic.List[string]
 
@@ -141,10 +141,10 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             }
         }
 
-        # ---- 민감 정보 검사 — 근거는 `rules/post-write-rationale.md`의 「§7 ---- 민감 정보 검사」
+        # ---- 민감 정보 검사 — 근거는 `rules/post-write-rationale.md` §7
         $skipSecretScan = $file -match '\.(env|env\..*)$' -or $file -match '(^|[\\/])\.git[\\/]'
         if ((-not $skipSecretScan) -and $raw) {
-            # ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만 — 근거는 `rules/post-write-rationale.md`의 「§8 ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만」
+            # ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만 — 근거는 `rules/post-write-rationale.md` §8
             $scanText = $raw
             try {
                 $fileDir = Split-Path -Parent $file
@@ -152,7 +152,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                     $null = & git -C $fileDir ls-files --error-unmatch -- $file 2>$null
                     if ($LASTEXITCODE -eq 0) {
                         $diffOut = @(& git -C $fileDir diff HEAD --unified=0 -- $file 2>$null)
-                        # diff 성공 여부를 반드시 확인한다 — 근거는 `rules/post-write-rationale.md`의 「§9 diff 성공 여부를 반드시 확인한다」
+                        # diff 성공 여부를 반드시 확인한다 — 근거는 `rules/post-write-rationale.md` §9
                         if ($LASTEXITCODE -eq 0) {
                             # 섹션 2의 심볼 추출이 같은 diff를 다시 부르지 않도록 원본 줄을 넘긴다 —
                             #   `+` 를 벗기기 전 형태여야 한다(저쪽 정규식이 `^\+` 로 시작한다).
@@ -188,7 +188,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
         # 섹션 1 전체 실패는 섹션 2 실행을 막지 않는다(격리 — 분리 프로세스였을 때와 동일하게 독립).
     }
 
-# ============================================================ — 근거는 `rules/post-write-rationale.md`의 「§10 ============================================================」
+# ============================================================ — 근거는 `rules/post-write-rationale.md` §10
     try {
         if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
             Set-Location -LiteralPath $data.cwd
@@ -196,7 +196,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR
         }
 
-        # 코드 파일만 검사 — 근거는 `rules/post-write-rationale.md`의 「§11 코드 파일만 검사」
+        # 코드 파일만 검사 — 근거는 `rules/post-write-rationale.md` §11
         $codeExtsImpact = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift', '.vb', '.xaml', '.razor', '.vue', '.svelte', '.sql')
         $extImpact = [System.IO.Path]::GetExtension($file).ToLower()
 
@@ -212,7 +212,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             }
             if ($inRepo) {
                 # ---- 변경된 public/internal 심볼 추출 (git diff의 + 라인) ----
-                # 섹션 1이 이미 같은 파일의 diff를 떴으면 그것을 쓴다 — 근거는 `rules/post-write-rationale.md`의 「§11-1 섹션 1의 diff 재사용과 폴백」
+                # 섹션 1이 이미 같은 파일의 diff를 떴으면 그것을 쓴다 — 근거는 `rules/post-write-rationale.md` §11-1
                 #   못 떴을 때만 자기가 부르고, 그래서 두 섹션의 격리가 유지된다. 폴백도 `--unified=0` 이다
                 #   — 심볼 추출은 `+` 라인만 보므로 컨텍스트 줄이 필요 없다.
                 # **공유 값은 파일이 cwd 트리 안일 때만 쓴다** — 섹션 1은 `git -C $fileDir`, 여기는
@@ -258,7 +258,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                             $m = [regex]::Match($line, $pattern)
                             if ($m.Success) {
                                 $sym = $m.Groups['sym'].Value
-                                # 너무 짧거나 일반적인 이름은 제외 — 근거는 `rules/post-write-rationale.md`의 「§12 너무 짧거나 일반적인 이름은 제외」
+                                # 너무 짧거나 일반적인 이름은 제외 — 근거는 `rules/post-write-rationale.md` §12
                                 if ($sym.Length -ge 4 -and
                                     $sym -notmatch '^(?i)(get|set|is|has|name|type|data|text|value|item|key|count|index|result|state|status|title|content|message)$') {
                                     [void]$symbols.Add($sym)
@@ -271,7 +271,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                         $impactWarnings = New-Object System.Collections.Generic.List[string]
                         $normalizedFile = $file -replace '\\', '/'
 
-                        # 배치 grep — 근거는 `rules/post-write-rationale.md`의 「§20 caller 배치 검색」
+                        # 배치 grep — 근거는 `rules/post-write-rationale.md` §20
                         $symAlt = ($symbols | ForEach-Object { [regex]::Escape($_) }) -join '|'
                         #   검색 범위를 코드 확장자 pathspec 으로 좁힌다 — 아래 확장자 필터가 어차피 버릴 파일을
                         #   git 이 읽지 않게 한다. `icase` 인 이유는 아래 대조가 확장자를 소문자로 바꿔 보기 때문이다.
@@ -305,7 +305,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                             }
 
                             if ($callers.Count -gt 0) {
-                                # 세션·파일·심볼당 1회 — 근거는 `rules/post-write-rationale.md`의 「§13 세션·파일·심볼당 1회」
+                                # 세션·파일·심볼당 1회 — 근거는 `rules/post-write-rationale.md` §13
                                 if (-not (Test-WarnOnce ('impact|' + $normalizedFile + '|' + $sym))) { continue }
                                 # 매치 상한 30 — 근거는 「§20 caller 배치 검색」
                                 if ($callers.Count -gt 30) {
@@ -339,7 +339,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
         # 섹션 2 실패는 섹션 1 결과(이미 $allMsgs에 있음)에 영향 없음(격리).
     }
 
-# H3: 저장 직후 줄바꿈 — 근거는 `rules/post-write-rationale.md`의 「§15 H3: 저장 직후 줄바꿈」
+# H3: 저장 직후 줄바꿈 — 근거는 `rules/post-write-rationale.md` §15
 try {
     # 대상 확장자를 좁힌다 — 워킹트리 CRLF 규약이 걸리는 것은 문서·스크립트·설정이고,
     #   관측된 사고도 .md 였다. 넓히면 다른 레포 픽스처(.cs 등)까지 오탐한다(§15).
@@ -399,7 +399,7 @@ try {
     # 줄바꿈 검사 실패는 위 두 검사 결과에 영향 없음(격리).
 }
 
-# ============================================================ — 근거는 `rules/post-write-rationale.md`의 「§14 ============================================================」
+# ============================================================ — 근거는 `rules/post-write-rationale.md` §14
 if ($allMsgs.Count -gt 0) {
     $msg = ($allMsgs -join "`n")
 

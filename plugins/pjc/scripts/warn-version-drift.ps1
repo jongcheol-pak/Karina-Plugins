@@ -1,4 +1,4 @@
-﻿# warn-version-drift.ps1 — SessionStart: 설치본 ↔ 하네스 레포 버전 드리프트 경고 (비차단) — 근거는 `rules/version-drift-rationale.md`의 「§1 warn-version-drift.ps1 — SessionStart: 설치본 ↔ 하네스 레포 버전 드리프트 경고 (비차단)」
+﻿# warn-version-drift.ps1 — SessionStart: 설치본 ↔ 하네스 레포 버전 드리프트 경고 (비차단) — 근거는 `rules/version-drift-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -21,11 +21,11 @@ try {
     if (-not (Test-Path -LiteralPath $repoPluginJson)) { exit 0 }
     if (-not (Test-Path -LiteralPath $repoMarketJson)) { exit 0 }
 
-    # ---- 릴리즈 누락 감지 — 근거는 `rules/version-drift-rationale.md`의 「§2 ---- 릴리즈 누락 감지」
+    # ---- 릴리즈 누락 감지 — 근거는 `rules/version-drift-rationale.md` §2
     try {
         Push-Location -LiteralPath $cwd
         try {
-            # `-join` 필수 — git show는 **줄 배열**을 반환한다 — 근거는 `rules/version-drift-rationale.md`의 「§3 `-join` 필수 — git show는 **줄 배열**을 반환한다」
+            # `-join` 필수 — git show는 **줄 배열**을 반환한다 — 근거는 `rules/version-drift-rationale.md` §3
             $pushedJson = (& git show origin/main:plugins/pjc/.claude-plugin/plugin.json 2>$null) -join "`n"
             if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($pushedJson)) {
                 $pushedVer = $null
@@ -37,7 +37,7 @@ try {
                     $releasedDir = Join-Path $vdHome '.claude/.state/version-drift'
                     $releasedMark = Join-Path $releasedDir ('released-v' + $pushedVer)
                     if ($LASTEXITCODE -eq 0 -and [string]::IsNullOrWhiteSpace(($tag -join '')) -and -not (Test-Path -LiteralPath $releasedMark)) {
-                        # 로컬에 없다 → 원격 확인. — 근거는 `rules/version-drift-rationale.md`의 「§4 로컬에 없다 → 원격 확인.」
+                        # 로컬에 없다 → 원격 확인. — 근거는 `rules/version-drift-rationale.md` §4
                         $env:GIT_TERMINAL_PROMPT = '0'
                         $remoteTag = & git ls-remote --tags origin "v$pushedVer" 2>$null
                         $remoteExit = $LASTEXITCODE   # 즉시 캡처 — 아래 문자열 연산이 값을 덮어쓰기 전에

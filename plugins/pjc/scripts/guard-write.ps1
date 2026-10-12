@@ -1,4 +1,4 @@
-﻿# guard-write.ps1 — PreToolUse hook: plan 없이 코드를 고치는 것을 차단 (exit 2) — 근거는 `rules/write-gate-rationale.md`의 「§1 guard-write.ps1 — PreToolUse hook: plan 없이 코드를 고치는 것을 차단 (exit 2)」
+﻿# guard-write.ps1 — PreToolUse hook: plan 없이 코드를 고치는 것을 차단 (exit 2) — 근거는 `rules/write-gate-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -36,7 +36,7 @@ function Write-RpEvent {
     } catch {}
 }
 
-# plan 작성 게이트 — 근거는 `rules/write-gate-rationale.md`의 「§3 plan 작성 게이트」
+# plan 작성 게이트 — 근거는 `rules/write-gate-rationale.md` §3
 # 불릿 집합의 정본은 $planBulletRx 하나다 — 작성 게이트($planTaskRx)와 완료/빈 plan 계수(G4/H3)가 여기서 파생한다.
 #   종전에는 계수가 `[-*]` 만 세어 번호 불릿(`1. [ ]`)·`+` 불릿 plan 을 H3 「빈 plan」으로 오판했다(회차 44 실측).
 $planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
@@ -54,11 +54,11 @@ if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
         if ($data.tool_name -eq 'Write') { $planGateTarget = $true }
     }
     if ($isPlanFileName -or $isInPlansDir) {
-        # ⓑ docs/plans/*.md Write — 체크박스가 있을 때만 plan으로 본다 — 근거는 `rules/write-gate-rationale.md`의 「§4 ⓑ docs/plans/*.md Write — 체크박스가 있을 때만 plan으로 본다」
+        # ⓑ docs/plans/*.md Write — 체크박스가 있을 때만 plan으로 본다 — 근거는 `rules/write-gate-rationale.md` §4
         if ($data.tool_name -eq 'Write' -and $isInPlansDir) {
             if ([string]$data.tool_input.content -match $planTaskRx) { $planGateTarget = $true }
         }
-        # ⓒ 체크박스를 '새로 도입'하는 Edit/MultiEdit — 위 2단계 우회 차단. — 근거는 `rules/write-gate-rationale.md`의 「§5 ⓒ 체크박스를 '새로 도입'하는 Edit/MultiEdit — 위 2단계 우회 차단.」
+        # ⓒ 체크박스를 '새로 도입'하는 Edit/MultiEdit — 위 2단계 우회 차단. — 근거는 `rules/write-gate-rationale.md` §5
         if ($data.tool_name -eq 'Edit' -or $data.tool_name -eq 'MultiEdit') {
             $editPairs = @()
             if ($data.tool_name -eq 'MultiEdit' -and $data.tool_input.edits) {
@@ -86,7 +86,7 @@ if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
     }
 
     if ($planGateTarget) {
-        # 발동 흔적 판정 — pjc:plan — 근거는 `rules/write-gate-rationale.md`의 「§6 발동 흔적 판정 — pjc:plan」
+        # 발동 흔적 판정 — pjc:plan — 근거는 `rules/write-gate-rationale.md` §6
         $planSkillLaunched = $false
         $tpp = [string]$data.transcript_path
         if ([string]::IsNullOrWhiteSpace($tpp) -or -not (Test-Path -LiteralPath $tpp)) {
@@ -129,7 +129,7 @@ if (-not $wgRules) { exit 0 }   # 목록을 못 읽으면 판정 근거가 없�
 $alwaysAllowedExts = @($wgRules.alwaysAllowedExts)
 
 $ext = [System.IO.Path]::GetExtension($targetPath).ToLower()
-# 실행 자산 예외 — .github/workflows/*.yml — 근거는 `rules/write-gate-rationale.md`의 「§8 실행 자산 예외 — .github/workflows/*.yml」
+# 실행 자산 예외 — .github/workflows/*.yml — 근거는 `rules/write-gate-rationale.md` §8
 $execAssetName = [System.IO.Path]::GetFileName($targetPath)
 $isExecAsset = ($targetPath -match '(^|[\\/])\.github[\\/]workflows[\\/][^\\/]+\.ya?ml$') -or
                ($execAssetName -eq 'package.json')
@@ -145,7 +145,7 @@ foreach ($name in $trivialFileNames) {
 # iOS Localizable.strings·Info.plist 같은 리소스 파일명 (Android strings.xml 은 .xml 이라 위 alwaysAllowed 가 받는다)
 if ($baseName -match '^(Localizable\.strings|Info\.plist)$') { exit 0 }
 
-# 소스 코드 확장자 판정 — 근거는 `rules/write-gate-rationale.md`의 「§9 소스 코드 확장자 판정」
+# 소스 코드 확장자 판정 — 근거는 `rules/write-gate-rationale.md` §9
 $sourceCodeExts = @($wgRules.sourceCodeExts)
 $isSourceCode = $sourceCodeExts -contains $ext
 
@@ -158,14 +158,14 @@ if ($targetPath -match '[\\/]res[\\/](values|drawable|mipmap|layout|raw|xml|colo
 # .claude (하니스 설정·도구) — 무조건 허용
 if ($targetPath -match '[\\/]\.claude[\\/]') { exit 0 }
 
-# 시스템 임시 폴더 — 근거는 `rules/write-gate-rationale.md`의 「§10 시스템 임시 폴더」
+# 시스템 임시 폴더 — 근거는 `rules/write-gate-rationale.md` §10
 try {
     $tempRoot = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '/', '\'
     $tpNorm = $targetPath -replace '/', '\'
     if ($tempRoot -and $tpNorm.StartsWith($tempRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) { exit 0 }
 } catch { }
 
-# docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한다. — 근거는 `rules/write-gate-rationale.md`의 「§11 docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한다.」
+# docs/plans/dist/build — 산출물·문서 디렉터리. 단 '소스 코드 파일이 아닐 때만' 우회한다. — 근거는 `rules/write-gate-rationale.md` §11
 if (-not $isExecAsset -and -not $isSourceCode -and (
         ($targetPath -match '[\\/]docs[\\/]') -or
         ($targetPath -match '[\\/]plans?[\\/]') -or
@@ -185,7 +185,7 @@ if ($env:CLAUDE_HARNESS_QUICK -eq '1') {
     exit 0
 }
 
-# 프로젝트 루트 결정 — 근거는 `rules/write-gate-rationale.md`의 「§16 프로젝트 루트 결정」
+# 프로젝트 루트 결정 — 근거는 `rules/write-gate-rationale.md` §16
 $projectRoot = $null
 if ($data.cwd) {
     $projectRoot = $data.cwd
@@ -211,7 +211,7 @@ if (-not $projectRoot) {
     $projectRoot = (Get-Location).Path
 }
 
-# plan 존재 확인 — 근거는 `rules/write-gate-rationale.md`의 「§17 plan 존재 확인」
+# plan 존재 확인 — 근거는 `rules/write-gate-rationale.md` §17
 function Test-PlanInDirectory {
     param([string]$Dir)
     if ([string]::IsNullOrEmpty($Dir)) { return $false }
@@ -222,7 +222,7 @@ function Test-PlanInDirectory {
         (Test-Path -LiteralPath (Join-Path $Dir 'docs/plan.md') -PathType Leaf)) {
         return $true
     }
-    # plan 위치는 루트 단일계뿐이다 — 근거는 `rules/write-gate-rationale.md`의 「§18 plan 위치는 루트 단일계뿐이다」
+    # plan 위치는 루트 단일계뿐이다 — 근거는 `rules/write-gate-rationale.md` §18
     return $false
 }
 
@@ -262,7 +262,7 @@ foreach ($start in $searchStarts) {
 }
 
 if ($foundIn) {
-    # ---- 완료된/빈 plan 비차단 경고 — 근거는 `rules/write-gate-rationale.md`의 「§19 ---- 완료된/빈 plan 비차단 경고」
+    # ---- 완료된/빈 plan 비차단 경고 — 근거는 `rules/write-gate-rationale.md` §19
     $planFile = $null
     foreach ($cand in @('plan.md', 'PLAN.md', 'docs/plan.md')) {
         $pf = Join-Path $foundIn $cand
@@ -270,10 +270,10 @@ if ($foundIn) {
     }
     if ($planFile) {
         try {
-            # 세션당 1회 디듑 — 근거는 `rules/write-gate-rationale.md`의 「§20 세션당 1회 디듑」
+            # 세션당 1회 디듑 — 근거는 `rules/write-gate-rationale.md` §20
             $warnStateDir = Join-Path $env:USERPROFILE '.claude/.state/require-plan-warn'
             try { New-Item -Force -ItemType Directory -Path $warnStateDir | Out-Null } catch {}
-            # 30일 지난 마커 자동 정리 — 마커는 세션×plan×경고 종류당 1개라 방치하면 무한 축적된다 — 근거는 `rules/write-gate-rationale.md`의 「§21 30일 지난 마커 자동 정리 — 마커는 세션×plan×경고 종류당 1개라 방치하면 무한 축적된다」
+            # 30일 지난 마커 자동 정리 — 마커는 세션×plan×경고 종류당 1개라 방치하면 무한 축적된다 — 근거는 `rules/write-gate-rationale.md` §21
             try {
                 Get-ChildItem -LiteralPath $warnStateDir -File -ErrorAction Stop |
                     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
@@ -289,7 +289,7 @@ if ($foundIn) {
                 return $true
             }
             $planText = Get-Content -LiteralPath $planFile -Raw -Encoding UTF8
-            # 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X] — 근거는 `rules/write-gate-rationale.md`의 「§22 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X]」
+            # 미완료 마커 [ ] 또는 [/], 완료 마커 [x]/[X] — 근거는 `rules/write-gate-rationale.md` §22
             $incomplete = [regex]::Matches($planText, $planBulletRx + '\[[ /]\]').Count
             $done = [regex]::Matches($planText, $planBulletRx + '\[[xX]\]').Count
             if ($incomplete -eq 0 -and $done -ge 1) {
@@ -341,7 +341,7 @@ foreach ($s in $searchStarts) {
 [Console]::Error.WriteLine("  - plan.md, PLAN.md, docs/plan.md")
 [Console]::Error.WriteLine("위 위치 어디에도 plan이 없습니다.")
 if ($script:TrivialTallyReason) {
-    # 3줄 이하 편집이 왜 막혔는지 — 근거는 `rules/trivial-gate-rationale.md`의 「§3 요청 단위 누적 판정」
+    # 3줄 이하 편집이 왜 막혔는지 — 근거는 `rules/trivial-gate-rationale.md` §3
     [Console]::Error.WriteLine("")
     [Console]::Error.WriteLine("※ trivial 누적: 이 편집은 작은 변경이지만 $($script:TrivialTallyReason)라 plan 검사 대상이 됐습니다")
     [Console]::Error.WriteLine("   (서로 다른 파일 3개째 또는 4회째부터). 아래 4)의 A/B 절차로 면제 표식을 받으세요.")

@@ -110,7 +110,7 @@ def _md_files():
 # ⚠ **배제 문자를 늘리거나 절 이름 상한을 내리지 말 것** — 둘 다 무음 누락을 낸 전례가 있다.
 #   사유는 같은 문서의 「축 ① — 정규식을 좁히면 침묵한다」.
 _POINTER_RX = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,120})」")
-# 대장 2종 + 이력 intent 1건 파일 단위 면제 — 근거는 `harness-consistency-rationale.md`의 「§5 축 ① — 대장 2종을 파일 단위로 통째 면제하는 이유」
+# 대장 2종 + 이력 intent 1건 파일 단위 면제 — 근거는 `harness-consistency-rationale.md` §5
 _POINTER_EXEMPT_SRC = {"docs/plans/deferred-closed.md", "docs/plans/deferred.md",
                        "intent/2026-09-12-close-waiting-three.md"}
 
@@ -120,6 +120,8 @@ def _pointer_sources():
     # hook 스크립트도 포인터 소스다 — v1.225.0에서 근거 주석을 `rules/*-rationale.md`로 내리며
     #   `.ps1`이 그 문서의 절을 가리키게 됐는데, 이 축이 마크다운만 보아 **끊긴 포인터 46건이
     #   exit 0으로 통과했다**(완료 리뷰가 잡았다). 소스에 스크립트를 더해 같은 결함을 막는다.
+    #   근거 주석이 `§N` 만 적는 꼴(감사 3회차)로 바뀐 뒤 그 주석들은 「」 가 없어 이 축의 포인터가 아니다 —
+    #   번호 실재는 `check-comment-truncation.py` 축 B 가 잰다. 스크립트 속 낫표 포인터만 여기 남는다.
     out = []
     for src in list(_md_files()) + sorted(glob.glob(os.path.join(ROOT, "plugins/pjc/scripts/*.ps1"))):
         rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
@@ -275,7 +277,7 @@ def check_pointer_reachability():
             hs = anchors_of(target)
             if hs is None:
                 continue
-            # 대장 2종 + 이력 intent 1건 인용 제외 — 근거는 `harness-consistency-rationale.md`의 「§1 축 ① — 대장 2종 인용을 축 수치에서 빼는 이유」
+            # 대장 2종 + 이력 intent 1건 인용 제외 — 근거는 `harness-consistency-rationale.md` §1
             if rel_src not in POINTER_EXEMPT_SRC:
                 checked += 1
             # 전체 일치 또는 앵커가 그 이름으로 시작(부제·괄호 꼬리 허용).
@@ -522,9 +524,9 @@ def check_batch_number_sequence(hist):
 # ─────────────────────────────────────────────────────────────
 # ③ 볼드 마커 짝 · ④ 한 줄 안 문장 중복 (문서 표기 결함)
 # ─────────────────────────────────────────────────────────────
-# 제외 정책(픽스처·이력 plan·아카이브·로컬 전용) — 근거는 `harness-consistency-rationale.md` 의 「§6 축 ③④ — 픽스처·이력·로컬 전용 파일을 빼는 이유」.
+# 제외 정책(픽스처·이력 plan·아카이브·로컬 전용) — 근거는 `harness-consistency-rationale.md` §6
 _ARCHIVED_RX = re.compile(r"^docs/(plans/\d{4}-\d{2}-\d{2}-|\.agents-presplit/)")
-# `intent/` 는 자기 파일 참조 판정에서만 뺀다 — 근거는 `harness-consistency-rationale.md` 의 「§7 축 ① — intent 를 자기 파일 참조 판정에서만 빼는 이유」.
+# `intent/` 는 자기 파일 참조 판정에서만 뺀다 — 근거는 `harness-consistency-rationale.md` §7
 _POINTER_SKIP_RX = re.compile(r"^intent/")
 _LOCAL_ONLY = {"plan.md", "notes.md"}
 # `## §2 ---- 릴리즈 누락 감지` 처럼 rationale 문서의 헤딩에 기계가 붙인 접두. 참조 쪽은
@@ -590,7 +592,7 @@ def check_bold_pairing():
 #  앞 문장을 삼켜 *"A. A."* 같은 실제 삽입 사고에서 두 조각이 서로 달라져 **미검출**된다
 #  (v1.180.0 F-7 M1이 잡은 바로 그 형태를 초안이 놓쳤다 — 재현으로 확인).
 _SENT_SPLIT_RX = re.compile(r"(?<=[.!?])")
-# 한 줄 중복 최소 길이 — 근거는 `harness-consistency-rationale.md`의 「§2 축 ④ — 한 줄 중복 최소 길이 20 의 근거」
+# 한 줄 중복 최소 길이 — 근거는 `harness-consistency-rationale.md` §2
 _SENT_MIN_LEN = 20
 
 
@@ -1001,7 +1003,7 @@ def check_line_endings():
 #   하위 사유라 넣지 않는다(넣어도 기각과 중복 매치일 뿐이다). `확인 종결`·`실측 종결`은
 #   실사용 4건이 있어 인정한다 — 사유를 안 적은 것이 아니라 다른 말로 적은 것이다.
 CLOSE_REASON_RX = re.compile(r"기각|반영|병합|해소|확인 종결|실측 종결|사유 미상")
-# 인정하되 세는 표현 — 근거는 `harness-consistency-rationale.md`의 「§3 축 ⑨ — 인정 어휘와 백틱 인용 제외의 근거」
+# 인정하되 세는 표현 — 근거는 `harness-consistency-rationale.md` §3
 VAGUE_REASON_RX = re.compile(r"(?<!`)사유 미상(?!`)")
 # 근거는 `harness-consistency-rationale.md` 의 「축 ⑨ — 종결 사유 표기와 `사유 미상`의 취급」.
 CLOSE_REASON_TAG = "**종결 사유**:"
@@ -1157,8 +1159,8 @@ def check_ledger_marker_sync():
                     " `session-context` hook 이 그 항목을 읽지 못한다"
                     " (형식 정본은 `plan/references/deferred-rules.md`)" % line.strip()[:70])
 
-    # ③ 근거 게이트 — `[다음 회차]` 항목에 `(근거: …)` 가 있는가. ① 과 같은 절 안에서만 돈다.
-    #   근거는 `harness-consistency-rationale.md` 의 「§8 축 ⑪ — 다음 회차 항목에 근거 필드를 요구하는 이유」.
+    # ③ 근거 게이트 — `[다음 회차]` 항목에 `(근거: …)` 가 있는가 — 근거는 `harness-consistency-rationale.md` §8
+    #   ① 과 같은 절 안에서만 돈다.
     if sec:
         for line in sec.group(1).splitlines():
             if not NEXT_ROUND_HEAD_RX.match(line):
@@ -1394,7 +1396,7 @@ DEPRECATED_QUOTE_ALLOWLIST = [
 ]
 
 # 면제 **총량**의 기준선(= 목록 길이). 정당한 증감이면 이 값을 함께 올린다 — 숫자를 맞추려 면제를 지우지 않는다.
-# 면제 총량 기준선 — 근거는 `harness-consistency-rationale.md`의 「§4 축 ⑭ — 면제 총량 기준선을 숫자로 맞추지 않는 이유」
+# 면제 총량 기준선 — 근거는 `harness-consistency-rationale.md` §4
 DEPRECATED_ALLOWLIST_BASELINE = 6
 
 # `DESIGN.md` 3-1 정본 줄의 **백틱 토큰 수**(범위 표기를 접기 전 원문 개수).

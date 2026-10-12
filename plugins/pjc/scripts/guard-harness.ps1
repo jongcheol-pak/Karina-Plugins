@@ -1,4 +1,4 @@
-﻿# guard-harness.ps1 — PreToolUse hook: Write/Edit 대상이 하니스 자신·AGENTS.md 경계를 침범하는지 검사 — 근거는 `rules/harness-guard-rationale.md`의 「§1 guard-harness.ps1 — PreToolUse hook: Write/Edit 대상이 하니스 자신·AGENTS.md 경계를 침범하는지 검사」
+﻿# guard-harness.ps1 — PreToolUse hook: Write/Edit 대상이 하니스 자신·AGENTS.md 경계를 침범하는지 검사 — 근거는 `rules/harness-guard-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -36,7 +36,7 @@ foreach ($s in ($slashed -split '/')) {
 }
 $norm = '/' + ($segs -join '/')
 
-# 하니스 hook·공유 헬퍼 이름 집합 — post-write-checks.ps1 H2 의 $harnessHookName 과 동일 유지(탐지↔차단 대칭). — 근거는 `rules/harness-guard-rationale.md`의 「§2 하니스 hook·공유 헬퍼 이름 집합 — post-write-checks.ps1 H2 의 $harnessHookName 과 동일 유지(탐지↔차단 대칭).」
+# 하니스 hook·공유 헬퍼 이름 집합 — post-write-checks.ps1 H2 의 $harnessHookName 과 동일 유지(탐지↔차단 대칭). — 근거는 `rules/harness-guard-rationale.md` §2
 try {
     # `-ErrorAction Stop` 이 없으면 이 catch 는 죽은 코드다 — 파일 전역이 'SilentlyContinue' 라
     #   Get-Content 의 파일 부재가 non-terminating 으로 지나가고, $hookNames 가 $null 이 되어
@@ -60,7 +60,7 @@ $isHookScript = ($norm -match ('/\.claude/.*/(' + $harnessHookName + ')\.ps1$'))
                 ($norm -match '/\.claude/.*/hooks\.json$') -or
                 ($norm -match '(?i)/\.claude/.*/scripts/rules/[^/]+\.json$') -or
                 ($norm -match '(?i)/\.claude/.*/scripts/[^/]+\.ps1$')
-# 규칙 — 근거는 `rules/harness-guard-rationale.md`의 「§3 규칙」
+# 규칙 — 근거는 `rules/harness-guard-rationale.md` §3
 $has83 = ($norm -match '(?i)/CLAUDE~[0-9]+(/|$)')
 $suspect83 = $has83 -and
     ($norm -match ('(?i)/(' + $harnessHookName + ')(\.ps1)?(/|$)')) -and  # .claude를 8.3로 숨겨도 hook명이 남음 —
@@ -107,7 +107,7 @@ if ($chunks.Count -eq 0) { exit 0 }
 $text = ($chunks -join "`n")
 if ([string]::IsNullOrWhiteSpace($text)) { exit 0 }
 
-# 규칙 — 근거는 `rules/harness-guard-rationale.md`의 「§4 규칙」
+# 규칙 — 근거는 `rules/harness-guard-rationale.md` §4
 $handoffRx = '(?m)^\s{0,3}(#{1,6}\s*|\*\*\s*|[-*+]\s+\*\*\s*|>\s*\*\*\s*)[^\r\n]{0,40}' +
              '(다음\s*작업|다음\s*회차|현재\s*진행\s*상태|진행\s*상황|남긴\s*것|이어서\s*할\s*것|인계|핸드오프|다음\s*세션)'
 
@@ -129,7 +129,7 @@ if ($text -match $handoffRx) {
     exit 2
 }
 
-# 규칙 — 근거는 `rules/harness-guard-rationale.md`의 「§5 규칙」
+# 규칙 — 근거는 `rules/harness-guard-rationale.md` §5
 $treeLineRx = '[│├└┬┼┤┌┐┘└─]'
 $lines = $text -split "`r?`n"
 $run = 0

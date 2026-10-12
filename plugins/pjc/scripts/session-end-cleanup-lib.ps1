@@ -1,12 +1,12 @@
-﻿# session-end-cleanup-lib.ps1 — 고아 콘솔 프로세스 회수 함수 — 근거는 `rules/orphan-cleanup-rationale.md`의 「§1 session-end-cleanup-lib.ps1 — 고아 콘솔 프로세스 회수 함수」
+﻿# session-end-cleanup-lib.ps1 — 고아 콘솔 프로세스 회수 함수 — 근거는 `rules/orphan-cleanup-rationale.md` §1
 
-# 고아 콘솔 프로세스 회수 헬퍼 — 근거는 `rules/orphan-cleanup-rationale.md`의 「§2 고아 콘솔 프로세스 회수 헬퍼」
+# 고아 콘솔 프로세스 회수 헬퍼 — 근거는 `rules/orphan-cleanup-rationale.md` §2
 
-# 회수 대상. 실측된 고아가 이 둘뿐이라 목록을 넓히지 않는다 — 근거는 `rules/orphan-cleanup-rationale.md`의 「§3 회수 대상. 실측된 고아가 이 둘뿐이라 목록을 넓히지 않는다」
+# 회수 대상. 실측된 고아가 이 둘뿐이라 목록을 넓히지 않는다 — 근거는 `rules/orphan-cleanup-rationale.md` §3
 $script:OrphanTargetNames  = @('more.com', 'find.exe')   # CIM 조회용
 $script:OrphanPreScanNames = @('more.com', 'find')       # Get-Process 선검사용(.exe 벗겨짐)
 
-# 골든 스위트는 hook을 실기계에서 돌리는데 프로세스는 격리 대상이 아니다. — 근거는 `rules/orphan-cleanup-rationale.md`의 「§4 골든 스위트는 hook을 실기계에서 돌리는데 프로세스는 격리 대상이 아니다.」
+# 골든 스위트는 hook을 실기계에서 돌리는데 프로세스는 격리 대상이 아니다. — 근거는 `rules/orphan-cleanup-rationale.md` §4
 $script:OrphanCleanupSuppressVar = 'CLAUDE_HARNESS_NO_PROC_CLEANUP'
 
 try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
@@ -27,7 +27,7 @@ function Get-SystemBootStamp {
 }
 
 function Get-UnkillableMarkers {
-    # 반환: 현재 부팅 세션에서 '죽지 않는다'고 확인된 PID 집합. — 근거는 `rules/orphan-cleanup-rationale.md`의 「§5 반환: 현재 부팅 세션에서 '죽지 않는다'고 확인된 PID 집합.」
+    # 반환: 현재 부팅 세션에서 '죽지 않는다'고 확인된 PID 집합. — 근거는 `rules/orphan-cleanup-rationale.md` §5
     param([string]$BootStamp)
     $set = @{}
     $dir = Get-OrphanMarkerDir
@@ -149,7 +149,7 @@ function Invoke-OrphanProcessCleanup {
     )
     $result = @{ Suppressed = $false; Scanned = 0; CimQueried = $false; Killed = 0; Unkillable = 0; CpuSec = 0 }
     try {
-        # 안전 계약 ②를 이 파일만으로 자기완결시킨다 — 근거는 `rules/orphan-cleanup-rationale.md`의 「§6 안전 계약 ②를 이 파일만으로 자기완결시킨다」
+        # 안전 계약 ②를 이 파일만으로 자기완결시킨다 — 근거는 `rules/orphan-cleanup-rationale.md` §6
         $ErrorActionPreference = 'SilentlyContinue'
         $injected = $PSBoundParameters.ContainsKey('Records')
 
@@ -186,7 +186,7 @@ function Invoke-OrphanProcessCleanup {
                 $gone = $true
             } else {
                 try { Stop-Process -Id $t.Id -Force -ErrorAction Stop } catch {}
-                # Stop-Process의 성공 반환을 소멸의 근거로 쓰지 않는다 — 근거는 `rules/orphan-cleanup-rationale.md`의 「§7 Stop-Process의 성공 반환을 소멸의 근거로 쓰지 않는다」
+                # Stop-Process의 성공 반환을 소멸의 근거로 쓰지 않는다 — 근거는 `rules/orphan-cleanup-rationale.md` §7
                 try {
                     $still = @(Get-CimInstance Win32_Process -Filter ("ProcessId=" + $t.Id) -ErrorAction Stop)
                     $gone = ($still.Count -eq 0) -or ($still[0].CreationDate -ne $t.StartTime)

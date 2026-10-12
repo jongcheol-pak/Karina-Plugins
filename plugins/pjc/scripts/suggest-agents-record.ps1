@@ -1,4 +1,4 @@
-﻿# PostToolUse hook - PowerShell 버전 — 근거는 `rules/suggest-record-rationale.md`의 「§1 PostToolUse hook - PowerShell 버전」
+﻿# PostToolUse hook - PowerShell 버전 — 근거는 `rules/suggest-record-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -22,10 +22,10 @@ try {
 }
 if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 
-# 데이터 문맥 제거: heredoc 본문은 파일 내용이지 실행 명령이 아니다 — 근거는 `rules/suggest-record-rationale.md`의 「§2 데이터 문맥 제거: heredoc 본문은 파일 내용이지 실행 명령이 아니다」
+# 데이터 문맥 제거: heredoc 본문은 파일 내용이지 실행 명령이 아니다 — 근거는 `rules/suggest-record-rationale.md` §2
 $cmdScan = [regex]::Replace($cmd, "(?ms)<<-?\s*(['`"]?)(\w+)\1\r?\n.*?^\2\r?$", ' ')
 
-# 데이터 문맥 제거 2단: 「메시지 인자」 플래그 뒤의 인용 블록도 데이터다 — 근거는 `rules/suggest-record-rationale.md`의 「§3 데이터 문맥 제거 2단: 「메시지 인자」 플래그 뒤의 인용 블록도 데이터다」
+# 데이터 문맥 제거 2단: 「메시지 인자」 플래그 뒤의 인용 블록도 데이터다 — 근거는 `rules/suggest-record-rationale.md` §3
 $msgFlags = if ($cmdScan -match '(?i)\bpy(thon[\w.]*)?(\.exe)?\s+(-\S+\s+)*-m\b') {
     '--message|-am|--body'
 } else {
@@ -35,7 +35,7 @@ $msgFlags = if ($cmdScan -match '(?i)\bpy(thon[\w.]*)?(\.exe)?\s+(-\S+\s+)*-m\b'
 $quotedArgRx = "(?s)(^|\s)($msgFlags)(\s*=\s*|\s+)?('[^']*'|`"[^`"]*`")"
 $cmdScan = [regex]::Replace($cmdScan, $quotedArgRx, '$1$2 ')
 
-# 대상 레포 판정: 다른 폴더로 옮겨 실행한 명령은 이 프로젝트의 사실이 아니다 — 근거는 `rules/suggest-record-rationale.md`의 「§4 대상 레포 판정: 다른 폴더로 옮겨 실행한 명령은 이 프로젝트의 사실이 아니다」
+# 대상 레포 판정: 다른 폴더로 옮겨 실행한 명령은 이 프로젝트의 사실이 아니다 — 근거는 `rules/suggest-record-rationale.md` §4
 $cdAll = [regex]::Matches($cmdScan, "(?im)(?:^|&&|;|\|)\s*cd\s+(?:'([^']+)'|`"([^`"]+)`"|([^\s&|;]+))")
 
 # ---- 카테고리별 명령 패턴 (변경형 빌드/테스트/DB만) ----
@@ -53,7 +53,7 @@ $hits = New-Object System.Collections.Generic.List[object]
 foreach ($cat in $categories) {
     $m = [regex]::Match($cmdScan, $cat.rx)
     if ($m.Success) {
-        # 토큰 정규화: 옵션 — 근거는 `rules/suggest-record-rationale.md`의 「§5 토큰 정규화: 옵션」
+        # 토큰 정규화: 옵션 — 근거는 `rules/suggest-record-rationale.md` §5
         $tokParts = ($m.Value.Trim() -split '\s+') | Where-Object { $_ -and ($_ -notmatch '^[-/]') -and ($_ -notmatch '=') }
         $tok = ($tokParts -join ' ')
         if (-not $tok) { $tok = $m.Value.Trim() }
@@ -72,7 +72,7 @@ if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
     $projDir = (Get-Location).Path
 }
 
-# 명령이 `cd`로 이 프로젝트 밖을 지목했으면 그것은 이 프로젝트의 사실이 아니다. — 근거는 `rules/suggest-record-rationale.md`의 「§6 명령이 `cd`로 이 프로젝트 밖을 지목했으면 그것은 이 프로젝트의 사실이 아니다.」
+# 명령이 `cd`로 이 프로젝트 밖을 지목했으면 그것은 이 프로젝트의 사실이 아니다. — 근거는 `rules/suggest-record-rationale.md` §6
 if ($cdAll.Count -gt 0) {
     $projResolved = $null
     try { $projResolved = (Resolve-Path -LiteralPath $projDir -ErrorAction Stop).Path } catch {}
