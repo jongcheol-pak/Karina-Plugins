@@ -30,6 +30,19 @@
     ]
   },
   {
+    "id": "pointer-intent-excluded",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "intent/",
+      "승인 뒤 사라진 절 이름"
+    ]
+  },
+  {
     "id": "deferred-count-drift",
     "checker": "harness",
     "fixture": "minimal-repo",

@@ -110,9 +110,8 @@ def _md_files():
 # ⚠ **배제 문자를 늘리거나 절 이름 상한을 내리지 말 것** — 둘 다 무음 누락을 낸 전례가 있다.
 #   사유는 같은 문서의 「축 ① — 정규식을 좁히면 침묵한다」.
 _POINTER_RX = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,120})」")
-# 대장 2종 + 이력 intent 1건 파일 단위 면제 — 근거는 `harness-consistency-rationale.md` §5
-_POINTER_EXEMPT_SRC = {"docs/plans/deferred-closed.md", "docs/plans/deferred.md",
-                       "intent/2026-09-12-close-waiting-three.md"}
+# 대장 2종 파일 단위 면제 — 근거는 `harness-consistency-rationale.md` §5
+_POINTER_EXEMPT_SRC = {"docs/plans/deferred-closed.md", "docs/plans/deferred.md"}
 
 
 def _pointer_sources():
@@ -128,7 +127,8 @@ def _pointer_sources():
         # 과거 plan·로컬 노트·문서 아카이브는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
         # 판정을 `_ARCHIVED_RX`·`_LOCAL_ONLY`와 공유한다 — 종전에는 여기만 `docs/plans/2026-`로
         # 연도를 박아 두어 해가 바뀌면 이 축만 조용히 아카이브를 검사하기 시작했다.
-        if not (_ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY):
+        # `intent/` 는 승인 시점의 기록이라 고칠 대상이 아니다 — 근거는 `harness-consistency-rationale.md` §7
+        if not (_ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY or rel_src.startswith("intent/")):
             out.append((src, rel_src))
     return out
 
@@ -277,7 +277,7 @@ def check_pointer_reachability():
             hs = anchors_of(target)
             if hs is None:
                 continue
-            # 대장 2종 + 이력 intent 1건 인용 제외 — 근거는 `harness-consistency-rationale.md` §1
+            # 대장 2종 인용 제외 — 근거는 `harness-consistency-rationale.md` §1
             if rel_src not in POINTER_EXEMPT_SRC:
                 checked += 1
             # 전체 일치 또는 앵커가 그 이름으로 시작(부제·괄호 꼬리 허용).
@@ -295,7 +295,7 @@ def check_pointer_reachability():
         # ⚠ **양방향 부분 일치(`_sn in h`)를 쓰지 않는다** — 참조 문장 자신이 앵커로 잡혀 자기 자신에
         #   도달했다고 판정된다. 실측·근거는 `harness-consistency-pointer-rationale.md` 의
         #   「축 ① — 양방향 부분 일치를 기각한 이유」.
-        if rel_src not in POINTER_EXEMPT_SRC and not _POINTER_SKIP_RX.match(rel_src):
+        if rel_src not in POINTER_EXEMPT_SRC:
             self_hs = anchors_of(src)
             if self_hs is not None:
                 for sec_name in pat_self.findall(text):
@@ -526,8 +526,6 @@ def check_batch_number_sequence(hist):
 # ─────────────────────────────────────────────────────────────
 # 제외 정책(픽스처·이력 plan·아카이브·로컬 전용) — 근거는 `harness-consistency-rationale.md` §6
 _ARCHIVED_RX = re.compile(r"^docs/(plans/\d{4}-\d{2}-\d{2}-|\.agents-presplit/)")
-# `intent/` 는 자기 파일 참조 판정에서만 뺀다 — 근거는 `harness-consistency-rationale.md` §7
-_POINTER_SKIP_RX = re.compile(r"^intent/")
 _LOCAL_ONLY = {"plan.md", "notes.md"}
 # `## §2 ---- 릴리즈 누락 감지` 처럼 rationale 문서의 헤딩에 기계가 붙인 접두. 참조 쪽은
 #   절 이름만 적으므로(`위 「릴리즈 누락 감지」`) 이것을 벗긴 형태도 앵커로 등록해야
