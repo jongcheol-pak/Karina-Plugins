@@ -1,20 +1,8 @@
 ﻿# guard-commit-secrets.ps1 — git commit 직전 스테이징 변경의 시크릿 검사 (dot-source 전용, hook 아님) — 근거는 `rules/commit-secrets-rationale.md`의 「§1 guard-commit-secrets.ps1 — git commit 직전 스테이징 변경의 시크릿 검사 (dot-source 전용, hook 아님)」
 
 # warn-commit-secrets: git commit 직전 스테이징될 변경에서 시크릿 패턴 경고(비차단) — 근거는 `rules/commit-secrets-rationale.md`의 「§2 warn-commit-secrets: git commit 직전 스테이징될 변경에서 시크릿 패턴 경고(비차단)」
-function New-HookResult {
-    param([bool]$Block = $false, [string[]]$Stderr = @(), [string]$Context = $null)
-    return @{ Block = $Block; Stderr = $Stderr; Context = $Context }
-}
-
-# heredoc 본문 전량 스트립 (커밋 판정 전용) — 근거는 `rules/commit-secrets-rationale.md`의 「§3a 커밋 판정에서 heredoc 본문을 빼는 이유」
-#   `New-HookResult` 와 같은 이유로 이 파일에 둔다 — 쓰는 쪽이 이 파일과 `guard-stale-docs.ps1` 둘뿐이고,
-#   dot-source 순서상 이 파일이 먼저라 뒤쪽도 받는다. 정규식은 `guard-bash.ps1` 의 `$script:HeredocBlockRx` 를 공유한다.
-function Remove-HeredocBodyForJudge([string]$s) {
-    if ([string]::IsNullOrEmpty($s)) { return $s }
-    if (-not $script:HeredocBlockRx) { return $s }   # 단독 dot-source 시 fail-open(보수측: 스트립 없이 판정)
-    return [regex]::Replace($s, $script:HeredocBlockRx, { param($m) $m.Groups['line'].Value })
-}
-
+# 결과 객체 생성기 `New-HookResult`·커밋 판정용 heredoc 스트립 `Remove-HeredocBodyForJudge` 는
+#   디스패처 `guard-bash.ps1` 에 있다 — 이 파일은 커밋 명령에서만 dot-source 되므로 공용 헬퍼를 둘 수 없다.
 function Get-DiffHeadAdded {
     param([string[]]$PathArgs = @())
     $out = if ($PathArgs.Count) { @(& git diff HEAD --unified=0 -- $PathArgs 2>$null) }

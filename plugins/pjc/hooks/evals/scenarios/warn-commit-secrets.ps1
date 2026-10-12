@@ -354,6 +354,7 @@ if ($gitOk) {
     $t5Probe = Join-Path $work 't5-autostage-probe.ps1'
     @(
         'param([string]$Cwd, [string]$Cmd)',
+        'function New-HookResult { param([bool]$Block = $false, [string[]]$Stderr = @(), [string]$Context = $null) @{ Block = $Block; Stderr = $Stderr; Context = $Context } }',   # 결과 객체 생성기는 디스패처(guard-bash.ps1)에 있다 — 단독 프로브는 같은 정의를 직접 둔다
         ('. ' + [char]39 + (Join-Path $scriptsDir 'guard-commit-secrets.ps1') + [char]39),   # 함수 전용 파일을 읽는다 — hook 본체(guard-bash.ps1)를 dot-source하면 최상위 코드가 stdin을 무한 대기한다
         '$script:ghCalls = 0',
         'function Get-DiffHeadAdded { param([string[]]$PathArgs = @()) $script:ghCalls++; return @() }',
@@ -419,6 +420,7 @@ if ($gitOk) {
     $t6Probe = Join-Path $work 't6-notify-probe.ps1'
     @(
         'param([string]$Cwd, [int]$Calls = 1)',
+        'function New-HookResult { param([bool]$Block = $false, [string[]]$Stderr = @(), [string]$Context = $null) @{ Block = $Block; Stderr = $Stderr; Context = $Context } }',   # 결과 객체 생성기는 디스패처(guard-bash.ps1)에 있다 — 단독 프로브는 같은 정의를 직접 둔다
         ('. ' + [char]39 + (Join-Path $scriptsDir 'guard-commit-secrets.ps1') + [char]39),   # 함수 전용 파일을 읽는다 — hook 본체(guard-bash.ps1)를 dot-source하면 최상위 코드가 stdin을 무한 대기한다
         '$sw = New-Object System.IO.StringWriter',
         '$prevErr = [Console]::Error',

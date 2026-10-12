@@ -20,8 +20,8 @@
 #     (차단된 커밋이라 안전 회귀가 아니며, 차단 해소 후 재시도에서 노출된다).
 #   - 차단 없음 → warn 경고를 stderr로, additionalContext는 단일 JSON으로 병합해 stdout + exit 0.
 #
-# 트레이드오프(수용): 차단 게이트가 이 파일의 로드에 결합돼 있어 로드 실패 시 5검사가 모두
-#   미수행된다(fail-open). 아래 로드 가드가 그 상태를 stderr로 가시화한다.
+# 트레이드오프(수용): 차단 게이트가 이 파일에 있어 이 파일 자체가 못 뜨면 검사가 모두
+#   미수행된다(fail-open). 커밋 판정 라이브러리 둘의 부재는 그 검사만 빼고 stderr 로 가시화한다.
 ```
 
 ## §2 검사 7종을 한 프로세스에 담는 구조
@@ -38,8 +38,9 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
   **나머지 둘 — `Invoke-WarnCommitSecrets`(`guard-commit-secrets.ps1`) · `Invoke-WarnStaleDocs`
   (`guard-stale-docs.ps1`) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
   우회 변수·시크릿 패턴 연동을 담아 크기가 따로 놀고, 분리해 두어야 골든이 그 파일만 단독
-  프로브할 수 있다. 로드 실패는 침묵하지 않는다 —
-  `guard-bash.ps1` 이 `Get-Command` 로 확인해 stderr 로 알린다(비차단 fail-open).
+  프로브할 수 있다. **dot-source 는 명령에 `commit` 이 있을 때만 하고 존재는 매 호출 확인한다** —
+  근거는 `stale-docs-rationale.md` §2. 로드 실패는 침묵하지 않는다 — `guard-bash.ps1` 이
+  `Test-Path`·`Get-Command` 로 확인해 stderr 로 알리고 그 검사만 건너뛴다(비차단 fail-open).
   파일 끝의 `$checks` 배열이 함수명 ↔ **rule 이름**을 짝지어 순서대로 부른다.
 - **rule 이름은 옛 hook 이름을 그대로 쓴다** — `warn-external-ops` 등 다섯은 hook 으로는
   사라졌지만 이벤트 로그·골든 필터가 그 이름으로 돌아 식별자로 살아 있다. **삭제 자산으로
@@ -54,8 +55,9 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
   출력·exit 번역은 파일 하단의 단일 caller 가 하고, 각 함수는 「판정 → 결과」만 낸다.
 - **한 검사의 예외는 나머지를 막지 않는다** — `foreach` 안에서 `try/catch` 로 격리하고
   안전측으로 통과시킨다. 일곱 중 하나가 깨져 전체가 침묵하는 것을 막는다.
-- **`New-HookResult` 생성기도 `guard-commit-secrets.ps1` 에 있다** — 그쪽이 이 생성기를
-  쓰므로 정의를 거기 두어야 그 파일 단독 dot-source(골든 프로브)가 성립한다.
+- **`New-HookResult` 생성기는 `guard-bash.ps1` 에 있다** — 커밋 판정 라이브러리는 커밋 명령에서만
+  불러오므로 거기 두면 나머지 다섯 검사가 돌 수 없다. 라이브러리를 단독 dot-source 하는 골든
+  프로브는 같은 정의를 직접 둔다.
 - **`block-destructive.ps1` 은 여기 합치지 않는다** — 「끌 수 없는 마지막 방어선」이라
   공유 로드 실패에 결합시키지 않고 `hooks.json` 독립 엔트리로 직접 실행한다(결정 B).
 

@@ -2,8 +2,8 @@
 #
 # `guard-bash.ps1` 이 dot-source 한다. 별도 파일인 이유는 그 파일의 예산 여유가 264 B 뿐이고,
 #   분리해 두어야 골든이 이 파일만 단독 프로브할 수 있기 때문이다(`guard-commit-secrets.ps1` 선례).
-# 결과 객체 생성기 `New-HookResult` 는 `guard-commit-secrets.ps1` 에 있다 — 디스패처가 그쪽을
-#   먼저 dot-source 하므로 여기서 다시 정의하지 않는다(정의가 둘이면 어느 쪽이 이겼는지 갈린다).
+# 결과 객체 생성기 `New-HookResult`·heredoc 스트립 `Remove-HeredocBodyForJudge` 는 디스패처
+#   `guard-bash.ps1` 에 있다 — 여기서 다시 정의하지 않는다(정의가 둘이면 어느 쪽이 이겼는지 갈린다).
 
 # 층 3: 스테이징 경로 → 기계가 못 재는 축. **내용 판정은 못 해도 해당 여부는 경로로 기계 판정된다** —
 #   그래서 사람이 답할 질문을 기계가 내미는 형태로 둔다.

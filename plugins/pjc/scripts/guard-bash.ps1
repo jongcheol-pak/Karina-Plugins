@@ -2,10 +2,22 @@
 
 # 아래 검사 함수 7종의 판정 근거는 `rules/bash-guard-rationale.md` 가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
-# 공용 헬퍼 New-HookResult·Remove-HeredocBodyForJudge 는 guard-commit-secrets.ps1 에 있다(단독 dot-source 성립 조건).
+# 공용 헬퍼 New-HookResult·Remove-HeredocBodyForJudge 는 여기 둔다 — 커밋 판정 라이브러리 둘은 커밋 명령에서만
+#   dot-source 되므로(아래 로드 루프) 거기 두면 나머지 검사가 돌 수 없다.
+function New-HookResult {
+    param([bool]$Block = $false, [string[]]$Stderr = @(), [string]$Context = $null)
+    return @{ Block = $Block; Stderr = $Stderr; Context = $Context }
+}
 
-# heredoc 블록 정규식 — 아래 함수와 guard-commit-secrets.ps1 의 스트립이 공유한다(dot-source 라 같은 스코프).
+# heredoc 블록 정규식 — 아래 함수들과 커밋 판정 라이브러리의 스트립이 공유한다(dot-source 라 같은 스코프).
 $script:HeredocBlockRx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
+# heredoc 본문 전량 스트립 (커밋 판정 전용) — 근거는 `rules/commit-secrets-rationale.md`의 「§3a 커밋 판정에서 heredoc 본문을 빼는 이유」
+#   쓰는 쪽은 `guard-commit-secrets.ps1`·`guard-stale-docs.ps1` 둘이다. 여기 두면 한쪽 파일이 없어도 다른 쪽의 스트립이 유지된다.
+function Remove-HeredocBodyForJudge([string]$s) {
+    if ([string]::IsNullOrEmpty($s)) { return $s }
+    if (-not $script:HeredocBlockRx) { return $s }   # 단독 dot-source 시 fail-open(보수측: 스트립 없이 판정)
+    return [regex]::Replace($s, $script:HeredocBlockRx, { param($m) $m.Groups['line'].Value })
+}
 # heredoc 데이터-싱크 본문 스트립 — 근거는 `rules/bash-guard-rationale.md`의 「§16 heredoc 본문이 분할을 깨뜨린다」
 #   `block-destructive.ps1` 의 같은 스트립을 복제 이식했다(그쪽은 최상위 인라인 코드라 「복제 사본 동기」 축이 정규식 리터럴만 잰다).
 function Remove-HeredocDataSink([string]$s) {
@@ -372,19 +384,26 @@ try {
 # PowerShell 도구는 따옴표 규칙이 bash 와 다르다(이스케이프는 백틱, `\` 는 리터럴) — 분리기에 넘긴다(회차 44).
 $script:IsPsTool = ([string]$data.tool_name -eq 'PowerShell')
 
+$cmdText = [string]$data.tool_input.command
+
 # 커밋 시점 검사 둘은 별도 파일이고 로드 실패를 침묵시키지 않는다 — 근거는 `rules/stale-docs-rationale.md`의 「§2 왜 별도 파일인가」
-foreach ($lib in @(@('guard-commit-secrets.ps1', 'Invoke-WarnCommitSecrets', $true),
-                   @('guard-stale-docs.ps1', 'Invoke-WarnStaleDocs', $false))) {
-    . (Join-Path $PSScriptRoot $lib[0])
-    if (Get-Command $lib[1] -ErrorAction SilentlyContinue) { continue }
+#   존재는 매 호출 확인하고(부재 경고를 커밋 때만 내면 고장이 오래 숨는다), dot-source 는 명령에 commit 이 있을 때만 한다 —
+#   두 검사의 커밋 판정(`git\s+…commit\b`)이 참이면 명령에 commit 이 반드시 있어 이 조건은 그 판정의 상위 집합이다.
+$loadCommitLibs = $cmdText -match 'commit'
+foreach ($lib in @(@('guard-commit-secrets.ps1', 'Invoke-WarnCommitSecrets'),
+                   @('guard-stale-docs.ps1', 'Invoke-WarnStaleDocs'))) {
+    $libPath = Join-Path $PSScriptRoot $lib[0]
+    if (Test-Path -LiteralPath $libPath) {
+        if (-not $loadCommitLibs) { continue }
+        . $libPath
+        if (Get-Command $lib[1] -ErrorAction SilentlyContinue) { continue }
+    }
     [Console]::Error.WriteLine("[guard-bash] $($lib[0]) 로드 실패 — 그 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.")
-    if ($lib[2]) { exit 0 }   # New-HookResult 가 그 파일에 있어 나머지 검사도 못 돈다
 }
 
 # [이벤트 로깅] 차단/경고 이벤트를 오탐 리뷰 데이터로 적재 — lib 함수·얇은 래퍼는 무수정(골든 격리 유지),
 #   로깅은 디스패처 수준에서 결과 객체로 수행한다. 실패는 전면 격리(검사 판정 무영향).
 try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
-$cmdText = [string]$data.tool_input.command
 function Write-DispatchEvent {
     param([string]$HookName, [string]$Decision, [object]$Result)
     try {
@@ -408,6 +427,8 @@ $checks = @(
 )
 $results = New-Object System.Collections.Generic.List[object]
 foreach ($c in $checks) {
+    # 커밋 판정 라이브러리를 불러오지 않은(비커밋 명령) 또는 못 불러온 검사는 건너뛴다.
+    if (-not (Get-Command $c.fn -ErrorAction SilentlyContinue)) { continue }
     try {
         $r = & $c.fn $data
         if ($r) { $r['Name'] = $c.name; $results.Add($r) }

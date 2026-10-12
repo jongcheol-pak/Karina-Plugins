@@ -3,15 +3,57 @@
 # 파일명은 검증 대상 hook 기준이고, Invoke-Hook에 넘기는 문자열은 scripts/ 아래 hook 파일명이다.
 # ==== 아래는 본체에서 원문 그대로 옮긴 구간 (순수 이동 — 재조립 등가 검사의 경계) ====
 if (Test-HookSelected @('guard-bash')) {
-# [v1.101.0 T4] 디스패처 로드 가드 — guard-bash.ps1 부재(로드 실패) 시 침묵 fail-open 대신
-#   stderr 경고 1줄 + exit 0(비차단)을 실증한다. lib 없는 임시 사본에서 디스패처를 단독 실행
-#   (Invoke-Hook은 $scriptsDir 고정이라 lib가 항상 옆에 있음 — 부재 상황은 사본으로만 재현 가능).
+# [v1.101.0 T4 → 감사 3회차 T1] 디스패처 로드 가드 — 커밋 판정 라이브러리는 **존재만 매 호출 확인**하고(부재 시
+#   stderr 경고 1줄 — 침묵 fail-open 금지) **dot-source 는 명령에 commit 이 있을 때만** 한다. 부재여도 나머지
+#   검사(차단 게이트 포함)는 돈다 — 종전에는 commit-secrets 부재가 `exit 0` 으로 7검사를 전부 껐다.
+#   lib 없는 임시 사본에서 디스패처를 단독 실행한다(Invoke-Hook은 $scriptsDir 고정이라 lib가 항상 옆에 있음).
 $noLib = Join-Path $work 'dispatch-nolib'; New-Item -ItemType Directory $noLib -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noLib -Force
-$noLibJson = @{ tool_name = 'Bash'; tool_input = @{ command = 'git commit -m "T1: x"' } } | ConvertTo-Json -Compress
-$outNoLib = $noLibJson | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $noLib 'guard-bash.ps1') 2>&1
+$noLibExe = Join-Path $noLib 'guard-bash.ps1'
+# cwd 는 plan.md 없는 사본 폴더 — cwd 를 빼면 require-task-checkbox 가 러너 레포의 실제 plan.md 를 읽어 결과가 갈린다.
+$outNoLib = (New-CommitJson $noLib 'T1: x') | pwsh -NoProfile -ExecutionPolicy Bypass -File $noLibExe 2>&1
 $rNoLib = @{ code = $LASTEXITCODE; out = (($outNoLib | Out-String)).Trim() }
-Assert-Case -Name "guard-bash: guard-commit-secrets 부재 시 로드 가드 경고 + exit 0 (v1.101.0 T4 fail-open 가시화)" -R $rNoLib -ExpectExit 0 -ExpectContains '로드 실패'
+Assert-Case -Name "guard-bash: 라이브러리 부재 시 커밋 명령에 로드 가드 경고 + exit 0 (fail-open 가시화)" -R $rNoLib -ExpectExit 0 -ExpectContains '로드 실패'
+
+# LZ3 (델타 음성): 부재 + 비커밋 읽기 명령 — 경고는 매 호출 나고 판정은 통과다.
+$lz = @{ tool_name = 'Bash'; cwd = $noLib; tool_input = @{ command = 'grep -n x plan.md' } } | ConvertTo-Json -Compress
+$o = $lz | pwsh -NoProfile -ExecutionPolicy Bypass -File $noLibExe 2>&1
+$r = @{ code = $LASTEXITCODE; out = (($o | Out-String)).Trim() }
+Assert-Case -Name "guard-bash: 라이브러리 부재 + 비커밋 읽기 명령도 로드 가드 경고 + exit 0 (LZ3)" -R $r -ExpectExit 0 -ExpectContains '로드 실패'
+
+# LZ4 (양성): 부재여도 block-plan-write 차단은 산다 — 종전 코드는 exit 0 으로 통과시켰다.
+$lz = @{ tool_name = 'Bash'; cwd = $noLib; tool_input = @{ command = 'echo x > plan.md' } } | ConvertTo-Json -Compress
+$o = $lz | pwsh -NoProfile -ExecutionPolicy Bypass -File $noLibExe 2>&1
+$r = @{ code = $LASTEXITCODE; out = (($o | Out-String)).Trim() }
+Assert-Case -Name "guard-bash: 라이브러리 부재여도 block-plan-write 차단 유지 (LZ4)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+
+# LZ5·LZ6 (양성·음성 쌍): 부재여도 require-task-checkbox 가 돈다.
+$lzUn = Join-Path $work 'dispatch-nolib-unchecked'; New-Item -ItemType Directory $lzUn -Force | Out-Null
+"# plan`n- [ ] T3. 검색 기능" | Set-Content (Join-Path $lzUn 'plan.md')
+$lzOk = Join-Path $work 'dispatch-nolib-checked'; New-Item -ItemType Directory $lzOk -Force | Out-Null
+"# plan`n- [x] T3. 검색 기능" | Set-Content (Join-Path $lzOk 'plan.md')
+$o = (New-CommitJson $lzUn 'T3: 검색 요약') | pwsh -NoProfile -ExecutionPolicy Bypass -File $noLibExe 2>&1
+$r = @{ code = $LASTEXITCODE; out = (($o | Out-String)).Trim() }
+Assert-Case -Name "guard-bash: 라이브러리 부재여도 미완료 T 커밋 차단 (LZ5)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$o = (New-CommitJson $lzOk 'T3: 검색 요약') | pwsh -NoProfile -ExecutionPolicy Bypass -File $noLibExe 2>&1
+$r = @{ code = $LASTEXITCODE; out = (($o | Out-String)).Trim() }
+Assert-Case -Name "guard-bash: 라이브러리 부재 + 완료 [x] T 커밋은 통과 (LZ6)" -R $r -ExpectExit 0 -ExpectContains '로드 실패'
+
+# LZ1·LZ2: 지연 로드 실증 — dot-source 될 때 표식 파일을 쓰는 가짜 라이브러리 둘을 둔 사본.
+$stubLib = Join-Path $work 'dispatch-stublib'; New-Item -ItemType Directory $stubLib -Force | Out-Null
+Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $stubLib -Force
+New-Item -ItemType Directory (Join-Path $stubLib 'rules') -Force | Out-Null
+Copy-Item (Join-Path $scriptsDir 'rules/*.json') (Join-Path $stubLib 'rules') -Force
+'Set-Content -LiteralPath (Join-Path $PSScriptRoot ''loaded-cs.txt'') x; function Invoke-WarnCommitSecrets { param($data) New-HookResult }' | Set-Content (Join-Path $stubLib 'guard-commit-secrets.ps1')
+'Set-Content -LiteralPath (Join-Path $PSScriptRoot ''loaded-sd.txt'') x; function Invoke-WarnStaleDocs { param($data) New-HookResult }' | Set-Content (Join-Path $stubLib 'guard-stale-docs.ps1')
+$stubMarks = @((Join-Path $stubLib 'loaded-cs.txt'), (Join-Path $stubLib 'loaded-sd.txt'))
+$lz = @{ tool_name = 'Bash'; cwd = $stubLib; tool_input = @{ command = 'ls -la' } } | ConvertTo-Json -Compress
+$o = $lz | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $stubLib 'guard-bash.ps1') 2>&1
+$r = @{ code = $(if (@($stubMarks | Where-Object { Test-Path -LiteralPath $_ }).Count) { 1 } else { $LASTEXITCODE }); out = (($o | Out-String)).Trim() }
+Assert-Case -Name "guard-bash: 비커밋 명령은 커밋 판정 라이브러리를 dot-source 하지 않는다 (LZ1 — 표식 파일 0개)" -R $r -ExpectExit 0 -ExpectNotContains '로드 실패'
+$o = (New-CommitJson $stubLib 'x') | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $stubLib 'guard-bash.ps1') 2>&1
+$r = @{ code = @($stubMarks | Where-Object { Test-Path -LiteralPath $_ }).Count; out = (($o | Out-String)).Trim() }
+Assert-Case -Name "guard-bash: 커밋 명령은 커밋 판정 라이브러리 둘을 dot-source 한다 (LZ2 — 표식 파일 2개)" -R $r -ExpectExit 2 -ExpectNotContains '로드 실패'
 }   # ---- 로드 가드 게이트 끝 (guard-bash) ----
 
 # ---- require-task-checkbox 시나리오 흡수 (v1.225.0 — 그 hook이 guard-bash로 합쳐졌다) ----
