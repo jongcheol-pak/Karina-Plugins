@@ -27,8 +27,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 
 CONV_MD = os.path.join(ROOT, "docs", "harness-conventions.md")
 LEDGER_MD = os.path.join(ROOT, "docs", "plans", "deferred.md")
-# 대장은 v1.198.0에서 셋으로 갈렸다 — 대기(위)·종결·batch 회고.
-#   조회 대상은 `## 대기`뿐인데도 종결 140건과 회차 서사가 함께 컨텍스트에 실렸다.
+# 대장은 셋이다 — 대기(위)·종결·batch 회고.
 #   ⚠ 두 파일을 여기서 함께 읽지 않으면 계수 축과 차수 축이 **0항목으로 조용히 통과**한다.
 LEDGER_CLOSED_MD = os.path.join(ROOT, "docs", "plans", "deferred-closed.md")
 LEDGER_HISTORY_MD = os.path.join(ROOT, "docs", "plans", "deferred-history.md")
@@ -116,17 +115,13 @@ _POINTER_EXEMPT_SRC = {"docs/plans/deferred-closed.md", "docs/plans/deferred.md"
 
 def _pointer_sources():
     """포인터 출처 — `.md` 와 hook 스크립트. 과거 plan·로컬 노트·문서 아카이브는 뺀다."""
-    # hook 스크립트도 포인터 소스다 — v1.225.0에서 근거 주석을 `rules/*-rationale.md`로 내리며
-    #   `.ps1`이 그 문서의 절을 가리키게 됐는데, 이 축이 마크다운만 보아 **끊긴 포인터 46건이
-    #   exit 0으로 통과했다**(완료 리뷰가 잡았다). 소스에 스크립트를 더해 같은 결함을 막는다.
-    #   근거 주석이 `§N` 만 적는 꼴(감사 3회차)로 바뀐 뒤 그 주석들은 「」 가 없어 이 축의 포인터가 아니다 —
-    #   번호 실재는 `check-comment-truncation.py` 축 B 가 잰다. 스크립트 속 낫표 포인터만 여기 남는다.
+    # hook 스크립트도 포인터 소스다 — 마크다운만 보던 때 스크립트의 끊긴 포인터 46건이 exit 0으로 통과했다.
+    #   근거 주석은 `§N` 꼴이라 「」 가 없어 여기 포인터가 아니다(번호 실재는 `check-comment-truncation.py` 축 B).
     out = []
     for src in list(_md_files()) + sorted(glob.glob(os.path.join(ROOT, "plugins/pjc/scripts/*.ps1"))):
         rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
         # 과거 plan·로컬 노트·문서 아카이브는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
-        # 판정을 `_ARCHIVED_RX`·`_LOCAL_ONLY`와 공유한다 — 종전에는 여기만 `docs/plans/2026-`로
-        # 연도를 박아 두어 해가 바뀌면 이 축만 조용히 아카이브를 검사하기 시작했다.
+        # 판정을 `_ARCHIVED_RX`·`_LOCAL_ONLY`와 공유한다 — 따로 두면 한쪽만 낡는다.
         # `intent/` 는 승인 시점의 기록이라 고칠 대상이 아니다 — 근거는 `harness-consistency-rationale.md` §7
         if not (_ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY or rel_src.startswith("intent/")):
             out.append((src, rel_src))
@@ -188,8 +183,7 @@ def check_pointer_reachability():
     # 근거는 `harness-consistency-pointer-rationale.md` 의 「축 ① — 「절 이름 없는 참조」를 판정이 아니라 범위로 내는 이유」.
     pat_any = re.compile(r"`([A-Za-z0-9_./-]+\.md)`")
     # 자기 파일 내부 참조 — 대상이 **그 파일 자신**이라 경로가 선행하지 않는다. 위 `pat` 에도
-    #   `pat_any` 에도 안 걸려 **계수조차 되지 않던 사각지대**였다(회차 66). 절을 지우는 회차가
-    #   축 ① 로 재확인하면 끊긴 참조가 있어도 「0건」으로 통과했다.
+    #   `pat_any` 에도 안 걸려 **계수조차 되지 않던 사각지대**였다.
     # 근거는 `harness-consistency-pointer-rationale.md` 의 「축 ① — 자기 파일 내부 참조를 같은 축에 넣는 이유」.
     pat_self = re.compile(r"(?:아래|위|같은 문서)(?:의)?\s*「([^」\n]{2,120})」")
     heading_cache = {}
@@ -467,8 +461,7 @@ def check_deferred_stats(ledger, closed):
     if a_wait + a_done + purged != enrolled:
         issues.append("Deferred 불변식 — 대기 %d + 종결 %d + 삭제누계 %d = %d ≠ 총등재누계 %d"
                       % (a_wait, a_done, purged, a_wait + a_done + purged, enrolled))
-    # 항목 상한 600자는 대장 머리말이 선언하지만 **재는 축이 없어 2배까지 자랐다**
-    #  (2026-09-11 실측 1,175·1,160). **통지 등급인 이유**: 게이트로 두면 기존 초과분이
+    # 항목 상한 600자는 대장 머리말이 선언하지만 **재는 축이 없어 2배까지 자랐다**. **통지 등급인 이유**: 게이트로 두면 기존 초과분이
     #  전부 red 라 그 회차가 통째로 멈춘다 — 재는 것이 먼저이고 조이는 것은 그 다음이다.
     over = [(l[:36], len(l)) for l in lines[w:]
             if re.match(r"^- \[\d{4}-\d{2}-\d{2}", l)
@@ -587,8 +580,7 @@ def check_bold_pairing():
 
 
 # 문장 분리 — **종결부 뒤에서 자른다**. `[^.!?]{20,}?…` 형태로 뽑으면 최소 길이 요구가
-#  앞 문장을 삼켜 *"A. A."* 같은 실제 삽입 사고에서 두 조각이 서로 달라져 **미검출**된다
-#  (v1.180.0 F-7 M1이 잡은 바로 그 형태를 초안이 놓쳤다 — 재현으로 확인).
+#  앞 문장을 삼켜 *"A. A."* 같은 실제 삽입 사고에서 두 조각이 서로 달라져 **미검출**된다.
 _SENT_SPLIT_RX = re.compile(r"(?<=[.!?])")
 # 한 줄 중복 최소 길이 — 근거는 `harness-consistency-rationale.md` §2
 _SENT_MIN_LEN = 20
@@ -723,7 +715,7 @@ BUDGET_TARGETS = [
     ("단일 `references/*.md`", ["plugins/pjc/skills/*/references/*.md"]),
     ("에이전트 정의 `agents/*.md`", ["plugins/pjc/agents/*.md"]),
     # 글롭 하나로 잡는다 — 파일을 이름으로 열거하면 `WIKI.md` 처럼 나중에 온 것이
-    #  어느 행에도 안 걸린 채 상한 없이 자란다(2026-09-18 실측: 10,529자).
+    #  어느 행에도 안 걸린 채 상한 없이 자란다.
     ("스킬 트리 최상위 `skills/*.md`", ["plugins/pjc/skills/*.md"]),
     ("스킬 스크립트 `skills/*/scripts/*.py`", ["plugins/pjc/skills/*/scripts/*.py"]),
     ("hook 스크립트 `scripts/*.ps1`", ["plugins/pjc/scripts/*.ps1"]),
@@ -768,7 +760,7 @@ RULE_EXCLUDE_PLACEHOLDER_RX = re.compile(r"<[^>]{2,40}>")
 RULE_FORM_RX = re.compile(r"^- \*\*.+?\*\*[^\S\n]*—[^\S\n]")
 # 자리표시자를 **담기만 한** 줄은 템플릿이 아니다 — 규칙이 꺾쇠를 예시로 인용할 수 있다
 #   (`설정: intent — <제목>` 제목으로 커밋한다). 줄 전체에 `search` 를 걸면 그런 규칙이
-#   영구히 배제돼 축이 침묵한다(회차 59 완료 리뷰 실측 1건). 볼드를 닫은 뒤 남는 것이
+#   영구히 배제돼 축이 침묵한다. 볼드를 닫은 뒤 남는 것이
 #   **자리표시자와 구두점뿐일 때만** 템플릿으로 본다.
 TEMPLATE_RESIDUE_MAX = 10
 
@@ -1038,7 +1030,7 @@ def check_close_reasons():
 
 
 # 축 10이 검사하는 포인터. **손으로 관리한다** — 「유일한 방어선」·「정본」 같은 말을 grep 하는
-#   기준은 폭에 따라 1~69건으로 갈려 재현되지 않는다(회차 24 계획 리뷰). 여기 적힌 것은
+#   기준은 폭에 따라 1~69건으로 갈려 재현되지 않는다. 여기 적힌 것은
 #   문면이 스스로 그 문서 없이는 규칙이 사라진다고 선언한 자리다.
 CRITICAL_POINTERS = [
     ("plugins/pjc/skills/implement/SKILL.md",
@@ -1046,17 +1038,14 @@ CRITICAL_POINTERS = [
      "자율 루프 정지 형태 판정의 정본(1차 방어선) — loop-continue hook 은 plan 미완만 보고 형태를 가르지 않는다"),
 ]
 
-# 핵심 포인터 **총량**의 기준선(= 목록 길이). 이 목록은 손으로 관리하는데 **줄어드는 것이
-#  더 위험하다** — 항목이 빠지면 그 포인터가 지워져도 축이 조용히 통과한다(축의 전제가
-#  「정규식이 못 세는 자리를 손으로 올린다」이므로, 손 목록이 곧 유일한 그물이다).
-#  정당한 증감이면 **이 값을 함께 갱신한다** — 그 diff 가 목록 변경의 기록이다.
+# 핵심 포인터 총량 기준선(= 목록 길이) — 근거는 `harness-consistency-rationale.md` §9
 CRITICAL_POINTERS_BASELINE = 1
 
 
 # 같은 축이 검사하는 **리터럴 문면**. 위 목록이 재는 것은 「그 파일을 가리키는가」이고
 #   여기가 재는 것은 「그 규약을 **부르는 문면이 살아 있는가**」다. 둘을 갈라 둔 이유는
 #   basename 검사가 *파일째 지움* 만 잡기 때문이다 — 규약 정본을 가리키는 경로를 남긴 채
-#   **호출 문면만 지우면** 위 루프는 조용히 통과한다(v1.298.0 삭제 회차가 남긴 결함 3·4·5).
+#   **호출 문면만 지우면** 위 루프는 조용히 통과한다.
 #   리터럴은 **그 파일에서 유일한 형태**로 잡는다. `> BASE:` 나 `({근거})` 처럼 짧게 잡으면
 #   같은 파일의 *규칙 서술 줄*이 함께 매치돼 **슬롯만 지워도 통과**한다(각각 실측 2건).
 CRITICAL_LITERALS = [
@@ -1074,9 +1063,7 @@ CRITICAL_LITERALS = [
      "plan 승인 시점의 `[DECISION]` 일괄 큐잉 호출 — 위와 짝인 나머지 한 배치 시점이다"),
 ]
 
-# 리터럴 **총량**의 기준선. 위 `CRITICAL_POINTERS_BASELINE` 과 같은 이유로 둔다 —
-#   **줄어드는 것이 더 위험하다**. 항목을 빼면 그 문면이 지워져도 축이 조용히 통과하고,
-#   손 목록이 곧 유일한 그물이라 목록의 소실은 그물의 소실이다.
+# 리터럴 총량 기준선(= 목록 길이) — 근거는 `harness-consistency-rationale.md` §9
 CRITICAL_LITERALS_BASELINE = 4
 
 
@@ -1318,7 +1305,7 @@ def check_impact_axes():
 # ─────────────────────────────────────────────────────────────
 # 대조 요소 넷. **문자열 동일성이 아니라 「그 판정이 있는가」를 잰다** — 두 구현이 다른
 #   언어라 문면이 같을 수 없다. 요소마다 언어별 패턴을 쌍으로 두고 **한쪽에만 있으면**
-#   MISMATCH 다. 회차 67 착수 시점에 ⓑⓒ 가 실제로 한쪽에만 있었다(드리프트 2건).
+#   MISMATCH 다.
 PARSER_SYNC_FILES = ("plugins/pjc/scripts/session-wiki-signals.ps1",
                      "plugins/pjc/skills/llm-wiki/scripts/lint.py")
 PARSER_SYNC_ELEMENTS = [
@@ -1371,7 +1358,7 @@ def check_parser_sync():
 _DEPRECATED_ANCHOR = "**폐기 식별자(기계 대조)**:"
 
 # 스캔 대상 확장자 — 이 repo 는 마크다운이 곧 실행 규칙이지만 폐기 단계명은 hook 시나리오
-#  (`.ps1`)·골든 케이스(`.json`)·검사기(`.py`) 주석에도 실재한다(회차 38 이 hooks/evals/ 5건).
+#  (`.ps1`)·골든 케이스(`.json`)·검사기(`.py`) 주석에도 실재한다.
 _DEPRECATED_EXTS = (".md", ".ps1", ".py", ".json")
 
 # 근거는 `harness-consistency-rationale.md` 의 「축 ⑭ — 폐기 식별자 스캔이 대장 3파일을 제외하는 이유」.
@@ -1525,7 +1512,7 @@ def check_ledger_evidence(ledger):
         die("`deferred.md`에서 `## 대기` 구간 헤딩을 찾지 못함")
     # **항목 블록 단위로 본다 — 물리줄이 아니다.** 대장에는 코드스팬 안에 실제 CR·LF 를 담아
     #  그 함정을 보여주는 항목이 있어(줄바꿈 관련 3건) 한 항목이 여러 물리줄에 걸친다.
-    #  첫 줄만 보면 필드를 「항목 끝」에 두라는 머리말 형식과 양립할 수 없다(회차 40 완료 리뷰).
+    #  첫 줄만 보면 필드를 「항목 끝」에 두라는 머리말 형식과 양립할 수 없다.
     tail = lines[w:]
     starts = [i for i, l in enumerate(tail) if re.match(r"^- \[\d{4}-\d{2}-\d{2}", l)]
     issues, n = [], len(starts)
@@ -1639,23 +1626,22 @@ def check_copy_sync():
     return issues, n
 
 
-# 축 ⑰이 파싱하는 세 문면. **사정거리는 문서 전체이고 아래 절 이름은 앵커로만 쓴다** —
-#  절 밖 계수는 `(기계 미대조)` 표시로 닫는다(회차 56 리뷰: 절 안으로 자른 탓에 실제로
-#  낡아 있던 자리가 통째로 빠졌다).
+# 축 ⑰이 파싱하는 문면. 사정거리는 문서 전체이고 아래 절 이름은 앵커로만 쓴다(근거는
+#  `harness-consistency-rationale.md` 의 「축 ⑰ — 계수·버전 정합이 왜 필요한가」).
 COUNT_SECTION_HEADING = "## 검증 명령 상세"
 # ⓐ `케이스 정본은 \`<경로>\`` — 그 줄이 어느 매니페스트를 말하는지
 _RX_MANIFEST = re.compile(r"케이스 정본은 `([^`]+\.json)`")
 # ⓑ `**기준선 N케이스**` — 같은 줄의 기재값
 _RX_BASELINE = re.compile(r"\*\*기준선 (\d+)케이스\*\*")
-# ⓒ `` `<파일>`은 N건 `` — hook-cases 만 쓰는 별도 형태(그 줄의 「기준선」은 러너 총계라
-#  파일 건수가 아니다). 그래서 ⓑ 로 재면 870 ↔ 269 로 어긋난 판정이 나온다.
+# ⓑ' 기준선 줄의 증감 서사 — 그 줄에는 현재 값만 둔다(이력은 커밋 본문). 숫자가 붙어야 걸린다 — 「그 앞 회차」 는 서사가 아니다.
+_RX_BASELINE_HISTORY = re.compile(r"(직전|그 전|그 앞) [0-9,]+")
+# ⓒ `` `<파일>`은 N건 `` — hook-cases 만 쓰는 별도 형태(그 줄의 「기준선」은 러너 총계라 파일 건수가 아니다).
 _RX_FILE_COUNT = re.compile(r"`([\w.-]+\.json)`은 (\d+)건")
 # ⓓ 문서 안의 **모든** `N케이스` 표기. ⓐ 가 못 잡는 자리를 찾아내 표시를 강제하는 데 쓴다.
 _RX_CASE_COUNT = re.compile(r"\d+케이스")
 # 그 표시 문구. 이 자리는 사람이 러너 출력을 눈으로 대조하는 수밖에 없다는 선언이다.
 _UNMEASURED_MARK = "(기계 미대조)"
-# 러너 총계(hook 골든)는 내장 시나리오가 섞여 **파일을 세면 원리상 어긋난다** — 그 축은
-#  `run-hook-evals.ps1` 자신이 자기 총계를 상수와 대조한다(회차 55 T4). 여기서는 세지 않는다.
+# 러너 총계(hook 골든)는 내장 시나리오가 섞여 파일을 세면 어긋난다 — `run-hook-evals.ps1` 이 자기 상수와 대조한다.
 COUNT_SKIP_BASELINE = {"hook-cases.json"}
 
 
@@ -1720,9 +1706,7 @@ def check_count_and_version(conv):
     「축 ⑰ — 계수·버전 정합이 왜 필요한가」.
     """
     issues, n, notices = [], 0, []
-    # **매니페스트가 하나도 없으면 골든 픽스처다** — 픽스처는 레포의 일부만 담으므로 없는
-    #  파일까지 세면 이 축이 픽스처에서 상시 실패한다(축 ⑭ 가 같은 이유로 스캔 실재를 본다).
-    #  그래서 실재 여부를 **먼저** 가르고, 그 뒤의 절 부재만 앵커 실패로 판정한다.
+    # 매니페스트가 하나도 없으면 레포 일부만 담은 골든 픽스처다 — 실재를 먼저 가르고 절 부재만 앵커 실패로 본다.
     if not any(os.path.exists(os.path.join(ROOT, p)) for p in _MANIFEST_PATHS):
         return issues, n, notices
     body = conv.split(COUNT_SECTION_HEADING, 1)
@@ -1731,11 +1715,14 @@ def check_count_and_version(conv):
         #  통과로 읽히면 안 되므로 다른 앵커 실패와 같은 exit 2 를 쓴다.
         die("절을 찾지 못함: `%s` 「검증 명령 상세」 — 헤딩을 바꿨으면 "
             "COUNT_SECTION_HEADING 을 함께 고쳐라" % os.path.relpath(CONV_MD, ROOT))
-    # **사정거리는 문서 전체다 — 절은 앵커로만 쓴다.** 절 안으로 자르면 그 밖의 계수가
-    #  빠지고, **실측으로 낡아 있던 것이 그 밖이었다**(회차 56 리뷰: 문서 6 · 실측 10).
-    section = conv
+    section = conv   # 사정거리는 문서 전체 — 절은 위에서 앵커로만 썼다
 
     for line in section.split("\n"):
+        if _RX_BASELINE.search(line):
+            hist = _RX_BASELINE_HISTORY.search(line)
+            if hist:
+                issues.append("계수 정합: 기준선 줄에 증감 서사 「%s」 — 현재 값만 남기고 이력은 커밋 "
+                              "본문에 둔다: %s" % (hist.group(0), line.strip()[:70]))
         m = _RX_MANIFEST.search(line)
         if m:
             rel, base = m.group(1), _RX_BASELINE.search(line)

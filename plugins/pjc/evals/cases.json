@@ -1011,6 +1011,42 @@
     ]
   },
   {
+    "id": "harness-count-baseline-history",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "**기준선 2케이스**다.",
+        "replace": "**기준선 2케이스**다(그 앞 1 은 첫 회차 값이다)."
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "기준선 줄에 증감 서사"
+    ]
+  },
+  {
+    "id": "harness-count-baseline-history-neg",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/harness-conventions.md",
+        "find": "**기준선 2케이스**다.",
+        "replace": "**기준선 2케이스**다(그 앞 회차가 정한 값이다)."
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "증감 서사"
+    ]
+  },
+  {
     "id": "harness-count-filecount-drift",
     "checker": "harness",
     "fixture": "minimal-repo",
