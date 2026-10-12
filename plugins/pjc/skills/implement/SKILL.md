@@ -107,9 +107,9 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 전 task 완료 후, 이번 회차에 **① 같은 원인으로 2회 이상 막힌 것**이나 **② 다음 작업자가 모르면 다시 걸릴 함정**이 있었는지 판정한다. 있으면 기록한다.
 
-판정 기준·기록 형식·vault 판정은 `../WIKI.md`가 정본이고, **`../WIKI.md` 에서 읽는 절은 0·3 이다** — 파일째 읽지 않는다: `../WIKI.md` 는 「1.」 절 앞까지(0·「절 단위 읽기」) Read 하고(끝 줄은 `grep -n '^## 1.' <WIKI.md 경로>` 로 얻어 Read 의 limit 으로 준다 — WIKI.md 는 위키 페이지가 아니고 펜스 안에 `## ` 줄이 없다), 3절은 그 「절 단위 읽기」의 명령으로 뽑는다.
+판정 기준·기록 형식·vault 판정은 `../WIKI.md`가 정본이고, **`../WIKI.md` 는 §0 과 §3 만 Read 한다** — 파일째 읽지 않는다: `grep -n '^## ' <WIKI.md 경로>` 로 두 절과 각각 다음 절의 시작 줄을 얻어 Read 의 offset·limit 으로 준다(WIKI.md 는 위키 페이지가 아니고 펜스 안에 `## ` 줄이 없다).
 
-- **구현 중 확정된 `[DECISION]`도 여기서 1회 일괄 큐잉한다 — 형식·입도·하네스 레포 예외는 `../llm-wiki/references/queue-rules.md`의 K 5-2가 정본이다** — 그 규약이 지목하는 배치 시점 둘 중 하나가 여기이고, `[PROJECT-FACT]`는 위 판정이 이미 맡는다.
+- **구현 중 확정된 `[DECISION]`도 여기서 1회 일괄 큐잉한다 — 형식·입도·하네스 레포 예외는 `../llm-wiki/references/queue-rules.md`의 K 5-2가 정본이다** — 그 규약이 지목하는 배치 시점 둘 중 하나가 여기이고, `[PROJECT-FACT]`는 위 판정이 이미 맡는다. **`queue-rules.md` 는 파일째 읽지 않는다 — K 5~K 5-3 과 K 6 절만 `grep -n '^### K' <queue-rules.md 경로>` 경계로 Read 한다**(K 5-2 가 K 5 의 게이트·폴백과 K 6 커밋에, 위 §3 의 `[PROJECT-FACT]` 가 K 5-3 에 기댄다).
 
 ## 완료 정의
 
