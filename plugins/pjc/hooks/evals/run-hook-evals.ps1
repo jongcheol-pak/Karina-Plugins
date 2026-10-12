@@ -1,7 +1,7 @@
 ﻿# run-hook-evals.ps1 — pjc hook 골든 회귀 러너 (lint evals의 hook 판)
 #
 # 사용법: pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/pjc/hooks/evals/run-hook-evals.ps1
-#   부분 실행(개발 반복 전용): ... run-hook-evals.ps1 -Filter block-destructive,guard-write
+#   부분 실행(중간 task 검증용): ... run-hook-evals.ps1 -Filter block-destructive,guard-write
 #   순차 실행(등가 대조·폴백):  ... run-hook-evals.ps1 -Sequential
 #   중단 후 이어하기:           ... run-hook-evals.ps1 -Resume
 #
@@ -23,7 +23,7 @@
 #   ② 병렬 경로에 문제가 생겼을 때의 폴백. 판정 정본으로서의 자격은 두 모드가 동일하다.
 #
 # -Filter 계약(v1.107.0): hook 기본명(.ps1 유무·대소문자 무관, 쉼표 복수)으로 실행 범위를 좁힌다.
-#   구현 중 반복 확인 전용이며 task 검증(검증 매핑)·최종 검증 판정에는 사용 금지 — 부분 실행은
+#   중간 task 검증의 기본이고 회차의 최종 검증은 무인자 전체 1회다(harness-conventions 「골든 부분 실행의 판정 자격」) — 부분 실행은
 #   커버리지가 좁아(섹션 태그는 케이스 단위가 아니라 섹션 단위 — 소량 초과 실행은 허용, 누락은 불허)
 #   무인자 전체 실행만 판정 정본이다. 필터 모드는 경고 헤더를 강제 출력하고, 실행 케이스 0이면
 #   exit 1로 실패한다(필터 이름 오타가 "전부 통과"로 보이는 거짓 안심 방지).
@@ -61,8 +61,8 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 # `docs/golden-runner.md` 의 소요·케이스 수 실측값이 사람이 손으로 옮긴 값이라 낡았다(회차 64
 #   착수 시점: 문서 최신 769케이스 ↔ 러너 상수 902 — 133 갈림). 러너가 직접 찍으면 그 값을
 #   그대로 문서에 옮길 수 있고, `guard-stale-docs` 가 케이스 수로 낡음을 기계 판정한다.
-# **mode 를 각인하는 이유**: `-Filter`·`-Resume` 실행은 판정 자격이 없어(같은 문서의 「골든 부분
-#   실행의 판정 자격」) 문서 갱신 근거로 쓸 수 없다 — 그 사실이 값 자체에 남아야 한다.
+# **mode 를 각인하는 이유**: `-Filter`·`-Resume` 실행은 전체 실측이 아니라(같은 문서의 「골든 부분
+#   실행의 판정 자격」) 소요 표 갱신 근거로 쓸 수 없다 — 그 사실이 값 자체에 남아야 한다.
 $script:TimingWatch = [System.Diagnostics.Stopwatch]::StartNew()
 function Write-TimingLine {
     param([int]$Total)
@@ -157,7 +157,7 @@ $evalTempParent = Join-Path (Get-EvalRoot -Base 'Temp') $script:EvalParentName
 $script:NormalizedFilter = Get-NormalizedFilter -Filter $Filter
 if ($script:NormalizedFilter) {
     Write-UnknownFilterWarning -NormalizedFilter $script:NormalizedFilter
-    Write-Host "⚠ 부분 실행 모드 (-Filter: $($script:NormalizedFilter -join ', ')) — 개발 반복 전용, task 검증·최종 검증 판정에 사용 금지"
+    Write-Host "⚠ 부분 실행 모드 (-Filter: $($script:NormalizedFilter -join ', ')) — 중간 task 검증용, 최종 검증은 무인자 전체"
 }
 
 # ---- 중단된 실행이 남긴 격리 폴더 정리 ----
@@ -221,7 +221,7 @@ if ($Sequential) {
         exit 1
     }
     if ($Filter) {
-        Write-Host "⚠ 부분 실행 결과 (-Filter) — 개발 반복 전용, task 검증·최종 검증 판정에 사용 금지"
+        Write-Host "⚠ 부분 실행 결과 (-Filter) — 중간 task 검증용, 최종 검증은 무인자 전체"
     }
     Write-Host "[MODE] 순차 실행 (-Sequential)"
     Write-Host ("결과: {0}/{1} OK (FAIL {2})" -f ($total - $failCount), $total, $failCount)
@@ -441,7 +441,7 @@ if ($Filter -and $total -eq 0) {
     exit 1
 }
 if ($Filter) {
-    Write-Host "⚠ 부분 실행 결과 (-Filter) — 개발 반복 전용, task 검증·최종 검증 판정에 사용 금지"
+    Write-Host "⚠ 부분 실행 결과 (-Filter) — 중간 task 검증용, 최종 검증은 무인자 전체"
 }
 if ($deadGroups.Count) {
     Write-Host ("[WARN] 완주하지 못한 그룹 {0}개: {1} — -Resume 으로 이어서 돌릴 수 있습니다." -f $deadGroups.Count, ($deadGroups -join ', '))
