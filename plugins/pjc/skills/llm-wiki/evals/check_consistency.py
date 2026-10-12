@@ -11,11 +11,11 @@
          축 ⑬은 절 이름의 실재만 보므로 표가 전 절을 지목해도 통과한다 — 라우팅이 실제로
          비용을 줄이는지는 이 값으로만 보인다.
 
-무엇을: llm-wiki의 공유 상수(파일 예산·통제 어휘)는 네 곳에 존재한다 —
+무엇을: llm-wiki의 공유 상수(파일 예산·통제 어휘)는 두 곳에 존재한다 —
   ① lint.py 상수(BUDGET·GUIDE_BUDGET·SPECIAL_BUDGET·INDEX_*·*_VOCAB)
-  ② references/wiki-ops-rules.md '## 파일 예산' 표 (v1.180.0 T8이 SKILL.md에서 분리)
-  ③ schema-types.md 타입별 '- **예산**: ~N줄' 줄 (§2.x)
-  ④ schema-budget.md §4 예산 표 (schema 번들 내 이중 표현 — ③과 ④가 서로 어긋나는 것도 잡는다)
+  ② 문서 정본 — 예산은 references/wiki-ops-rules.md '## 파일 예산' 표, 통제 어휘는 wiki-schema §3
+  schema-types.md §2 '- **예산**:' 줄과 schema-budget.md §4 표는 값을 적지 않고 ② 예산표를 가리킨다
+  (2026-10-12 감사 2회차 — 네 벌 사본을 두 자리로 줄였다).
 번들 규약 H-2(references/procedures-ops.md 하단 '(참고)' 블록)는 이들의 수동 동기화를
 요구하는데, 사람이 한 곳을 고치고 나머지를 놓치면 드리프트가 조용히 생긴다.
 이 스크립트가 그 드리프트를 기계로 잡는다.
@@ -52,7 +52,7 @@ schema §2 타입 집합인 자리(목차 §2 행, §3 계층 태그, templates.
 그 스캔은 자산이 아니라 임시 스크립트였다.
 
 ⑪ 예산 트리거 조건 어휘 유일성 — 예산 처방의 발동·종료·재발동·승급 조건은 schema-budget §7-2
-(와 임계 정본인 SKILL '## 예산 단계 신호' 표)에서만 서술하고, 나머지 자리는 조건을 다시 쓰지 않고
+(와 임계 정본인 wiki-ops-rules.md '## 예산 단계 신호' 표)에서만 서술하고, 나머지 자리는 조건을 다시 쓰지 않고
 `§7-2 발동 시` 포인터만 둔다 — **예외는 §7-2가 명시한 `lint.py` 임계 상수 근거 주석 하나**로,
 그 자리는 조건의 형태를 말하지 않으면 '이 상수를 지우면 안 되는 이유'가 성립하지 않는다. 그 자리들이 저마다 조건을 다시 쓰던 것이 v1.177 회차에서 6라운드
 연속 드리프트를 낸 원인이다(헤딩은 「임박」인데 본문은 「초과」 같은 반쪽 상태). 조건이 한 곳에만
@@ -172,7 +172,7 @@ def norm_type(raw):
 
 
 def parse_budget_table(section_text, source_label):
-    """마크다운 예산 표(SKILL '## 파일 예산' / schema §4 공용)에서 {키: 값}을 추출한다.
+    """마크다운 예산 표(wiki-ops-rules.md '## 파일 예산')에서 {키: 값}을 추출한다.
     일반 행은 선두 숫자(줄 수), log.md는 'N자', index.md는 산문 속 'N줄'·'N행' 2값."""
     rows = {}
     for line in section_text.splitlines():
@@ -208,38 +208,6 @@ def parse_ops_rules_budget(text):
     return parse_budget_table(m.group(1), "wiki-ops-rules.md 예산표")
 
 
-def parse_schema_table_budget(text):
-    m = re.search(r"^## 4\. 파일 예산\n(.*?)(?=^### |^## |\Z)", text, re.M | re.S)
-    if not m:
-        die("schema-budget.md '## 4. 파일 예산' 섹션을 찾지 못함")
-    return parse_budget_table(m.group(1), "schema §4 표")
-
-
-def parse_schema_type_budget(text):
-    """schema §2.x 각 타입 섹션의 '- **예산**' 줄에서 {키: 값} 추출 (log/index는 §2에 없음)."""
-    rows = {}
-    sections = list(SCHEMA_TYPE_HEADING_RX.finditer(text))
-    if not sections:
-        die("schema-types.md '### 2.N <type>' 헤딩을 찾지 못함")
-    for i, hm in enumerate(sections):
-        typ = hm.group(1)
-        end = sections[i + 1].start() if i + 1 < len(sections) else len(text)
-        body = text[hm.start():end]
-        bm = re.search(r"^- \*\*예산\*\*:\s*(.+)$", body, re.M)
-        if not bm:
-            die(f"schema §2 '{typ}' 섹션에서 '- **예산**' 줄을 찾지 못함")
-        val = bm.group(1)
-        if typ == "guide":
-            for gm in re.finditer(r"([a-z-]+)\s*~(\d+)자", val):
-                rows["guide:" + gm.group(1)] = int(gm.group(2))
-            if not any(k.startswith("guide:") for k in rows):
-                die("schema §2.6 guide 예산 파싱 실패 (~N자 형식 기대 — v1.138.0 문자 수 전환)")
-        else:
-            nm = re.search(r"~(\d+)자", val)
-            if not nm:
-                die(f"schema §2 '{typ}' 예산 줄에서 '~N자'를 찾지 못함 (v1.138.0 문자 수 전환)")
-            rows[typ] = int(nm.group(1))
-    return rows
 
 
 def lint_budget(mod):
@@ -784,7 +752,7 @@ def check_type_enumerations(schema_text, types_text, bundle, lint):
     return issues, checked
 
 
-# 예산 단계 신호 표(SKILL.md '## 예산 단계 신호') 행 라벨 → (lint 상수명, 해석 방식).
+# 예산 단계 신호 표(wiki-ops-rules.md '## 예산 단계 신호') 행 라벨 → (lint 상수명, 해석 방식).
 #  이 표를 `## 파일 예산` 절 밖의 형제 `##`로 둔 이유는 parse_ops_rules_budget이 그 절을 다음 `##`까지
 #  통째로 잡고 parse_budget_table이 구간 내 모든 `|`행을 훑기 때문이다 — 절 안에 두면 이 표의
 #  헤더행이 예산 데이터로 잡혀 die()가 난다(그래서 별도 앵커가 필요했다).
@@ -798,9 +766,9 @@ BUDGET_STAGE_ROWS = {
 
 
 def check_budget_stages(ops_rules_text, lint):
-    """예산 단계 임계·판정 어휘 정합 — SKILL.md '## 예산 단계 신호' 표 ↔ lint.py 상수.
+    """예산 단계 임계·판정 어휘 정합 — wiki-ops-rules.md '## 예산 단계 신호' 표 ↔ lint.py 상수.
 
-    기존 예산 축(값 4소스 대조)이 다루지 않는 자리다: 임계 상수(BUDGET_NEAR_RATIO 계열)와
+    기존 예산 축(값 2소스 대조)이 다루지 않는 자리다: 임계 상수(BUDGET_NEAR_RATIO 계열)와
     budget_split 통제 어휘는 어느 대조에도 들어 있지 않아, 한쪽만 고쳐도 조용히 통과했다.
     문서 측 앵커를 표 하나로 좁힌 이유는 산문에 흩어진 수치를 파싱하면 문면이 조금만 바뀌어도
     앵커가 깨져 exit 2(파싱 실패)가 나기 때문이다."""
@@ -844,7 +812,7 @@ def check_budget_stages(ops_rules_text, lint):
 
 
 # ⑪ 예산 트리거 조건 어휘 유일성 — 예산 처방의 발동·종료·재발동·승급 조건은
-#  schema-budget §7-2(와 임계 정본인 SKILL '## 예산 단계 신호' 표)에서만 서술하고,
+#  schema-budget §7-2(와 임계 정본인 wiki-ops-rules.md '## 예산 단계 신호' 표)에서만 서술하고,
 #  다른 자리는 조건을 적지 않고 `§7-2 발동 시` 포인터만 둔다(예외는 §7-2가 명시한
 #  `lint.py` 임계 상수 근거 주석 하나 — 아래 화이트리스트에 사유와 함께 등재돼 있다). 그 자리들이 저마다 조건을
 #  다시 쓰던 것이 v1.177 회차에서 6라운드 연속 드리프트를 낸 원인이다(헤딩은 「임박」인데
@@ -906,20 +874,15 @@ TRIGGER_ANCHORS = {
     OPS_RULES_MD: (r"^## 예산 단계 신호", r"^## "),
 }
 
-# 예산 축 ①의 부분 소스 허용 — 「구조상 네 소스 전부에는 존재할 수 없는 키」만 넣는다.
+# 예산 축 ①의 부분 소스 허용 — 「구조상 두 소스 모두에는 존재할 수 없는 키」만 넣는다.
 #  목적은 아래 `TRIGGER_ALLOWLIST`와 같다(면제 항목마다 사유를 남긴다 — 자료 구조는 다르다:
 #  이쪽은 `{키: 사유}` dict, 저쪽은 `(파일, 앵커, 사유[, 기대 수])` 튜플 리스트다).
 #
-# ⚠ 이 목록이 **비어 있지 않은 것이 정상**이다 — 아래 셋은 §2가 「타입별 페이지」를 서술하는
-#  절이라 페이지 타입이 아닌 키(index의 줄/행 상한, log.md)를 담을 자리가 구조상 없다.
-#  종전 게이트가 `len(vals) < 2`(0·1소스)만 잡아 **2·3소스에만 등재된 키는 값만 맞으면
-#  통과**했고, 그것이 원 결함이 지목한 fail-open이다(새 타입을 두 곳에만 적어도 exit 0).
-#  이제 「네 소스 전수 등재」를 요구하고 예외는 여기에만 둔다.
-BUDGET_PARTIAL_SOURCE_OK = {
-    "index:body-lines": "§2에 없음 — index는 문자 예산이 아니라 본문 줄 수가 임계라 타입별 예산 줄에 자리가 없다(§7-14 축)",
-    "index:feat-rows": "§2에 없음 — 위와 같은 이유(기능별 인덱스 행 수 임계)",
-    "log.md": "§2에 없음 — log는 페이지 타입이 아니라 단일 파일이라 타입별 예산 서술 대상이 아니다",
-}
+# 지금은 **비어 있는 것이 정상**이다 — 두 소스(lint.py · wiki-ops-rules 예산표)가 index 의 줄/행 상한과
+#  log.md 까지 모든 키를 담는다. 예전에는 schema §2 타입별 줄이 소스여서 페이지 타입이 아닌 그 셋이
+#  여기 있었다(§2 에 자리가 없다). 종전 게이트가 `len(vals) < 2`(0·1소스)만 잡아 **일부 소스에만 등재된 키는
+#  값만 맞으면 통과**했고, 그것이 원 결함이 지목한 fail-open이다. 「전 소스 등재」를 요구하고 예외는 여기에만 둔다.
+BUDGET_PARTIAL_SOURCE_OK = {}
 
 # 면제 열거 — 「파일, 앵커, 사유[, 기대 매치 수]」. **앵커 자리는 문자열 하나 또는 조각
 #  리스트**다(정규화는 `_entry_anchors`). 리스트면 첫 원소가 **대표 앵커**이고 나머지가
@@ -981,7 +944,7 @@ TRIGGER_ALLOWLIST = [
     #    (§7 결과 처리가 "⚠ project 허브만 트리거가 다르다"로 명시 배제한 대상이다).
     #    `§7-2 발동 시`로 치환하면 정본이 되려는 §7-2가 자기 배제 규정과 충돌한다.
     (SCHEMA_TYPES_MD, "**초과분은 압축하지 않고 롤오버한다**", "§2.2 6번째 항목 트리거 — 문자 예산 무관"),
-    (SCHEMA_BUDGET_MD, "| project (허브) | 13000자 |", "§4 표 project 행 — 3열 롤오버 구가 §2.2 항목 개수 축"),
+    (SCHEMA_BUDGET_MD, "| project (허브) | 「파일 예산」 |", "§4 표 project 행 — 3열 롤오버 구가 §2.2 항목 개수 축"),
     (SCHEMA_BUDGET_MD, ["**project 허브 `## 최근 주요 변경`**: 3~5개를 유지하고", "초과분을 `90_archive/"], "§8 롤오버 — §2.2 항목 개수 축"),
     (TEMPLATES_MD, "<!-- 3~5개 유지. 초과분은 압축하지 않고", "허브 템플릿 주석 — §2.2 항목 개수 축"),
     (TEMPLATES_MD, "# budget_split_chars: 0         #   lint 예산 판정과 같은 기준의 문자 수(=임박 메시지의 {현재} 값,",
@@ -1603,8 +1566,6 @@ def main():
     budget_sources = {
         "lint.py": lint_budget(lint),
         "wiki-ops-rules.md 예산표": parse_ops_rules_budget(ops_rules_text),
-        "schema §2 타입별 줄": parse_schema_type_budget(types_text),
-        "schema §4 표": parse_schema_table_budget(budget_text),
     }
     mismatches = []
     # 축별 `(라벨, 값, 단위)`. 출력 문구를 여기서 조립하므로 축을 추가할 때
@@ -1615,16 +1576,16 @@ def main():
     for key in all_keys:
         vals = {src: rows[key] for src, rows in budget_sources.items() if key in rows}
         if len(vals) < len(budget_sources):
-            # 종전 게이트는 `len(vals) < 2`(0·1소스)라, **새 타입이 두 소스에만 등재되고
-            #  나머지 두 곳에서 빠져도 값만 맞으면 조용히 exit 0**이었다(v1.164.0이 plan
+            # 종전 게이트는 `len(vals) < 2`(0·1소스)라, **새 타입이 일부 소스에만 등재되고
+            #  나머지에서 빠져도 값만 맞으면 조용히 exit 0**이었다(v1.164.0이 plan
             #  acceptance로 우회했던 그 구멍 — 우회는 그 plan에만 있고 검사기에는 남지 않았다).
-            #  이제 **네 소스 전수 등재**를 요구하고, 건너뛰는 것은 위 허용 목록에 있는 키뿐이다.
+            #  이제 **전 소스 등재**를 요구하고, 건너뛰는 것은 위 허용 목록에 있는 키뿐이다.
             reason = BUDGET_PARTIAL_SOURCE_OK.get(key)
             if reason is None:
                 missing = ", ".join(sorted(set(budget_sources) - set(vals)))
                 mismatches.append(
                     f"예산 '{key}'가 일부 소스에만 있다 — 빠진 곳: {missing}. "
-                    f"네 소스 전부에 등재하거나, 구조상 그곳에 둘 수 없는 키면 "
+                    f"두 소스 모두에 등재하거나, 구조상 그곳에 둘 수 없는 키면 "
                     f"BUDGET_PARTIAL_SOURCE_OK에 사유와 함께 넣어라")
                 continue
             # 허용된 키도 **있는 소스끼리는** 값이 맞아야 한다 — 면제는 「자리가 없다」는
@@ -1737,7 +1698,7 @@ def main():
               f"H-2 규약(references/procedures-ops.md 하단 '(참고)' 블록)대로 관련 파일을 함께 갱신하세요.")
         sys.exit(1)
     breakdown = " + ".join(f"{label} {n}{unit}" for label, n, unit in axes)
-    print(f"결과: 대조 {checked}항목 전부 일치 ({breakdown} — 항목당 소스 2~4곳 대조)")
+    print(f"결과: 대조 {checked}항목 전부 일치 ({breakdown} — 항목당 소스 2곳 이상 대조)")
     # 축 ⑪의 면제 규모 — 여기 닿았다면 위반·잔여는 이미 0이다(둘 다 위 집계에서 exit 1로
     #  걸러진다). 그래서 이 줄이 재는 것은 **남은 두 값의 가시성**이다: 화이트리스트는 커져도
     #  실패가 아니라 기준선 상수로만 마찰을 받고, 차집합은 사람이 처분할 목록이다.

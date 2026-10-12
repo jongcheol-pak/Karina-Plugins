@@ -39,7 +39,7 @@
 환경변수: LLM_WIKI_TODAY(ISO 날짜) — 시간 기반 판정의 「오늘」을 고정한다(_today 참조).
           골든 러너 전용 경로이며 일반 실행에는 설정하지 않는다.
 규칙 진실원천은 references/wiki-schema.md 번들(§2 는 schema-types.md, §4·§7-2·§8 은 schema-budget.md, §7 은 schema-lint.md). 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
-(H-2 규약(references/procedures-ops.md): 예산표(references/wiki-ops-rules.md)·wiki-schema §3 · schema-budget §4·이 파일 3중 동기화).
+(H-2 규약(references/procedures-ops.md): 예산 값은 예산표(references/wiki-ops-rules.md)와 이 파일 둘, 통제어휘는 wiki-schema §3 과 이 파일 둘을 동기화).
 """
 import os, re, sys, glob, shutil, datetime, subprocess, collections
 
@@ -88,7 +88,7 @@ BUDGET_CRITICAL_SLACK = 500
 BUDGET_REJUDGE_MARGIN = 0.10
 BUDGET_SPLIT_VOCAB = {"none"}
 
-BUDGET = {  # type -> 최대 문자 수 (schema-budget.md §4와 일치 유지 — v1.138.0 줄 수→문자 수 전환)
+BUDGET = {  # type -> 최대 문자 수 (references/wiki-ops-rules.md 「파일 예산」 표와 일치 유지 — v1.138.0 줄 수→문자 수 전환)
     #  줄 수는 밀도를 못 담아(한 줄에 500자를 써도 통과) 예산이 무의미했다 → 문자 수로 전환.
     #  단 index.md는 '행 수(등록 항목 개수)'가 본질적 단위라 문자로 못 바꾼다(INDEX_* 별도 경로 유지),
     #  log.md도 이미 문자 수(SPECIAL_BUDGET). 즉 산문 타입만 이 딕셔너리로 문자 수 판정한다.
