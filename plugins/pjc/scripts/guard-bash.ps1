@@ -282,6 +282,52 @@ function Invoke-WarnExternalOps {
     return New-HookResult -Block $false -Stderr @($msg) -Context $msg
 }
 
+# 커밋 제목 읽기 — 근거는 `rules/bash-guard-rationale.md` §14
+#   돌려주는 값: 제목 문자열 · $null(메시지 플래그 없음 — 편집기 커밋) · $false(끝내 못 읽음 — 호출자가 경고).
+#   플래그 위치는 heredoc·here-string 본문을 걷은 명령의 commit 세그먼트에서만 찾고(본문 속 ` -m `·다른 명령의 `-F` 배제),
+#   값은 원문에서 읽는다.
+function Get-CommitTitle([string]$cmd, [string]$baseDir) {
+    $judge = [regex]::Replace((Remove-HeredocBodyForJudge $cmd), '(?s)@([''"])[ \t]*\r?\n.*?\r?\n\1@', { param($m) '@' + $m.Groups[1].Value + ' ' + $m.Groups[1].Value + '@' })
+    $cm = [regex]::Match($judge, 'git\s+((-c|-C)\s+\S+\s+)*commit\b')
+    if (-not $cm.Success) { return $null }
+    $seg = @(Split-TopLevel $judge.Substring($cm.Index) $script:IsPsTool)[0]
+    # 원문에서 commit 여는 줄을 가진 heredoc 본문 · here-string 본문의 첫 줄
+    $hereDocFirst = $null
+    foreach ($hm in [regex]::Matches($cmd, $script:HeredocBlockRx)) {
+        if ($hm.Groups['line'].Value -match 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { $hereDocFirst = @($hm.Groups['body'].Value -split '\r?\n')[0]; break }
+    }
+    $hs = [regex]::Match($cmd, '(?s)@([''"])[ \t]*\r?\n(?<body>.*?)\r?\n\1@')
+    $hereStrFirst = if ($hs.Success) { @($hs.Groups['body'].Value -split '\r?\n')[0] } else { $null }
+
+    $mm = [regex]::Match($seg, '(?i)(?:^|\s)(?:-[a-z]*m|--message)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
+    if ($mm.Success) {
+        if ($mm.Groups[2].Success) { return @($mm.Groups[2].Value -split '\r?\n')[0] }   # 작은따옴표 — 치환 없는 리터럴
+        $val = if ($mm.Groups[1].Success) { $mm.Groups[1].Value } else { $mm.Groups[3].Value }
+        if ($val -match '^\s*\$\(\s*cat\s+<<') { if ($null -ne $hereDocFirst) { return $hereDocFirst } else { return $false } }
+        if ($val -match '^@[''"]') { if ($null -ne $hereStrFirst) { return $hereStrFirst } else { return $false } }
+        if ($val -match '^\$(\{|[A-Za-z_])') { return $false }   # 변수 — 값을 알 수 없다
+        return @($val -split '\r?\n')[0]
+    }
+    $fm = [regex]::Match($seg, '(?:^|\s)(?:-F|--file)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
+    if (-not $fm.Success) { return $null }
+    $path = @($fm.Groups[1], $fm.Groups[2], $fm.Groups[3] | Where-Object { $_.Success })[0].Value
+    if ($path -eq '-') {
+        if ($null -ne $hereDocFirst) { return $hereDocFirst }
+        if ($null -ne $hereStrFirst) { return $hereStrFirst }
+        return $false
+    }
+    # MSYS 경로 변환 — Git Bash 의 /tmp 는 %TEMP%, /c/… 는 C:\…
+    if ($path -match '^/tmp(/.*)?$') { $path = $env:TEMP + ($Matches[1] -replace '/', '\') }
+    elseif ($path -match '^/([A-Za-z])/(.*)$') { $path = $Matches[1] + ':\' + ($Matches[2] -replace '/', '\') }
+    if (-not [System.IO.Path]::IsPathRooted($path)) {
+        $gc = [regex]::Match($seg, 'git\s+(?:-c\s+\S+\s+)*-C\s+("[^"]*"|''[^'']*''|\S+)')
+        if ($gc.Success) { $baseDir = Join-Path $baseDir $gc.Groups[1].Value.Trim('"', "'") }
+        $path = Join-Path $baseDir $path
+    }
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $false }
+    try { return [string](@(Get-Content -LiteralPath $path -TotalCount 1 -Encoding UTF8)[0]) } catch { return $false }
+}
+
 # ---- require-task-checkbox: 'T<N>' 완료 커밋(제목 `{유형}: T<N> — …` 또는 구형 `T<N>: …`)인데 plan의 해당 체크박스가 미완료면 차단(exit 2) ----
 function Invoke-RequireTaskCheckbox {
     param($data)
@@ -290,16 +336,21 @@ function Invoke-RequireTaskCheckbox {
 
     if ($cmd -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
 
+    # 단일 plan 파일 상향 탐색의 시작점 — plan 위치는 루트 plan.md 하나다.
+    $startDir = $null
+    if ($data.cwd) { $startDir = $data.cwd }
+    elseif ($env:CLAUDE_PROJECT_DIR) { $startDir = $env:CLAUDE_PROJECT_DIR }
+    else { $startDir = (Get-Location).Path }
+
     # 완료 커밋 제목 판정 — 근거는 `rules/bash-guard-rationale.md` §14
-    $msgMatch = [regex]::Match($cmd, '(?i)(?:^|\s)(?:-[a-z]*m|--message)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
-    if (-not $msgMatch.Success) { return New-HookResult }
-    $msgVal = if ($msgMatch.Groups[1].Success) { $msgMatch.Groups[1].Value }
-              elseif ($msgMatch.Groups[2].Success) { $msgMatch.Groups[2].Value }
-              else { $msgMatch.Groups[3].Value }
-    $msgLines = @($msgVal -split '\r?\n')
-    $msgTitle = $msgLines[0]
-    # heredoc 여는 줄은 제목이 아니다 — 근거는 「§14 완료 커밋 제목 판정」
-    if ($msgTitle -match '^\s*\$\(\s*cat\s+<<-?\s*["'']?\w+["'']?\s*$' -and $msgLines.Count -gt 1) { $msgTitle = $msgLines[1] }
+    $msgTitle = Get-CommitTitle $cmd $startDir
+    if ($null -eq $msgTitle) { return New-HookResult }
+    if ($msgTitle -is [bool]) {
+        # 끝내 못 읽음 — 막지 않고, plan 이 있을 때만 알린다(QUICK 이면 검사 전체를 건너뛴다)
+        if ($env:CLAUDE_HARNESS_QUICK -eq '1' -or -not (Find-SinglePlanUpwards -StartDir $startDir)) { return New-HookResult }
+        $w = '[HARNESS] 커밋 제목을 읽지 못해 task 체크박스 검사를 건너뜁니다 — heredoc -m 을 쓰세요(변수 -m · 본문 없는 -F - · 없는 -F 파일).'
+        return New-HookResult -Stderr @($w) -Context $w
+    }
     $m = [regex]::Match($msgTitle, '^\s*(?:(?:기능|수정|리팩토링|문서|설정)\s*:\s*)?T(\d+)\s*(?::|—|-)')
     if (-not $m.Success) { return New-HookResult }
     $taskNum = $m.Groups[1].Value
@@ -307,12 +358,6 @@ function Invoke-RequireTaskCheckbox {
     if ($env:CLAUDE_HARNESS_QUICK -eq '1') {
         return New-HookResult -Block $false -Stderr @("[HARNESS] QUICK 모드: T$taskNum 체크박스 검사 우회")
     }
-
-    # 단일 plan 파일 상향 탐색 — plan 위치는 루트 plan.md 하나다.
-    $startDir = $null
-    if ($data.cwd) { $startDir = $data.cwd }
-    elseif ($env:CLAUDE_PROJECT_DIR) { $startDir = $env:CLAUDE_PROJECT_DIR }
-    else { $startDir = (Get-Location).Path }
 
     $planFile = Find-SinglePlanUpwards -StartDir $startDir
     if (-not $planFile) { return New-HookResult }

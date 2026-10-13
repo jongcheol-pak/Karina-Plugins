@@ -123,6 +123,59 @@ Assert-Case -Name "rtc: 볼드 하위 항목 전부 [x] → 신형 제목 통과
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcBold '설정: v1.258.0 — 회차 44: T3 정리')
 Assert-Case -Name "rtc: 유형 뒤가 T<N> 이 아닌 제목은 판정 제외 (회차 44 T4 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+# ---- [대장 2026-10-08] 커밋 제목을 -m 밖에서 읽기(RF) — -F 파일·-F - heredoc/here-string·PowerShell 여러 줄 -m ----
+#   제목을 끝내 못 읽으면 차단하지 않고 plan 이 있을 때만 경고한다. 모든 케이스가 cwd 를 픽스처 폴더로 준다
+#   (빼면 러너 레포의 실제 plan.md 를 읽는다). 근거는 `rules/bash-guard-rationale.md` §14.
+$rfJ = { param($cwd, $cmd, $tool = 'Bash') (@{ tool_name = $tool; cwd = $cwd; tool_input = @{ command = $cmd } } | ConvertTo-Json -Compress) }
+$rfUn = Join-Path $work 'rf-unchecked'; New-Item -ItemType Directory $rfUn -Force | Out-Null
+"# plan`n- [ ] T3. 검색 기능" | Set-Content (Join-Path $rfUn 'plan.md')
+"T3: 검색 요약`n`n본문" | Set-Content (Join-Path $rfUn 'msg.txt')
+"정리: 문서`n`nT3: 본문에만" | Set-Content (Join-Path $rfUn 'msg2.txt')
+$rfOk = Join-Path $work 'rf-checked'; New-Item -ItemType Directory $rfOk -Force | Out-Null
+"# plan`n- [x] T3. 검색 기능" | Set-Content (Join-Path $rfOk 'plan.md')
+"T3: 검색 요약" | Set-Content (Join-Path $rfOk 'msg.txt')
+$rfNoPlan = Join-Path $work 'rf-noplan'; New-Item -ItemType Directory $rfNoPlan -Force | Out-Null
+$rfTmpName = 'pjc-rf-msg-' + [guid]::NewGuid().ToString('N') + '.txt'
+"T3: 검색 요약" | Set-Content (Join-Path $env:TEMP $rfTmpName)
+$rfBlock = '완료 커밋인데 plan의 T'
+$rfWarn = '제목을 읽지 못해'
+
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'git commit -F msg.txt')
+Assert-Case -Name "rf: -F 파일 첫 줄 T3 + 미완료 → 차단 (RF1)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn "git commit -F - <<'MSG'`nT3: 검색 요약`n`n본문`nMSG")
+Assert-Case -Name "rf: -F - heredoc 본문 첫 줄 T3 + 미완료 → 차단 (RF2)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn "@'`nT3: 검색 요약`n본문`n'@ | git commit -F -" 'PowerShell')
+Assert-Case -Name "rf: PowerShell here-string | -F - 첫 줄 T3 + 미완료 → 차단 (RF3)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn "git commit -m '기능: T3 — 검색 요약`n`n본문'" 'PowerShell')
+Assert-Case -Name "rf: PowerShell 여러 줄 작은따옴표 -m 첫 줄 T3 + 미완료 → 차단 (RF4 무회귀)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn "git commit -m @'`nT3: 검색 요약`n본문`n'@" 'PowerShell')
+Assert-Case -Name "rf: PowerShell -m @' here-string 다음 줄 T3 + 미완료 → 차단 (RF5)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfOk 'git commit -F msg.txt')
+Assert-Case -Name "rf: -F 파일 T3 + 완료 [x] → 통과(무출력) (RF6)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn "git commit -F - <<'MSG'`n정리: 문서`nT3: 둘째 줄`nMSG")
+Assert-Case -Name "rf: -F - 본문 첫 줄이 T 아님(둘째 줄 T3) → 통과(무출력) (RF7 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'git commit -F msg2.txt')
+Assert-Case -Name "rf: -F 파일 첫 줄이 T 아님 → 통과(무출력) (RF8 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'git commit -m $msg')
+Assert-Case -Name "rf: 변수 -m + plan 있음 → 경고·통과 (RF9)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'git commit -F missing.txt')
+Assert-Case -Name "rf: 없는 -F 파일 + plan 있음 → 경고·통과 (RF10)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('git commit -F /tmp/' + $rfTmpName))
+Assert-Case -Name "rf: -F /tmp/… 를 TEMP 로 변환해 첫 줄 T3 + 미완료 → 차단 (RF11)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn "git commit -F - <<'MSG'`nT3: 검색 요약`n`n변수 -m 이면 경고`nMSG")
+Assert-Case -Name "rf: -F - 본문 속 ' -m ' 을 -m 으로 오인하지 않는다 → 차단 (RF12)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'grep -F x msg.txt; git commit -a')
+Assert-Case -Name "rf: 다른 명령의 -F 는 커밋 파일이 아니다 → 통과(무출력) (RF13 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'printf x | git commit -F -')
+Assert-Case -Name "rf: -F - 인데 같은 명령에 본문 없음 + plan 있음 → 경고·통과 (RF14)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfNoPlan 'git commit -m $msg')
+Assert-Case -Name "rf: 변수 -m + plan 없음 → 통과(무출력) (RF15)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn "git commit -m '`$5 수정'")
+Assert-Case -Name "rf: 작은따옴표 리터럴 '`$5…' 는 변수가 아니다 → 통과(무출력) (RF16)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn "@'`nT3: 검색 요약`n`n변수 -m 이면 경고`n'@ | git commit -F -" 'PowerShell')
+Assert-Case -Name "rf: here-string 본문 속 ' -m ' 을 -m 으로 오인하지 않는다 → 차단 (RF17)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+Remove-Item -LiteralPath (Join-Path $env:TEMP $rfTmpName) -ErrorAction SilentlyContinue
+
 # QUICK 우회 — 별도 stderr 안내 출력이 있는 독립 분기 (silent 아님, exit 0)
 $env:CLAUDE_HARNESS_QUICK = '1'
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
