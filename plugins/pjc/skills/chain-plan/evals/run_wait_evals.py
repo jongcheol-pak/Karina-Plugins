@@ -87,7 +87,7 @@ def message_first_check():
     cli = FakeCli([msg_batch()])
     out = run(cli)
     assert first(out).startswith('RESULT: message — '), out
-    assert any('dlv_1' in l for l in out), '원문 배치가 실려야 한다'
+    assert any('dlv_1' in l for l in out), '배치가 실려야 한다'
     assert '사후 완료' in first(out), '사후 완료 status 도 대기를 다시 띄우지 않는 예외임을 지시에 담아야 한다'
 
 
@@ -650,7 +650,7 @@ def place_superseded_when_lock_lost():
 def place_message_passthrough():
     out = place(FakeCli([msg_batch()]))
     assert first(out).startswith('RESULT: message — ') and '--place' in first(out), out
-    assert any('dlv_1' in l for l in out), '원문 배치가 실려야 한다'
+    assert any('dlv_1' in l for l in out), '배치가 실려야 한다'
 
 
 @case
@@ -762,6 +762,35 @@ def unreadable_state_not_reseeded():
             assert f.read() == '{"sha":', '읽지 못한 상태를 HEAD 로 덮어쓰지 않는다'
     finally:
         shutil.rmtree(d)
+
+
+@case
+def message_batch_compacted():
+    # RESULT 는 배치를 다시 쓴다 — 빈 값의 키만 빼고 나머지 키는 남기며, subject·body 밖의 긴 문자열만 자른다.
+    batch = json.dumps({'ok': True, 'count': 1, 'deliveryId': 'dlv_1', 'cursor': None,
+                        'messages': [{'id': 'msg_1', 'type': 'worker_done', 'subject': 'S' * 300,
+                                      'body': 'B' * 1000, 'extra': 'x' * 1000, 'gone': None,
+                                      'empty': [], 'blank': ''}]})
+    out = run(FakeCli([batch]))
+    assert first(out).startswith('RESULT: message — '), out
+    assert len(out) == 2 and ': ' not in out[1] and ', ' not in out[1], '공백 없는 JSON 한 줄이어야 한다'
+    data = json.loads(out[1])
+    m = data['messages'][0]
+    assert m['body'] == 'B' * 1000 and m['subject'] == 'S' * 300, 'subject·body 는 자르지 않는다'
+    assert m['extra'] == 'x' * 200 + '…(800자 생략)', m['extra'][-30:]
+    assert not {'gone', 'empty', 'blank'} & set(m) and 'cursor' not in data, '빈 값의 키는 뺀다'
+    assert {'id', 'type', 'subject', 'body', 'extra'} <= set(m), '값이 있는 키는 이름째 남는다'
+    assert data['deliveryId'] == 'dlv_1', 'ack 에 쓸 deliveryId 를 잃으면 안 된다'
+
+
+@case
+def freed_rows_compacted():
+    row = dict(place_row('stopped', 'active'), workingDir='D:\\' + 'w' * 300, note=None)
+    out = place(FakeCli([EMPTY], [workers(row)]))
+    assert first(out).startswith('RESULT: freed — '), out
+    rows = json.loads(out[1])
+    assert rows[0]['workingDir'] == 'D:\\' + 'w' * 197 + '…(103자 생략)', rows[0]['workingDir'][-30:]
+    assert 'note' not in rows[0] and rows[0]['dispatchId'] == 'disp_o', rows[0]
 
 
 @case

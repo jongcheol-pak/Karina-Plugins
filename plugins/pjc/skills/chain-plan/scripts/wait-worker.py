@@ -4,13 +4,14 @@
 (2026-10-04 실측 — 체인 1회 폴링에 53~68턴 · 21~32M 토큰). 이 스크립트가 그 반복과 멈춤 판정을 맡고,
 코디네이터는 출력 첫 줄의 지시만 따른다.
 
-출력 — 첫 줄 `RESULT: <갈래> — <다음 행동>`, 이어 원문:
-- message    `check` 가 배치를 돌려줬다(원문 JSON). ack 는 하지 않는다 — 코디네이터가 처리한 뒤 한다.
+출력 — 첫 줄 `RESULT: <갈래> — <다음 행동>`, 이어 본문:
+- message    `check` 가 배치를 돌려줬다(빈 값의 키를 빼고 subject·body 밖의 긴 값을 자른 JSON 한 줄).
+             ack 는 하지 않는다 — 코디네이터가 처리한 뒤 한다.
 - stall      같은 화면이 체크포인트마다 `--stall` 장 이어졌다 — 첫 화면이 1장이다(화면 끝 40줄).
 - error      CLI 실행 실패 · JSON 아님 · `ok: false`(원문).
 - superseded 같은 dispatch 의 새 대기가 잠금을 가져갔다. 받은 배치는 싣지 않는다 —
              Karina `check` 는 ack 전까지 같은 배치를 다시 주므로 새 대기가 받는다.
-- freed      (`--place` 만) 지켜보던 다른 세션 워커가 자리를 놓았다(그 dispatch 행 원문).
+- freed      (`--place` 만) 지켜보던 다른 세션 워커가 자리를 놓았다(그 dispatch 행 — message 와 같은 축약).
 
 진행 줄(`--repo` 를 줬을 때만): 워커가 끝낸 task 마다 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작` 한 줄.
 따로 깨우지 않고 message·stall·error 원문 앞에 싣는다 — task 마다 깨우면 코디네이터가 그때마다 큰 컨텍스트를
@@ -53,6 +54,9 @@ import time
 
 STALL_TAIL = 40
 RAW_LIMIT = 4000
+RESULT_CAP = RAW_LIMIT * 4   # message 배치를 다시 쓴 뒤의 안전 상한
+COMPACT_STR_LIMIT = 200      # subject·body 밖의 문자열 값은 여기까지만 싣는다
+COMPACT_KEEP = ('subject', 'body')
 WAIT_FILE_PREFIX = 'pjc-chain-wait-'
 SWEEP_AGE_SEC = 7 * 24 * 3600
 
@@ -84,6 +88,22 @@ def _action(kind, dispatch, streak=0, on_place=False):
 
 def _result(kind, dispatch, body=(), **kw):
     return ['RESULT: %s — %s' % (kind, _action(kind, dispatch, **kw))] + list(body)
+
+
+def _compact_value(v, key=None):
+    if isinstance(v, dict):
+        return {k: _compact_value(x, k) for k, x in v.items() if x not in (None, '', [], {})}
+    if isinstance(v, list):
+        return [_compact_value(x) for x in v]
+    if isinstance(v, str) and key not in COMPACT_KEEP and len(v) > COMPACT_STR_LIMIT:
+        return v[:COMPACT_STR_LIMIT] + '…(%d자 생략)' % (len(v) - COMPACT_STR_LIMIT)
+    return v
+
+
+def _compact(obj):
+    """코디네이터가 읽는 배치·행 — 값이 있는 키는 이름째 남기고(worker_done 결과 키 이름을 확인하지 못했다),
+    빈 값의 키는 빼고, subject·body 밖의 긴 문자열만 자른다. 공백 없는 JSON 한 줄이다."""
+    return json.dumps(_compact_value(obj), ensure_ascii=False, separators=(',', ':'))
 
 
 def _parse(raw):
@@ -130,7 +150,7 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
         if err is not None:
             return emit('error', [err], lines_done)
         if data.get('count', 0) > 0:
-            return emit('message', [raw[:RAW_LIMIT * 4]], lines_done)
+            return emit('message', [_compact(data)[:RESULT_CAP]], lines_done)
         if not lines_done and progress is not None:
             # 줄 없는 갱신(HEAD 시드·무효 기준 복구·비 task 커밋만 지난 sha 전진)은 이 주기에 저장한다 —
             # 미루면 첫 출력 때 그 사이 task 커밋이 기준 뒤로 묻힌다.
@@ -183,7 +203,7 @@ def place_loop(call, lock, place, poll_ms):
         if err is not None:
             return _result('error', place, [err])
         if data.get('count', 0) > 0:
-            return _result('message', place, [raw[:RAW_LIMIT * 4]], on_place=True)
+            return _result('message', place, [_compact(data)[:RESULT_CAP]], on_place=True)
 
         try:
             raw = call(['worker-list', '--json'])
@@ -196,7 +216,7 @@ def place_loop(call, lock, place, poll_ms):
             return _result('error', place, [err])
         rows = [r for r in data.get('workers') or [] if r.get('dispatchId') == place]
         if not any(holds_place(r) for r in rows):
-            return _result('freed', place, [json.dumps(rows, ensure_ascii=False)[:RAW_LIMIT]])
+            return _result('freed', place, [_compact(rows)[:RAW_LIMIT]])
 
 
 class FileLock:
