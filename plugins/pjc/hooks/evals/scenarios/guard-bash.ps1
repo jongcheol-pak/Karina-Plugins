@@ -284,6 +284,30 @@ Assert-Case -Name "bpw: Copy-Item 의 대상이 plan.md 면 차단 (ST8)" -R $r 
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "pwsh -c ""[System.IO.File]::WriteAllText('plan.md','x')""")
 Assert-Case -Name "bpw: [System.IO.File]::WriteAllText 의 첫 인자가 plan.md 면 차단 (ST9)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
 
+# ---- 데이터 싱크 heredoc 본문(HD) — 오탐 수정 + 차단 유지 짝 ----
+#   cat·tee 가 .txt 같은 데이터 파일로 쓰는 heredoc 본문 속 `> plan.md` 는 실행되지 않는 문자열이다.
+#   ⓑ 리다이렉션 검사만 그 본문을 걷은 명령을 보고, ⓐ open(w)·[System.IO.File] 와 실행 가능 스크립트 대상은
+#   그대로 막는다(차단 범위 불변). 근거는 `rules/bash-guard-rationale.md` §16.
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > a.txt <<'EOF'`necho x > plan.md`nEOF")
+Assert-Case -Name "hd: cat > a.txt 데이터 싱크 본문의 > plan.md 는 통과 (HD1 오탐 수정)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "mkdir -p d && cat > d/a.txt <<'EOF'`necho x > plan.md`nEOF")
+Assert-Case -Name "hd: 앞에 명령이 붙은 데이터 싱크(mkdir && cat >) 본문도 통과 (HD2 오탐 수정)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "tee a.txt <<'EOF'`necho x > plan.md`nEOF")
+Assert-Case -Name "hd: tee 데이터 싱크 본문의 > plan.md 는 통과 (HD3 오탐 수정)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > plan.md <<'EOF'`nx`nEOF")
+Assert-Case -Name "hd: cat > plan.md 는 여는 줄이 남아 차단 (HD4 차단 유지)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'EOF'`nopen('plan.md','w').write('x')`nEOF")
+Assert-Case -Name "hd: 실행 heredoc 본문의 open(plan.md,w) 는 차단 (HD5 차단 유지)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > w.py <<'EOF'`nopen('plan.md','w').write('x')`nEOF`npython w.py")
+Assert-Case -Name "hd: 파일로 쓰고 실행 — 싱크 본문의 open(plan.md,w) 는 원문 검사가 막는다 (HD6 차단 유지)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > run.sh <<'EOF'`necho x > plan.md`nEOF")
+Assert-Case -Name "hd: 실행 가능 스크립트(.sh) 싱크 본문의 > plan.md 는 차단 (HD7 차단 유지)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+# HD8·HD9: 대상 인자 뒤에 리다이렉션 토큰이 붙어도 마지막 실효 인자를 본다(2026-10-13 실해 — 미탐 보완).
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i 's/a/b/' plan.md 2>&1 | head -2")
+Assert-Case -Name "bpw: sed -i … plan.md 2>&1 도 차단 (HD8 미탐 보완)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "grep -n x plan.md 2>&1 | head")
+Assert-Case -Name "bpw: grep … plan.md 2>&1 읽기는 통과 (HD9 델타 음성)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
+
 # ST10 (짝 안 맞는 따옴표 — 미탐 쪽 못박기): 여는 따옴표가 닫히지 않으면 그 뒤 전부가 한
 #   세그먼트로 남고, **첫 실효 토큰으로 판정하는 동사 신호**(ⓒsed -i·ⓔcp/mv·ⓓSet-Content)는
 #   그 세그먼트의 첫 토큰이 `echo` 라 발화하지 않는다. ⚠ **block-plan-write 는 차단 게이트이므로

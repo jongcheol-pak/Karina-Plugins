@@ -25,7 +25,13 @@ function Remove-HeredocDataSink([string]$s) {
     return [regex]::Replace($s, $script:HeredocBlockRx, {
         param($m)
         $line = $m.Groups['line'].Value
-        $isDataSink = ($line -match '(?i)^\s*cat\b' -and $line -match '>\s*\S') -or ($line -match '(?i)^\s*tee\b')
+        # 싱크 판정은 여는 줄의 마지막 최상위 세그먼트로 한다 — `mkdir … && cat > f <<EOF` 도 싱크다.
+        #   실행될 수 있는 스크립트(.sh·.py 등)로 쓰는 본문은 데이터가 아니라 걷지 않는다 — 근거는 `rules/bash-guard-rationale.md` §16
+        $last = @(Split-TopLevel $line $script:IsPsTool)[-1]
+        $target = $null
+        if ($last -match '(?i)^\s*cat\b.*>\s*(\S+)') { $target = $Matches[1] }
+        elseif ($last -match '(?i)^\s*tee\b(?:\s+-\S+)*\s+(\S+)') { $target = $Matches[1] }
+        $isDataSink = $target -and ($target.Trim('"', "'") -notmatch '(?i)\.(sh|bash|py|ps1|psm1|js|rb|pl|cmd|bat)$')
         if ($isDataSink) { $line } else { $m.Value }
     })
 }
@@ -183,7 +189,10 @@ function Invoke-BlockPlanWrite {
     foreach ($m in [regex]::Matches($cmd, '(?i)\bopen\s*\(\s*([^,()]+?)\s*,\s*[''"]([rwaxb+]+)[''"]')) {
         if ($m.Groups[2].Value -match '[wa]' -and (Test-PlanTarget $m.Groups[1].Value)) { $hits.Add('open(w)') }
     }
-    foreach ($m in [regex]::Matches($cmd, '>>?\s*(\S+)')) {
+    # ⓑ 는 데이터 싱크 heredoc 본문을 걷은 명령을 본다 — 본문 속 `> plan.md` 는 실행되지 않는 문자열이다.
+    #   ⓐ·[System.IO.File] 는 원문을 본다 — 싱크 본문의 open(w) 는 뒤에 실행될 수 있어 걷으면 차단 범위가 준다(§16).
+    $stripped = Remove-HeredocDataSink $cmd
+    foreach ($m in [regex]::Matches($stripped, '>>?\s*(\S+)')) {
         if (Test-PlanTarget $m.Groups[1].Value) { $hits.Add('>') }
     }
     foreach ($m in [regex]::Matches($cmd, '(?i)\[System\.IO\.File\]::(WriteAll\w+|AppendAllText)\s*\(\s*([^,()]+)')) {
@@ -191,11 +200,12 @@ function Invoke-BlockPlanWrite {
     }
     # ⓒⓓⓔⓕ 쓰기 동사는 **세그먼트의 첫 실효 토큰일 때만** 본다 — 어디에 있든 찾으면
     #   `grep -n 'Copy-Item' plan.md` 같은 조회가 막힌다(완료 리뷰 BLOCKER).
-    foreach ($seg in Split-TopLevel (Remove-HeredocDataSink $cmd) $script:IsPsTool) {
+    foreach ($seg in Split-TopLevel $stripped $script:IsPsTool) {
         $tk = Get-EffectiveTokens $seg
         if ($tk.Count -eq 0) { continue }
         $verb = ($tk[0] -replace '^.*[\\/]', '') -replace '(?i)\.exe$', ''
-        $rest = if ($tk.Count -gt 1) { @($tk[1..($tk.Count - 1)]) } else { @() }
+        # 리다이렉션 토큰은 인자가 아니다 — `2>&1` 의 & 에서 세그먼트가 갈려 `2>` 가 마지막 토큰이 된다
+        $rest = if ($tk.Count -gt 1) { @($tk[1..($tk.Count - 1)] | Where-Object { $_ -notmatch '^\d*[<>]' }) } else { @() }
         if ($verb -match '^(?i)(cp|mv|copy-item|move-item|rename-item)$') {
             if (Test-PlanTarget (@($rest) | Select-Object -Last 1)) { $hits.Add('cp/mv') }
         } elseif ($verb -match '^(?i)sed$') {
