@@ -13,6 +13,18 @@
     ]
   },
   {
+    "id": "harness-record-doc-excluded",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "2026-01-01-old-plan"
+    ]
+  },
+  {
     "id": "pointer-dead-section",
     "checker": "harness",
     "fixture": "minimal-repo",

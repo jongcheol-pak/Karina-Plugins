@@ -109,8 +109,22 @@ def _md_files():
 # ⚠ **배제 문자를 늘리거나 절 이름 상한을 내리지 말 것** — 둘 다 무음 누락을 낸 전례가 있다.
 #   사유는 같은 문서의 「축 ① — 정규식을 좁히면 침묵한다」.
 _POINTER_RX = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,120})」")
-# 대장 2종 파일 단위 면제 — 근거는 `harness-consistency-rationale.md` §5
+# 제외 정책 — 「고칠 수 없는 기록 문서」 술어 하나와 축 전용 셋. 근거는 `harness-consistency-rationale.md` §6
+#   기록 문서(이력 plan·아카이브·로컬 전용)는 세 사용처(포인터 출처·문서 표기 축·폐기 식별자)가 같은 술어를 쓴다.
+_ARCHIVED_RX = re.compile(r"^docs/(plans/\d{4}-\d{2}-\d{2}-|\.agents-presplit/)")
+_LOCAL_ONLY = {"plan.md", "notes.md"}
+
+
+def _is_record_doc(rel):
+    """그 시점의 기록이라 갱신 대상이 아닌 문서인가 — 과거 plan·문서 아카이브·로컬 노트."""
+    return bool(_ARCHIVED_RX.match(rel)) or rel in _LOCAL_ONLY
+
+
+# 축 전용 셋은 술어에 합치지 않는다(§6) — 대장 2종 파일 단위 면제는 축 ① 만의 것이다(§5).
 _POINTER_EXEMPT_SRC = {"docs/plans/deferred-closed.md", "docs/plans/deferred.md"}
+# `--fix` 가 절대 건드리지 않는 파일 — `plan.md` 는 gitignore 라 복구 경로가 없다(글로벌 지침
+#  「범위 확인」). 대상에 없어도 이름으로 막아 둔다. 나머지 대상은 git tracked 라 백업을 두지 않는다.
+FIX_FORBIDDEN = ("plan.md", "notes.md")
 
 
 def _pointer_sources():
@@ -121,9 +135,9 @@ def _pointer_sources():
     for src in list(_md_files()) + sorted(glob.glob(os.path.join(ROOT, "plugins/pjc/scripts/*.ps1"))):
         rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
         # 과거 plan·로컬 노트·문서 아카이브는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
-        # 판정을 `_ARCHIVED_RX`·`_LOCAL_ONLY`와 공유한다 — 따로 두면 한쪽만 낡는다.
+        # 판정을 `_is_record_doc` 와 공유한다 — 따로 두면 한쪽만 낡는다.
         # `intent/` 는 승인 시점의 기록이라 고칠 대상이 아니다 — 근거는 `harness-consistency-rationale.md` §7
-        if not (_ARCHIVED_RX.match(rel_src) or rel_src in _LOCAL_ONLY or rel_src.startswith("intent/")):
+        if not (_is_record_doc(rel_src) or rel_src.startswith("intent/")):
             out.append((src, rel_src))
     return out
 
@@ -517,9 +531,7 @@ def check_batch_number_sequence(hist):
 # ─────────────────────────────────────────────────────────────
 # ③ 볼드 마커 짝 · ④ 한 줄 안 문장 중복 (문서 표기 결함)
 # ─────────────────────────────────────────────────────────────
-# 제외 정책(픽스처·이력 plan·아카이브·로컬 전용) — 근거는 `harness-consistency-rationale.md` §6
-_ARCHIVED_RX = re.compile(r"^docs/(plans/\d{4}-\d{2}-\d{2}-|\.agents-presplit/)")
-_LOCAL_ONLY = {"plan.md", "notes.md"}
+# 제외 정책(픽스처 + 기록 문서 `_is_record_doc`) — 근거는 `harness-consistency-rationale.md` §6
 # `## §2 ---- 릴리즈 누락 감지` 처럼 rationale 문서의 헤딩에 기계가 붙인 접두. 참조 쪽은
 #   절 이름만 적으므로(`위 「릴리즈 누락 감지」`) 이것을 벗긴 형태도 앵커로 등록해야
 #   정당한 참조가 끊김으로 잡히지 않는다. 축 ① `anchors_of` 가 쓴다.
@@ -531,7 +543,7 @@ def _scan_scope():
     """문서 표기 축의 대상을 `(경로, 레포 상대경로)`로 낸다 (위 제외 정책 적용)."""
     for path in _md_files():
         rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
-        if "/fixtures/" in rel or _ARCHIVED_RX.match(rel) or rel in _LOCAL_ONLY:
+        if "/fixtures/" in rel or _is_record_doc(rel):
             continue
         yield path, rel
 
@@ -1397,7 +1409,7 @@ def _deprecated_targets():
                 continue
             path = os.path.join(base, n)
             rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
-            if (_ARCHIVED_RX.match(rel) or rel in _LOCAL_ONLY or rel in _DEPRECATED_SKIP_RELS
+            if (_is_record_doc(rel) or rel in _DEPRECATED_SKIP_RELS
                     or rel in _DEPRECATED_SKIP_RELS_EXTRA):
                 continue
             yield path, rel
@@ -1809,10 +1821,6 @@ def check_count_and_version(conv):
                       "두 곳을 함께 올린다" % (plugin_v, readme_m.group(1)))
     return issues, n, notices
 
-
-# `--fix` 가 절대 건드리지 않는 파일 — `plan.md` 는 gitignore 라 복구 경로가 없다(글로벌 지침
-#  「범위 확인」). 대상에 없어도 이름으로 막아 둔다. 나머지 대상은 git tracked 라 백업을 두지 않는다.
-FIX_FORBIDDEN = ("plan.md", "notes.md")
 
 
 def _conv_table_edits():
