@@ -32,7 +32,7 @@ DB 변경: <금지 | 승인 목록: DB·테이블·연산·조건 — 목록 밖
 
 진행:
 1. pjc:plan 을 Skill 도구로 부르되 args 첫 줄에 [chain-plan 중계] 를 두고 위 실측 기준·판정 원칙·원문·재진술·실측 요지를 그대로 싣는다. 승인되면 pjc:implement 를 Skill 도구로 불러 마지막 task 까지 간다.
-2. 질문·승인은 이 배정문 끝의 ask 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 --timeout-ms 540000 과 2>/dev/null 을 더해 Bash 도구 timeout 600000 으로 보낸다(만료되면 ask --resume <questionId>). 돌아오는 답은 코디네이터가 사용자의 답을 글자 그대로 옮긴 것이거나 체인 승인 위임 답(Y (체인 승인 위임 — …))이거나 코디네이터 판정 답(… (코디네이터 판정 — …))이라, 셋 다 사용자 응답·승인으로 본다. 워커 화면에는 묻지 않는다(AskUserQuestion 금지).
+2. 질문·승인은 이 배정문 끝의 ask 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 --timeout-ms 86400000 과 2>/dev/null 을 더해 Bash 도구 run_in_background: true 로 보내고 turn 을 끝낸다 — 완료 알림이 오면 출력 파일을 Read 하고, answered:true 가 아니면 relay-edge-cases.md「ask 만료」 를 따른다(포그라운드는 Bash 10분 상한 때문에 기다리는 동안 9분마다 turn 이 돈다). 돌아오는 답은 코디네이터가 사용자의 답을 글자 그대로 옮긴 것이거나 체인 승인 위임 답(Y (체인 승인 위임 — …))이거나 코디네이터 판정 답(… (코디네이터 판정 — …))이라, 셋 다 사용자 응답·승인으로 본다. 워커 화면에는 묻지 않는다(AskUserQuestion 금지).
 3. 보고는 이 배정문 끝의 worker_done 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 아래 --body 를 더한 것이다. 최종 보고 텍스트를 내기 전, 같은 turn 에서 보낸다. 멈추면 --outcome failed 에 --body 로 사유·남은 task·환경 마찰을 싣는다.
    --body "$(cat <<'BODY'
    결과: <1줄>
