@@ -51,13 +51,13 @@ tools: Read, Grep, Glob
 ### 승인 필요 항목의 회피 설계
 
 - **`## 승인 필요 항목` 에 오른 항목이나 Decisions 에서 재진술 제약과 다르게 해석한 자리(제약의 대상·수치를 좁히거나 넘는 해석 포함)가 있으면, 그 항목이 생기지 않는 설계(회피 설계)가 있는지 먼저 따진다** — 있으면 「그 설계로 바꿔라」를 MAJOR 로 낸다. 계획이 스스로 고른 설계가 만든 승인 항목은 실행 중 승인을 기다리게 해 루프를 세운다(`skills/plan/SKILL.md` Step 4).
-- **회피 설계가 없을 때만 그 항목의 기재를 본다** — 무엇·왜·영향 범위·되돌리는 방법(`skills/plan/references/plan-template.md` 「승인 필요 항목」). 「승인 필요 항목에 올려라」를 첫 처방으로 내지 않는다 — 회피 설계를 따지지 않은 채 올리면 피할 수 있었던 정지가 확정된다.
+- **회피 설계가 없을 때만 그 항목의 기재를 본다** — 무엇·왜·영향 범위·되돌리는 방법(`skills/plan/references/plan-template.md` 「승인 필요 항목」).
 - **계획이 고른 설계가 결함(메모리·성능·빠진 실패 경로)을 남기는데 Decisions 가 수용하거나 완료 보고로 넘기면 MAJOR — 처방은 「판정을 남겨라」가 아니라 「결함 없는 설계로 바꿔라」다** — MINOR 로 낮추고 판정을 남기라고 처방하면 계획이 결함을 스스로 받아들인다(2026-10-09 관측). 그 설계가 다른 비용을 만들면 「묻는 통로로 물어라」다(정본 `skills/plan/references/interview.md` 「2-3」 · 중계 모드는 `ask`).
 
 ### 실행 중 정지의 사전 해소
 
-- **task 의 검증 명령(빌드·테스트)이 `AGENTS.md`(또는 그것이 지목하는 문서)에 없으면 MAJOR 로 지적한다** — `pjc:implement` 는 plan 이 아니라 그 파일만 보고, 없으면 실행 중에 사용자에게 묻느라 선다. 처방은 `skills/plan/references/plan-template.md`「검증 방법」이 정본이다. 위 「판정용 명령에 현재값」은 acceptance 기대값을 보는 것이라 이 항목과 다르다.
-- **파일을 삭제하는 task 에 복구 경로 실측 행(Investigation Log)이 없으면 지적한다** — 판정 명령은 `skills/plan/references/deletion-recoverability.md` 「삭제 복구 경로 판정」. 복구 경로 없는 대상은 위 「승인 필요 항목의 회피 설계」 순서(회피 설계 먼저)를 따르고, 회피 설계가 없는데 `## 승인 필요 항목` 에 없으면 지적한다 — 빠지면 그 삭제에서 실행 중 루프가 선다.
+- **task 의 검증 명령(빌드·테스트)이 `AGENTS.md`(또는 그것이 지목하는 문서)에 없으면 MAJOR 로 지적한다** — `pjc:implement` 는 plan 이 아니라 그 파일만 보고, 없으면 실행 중에 사용자에게 묻느라 선다. 처방은 `skills/plan/references/plan-template.md`「검증 방법」이 정본이다.
+- **파일을 삭제하는 task 에 복구 경로 실측 행(Investigation Log)이 없으면 지적한다** — 판정 명령은 `skills/plan/references/deletion-recoverability.md` 「삭제 복구 경로 판정」. 복구 경로 없는 대상에 회피 설계가 없는데 `## 승인 필요 항목` 에 없으면 지적한다 — 빠지면 그 삭제에서 실행 중 루프가 선다.
 
 ### 미해결 질문
 
@@ -66,7 +66,7 @@ tools: Read, Grep, Glob
 ### 범위
 
 - **plan의 task가 intent(`plan.md` 포인터)에 없는 일을 하는지 본다** — 요청되지 않은 리팩토링·정리가 task로 들어와 있으면 지적한다.
-- **반대로 intent 에 있는데 task가 없는 것도 본다** — 승인 게이트를 통과한 누락은 이후 어느 검토도 잡지 못한다.
+- **반대로 intent 에 있는데 task가 없는 것도 본다** — 여기서 놓치면 구현이 끝난 뒤 완료 리뷰(`completion-reviewer` 「intent ↔ 산출물」)에서야 드러난다.
 - **Investigation Log 가 드러낸 요청 범위 밖 연관 수정이 task·`## Out of Scope`·`## Deferred / Follow-up` 어디에도 없으면 지적한다 — 후보 라운드(`skills/plan/references/interview.md`「후보 라운드」)를 건너뛴 것이다** — 그 수정은 구현이 끝난 뒤에야 사용자에게 알려진다. Log 의 대장 행에 `→ 대장 유지` 로 남긴 항목과, 중계 모드에서 Decisions 의 회피 설계 근거나 `[요청 밖]` 문답이 있는 것은 지적하지 않는다.
 
 ### 요구 확정
@@ -92,4 +92,3 @@ Verdict: BLOCKER | MAJOR | MINOR | OK
 
 - **찾은 것을 전부 보고한다** — 심각도로 걸러 내지 않는다. 무엇을 고칠지는 호출자가 정한다.
 - **확신이 낮으면 `(판정 유보)`를 붙여 보고한다** — 침묵하지 않는다. 근거를 대지 못하는 인상만 남는 지적은 적지 않는다.
-
