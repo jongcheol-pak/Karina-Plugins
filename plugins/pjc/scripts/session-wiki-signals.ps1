@@ -13,7 +13,9 @@
 # ⚠ `Start-Job` 을 쓰지 않는다 — feature 마다 runspace 가 생겨 세션 시작이 수 초 늘어난다.
 #   외부 프로세스를 직접 띄우고 `WaitForExit(ms)` 로 잰다. **출력은 비동기 `ReadToEndAsync` 로 받는다** —
 #   `ReadToEnd()` 를 먼저 부르면 프로세스가 끝날 때까지 거기서 막혀 `WaitForExit` 의 상한이 걸리지
-#   않는다(실측: 4초 걸리는 프로세스에 1초 상한을 줘도 4,422ms 를 기다렸다).
+#   않는다(실측: 4초 걸리는 프로세스에 1초 상한을 줘도 4,422ms 를 기다렸다). **stderr 도 같이 비동기로
+#   비운다** — 리다이렉트만 하고 읽지 않으면 git 이 stderr 쓰기에서 막혀 상한에 걸린다(실측: `GIT_TRACE=1` +
+#   긴 경로 120개에서 5초 상한 초과, 비우면 46ms). 리다이렉트를 풀면 git 경고가 hook stderr 로 샌다.
 function Get-StaleFeatures {
     param([string]$FeatureDir, [string]$RepoRoot, [int]$BudgetMs = 3000)
     $scanCap = 40
@@ -79,6 +81,7 @@ function Get-StaleFeatures {
             $psi.CreateNoWindow = $true
             $proc = [System.Diagnostics.Process]::Start($psi)
             $outTask = $proc.StandardOutput.ReadToEndAsync()
+            $null = $proc.StandardError.ReadToEndAsync()
             if (-not $proc.WaitForExit([Math]::Min(10000, [Math]::Max(1, $remainMs)))) {
                 try { $proc.Kill() } catch {}
                 $result.TimedOut = $true

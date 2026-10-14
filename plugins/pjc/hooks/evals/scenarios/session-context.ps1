@@ -1134,6 +1134,32 @@ if (Test-HookSelected @('session-context')) {
         $sfOk = ($sf.TimedOut -eq $true) -and (@($sf.Names).Count -eq 0)
         Assert-Case -Name "session-context: 뒤처짐 계산이 시간 상한 0 에서 멈춘다 (회차 3 T6)" -R @{ code = ([int](-not $sfOk)); out = "TimedOut=$($sf.TimedOut) / Names=$(@($sf.Names) -join ',')" } -ExpectExit 0
         Remove-Item -Recurse -Force $sfRepo, $sfFeat -ErrorAction SilentlyContinue
+
+        # ---- git stderr 배수 — stderr 를 리다이렉트만 하고 읽지 않으면 git 이 stderr 쓰기에서 막혀 상한에 걸린다 ----
+        # `GIT_TRACE=1` 은 git 인자 전체를 stderr 에 적어, 긴 경로 120개면 파이프 버퍼를 넘긴다(2026-10-14 실측 —
+        #   배수 없이 5초 상한 초과, 배수하면 46ms). 경로는 실재·커밋돼야 git 까지 간다(`Test-Path` 통과분만 넘긴다).
+        $seRepo = Join-Path $work 'sf-stderr-repo'
+        $seFeat = Join-Path $work 'sf-stderr-feat'
+        New-Item -ItemType Directory (Join-Path $seRepo 'src') -Force | Out-Null
+        New-Item -ItemType Directory $seFeat -Force | Out-Null
+        $seNames = 1..120 | ForEach-Object { 'src/src_file_with_a_rather_long_name_number_{0:000}.txt' -f $_ }
+        Push-Location $seRepo
+        git init -q; git config user.email t@t; git config user.name t
+        $seNames | ForEach-Object { 'x' | Set-Content (Join-Path $seRepo $_) }
+        git add .; git commit -qm base
+        Pop-Location
+        @('---', 'type: feature', 'updated: 2000-01-01', '---', '', '## 관련 파일', '') + ($seNames | ForEach-Object { '- `' + $_ + '` — 대상' }) |
+            Set-Content -Encoding UTF8 (Join-Path $seFeat 'feat-a.md')
+        $seTraceSaved = $env:GIT_TRACE
+        try {
+            $env:GIT_TRACE = '1'
+            $se = Get-StaleFeatures -FeatureDir $seFeat -RepoRoot $seRepo -BudgetMs 10000
+        } finally {
+            $env:GIT_TRACE = $seTraceSaved
+        }
+        $seOk = ($se.TimedOut -eq $false) -and ((@($se.Names) -join ',') -eq 'feat-a.md')
+        Assert-Case -Name "session-context: 뒤처짐 계산이 git stderr 가 많아도 상한 안에 끝난다 (stderr 배수)" -R @{ code = ([int](-not $seOk)); out = "TimedOut=$($se.TimedOut) / Names=$(@($se.Names) -join ',')" } -ExpectExit 0
+        Remove-Item -Recurse -Force $seRepo, $seFeat -ErrorAction SilentlyContinue
     }
 
     # ---- [회차 4 T1] plan 상위 탐색 · 체크박스 불릿 집합 ----
