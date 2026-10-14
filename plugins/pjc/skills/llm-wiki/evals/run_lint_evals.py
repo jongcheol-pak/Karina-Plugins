@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """llm-wiki lint.py 골든 회귀 러너.
 
-사용법: python run_lint_evals.py [--jobs N]   (llm-wiki/evals 폴더 기준)
+사용법: python run_lint_evals.py [--jobs N] [--full]   (llm-wiki/evals 폴더 기준)
   --jobs N  동시에 돌릴 케이스 수(기본 min(8, CPU 수)). `--jobs 1` 은 순차 실행이고,
             병렬 출력이 순차와 같은지 대조하는 기준이다 — 출력은 어느 쪽이든 케이스 순서다.
+            대조는 `--full` 출력으로 한다(기본 출력에는 통과 줄이 없다).
+  --full    케이스 줄을 전부 낸다. 기본은 통과한 [PASS] 줄을 생략하고 그 수를 [COMPACT] 한 줄로
+            낸다 — FAIL 줄과 git 미설치 SKIP 줄은 기본 출력에도 남는다(150케이스 출력이 18KB 라
+            판정마다 그 비용을 치르던 것을 줄였다).
 
 lint-cases.json의 각 case를 evals/fixtures/<fixture> vault에 대해 lint.py로 실행하고
 결과를 대조한다:
@@ -1161,7 +1165,10 @@ def main():
     ap = argparse.ArgumentParser(description="llm-wiki lint.py 골든 회귀 러너")
     ap.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 1),
                     help="동시에 돌릴 케이스 수 (1 = 순차)")
-    jobs = max(1, ap.parse_args().jobs)
+    ap.add_argument("--full", action="store_true",
+                    help="케이스 줄을 전부 낸다 (기본은 통과한 [PASS] 줄을 생략)")
+    args = ap.parse_args()
+    jobs = max(1, args.jobs)
 
     # 단위 케이스가 쓰는 lint 모듈을 먼저 한 번 읽는다 — 여러 스레드가 동시에 처음 부르면
     #  각자 모듈을 실행해 캐시 대입이 경합한다. 여기서 실패하면 삼키고 넘어간다 — 그 실패는
@@ -1178,11 +1185,19 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
         outcomes = list(pool.map(check_case, cases))
     passed = 0
+    hidden = 0
     for case, (ok, detail) in zip(cases, outcomes):
-        mark = "PASS" if ok else "FAIL"
-        print(f"[{mark}] {case['fixture']} — {detail}")
         if ok:
             passed += 1
+        # 기본 축약: 통과 줄만 생략한다. git 미설치 SKIP 도 ok 로 돌아오지만 남긴다 — 생략하면
+        #  「150/150 PASS」만 남아 케이스가 실제로는 돌지 않은 커버리지 축소가 보이지 않는다.
+        if ok and not args.full and not detail.startswith("SKIP"):
+            hidden += 1
+            continue
+        mark = "PASS" if ok else "FAIL"
+        print(f"[{mark}] {case['fixture']} — {detail}")
+    if hidden:
+        print(f"[COMPACT] PASS {hidden}줄 생략 — 케이스 줄이 필요하면 --full")
 
     total = len(cases)
     print(f"\n결과: {passed}/{total} PASS")
