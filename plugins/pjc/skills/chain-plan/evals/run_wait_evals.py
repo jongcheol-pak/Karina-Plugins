@@ -2,7 +2,8 @@
 
 Karina·모델을 부르지 않는다 — CLI 호출·잠금·시계·git·plan 읽기·상태 저장을 가짜로 주입해 갈래마다 첫 줄과
 호출 인자를 잰다(상태 파일의 원자 쓰기·읽지 못함 케이스만 임시 폴더의 실제 파일을 쓴다).
-마지막 케이스 하나만 실제 프로세스로 띄워, 백그라운드 stdout 이 cp949 일 때도 RESULT 줄이 살아 나오는지 본다.
+마지막 두 케이스만 실제 프로세스로 띄운다 — 중간 부모(cmd)를 죽이면 대기가 orphaned 로 스스로 끝나는지(Windows),
+백그라운드 stdout 이 cp949 일 때도 RESULT 줄이 살아 나오는지 본다.
 """
 import importlib.util
 import io
@@ -12,6 +13,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, '..', 'scripts', 'wait-worker.py')
@@ -192,10 +195,11 @@ def every_branch_has_action_line():
         run(FakeCli(['x'])),
         run(FakeCli([msg_batch()]), lock=FakeLock(owned_until=0)),
         ww.place_loop(FakeCli([EMPTY], [workers()]), FakeLock(), 'disp_o', 60000),
+        run(FakeCli([EMPTY, msg_batch()]), alive=lambda: False),
     ]
     kinds = [first(o).split(' — ')[0] for o in outs]
     assert kinds == ['RESULT: message', 'RESULT: stall', 'RESULT: error', 'RESULT: superseded',
-                     'RESULT: freed'], kinds
+                     'RESULT: freed', 'RESULT: orphaned'], kinds
     assert all(len(first(o).split(' — ', 1)[1]) > 10 for o in outs), '다음 행동 문구가 있어야 한다'
 
 
@@ -791,6 +795,146 @@ def freed_rows_compacted():
     rows = json.loads(out[1])
     assert rows[0]['workingDir'] == 'D:\\' + 'w' * 197 + '…(103자 생략)', rows[0]['workingDir'][-30:]
     assert 'note' not in rows[0] and rows[0]['dispatchId'] == 'disp_o', rows[0]
+
+
+# ---- 감시 사슬 · 외부 호출 시한 ----
+# Git Bash 의 python 은 WindowsApps 스텁을 거쳐 `python(실) → python(스텁) → bash×3 → claude.exe` 로 뜬다(2026-10-14 실측).
+#   스텁은 자식과 함께 살아 직계 부모 감시는 원리상 발화하지 않는다 — 아래 사슬 모양이 그 실측을 옮긴 것이다.
+
+@case
+def watch_skips_leading_python_stubs():
+    chain = [(1, 'python.exe'), (2, 'python.exe'), (3, 'bash.exe'), (4, 'claude.exe'), (5, 'pwsh.exe')]
+    assert [p for p, _ in ww.pick_watch_targets(chain)] == [3, 4]
+
+
+@case
+def watch_takes_shells_until_first_non_shell():
+    chain = [(1, 'python.exe'), (2, 'bash.exe'), (3, 'BASH.EXE'), (4, 'cmd.exe'), (5, 'claude.exe'), (6, 'karina-daemon.exe')]
+    assert [p for p, _ in ww.pick_watch_targets(chain)] == [2, 3, 4, 5]
+
+
+@case
+def watch_single_non_shell_parent():
+    assert [p for p, _ in ww.pick_watch_targets([(9, 'claude.exe'), (8, 'pwsh.exe')])] == [9]
+    assert ww.pick_watch_targets([]) == []
+
+
+@case
+def orphaned_ends_wait_loop():
+    # 감시 대상이 사라지면 배치가 남아 있어도 기다리지 않는다 — 감시가 없으면 이 FakeCli 는 message 로 끝난다.
+    out = run(FakeCli([EMPTY, msg_batch()]), alive=lambda: False)
+    assert first(out).startswith('RESULT: orphaned — '), out
+    assert '다시 띄운다' in first(out) and '직전 대기도 orphaned' in first(out), out
+
+
+@case
+def orphaned_ends_place_loop():
+    cli = FakeCli([EMPTY, msg_batch()], [workers(place_row('ready', 'active'))])
+    out = ww.place_loop(cli, FakeLock(), 'disp_o', 60000, alive=lambda: False)
+    assert first(out).startswith('RESULT: orphaned — '), out
+
+
+@case
+def alive_fail_open_and_partial_handles():
+    def broken_chain():
+        raise OSError('snapshot')
+    assert ww.make_alive(windows=True, list_chain=broken_chain) is None, '사슬 조회 실패면 감시를 끈다'
+    chain = lambda: [(2, 'bash.exe'), (3, 'claude.exe')]
+    assert ww.make_alive(windows=True, list_chain=chain, open_handle=lambda pid: None) is None, '하나도 못 열면 끈다'
+    running = {'h3': True}
+    alive = ww.make_alive(windows=True, list_chain=chain,
+                          open_handle=lambda pid: 'h3' if pid == 3 else None, is_running=lambda h: running[h])
+    assert alive() is True
+    running['h3'] = False
+    assert alive() is False, '연 핸들만으로 판정한다'
+
+
+class RecordingRun:
+    """subprocess.run 대역 — 받은 인자를 적고 TimeoutExpired 를 던진다. 무조건 던지기만 하면 timeout= 을 빼도
+    케이스가 통과하므로 인자를 함께 단언한다."""
+
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, cmd, **kw):
+        self.calls.append((cmd, kw))
+        raise subprocess.TimeoutExpired(cmd, kw.get('timeout'))
+
+
+def with_run(fake, fn):
+    saved = ww.subprocess.run
+    ww.subprocess.run = fake
+    try:
+        return fn()
+    finally:
+        ww.subprocess.run = saved
+
+
+@case
+def cli_timeout_becomes_oserror():
+    fake = RecordingRun()
+    call = ww.make_call('karina-cli')
+    for args in (['check', '--json', '--wait', '--timeout-ms', '1234'], ['worker-read', '--json', '--dispatch', 'd'],
+                 ['worker-list', '--json']):
+        try:
+            with_run(fake, lambda: call(args))
+        except OSError:
+            pass
+        else:
+            raise AssertionError('시한 초과가 OSError 로 바뀌지 않았다: %s' % args[0])
+    timeouts = [kw.get('timeout') for _, kw in fake.calls]
+    assert timeouts == [1234 / 1000 + 60, 60, 60], timeouts
+    assert all(kw.get('stdin') is subprocess.DEVNULL for _, kw in fake.calls), fake.calls
+
+
+@case
+def git_timeout_is_git_failure():
+    fake = RecordingRun()
+    got = with_run(fake, lambda: ww.make_git('D:/repo')(['rev-parse', 'HEAD']))
+    assert got == (False, ''), got
+    _, kw = fake.calls[0]
+    assert kw.get('timeout') == 30 and kw.get('stdin') is subprocess.DEVNULL, kw
+
+
+@case
+def orphaned_when_middle_parent_killed():
+    # 실제 프로세스: cmd 아래 띄운 대기에서 cmd 만 죽인다(트리 킬이 아닌 고아 상황). 가짜 CLI 는 1초 쉬고 빈 배치를
+    #   돌려줘 감시가 없으면 대기가 끝나지 않는다. 끝나면 cmd 가 넘겨준 stdout 파이프가 닫혀 read 가 돌아온다.
+    if os.name != 'nt':
+        return
+    d = tempfile.mkdtemp(prefix='pjc-orphan-')
+    dispatch = 'disp_orph_%d' % os.getpid()
+    lock_path = os.path.join(tempfile.gettempdir(), 'pjc-chain-wait-%s.lock' % dispatch)
+    cli = os.path.join(d, 'fake.cmd')
+    with open(cli, 'w', encoding='ascii') as f:
+        f.write('@ping -n 2 localhost >nul\r\n@echo {"ok":true,"count":0,"messages":[]}\r\n')
+    inner = subprocess.list2cmdline([sys.executable, SCRIPT, '--cli', cli, '--dispatch', dispatch,
+                                     '--timeout-ms', '600000', '--poll-ms', '1000'])
+    # cmd /c 는 따옴표가 셋 이상이면 첫·끝 따옴표를 벗겨 공백 경로가 깨진다 — /s 와 바깥 따옴표로 통째로 넘긴다.
+    proc = subprocess.Popen('cmd /s /c "%s"' % inner, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    got = {}
+    try:
+        time.sleep(4)
+        proc.kill()
+        reader = threading.Thread(target=lambda: got.update(out=proc.stdout.read()), daemon=True)
+        reader.start()
+        reader.join(15)
+        assert not reader.is_alive(), 'cmd 를 죽인 뒤 15초 안에 대기가 끝나지 않았다'
+        text = got['out'].decode('utf-8', errors='replace')
+        assert text.startswith('RESULT: orphaned — '), text[:200]
+    finally:
+        # 실패 경로의 남은 대기를 거둔다 — 잠금 토큰 앞자리가 그 PID 다.
+        try:
+            with open(lock_path, encoding='utf-8') as f:
+                os.kill(int(f.read().split('-')[0]), 9)
+        except (OSError, ValueError):
+            pass
+        for p in (lock_path,):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+        shutil.rmtree(d, ignore_errors=True)
 
 
 @case

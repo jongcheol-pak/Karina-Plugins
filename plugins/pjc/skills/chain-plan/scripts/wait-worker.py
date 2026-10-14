@@ -12,6 +12,7 @@
 - superseded 같은 dispatch 의 새 대기가 잠금을 가져갔다. 받은 배치는 싣지 않는다 —
              Karina `check` 는 ack 전까지 같은 배치를 다시 주므로 새 대기가 받는다.
 - freed      (`--place` 만) 지켜보던 다른 세션 워커가 자리를 놓았다(그 dispatch 행 — message 와 같은 축약).
+- orphaned   대기를 띄운 셸·세션이 사라졌다(두 모드 공통 · 본문 없음). 아래 「고아 감시」.
 
 진행 줄(`--repo` 를 줬을 때만): 워커가 끝낸 task 마다 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작` 한 줄.
 따로 깨우지 않고 message·stall·error 원문 앞에 싣는다 — task 마다 깨우면 코디네이터가 그때마다 큰 컨텍스트를
@@ -36,6 +37,14 @@
 다시 표시하지 않는다. 진행 줄이 있는 갱신은 그 줄을 결과에 실어 낼 때만 저장하고, 그때까지는 주기마다 같은 기준에서
 다시 계산한다. 진행 감지는 잠금 확인보다 먼저 돌고, 잠금을 잃은 대기는 상태를 쓰지 않는다.
 시작할 때 임시 폴더의 7일 지난 `pjc-chain-wait-*` 를 지운다(sweep_stale).
+
+고아 감시: 시작할 때 자기 조상 사슬에서 앞쪽 python(WindowsApps 스텁)을 건너뛰고 셸들과 첫 비셸(claude.exe 등)을
+고르고(pick_watch_targets), Windows 는 그 프로세스마다 SYNCHRONIZE 핸들을 연다. `check` 가 돌아올 때마다 하나라도
+끝났으면 orphaned 로 끝난다 — 잔존 상한은 한 주기(`--repo` 경로 60초)다. TaskStop 은 셸 트리째 죽이지만(실측)
+claude.exe 자체가 죽을 때 백그라운드 트리가 함께 죽는지는 재지 못해 둔 감시다. 사슬 조회나 핸들 열기가 전부 실패하면
+감시 없이 종전대로 기다리고, 일부만 열리면 연 것만 본다. POSIX 는 직계 부모 변경만 본다(실험적 지원).
+외부 호출 시한: `check --wait --timeout-ms X` 는 X 에 60초를 더한 시각, 그 밖 CLI 호출은 60초, git 은 30초다. CLI 시한
+초과는 error(「CLI 실행 실패」), git 시한 초과는 다른 git 실패와 같이 대기를 끊지 않는다.
 git 실패는 대기를 끊지 않고, 본 sha 가 무효하면 HEAD 로 다시 채운다. 상태 파일이 없으면(시작 때 HEAD 를
 못 잡음) 주기마다 다시 잡고, 있는데 읽지 못하면 덮어쓰지 않는다. 상태 파일은 임시 파일을 바꿔 넣어 쓰고,
 저장 실패는 대기를 끊지 않는다.
@@ -58,6 +67,10 @@ RESULT_CAP = RAW_LIMIT * 4   # message 배치를 다시 쓴 뒤의 안전 상한
 COMPACT_STR_LIMIT = 200      # subject·body 밖의 문자열 값은 여기까지만 싣는다
 COMPACT_KEEP = ('subject', 'body')
 WAIT_FILE_PREFIX = 'pjc-chain-wait-'
+WATCH_SHELLS = ('bash', 'sh', 'cmd', 'pwsh', 'powershell')  # 감시 사슬에서 지나쳐 계속 올라가는 셸
+CLI_TIMEOUT_SEC = 60         # worker-read·worker-list 처럼 기다리지 않는 CLI 호출의 시한
+CLI_WAIT_MARGIN_SEC = 60     # check --wait 는 자기 --timeout-ms 에 이만큼 더한 뒤에야 응답 불능으로 본다
+GIT_TIMEOUT_SEC = 30         # lint.py·relocate-agents.py 의 git 시한과 같다
 SWEEP_AGE_SEC = 7 * 24 * 3600
 
 
@@ -83,6 +96,11 @@ def _action(kind, dispatch, streak=0, on_place=False):
                 % (streak, dispatch))
     if kind == 'error':
         return '앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고, references/cli-errors.md 「오류 응답」 을 따른다'
+    if kind == 'orphaned':
+        # 띄운 세션이 죽었으면 아무도 읽지 않는다. 읽는 쪽이 있다면 감시가 오판한 것이라 대기를 잇되,
+        # 오판이 거듭되면 주기마다 깨어나는 폴링이 되살아나므로 두 번째에서 멈춘다.
+        return ('대기를 띄운 셸·세션이 사라졌다 — 이 줄을 읽고 있다면 같은 대기를 다시 띄운다 '
+                '(직전 대기도 orphaned 였으면 다시 띄우지 않고 보고하고 멈춘다)')
     return '같은 dispatch 의 새 대기가 이어받았다 — 아무것도 하지 않는다'
 
 
@@ -117,7 +135,7 @@ def _parse(raw):
     return data, None
 
 
-def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=None):
+def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=None, alive=None):
     """대기 반복. call(args)->str 은 `<CLI> orchestration <args>` 의 stdout, lock.owned() 는 잠금 소유,
     progress 는 진행 감지(Progress — 없으면 끈다)다 — 바깥에서 넣어 골든이 Karina·git 없이 갈래를 잰다.
     poll_ms 가 없으면 timeout_ms 와 같아 주기마다 화면을 읽는다. 시한은 두지 않는다 — 백그라운드 실행은
@@ -141,6 +159,8 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
             raw = call(['check', '--json', '--wait', '--timeout-ms', str(wait)])
         except OSError as e:
             return _result('error', dispatch, ['CLI 실행 실패: %s' % e])
+        if alive is not None and not alive():
+            return _result('orphaned', dispatch)
         # 진행 감지(git 하위 프로세스)를 잠금 확인보다 먼저 한다 — 확인 뒤에 돌리면 그 사이 잠금을 잃은
         # 대기가 배치를 싣고 나간다. poll 은 저장하지 않으므로 앞에 둬도 상태를 쓰지 않는다.
         lines_done = progress.poll() if progress is not None else []
@@ -188,7 +208,7 @@ def holds_place(row):
     return row.get('state') in HOLDING_STATES and row.get('terminalState') != 'released'
 
 
-def place_loop(call, lock, place, poll_ms):
+def place_loop(call, lock, place, poll_ms, alive=None):
     """자리 대기. 다른 세션 워커(dispatch `place`)가 같은 폴더를 쥐고 있는 동안 백그라운드에서 돌고,
     놓으면 freed 로 끝나 코디네이터가 worker-start 를 다시 보낸다. 쉬는 수단은 `check --wait` 다 —
     sleep 을 새로 두지 않아도 되고, 그 사이 이 코디네이터에게 온 배치도 잃지 않는다."""
@@ -197,6 +217,8 @@ def place_loop(call, lock, place, poll_ms):
             raw = call(['check', '--json', '--wait', '--timeout-ms', str(poll_ms)])
         except OSError as e:
             return _result('error', place, ['CLI 실행 실패: %s' % e])
+        if alive is not None and not alive():
+            return _result('orphaned', place)
         if not lock.owned():
             return _result('superseded', place)
         data, err = _parse(raw)
@@ -244,10 +266,112 @@ class FileLock:
                 pass
 
 
+def pick_watch_targets(chain):
+    """조상 사슬(가까운 순 `[(pid, 이름), …]`)에서 감시할 프로세스를 고른다 — 앞쪽 python 은 건너뛰고,
+    셸은 담고 계속, 첫 비셸(claude.exe 등)을 담고 멈춘다. 앞쪽 python 은 WindowsApps 스텁이라 이 대기와 함께
+    살아 감시해도 소용이 없다(2026-10-14 실측 — `python(실) → python(스텁) → bash×3 → claude.exe`)."""
+    i = 0
+    while i < len(chain) and chain[i][1].lower().startswith(('python', 'py.', 'pyw.')):
+        i += 1
+    picked = []
+    for pid, name in chain[i:]:
+        picked.append((pid, name))
+        if name.lower().rsplit('.', 1)[0] not in WATCH_SHELLS:
+            break
+    return picked
+
+
+def _win_chain():
+    """Toolhelp32 스냅숏으로 자기 조상 사슬을 얻는다(자기 제외 · 가까운 순). 실패는 OSError."""
+    import ctypes
+    from ctypes import wintypes
+
+    class Entry(ctypes.Structure):
+        _fields_ = [('dwSize', wintypes.DWORD), ('cntUsage', wintypes.DWORD), ('th32ProcessID', wintypes.DWORD),
+                    ('th32DefaultHeapID', ctypes.c_size_t), ('th32ModuleID', wintypes.DWORD),
+                    ('cntThreads', wintypes.DWORD), ('th32ParentProcessID', wintypes.DWORD),
+                    ('pcPriClassBase', ctypes.c_long), ('dwFlags', wintypes.DWORD),
+                    ('szExeFile', ctypes.c_wchar * 260)]
+
+    k32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    snap = k32.CreateToolhelp32Snapshot(0x2, 0)  # TH32CS_SNAPPROCESS
+    if not snap or snap == wintypes.HANDLE(-1).value:
+        raise OSError('CreateToolhelp32Snapshot 실패')
+    table = {}
+    try:
+        e = Entry()
+        e.dwSize = ctypes.sizeof(Entry)
+        ok = k32.Process32FirstW(snap, ctypes.byref(e))
+        while ok:
+            table[e.th32ProcessID] = (e.th32ParentProcessID, e.szExeFile)
+            ok = k32.Process32NextW(snap, ctypes.byref(e))
+    finally:
+        k32.CloseHandle(snap)
+    chain, pid, seen = [], os.getpid(), set()
+    while pid in table and pid not in seen and len(chain) < 16:
+        seen.add(pid)
+        ppid = table[pid][0]
+        if ppid not in table:
+            break
+        chain.append((ppid, table[ppid][1]))
+        pid = ppid
+    return chain
+
+
+def _win_open(pid):
+    # SYNCHRONIZE 핸들은 그 프로세스 객체에 묶여 PID 가 재사용돼도 죽은 프로세스를 가리킨다.
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    k32.OpenProcess.restype = wintypes.HANDLE
+    return k32.OpenProcess(0x00100000, False, pid) or None
+
+
+def _win_running(handle):
+    import ctypes
+    return ctypes.WinDLL('kernel32').WaitForSingleObject(handle, 0) == 0x102  # WAIT_TIMEOUT — 아직 살아 있다
+
+
+def make_alive(windows=None, list_chain=None, open_handle=None, is_running=None):
+    """대기를 띄운 셸·세션이 살아 있는가를 돌려주는 alive() — 감시를 세울 수 없으면 None(현행처럼 계속 기다린다).
+    ⚠ 생존 확인에 `os.kill(pid, 0)` 을 쓰지 않는다 — Windows 에서는 TerminateProcess 라 감시 대상을 죽인다.
+    POSIX 는 직계 부모가 바뀌었는가만 본다 — 실험적 지원이라 조상 사슬은 재지 않는다."""
+    if windows is None:
+        windows = os.name == 'nt'
+    if not windows:
+        ppid = os.getppid()
+        return lambda: os.getppid() == ppid
+    list_chain = list_chain or _win_chain
+    open_handle = open_handle or _win_open
+    is_running = is_running or _win_running
+    try:
+        targets = pick_watch_targets(list_chain())
+        handles = [h for h in (open_handle(pid) for pid, _ in targets) if h]
+    except (OSError, AttributeError, ValueError):
+        return None
+    if not handles:
+        return None
+    # 일부만 열렸으면(권한 차이 등) 연 것만 본다 — 그것만으로도 세션 소멸은 잡힌다.
+    return lambda: all(is_running(h) for h in handles)
+
+
+def _cli_timeout(args):
+    if '--timeout-ms' in args:
+        return int(args[args.index('--timeout-ms') + 1]) / 1000 + CLI_WAIT_MARGIN_SEC
+    return CLI_TIMEOUT_SEC
+
+
 def make_call(cli):
     def call(args):
         # keepalive 줄이 stderr 로 15초마다 오므로 버린다. 출력에 서로게이트가 섞여 엄격 디코딩이 깨진다(실측).
-        p = subprocess.run([cli, 'orchestration'] + args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        # 시한을 넘긴 CLI 는 응답 불능이다 — OSError 로 바꿔 기존 「CLI 실행 실패」 → error 갈래로 보낸다
+        # (TimeoutExpired 는 OSError 하위가 아니라 그대로 두면 호출부 except 를 지나 대기가 RESULT 없이 죽는다).
+        try:
+            p = subprocess.run([cli, 'orchestration'] + args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                               stderr=subprocess.DEVNULL, timeout=_cli_timeout(args))
+        except subprocess.TimeoutExpired as e:
+            raise OSError('응답 없음 — %s 초 시한 초과' % e.timeout) from None
         return p.stdout.decode('utf-8', errors='replace')
     return call
 
@@ -378,8 +502,9 @@ def sweep_stale(folder, now):
 def make_git(repo):
     def git(args):
         try:
-            p = subprocess.run(['git', '-C', repo] + args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        except OSError:
+            p = subprocess.run(['git', '-C', repo] + args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                               stderr=subprocess.DEVNULL, timeout=GIT_TIMEOUT_SEC)
+        except (OSError, subprocess.TimeoutExpired):
             return False, ''
         return p.returncode == 0, p.stdout.decode('utf-8', errors='replace').strip()
     return git
@@ -409,9 +534,10 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if (a.dispatch is None) == (a.place is None):
         ap.error('--dispatch 와 --place 중 하나만 준다')
+    alive = make_alive()
     if a.place is not None:
         lock = FileLock('place-%s' % a.place)
-        out = place_loop(make_call(a.cli), lock, a.place, a.poll_ms or 60000)
+        out = place_loop(make_call(a.cli), lock, a.place, a.poll_ms or 60000, alive=alive)
         lock.release()
         print('\n'.join(out), flush=True)
         return 0
@@ -423,7 +549,7 @@ def main(argv=None):
         poll_ms = poll_ms or 60000
     lock = FileLock(a.dispatch)
     out = wait_loop(make_call(a.cli), lock, dispatch=a.dispatch, timeout_ms=a.timeout_ms, stall=a.stall,
-                    poll_ms=poll_ms, progress=progress)
+                    poll_ms=poll_ms, progress=progress, alive=alive)
     lock.release()
     print('\n'.join(out), flush=True)
     return 0
