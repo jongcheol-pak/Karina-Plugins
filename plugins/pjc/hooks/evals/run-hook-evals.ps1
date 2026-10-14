@@ -4,6 +4,12 @@
 #   부분 실행(중간 task 검증용): ... run-hook-evals.ps1 -Filter block-destructive,guard-write
 #   순차 실행(등가 대조·폴백):  ... run-hook-evals.ps1 -Sequential
 #   중단 후 이어하기:           ... run-hook-evals.ps1 -Resume
+#   케이스 줄 전부 출력:        ... run-hook-evals.ps1 -Full   (어느 모드와도 함께 쓴다)
+#
+# -Full 계약: 기본 출력은 통과한 [PASS] 줄을 생략하고 그 수를 [COMPACT] 한 줄로 낸다 — 전체 실행이
+#   1천 줄·87KB 를 넘어 매 회차 판정 비용이 그 출력에 들었다. FAIL·[PENDING]·경고·결과·TIMING 줄은
+#   판정 근거라 그대로 낸다. 케이스 목록이 필요한 자리(순차·병렬 등가 대조 · 신규 케이스의 GREEN
+#   증거)는 -Full 로 낸다. 판정·exit 코드는 출력 모드와 무관하다.
 #
 # 무엇을: scripts/*.ps1 hook을 격리 USERPROFILE·중립 cwd에서 stdin JSON으로 실행해
 #   exit code·출력 키워드를 대조한다. 케이스 정본은 두 곳 —
@@ -46,6 +52,8 @@ param(
     [switch]$Sequential,
     # 이전 실행의 완료된 그룹을 건너뛰고 남은 그룹만 실행
     [switch]$Resume,
+    # 케이스 줄을 전부 낸다 — 기본은 [PASS] 줄을 생략한다(위 「-Full 계약」)
+    [switch]$Full,
     # 동시에 띄울 자식 프로세스 상한. 기본은 **논리 코어 수의 절반**(최소 4·최대 12)이다 —
     # 케이스마다 pwsh를 새로 띄우므로(케이스당 약 600ms 중 285ms가 콜드스타트) CPU가 놀면
     # 그만큼 wall-clock이 길어지고, 코어 수를 넘겨 띄우면 경합으로 케이스당 시간이 늘어난다.
@@ -79,7 +87,7 @@ $evalsDirTop = $PSScriptRoot
 
 # ---- 시나리오 그룹 정의 ----
 # 이 목록의 순서가 곧 출력 순서다(분리 전 dot-source 순서를 그대로 보존한다 — 케이스 라인이
-# 종전과 같은 순서로 나와야 순차·병렬 등가 대조가 형식까지 일치한다).
+# 종전과 같은 순서로 나와야 순차·병렬 등가 대조가 형식까지 일치한다. 대조는 -Full 출력으로 한다).
 # 그룹이 둘 이상인 항목은 **같은 격리 홈을 공유해야 하는** 시나리오들이다:
 #   guard-harness-installed + hook-event-log — $vdCache 공유 + 후자가 홈의 이벤트 로그 적재를 관찰
 $scenarioGroups = @(
@@ -210,10 +218,14 @@ if ($Sequential) {
         Remove-Item -Recurse -Force (Join-Path $evalTempParent 'scratch') -ErrorAction SilentlyContinue
     }
     $failCount = 0
+    $passHidden = 0
     foreach ($res in $results) {
-        Write-Host $res.line
         if (-not $res.ok) { $failCount++ }
+        # 기본 축약: 통과한 [PASS] 줄만 생략한다(「-Full 계약」) — [PENDING] 은 ok 여도 접두가 달라 남는다.
+        if (-not $Full -and $res.ok -and $res.line.StartsWith('[PASS]')) { $passHidden++; continue }
+        Write-Host $res.line
     }
+    if ($passHidden) { Write-Host ("[COMPACT] PASS {0}줄 생략 — 케이스 줄이 필요하면 -Full" -f $passHidden) }
     $total = $results.Count
     Write-Host ""
     if ($Filter -and $total -eq 0) {
@@ -428,10 +440,14 @@ foreach ($g in $scenarioGroups) {
 Remove-Item -Recurse -Force (Join-Path $evalTempParent 'scratch') -ErrorAction SilentlyContinue
 
 $failCount = 0
+$passHidden = 0
 foreach ($res in $allResults) {
-    Write-Host $res.line
     if (-not $res.ok) { $failCount++ }
+    # 기본 축약: 통과한 [PASS] 줄만 생략한다(「-Full 계약」) — [PENDING] 은 ok 여도 접두가 달라 남는다.
+    if (-not $Full -and $res.ok -and $res.line.StartsWith('[PASS]')) { $passHidden++; continue }
+    Write-Host $res.line
 }
+if ($passHidden) { Write-Host ("[COMPACT] PASS {0}줄 생략 — 케이스 줄이 필요하면 -Full" -f $passHidden) }
 $total = $allResults.Count
 Write-Host ""
 
