@@ -1,6 +1,6 @@
 """trigger_eval 의 순수 함수 단위 케이스 — `exit_code` 종료 코드 판정 · `summarize` 오발동 게이트 ·
 `judge_case` 첫 발동 판정 · `is_skill_call` 조기 종료 · `attach_diagnostics` 진단 부착 ·
-`missing_skills` 스킬 로드 누락.
+`missing_skills` 스킬 로드 누락 · `run_claude` stderr 배수(claude 대신 가짜 프로세스 — 모델 호출 없음).
 
 이 서브트리에는 골든 러너가 없다. `trigger_eval.py` 본체는 실제 모델을 호출해 비용이
 크므로 회귀 축으로 쓸 수 없고, 판정 로직만 순수 함수로 갈라 여기서 잰다.
@@ -141,8 +141,43 @@ def _call(mod, name, *args):
         return f"<{type(e).__name__}: {e}>"
 
 
+# stderr 배수 갈래 — `run_claude` 가 stderr 분량과 무관하게 첫 Skill 줄을 잡는가. stdout 만 읽고 stderr 파이프를
+#   쌓아 두면 자식이 stderr 쓰기에서 막혀 Skill 줄이 오지 않고, 케이스가 watchdog 까지 붙잡혀 timeout 으로 버려진다.
+#   claude 대신 stderr 200KB 를 먼저 쓰는 가짜 프로세스를 끼운다(모델 호출 없음). `kill_tree` 의 taskkill 도
+#   `subprocess.run` → `Popen` 을 거치므로 claude 명령만 바꿔 끼운다.
+_STDERR_FILL = 200_000
+
+
+def _run_claude_drains_stderr():
+    skill_line = _line({"type": "tool_use", "name": "Skill", "input": {"skill": "pjc:plan"}})
+    fake = ("import sys, time\nsys.stderr.write('e' * %d)\nsys.stderr.flush()\n"
+            "print(%r, flush=True)\ntime.sleep(30)\n" % (_STDERR_FILL, skill_line))
+    real_popen = _TE.subprocess.Popen
+
+    def fake_popen(cmd, *a, **kw):
+        if isinstance(cmd, list) and cmd[:1] == ["claude"]:
+            cmd = [sys.executable, "-c", fake]
+        return real_popen(cmd, *a, **kw)
+
+    saved_timeout = _TE.CASE_TIMEOUT_SEC
+    _TE.subprocess.Popen, _TE.CASE_TIMEOUT_SEC = fake_popen, 8
+    try:
+        with tempfile.TemporaryDirectory() as ws:
+            lines, stderr, timed_out = _TE.run_claude("q", ws, None, None)
+    except Exception as e:  # 판정 대상의 결함을 FAIL 로 보이기 위한 것이라 넓게 받는다
+        return False, f"<{type(e).__name__}: {e}>"
+    finally:
+        _TE.subprocess.Popen, _TE.CASE_TIMEOUT_SEC = real_popen, saved_timeout
+    caught = any(_TE.is_skill_call(l) for l in lines)
+    ok = (not timed_out) and caught and len(stderr) >= _STDERR_FILL
+    return ok, f"timed_out={timed_out} · Skill 줄={caught} · stderr {len(stderr)}자"
+
+
 def main():
     failed = 0
+    ok, detail = _run_claude_drains_stderr()
+    failed += 0 if ok else 1
+    print(f"[{'PASS' if ok else 'FAIL'}] ⓡ stderr {_STDERR_FILL}자를 먼저 써도 첫 Skill 줄에서 끝난다: {detail}")
     for name, case, triggered, stop, timed_out, want_s, want_f in JUDGE_CASES:
         got = _call(_TE, "judge_case", case, triggered, stop, timed_out)
         ok = got == (want_s, want_f)
@@ -184,7 +219,7 @@ def main():
         print(f"[{mark}] {name}: judged_negative {got_n} (기대 {want_n})"
               f" · 오발동률 {got_rate} (기대 {want_rate})")
     total = (len(CASES) + len(SUMMARIZE_CASES) + len(JUDGE_CASES)
-             + len(STOP_CASES) + len(DIAG_CASES) + len(LOAD_CASES))
+             + len(STOP_CASES) + len(DIAG_CASES) + len(LOAD_CASES) + 1)  # +1: stderr 배수 갈래
     print(f"\n결과: {total - failed}/{total} PASS")
     sys.exit(1 if failed else 0)
 

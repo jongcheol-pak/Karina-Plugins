@@ -323,33 +323,37 @@ def run_claude(query, workspace, config_dir, model):
     else:
         env.pop("CLAUDE_CONFIG_DIR", None)
 
-    proc = subprocess.Popen(
-        cmd, cwd=workspace, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        text=True, encoding="utf-8", errors="replace",
-        start_new_session=(os.name != "nt"),  # kill_tree의 POSIX 그룹 킬 전제
-    )
-    state = {"timed_out": False}
+    # stderr 는 파이프가 아니라 임시 파일로 받는다 — stdout 만 줄 단위로 읽는 동안 stderr 파이프가 차면 자식이
+    #   stderr 쓰기에서 막혀 Skill 줄을 내지 못하고, 케이스가 watchdog 까지 붙잡혀 timeout 으로 버려진다.
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as err_file:
+        proc = subprocess.Popen(
+            cmd, cwd=workspace, env=env, stdout=subprocess.PIPE, stderr=err_file,
+            text=True, encoding="utf-8", errors="replace",
+            start_new_session=(os.name != "nt"),  # kill_tree의 POSIX 그룹 킬 전제
+        )
+        state = {"timed_out": False}
 
-    def on_timeout():
-        state["timed_out"] = True
-        kill_tree(proc)
-
-    timer = threading.Timer(CASE_TIMEOUT_SEC, on_timeout)
-    timer.start()
-    lines = []
-    try:
-        for line in proc.stdout:  # blocking readline — watchdog kill이 EOF로 풀어준다
-            lines.append(line)
-            if is_skill_call(line):
-                kill_tree(proc)
-                break
-    finally:
-        timer.cancel()
-        try:
-            stderr = proc.communicate(timeout=30)[1] or ""
-        except subprocess.TimeoutExpired:
+        def on_timeout():
+            state["timed_out"] = True
             kill_tree(proc)
-            stderr = ""
+
+        timer = threading.Timer(CASE_TIMEOUT_SEC, on_timeout)
+        timer.start()
+        lines = []
+        try:
+            for line in proc.stdout:  # blocking readline — watchdog kill이 EOF로 풀어준다
+                lines.append(line)
+                if is_skill_call(line):
+                    kill_tree(proc)
+                    break
+        finally:
+            timer.cancel()
+            try:
+                proc.communicate(timeout=30)
+            except subprocess.TimeoutExpired:
+                kill_tree(proc)
+        err_file.seek(0)
+        stderr = err_file.read()
     return lines, stderr, state["timed_out"]
 
 
