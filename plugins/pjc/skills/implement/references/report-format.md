@@ -41,13 +41,13 @@ Bash:       s=$(date -d "<시작>" +%s); e=$(date +%s); m=$(( (e-s)/60 )); echo 
 PowerShell: $s=[datetime]'<시작>'; $e=Get-Date; $t=$e-$s; '{0:yyyy-MM-dd HH:mm} {1}h {2}m' -f $e,[int][math]::Floor($t.TotalHours),$t.Minutes
 ```
 
-- **Bash 식이 실패하면 PowerShell 식을 쓴다** — macOS 기본 `date` 는 `-d` 가 없다. PowerShell 식은 Windows PowerShell 5.1 과 pwsh 7 양쪽에서 돈다.
+- **Bash 식이 실패하면 PowerShell 식을 쓴다 — 실패는 종료 코드가 아니라 stderr 가 나오거나 출력이 위 서식과 다른 것으로 본다** — macOS 기본 `date` 는 `-d` 가 없고, 그때도 마지막 `echo` 가 엉뚱한 한 줄을 내고 exit 0 으로 끝난다. PowerShell 식은 Windows PowerShell 5.1 과 pwsh 7 양쪽에서 돈다.
 - **`<시작>` 이 없으면 식 대신 현재 시각만 낸다** — Bash `date '+%F %H:%M'` · PowerShell `Get-Date -Format 'yyyy-MM-dd HH:mm'`.
 
 **`plan.md` 기록 (`pjc:implement` 전용)**
 
 - **식을 plan 파일 커밋 판정 명령(`git ls-files --error-unmatch -- <plan 경로>`) 앞에 `;` 로 잇는다** — 따로 부르면 왕복이 하나 늘고, `&&` 로 이으면 식이 실패할 때 판정까지 건너뛴다.
-- **그 출력으로 `> 완료:` 줄을 `> 완료: <완료> · 소요 <N시간 M분>` 로 Edit 한 뒤 (추적 레포면) 커밋한다** — Edit 이 커밋보다 늦으면 추적 레포에 미커밋 변경이 남는다. 중계 모드면 인계 절 커밋(`../../plan/references/relay-mode.md`)보다 먼저다.
+- **그 출력으로 `> 완료:` 줄을 `> 완료: <완료> · 소요 <N시간 M분>` 로 Edit 한 뒤 (추적 레포면) 커밋한다 — 그 줄이 없는 옛 서식이면 `> 시작:`(없으면 `> 승인:`) 아래에 넣는다** — Edit 이 커밋보다 늦으면 추적 레포에 미커밋 변경이 남는다. 중계 모드면 인계 절 커밋(`../../plan/references/relay-mode.md`)보다 먼저다.
 - **`> 시작:` 이 없거나 자리표시 그대로면 `시작 미기록` 으로 적고 완료 시각만 남긴다** — 옛 서식의 plan 이거나 plan 작성 전 압축으로 시작 시각을 잃은 경우다.
 - **보고의 `- **소요**:` 줄은 이 두 줄에서 옮긴다.**
 
