@@ -1386,7 +1386,6 @@ _DEPRECATED_SKIP_RELS = {
 DEPRECATED_QUOTE_ALLOWLIST = [
     ("plugins/pjc/skills/DESIGN.md", "**폐기한 것**:"),
     ("plugins/pjc/skills/DESIGN.md", _DEPRECATED_ANCHOR),
-    ("docs/golden-runner.md", "갈음한 사례들이 전부"),
     ("docs/harness-conventions.md", "구 근거였던 「F-4 스캔」은 대상이 소멸했다"),
     ("plugins/pjc/hooks/evals/scenarios/post-write-checks.ps1", "전재 폴백으로 경고 유지"),
     ("plugins/pjc/skills/llm-wiki/evals/lint-cases.json", "M1이 잡은 미커버 축이다"),
@@ -1394,7 +1393,7 @@ DEPRECATED_QUOTE_ALLOWLIST = [
 
 # 면제 **총량**의 기준선(= 목록 길이). 정당한 증감이면 이 값을 함께 올린다 — 숫자를 맞추려 면제를 지우지 않는다.
 # 면제 총량 기준선 — 근거는 `harness-consistency-rationale.md` §4
-DEPRECATED_ALLOWLIST_BASELINE = 6
+DEPRECATED_ALLOWLIST_BASELINE = 5
 
 # `DESIGN.md` 3-1 정본 줄의 **백틱 토큰 수**(범위 표기를 접기 전 원문 개수).
 DEPRECATED_TOKENS_BASELINE = 7
