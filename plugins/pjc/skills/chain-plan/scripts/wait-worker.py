@@ -223,9 +223,10 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
             # 화면이 같아도 그 사이 HEAD 가 움직였으면 일하는 워커다 — worker-read 가 고정된 화면을 돌려준
             # 사례가 있다(2026-10-15). 진행 줄(lines_done)은 내보낼 때까지 매 주기 다시 나와 기준이 될 수 없다.
             # HEAD 를 처음 본 비교(None → sha)는 진행으로 세지 않는다.
-            head = progs[i].last_head if i < len(progs) else None
-            moved = None not in (head, head_at_read[d]) and head != head_at_read[d]
-            head_at_read[d] = head
+            # `head` 는 이 함수에서 dispatch 이름이라 다른 이름을 쓴다 — 덮으면 뒤의 error·superseded 가 해시를 받는다.
+            cur_head = progs[i].last_head if i < len(progs) else None
+            moved = None not in (cur_head, head_at_read[d]) and cur_head != head_at_read[d]
+            head_at_read[d] = cur_head
             streak[d] = streak[d] + 1 if h == last_hash[d] and not moved else 0
             last_hash[d] = h
             # streak 은 일치한 비교 횟수라 같은 화면 장 수는 그보다 하나 많다 — 첫 화면이 1장이다.
