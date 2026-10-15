@@ -4,6 +4,7 @@
 
 ## 닫기
 
+- **병렬 그룹의 워커는 `parallel.md`「병합」 의 병합 커밋이 끝난 뒤에 닫고, 그 탭의 마지막 dispatch(병합 준비를 재배정했으면 그 dispatch)로 닫는다** — 충돌을 그 탭에 되돌려야 할 수 있고, 앞 dispatch 의 release 도 같은 탭을 닫는다(`parallel.md`「닫기」).
 - **먼저 `worker-release --dispatch <id>` 를 보내고 `outcome` 이 `released`·`already_released` 면 끝이다** — 입력창이 빈 탭은 여기서 닫힌다.
 - **`retained` 면 `worker-stop --dispatch <id>` 로 닫는다 — 입력창에 문구가 남아 있어도 닫고, 그 문구는 탭과 함께 사라진다** — Karina 는 사람이 입력한 워커 탭(입력창에 남은 문구 포함)을 `retained` 로 올려 release 가 닫지 않게 하고, 그 워커는 같은 폴더 자리를 계속 쥐어 다음 `worker-start` 를 `duplicate_worker` 로 막는다. stop 은 그 표식과 무관하게 탭을 닫고, 배정이 이미 정산된 워커라 Task 는 바뀌지 않는다(Karina `close_worker`). 사용자가 「문구가 있어도 종료」를 지시했다(2026-10-08).
 - **stop 응답이 `ok: false`(`cli-errors.md`「오류 응답」 의 복구 뒤에도)이거나 `outcome` 이 `release_unknown` 이면 `worker-release --dispatch <id>` 를 한 번 더 보낸다** — `release_unknown` 은 다시 불러도 안전하고(Karina 가이드), 탭이 이미 없으면 `already_released` 로 자리가 풀린다.

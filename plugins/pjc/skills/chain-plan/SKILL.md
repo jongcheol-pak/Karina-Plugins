@@ -63,6 +63,7 @@ plan 2: …
 
 판정 범위: 사용자 몫 넷(실행 시점 승인·사용자 답 뒤집기·요청 범위 변경·기존 것을 깨는 변경) 밖은 코디네이터가 판정해 보고에 모은다 — 새 API·설정 추가 포함
 대기 보호: <켜짐 | 꺼짐 — `references/wait-exit.md`「대기 보호」>
+병렬: <그룹 · 동시 상한 · 체인 브랜치 | 없음 — `references/parallel.md`「병렬 그룹」>
 
 [Y] 승인 / [E] 수정 요청 / [N] 중단
 ```
@@ -94,7 +95,7 @@ EOF
 
 ## 워커 루프
 
-계획 하나씩, 앞 계획의 `worker_done`(succeeded)을 받은 뒤에만 다음을 띄운다.
+계획 하나씩, 앞 계획의 `worker_done`(succeeded)을 받은 뒤에만 다음을 띄운다. 병렬 그룹은 Task 부터 `references/parallel.md` 를 따른다.
 
 ```
 <CLI> orchestration worker-start --json --task <task id> --agent claude --worktree "<대상 레포 경로>" 2>/dev/null
@@ -143,5 +144,5 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
 
 ## 하지 않는 것
 
-- **파일 수정** — 산출물은 워커가 만든다. 이 세션이 고치면 워커의 `plan.md` 가 모르는 변경이 생긴다. 예외는 체인이 끝난 뒤의 인계 파일 삭제 하나다(`references/report.md`「인계 파일 정리」).
+- **파일 수정** — 산출물은 워커가 만든다. 이 세션이 고치면 워커의 `plan.md` 가 모르는 변경이 생긴다. 예외는 체인이 끝난 뒤의 인계 파일 삭제(`references/report.md`「인계 파일 정리」)와 병렬 병합 커밋(`references/parallel.md`「병합」)이다.
 - **멈춘 워커의 자동 재개** — 재개는 사용자가 「plan N부터」로 부른다. 중단·무관한 요청은 `references/interrupt.md`「사용자 중단」·「무관한 요청」 을 따른다. 사용자가 stall·`failed` 로 멈춘 워커를 탭에서 직접 이어 가게 했다고 알리면 `references/manual-resume.md`「직접 재개」 를 따른다. 예외는 `references/manual-resume.md`「무응답 실패 뒤 늦은 답」 하나다 — 사용자가 워커 탭에 입력해야 이어진다. **멈춘 계획에 새 워커를 띄우는 선택지도 내지 않는다** — 새 워커는 계획을 처음부터 다시 실측해 앞 워커의 진척을 버린다. 새 워커는 사용자가 「plan N부터」로 부를 때만이다.

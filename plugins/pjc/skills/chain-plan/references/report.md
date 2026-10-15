@@ -20,6 +20,7 @@ HUMAN-VERIFY·미검증: <워커 --body 에서 받은 것 전부>
 코디네이터 판정: <판정으로 답한 질문·승인(봉투 밖 `E:` 지시 포함)마다 「<무엇을 답했나> — <근거> — 틀리면: <무엇을 치르는가 · 되돌리는 법>」 — 없으면 「없음」>
 환경 개선 후보: <마찰마다 「<무엇> — <횟수> · <출처: plan N 워커 | 코디네이터> — <행선지 | 올린 위치>」 — 없으면 「없음」>
 인계 파일: <경로 — 지움 <커밋 sha> | 남김 — <사유> | 없음>
+병렬 병합: <그룹마다 plan · 병합 커밋 sha | 미병합 — <사유> · worktree 경로 · 브랜치 — 지우지 않음(`parallel.md`「닫기」) | 없음>
 남은 탭: <체인이 끝나거나 멈출 때 `worker-list --run <Run id> --json` 의 이 Run 행 중 `terminalState` 가 `released` 가 아닌 것(dispatch·state·terminalState) · CLI 오류 응답(`worker_start_failed`·`duplicate_worker`·`task_not_startable`)이 이름 댄 다른 탭·dispatch — 없으면 줄 생략>
 멈춘 사유·남은 task: <멈췄을 때만 — CLI 오류로 멈췄으면 코드·`error` 문장, `protocol_error` 면 retry id 와 「이미 실행됐을 수 있다 — `worker-list` 로 확인」 · stall·failed 로 멈췄으면 「워커를 그 탭에서 직접 이어 가게 했으면 이 탭에 「plan <N> 워커 재개」라고 알린다 — 체인이 거기서 잇는다」>
 ```
