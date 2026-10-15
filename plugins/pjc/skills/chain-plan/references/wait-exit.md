@@ -1,6 +1,6 @@
 # 대기 종료 (`pjc:chain-plan`)
 
-> `../SKILL.md` 「워커 루프」의 대기(`cli-errors.md`「오류 응답」 의 자리 대기 포함) 출력에 `RESULT` 줄이 없을 때(「RESULT 없음」)와 「체인 승인」의 `대기 보호:` 줄을 채울 때(「대기 보호」)만 이 파일을 연다. 멈춤 판정(같은 화면 3장)·잠금·`RESULT` 갈래는 `../scripts/wait-worker.py` 가 정본이다.
+> `../SKILL.md` 「워커 루프」의 대기(`cli-errors.md`「오류 응답」 의 자리 대기 포함) 출력에 `RESULT` 줄이 없을 때(「RESULT 없음」)와 「체인 승인」의 `대기 보호:` 줄을 채울 때(「대기 보호」)만 이 파일을 연다. 멈춤 판정(같은 화면 3장 · 그 사이 커밋 없음)·잠금·`RESULT` 갈래는 `../scripts/wait-worker.py` 가 정본이다.
 
 ## RESULT 없음
 

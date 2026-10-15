@@ -532,6 +532,35 @@ def progress_held_on_stall():
 
 
 @case
+def stall_reset_by_commit_each_checkpoint():
+    # worker-read 화면이 고정돼도 체크포인트마다 커밋이 생기면 일하는 워커다 — 멈춤으로 세지 않는다.
+    git = FakeGit(history=[[('h%d' % n, '기능: T%d — %d번' % (n, n))] for n in range(1, 5)])
+    cli = FakeCli([EMPTY] * 4 + [msg_batch()], [screen('frozen')] * 4)
+    out = runp(cli, prog(git), timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: message — '), out
+
+
+@case
+def stall_after_single_commit_then_frozen():
+    # 커밋 한 번은 그 비교만 되돌린다 — 진행 줄이 내보내기 전까지 남아 있어도 이후의 진짜 멈춤은 잡는다.
+    git = FakeGit(history=[[], [('h1', '기능: T1 — 하나')]])
+    cli = FakeCli([EMPTY] * 4, [screen('frozen')] * 4)
+    out = runp(cli, prog(git), timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: stall — '), out
+    assert len([c for c in cli.calls if c[0] == 'worker-read']) == 4, '커밋이 난 비교에서 연속 수가 0 이어야 한다'
+
+
+@case
+def stall_when_git_always_fails():
+    # HEAD 를 한 번도 못 보면 진행 신호가 없다 — 실패를 「달라짐」으로 세지 않아 3장째에 멈춘다.
+    git = FakeGit(logs=[None] * 3, head_ok=False)
+    cli = FakeCli([EMPTY] * 3, [screen('idle')] * 3)
+    out = runp(cli, prog(git), timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: stall — '), out
+    assert len([c for c in cli.calls if c[0] == 'worker-read']) == 3, out
+
+
+@case
 def progress_not_saved_until_output():
     # 진행만 있던 주기는 상태를 저장하지 않는다 — 그 대기가 물러나도 새 대기가 같은 줄을 낸다.
     store = FakeStore({'sha': 'h0', 'shown': []})
@@ -955,6 +984,19 @@ def multi_stall_names_stalled_dispatch():
     for i in range(3):
         reads += [screen('spin %d' % i), screen('same')]
     out = run(FakeCli([EMPTY] * 3, reads), dispatch=['disp_a', 'disp_b'])
+    assert first(out).startswith('RESULT: stall — '), out
+    assert 'worker-retain --dispatch disp_b' in first(out), out
+    assert 'disp_a' not in first(out), out
+
+
+@case
+def multi_commit_resets_only_its_dispatch():
+    # 둘 다 화면이 고정이고 disp_a 레포만 커밋한다 — 커밋은 자기 dispatch 만 되돌려 멈춘 것은 disp_b 다.
+    ga = FakeGit(history=[[('a%d' % n, '기능: T%d — %d번' % (n, n))] for n in range(1, 4)])
+    gb = FakeGit(history=[])
+    cli = FakeCli([EMPTY] * 3, [screen('fa'), screen('fb')] * 3)
+    out = runp(cli, [prog(ga, label='Plan 2'), prog(gb, label='Plan 3')], dispatch=['disp_a', 'disp_b'],
+               timeout_ms=60000, poll_ms=60000)
     assert first(out).startswith('RESULT: stall — '), out
     assert 'worker-retain --dispatch disp_b' in first(out), out
     assert 'disp_a' not in first(out), out

@@ -7,7 +7,7 @@
 출력 — 첫 줄 `RESULT: <갈래> — <다음 행동>`, 이어 본문:
 - message    `check` 가 배치를 돌려줬다(빈 값의 키를 빼고 subject·body 밖의 긴 값을 자른 JSON 한 줄).
              ack 는 하지 않는다 — 코디네이터가 처리한 뒤 한다.
-- stall      같은 화면이 체크포인트마다 `--stall` 장 이어졌다 — 첫 화면이 1장이다(화면 끝 40줄).
+- stall      같은 화면이 체크포인트마다 `--stall` 장 이어졌고 그 사이 HEAD 가 움직이지 않았다 — 첫 화면이 1장이다(화면 끝 40줄).
 - error      CLI 실행 실패 · JSON 아님 · `ok: false`(원문).
 - superseded 같은 dispatch 의 새 대기가 잠금을 가져갔다. 받은 배치는 싣지 않는다 —
              Karina `check` 는 ack 전까지 같은 배치를 다시 주므로 새 대기가 받는다.
@@ -31,7 +31,10 @@
 멈춤 판정: `check` 가 시한 만료(count 0)로 돌아올 때마다 `worker-read`(커서 없음 — 커서는 출처에 묶여
 다른 출처로 넘기면 `source_changed` 다)로 화면을 읽고, 앞 체크포인트와 `lines` 가 같으면 연속 수(일치한 비교
 횟수 — 같은 화면 장 수보다 하나 적다)를 올린다.
-일하는 워커는 스피너 경과 시간이 바뀌어 같을 수 없어, 출력 없이 오래 도는 빌드도 멈춤으로 세지 않는다.
+일하는 워커는 대개 스피너 경과 시간이 바뀌어 화면이 같지 않다. 그러나 워커가 커밋을 쌓는 동안 `worker-read` 가
+고정된 화면을 돌려준 사례가 있어(2026-10-15), 진행 감지(`--repo`)가 켜져 있으면 앞 비교 뒤 그 dispatch 레포의
+HEAD 가 움직였을 때 화면이 같아도 연속 수를 0 으로 되돌린다. 즉 멈춤은 같은 화면이면서 HEAD 가 움직이지 않은 것이다.
+HEAD 를 처음 본 비교와 git 이 실패한 주기는 움직임으로 세지 않는다. 병렬 대기는 dispatch 마다 자기 레포만 본다.
 화면 비교까지 남은 대기를 시계가 아니라 차감으로 센다 — `check` 시한은 min(--poll-ms, 남은 대기)이고
 남은 대기가 0 이 된 주기에만 화면을 읽는다(비교 간격을 9분으로 지킨다).
 
@@ -97,11 +100,11 @@ def _action(kind, dispatch, streak=0, on_place=False, parallel=False):
                 '남은 병렬 워커가 있으면 그 dispatch 들로 곧바로 다시 띄운다 — references/parallel.md)')
     if kind == 'stall' and parallel:
         return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고(화면은 구분 줄 뒤다), '
-                '같은 화면이 체크포인트마다 %d장 이어졌다 — worker-retain --dispatch %s 후 '
+                '같은 화면이 체크포인트마다 %d장 이어졌고 HEAD 가 움직이지 않았다 — worker-retain --dispatch %s 후 '
                 '병렬 대기라 references/parallel.md 「멈춤」 을 따른다' % (streak, dispatch))
     if kind == 'stall':
         return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고(화면은 구분 줄 뒤다), '
-                '같은 화면이 체크포인트마다 %d장 이어졌다 — worker-retain --dispatch %s 후 보고하고 멈춘다 '
+                '같은 화면이 체크포인트마다 %d장 이어졌고 HEAD 가 움직이지 않았다 — worker-retain --dispatch %s 후 보고하고 멈춘다 '
                 '(보고의 멈춘 사유에 직접 재개 알림 안내를 싣는다 — references/report.md · references/manual-resume.md)'
                 % (streak, dispatch))
     if kind == 'error':
@@ -158,6 +161,8 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
     head = ids[0] if not parallel else ' '.join(ids)
     streak = {d: 0 for d in ids}
     last_hash = {d: None for d in ids}
+    # 직전 화면 비교 때 본 그 워커 레포의 HEAD — progs[i] 가 ids[i] 의 레포다(같은 수·같은 순서).
+    head_at_read = {d: None for d in ids}
     poll = poll_ms or timeout_ms
     remaining = timeout_ms
     for p in progs:
@@ -203,7 +208,7 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
             continue
         remaining = timeout_ms
 
-        for d in ids:
+        for i, d in enumerate(ids):
             try:
                 raw = call(['worker-read', '--json', '--dispatch', d])
             except OSError as e:
@@ -215,7 +220,13 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
                 return emit('error', [err], lines_done)
             lines = [str(l) for l in data.get('lines') or []]
             h = screen_hash(lines)
-            streak[d] = streak[d] + 1 if h == last_hash[d] else 0
+            # 화면이 같아도 그 사이 HEAD 가 움직였으면 일하는 워커다 — worker-read 가 고정된 화면을 돌려준
+            # 사례가 있다(2026-10-15). 진행 줄(lines_done)은 내보낼 때까지 매 주기 다시 나와 기준이 될 수 없다.
+            # HEAD 를 처음 본 비교(None → sha)는 진행으로 세지 않는다.
+            head = progs[i].last_head if i < len(progs) else None
+            moved = None not in (head, head_at_read[d]) and head != head_at_read[d]
+            head_at_read[d] = head
+            streak[d] = streak[d] + 1 if h == last_hash[d] and not moved else 0
             last_hash[d] = h
             # streak 은 일치한 비교 횟수라 같은 화면 장 수는 그보다 하나 많다 — 첫 화면이 1장이다.
             if streak[d] + 1 >= stall:
@@ -426,12 +437,16 @@ class Progress:
     def __init__(self, git, read_plan, store, label):
         self.git, self.read_plan, self.store, self.label = git, read_plan, store, label
         self.pending = None
+        # 마지막으로 본 HEAD — 멈춤 판정이 화면 비교 사이의 커밋을 진행으로 센다. 저장 기준(`sha`)과 달리
+        # 메모리에만 두고, git 이 실패한 주기에는 바꾸지 않는다(실패를 「달라짐」으로 세지 않게).
+        self.last_head = None
 
     def start(self):
         if self.store.load() is None:
             ok, head = self.git(['rev-parse', 'HEAD'])
             if ok and head:
                 self.store.save({'sha': head, 'shown': []})
+                self.last_head = head
 
     def poll(self):
         """새 진행 줄을 돌려주고 갱신할 상태를 pending 에 둔다 — 저장은 commit() 이 한다(잠금 확인 뒤).
@@ -443,6 +458,7 @@ class Progress:
             ok, head = self.git(['rev-parse', 'HEAD'])
             if ok and head:
                 self.pending = {'sha': head, 'shown': []}
+                self.last_head = head
             return []
         if not st.get('sha'):
             return []
@@ -452,6 +468,7 @@ class Progress:
             ok, head = self.git(['rev-parse', 'HEAD'])
             if ok and head:
                 self.pending = {'sha': head, 'shown': shown}
+                self.last_head = head
             return []
         done, last, nums = [], st['sha'], None
         for row in out.splitlines():
@@ -467,6 +484,7 @@ class Progress:
                 nums = sorted({int(x) for x in PLAN_TASK.findall(self.read_plan() or '')})
             done.append(self._line(int(m.group(2)), m.group(3).strip(), nums))
         self.pending = {'sha': last, 'shown': shown}
+        self.last_head = last
         return done
 
     def commit(self):
