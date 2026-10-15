@@ -33,7 +33,7 @@
 - **대기는 워커마다 `--dispatch`·`--repo`·`--label` 을 같은 순서로 이어 한 번 띄운다:**
 
   ```
-  python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <id1> --repo "<workingDir1>" --label "Plan <N1>" --dispatch <id2> --repo "<workingDir2>" --label "Plan <N2>"
+  python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <id1> --repo "<workingDir1>" --label "Plan <N1>/<총>" --dispatch <id2> --repo "<workingDir2>" --label "Plan <N2>/<총>"
   ```
 
   - **배치의 메시지가 어느 워커 것인지는 메시지의 `from`(handle)과 `payload` 의 dispatch-id 로 가른다.**
