@@ -208,6 +208,10 @@ if (Test-HookSelected @('session-context')) {
     # SC14: compact + 미완료 task 있는 plan → 경로 지시 주입
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact 재읽기 경로 SKILL.md (SC14)" -R $r -ExpectExit 0 -ExpectContains 'implement/SKILL.md'
+    # SC14c (**경로 실재**): 상대 경로(`implement/SKILL.md`)는 어느 cwd 에서도 풀리지 않아 압축 직후 Read 가 실패한다.
+    #   hook 과 같은 식(`"$(Split-Path -Parent <scripts>)/skills/…"`)으로 만든 절대 경로를 잰다 — `Join-Path` 는 구분자를 백슬래시로 바꿔 식이 갈리면 FAIL 한다.
+    $scSkillsAbs = "$(Split-Path -Parent $scriptsDir)/skills"
+    Assert-Case -Name "session-context: compact 구현 재읽기 경로가 절대 경로 (SC14c)" -R $r -ExpectExit 0 -ExpectContains "$scSkillsAbs/implement/SKILL.md"
 
     # SC39~SC39d: compact 직후 루프 제어 규칙 **내용 주입** (v1.212.0 T1).
     #   경로만 지시하면 실제로 읽었는지 검증할 장치가 없다. 그래서 루프가 멈추는 것을 막는
@@ -237,6 +241,8 @@ if (Test-HookSelected @('session-context')) {
     '# Agent Guide' | Set-Content -Encoding UTF8 (Join-Path $scPlanless 'AGENTS.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact + plan 없음 → 계획 재읽기 지시 (SC28)" -R $r -ExpectExit 0 -ExpectContains 'plan/SKILL.md'
+    # SC28c (**경로 실재**): SC14c 와 같은 축 — 계획 재읽기 지시도 실재하는 절대 경로를 준다.
+    Assert-Case -Name "session-context: compact 계획 재읽기 경로가 절대 경로 (SC28c)" -R $r -ExpectExit 0 -ExpectContains "$scSkillsAbs/plan/SKILL.md"
 
     # SC29 (델타 음성): compact + 미완료 task 있는 plan → 구현 지시만, 계획 지시는 미발화
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
@@ -365,6 +371,8 @@ if (Test-HookSelected @('session-context')) {
     #   가리켰다. ⚠ **그 문면을 재는 어서션이 없어 잘못된 지시가 두 커밋을 살아남았고**
     #   골든 812/812는 그것을 잡지 못했다(사람 리뷰가 잡았다). 이 케이스가 그 자리를 메운다.
     Assert-Case -Name "session-context: vault 라인이 조회 정본을 지목 (SC18e)" -R $r -ExpectExit 0 -ExpectContains 'skills/WIKI.md'
+    # SC18f (**경로 실재**): SC14c 와 같은 축 — vault 라인의 조회 정본도 실재하는 절대 경로를 준다.
+    Assert-Case -Name "session-context: vault 라인 조회 정본이 절대 경로 (SC18f)" -R $r -ExpectExit 0 -ExpectContains "$scSkillsAbs/WIKI.md"
 
     # SC21 (델타): 설정+실재인데 비 pjc cwd(plan·AGENTS 전무) → 게이팅으로 미주입.
     #   vault는 cwd와 무관한 사용자 홈 자원이라, 게이팅이 없으면 위키를 쓰는 사용자의 모든 세션에 라인이 붙는다.
@@ -610,6 +618,8 @@ if (Test-HookSelected @('session-context')) {
     #   있는지**가 함께 있어야 한다. 회차 46 전에는 절차 K 1 형식을 가리켜, 그 파일을 로드하지
     #   않는 계획 세션이 형식 없이 기록하게 돼 있었다(SC18e와 같은 기전).
     Assert-Case -Name "session-context: 부재 라인이 기록 형식 출처를 지목 (SC19b)" -R $r -ExpectExit 0 -ExpectContains 'skills/WIKI.md'
+    # SC19c (**경로 실재**): SC14c 와 같은 축 — 부재 라인의 기록 형식 출처도 실재하는 절대 경로를 준다.
+    Assert-Case -Name "session-context: 부재 라인 기록 형식 출처가 절대 경로 (SC19c)" -R $r -ExpectExit 0 -ExpectContains "$scSkillsAbs/WIKI.md"
 
     # SC20 (무회귀): config 없는 홈 → vault 라인 미주입. 미설정은 무출력이 설계다(노이즈 방지).
     $env:USERPROFILE = $iso

@@ -70,7 +70,7 @@ try {
 
     if ($repoVer -ne $selfVer) {
         # stdout → 세션 컨텍스트 주입 (SessionStart exit 0 규약)
-        Write-Output "[pjc 버전 드리프트] 설치본 v$selfVer ≠ 레포 v$repoVer — 재설치 전까지 이 세션의 hook·스킬은 설치본(v$selfVer) 기준으로 동작합니다. 레포 변경분을 세션에 반영하려면 재설치가 필요합니다 (install.ps1 — 사용자 실행)."
+        Write-Output "[pjc 버전 드리프트] 설치본 v$selfVer ≠ 레포 v$repoVer — 재설치 전까지 이 세션의 hook·스킬은 설치본(v$selfVer) 기준으로 동작합니다. 레포 변경분을 세션에 반영하려면 재설치가 필요합니다 (커밋·push 뒤 /plugin update — 사용자 실행)."
     }
 
     exit 0

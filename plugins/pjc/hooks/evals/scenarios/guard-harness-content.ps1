@@ -26,6 +26,9 @@ $agents = "$gacFwd/AGENTS.md"
 # ---- 차단 양성 (1) plan 진행 상태·세션 인계 서술 ----
 $r = Invoke-Hook 'guard-harness.ps1' (New-GacWrite $agents "# A`n`n## 현재 진행 상태`n`n| 단계 | 상태 |`n|---|---|`n| M5 | 진행 중 |`n")
 Assert-Case -Name "guard-harness-content: 진행 상태 헤딩 차단" -R $r -ExpectExit 2 -ExpectContains 'AGENTS.md 에 plan 진행 상태·세션 인계 서술을 넣으려 합니다'
+# 경계 문서 안내는 다른 레포에서도 풀리는 절대 경로여야 한다 — hook 과 같은 식으로 만든 경로를 두 분기에서 잰다.
+$gacBoundaryAbs = "$(Split-Path -Parent $scriptsDir)/skills/AGENTS-BOUNDARY.md"
+Assert-Case -Name "guard-harness-content: 진행 상태 차단 안내의 경계 문서가 절대 경로" -R $r -ExpectExit 2 -ExpectContains $gacBoundaryAbs
 
 $r = Invoke-Hook 'guard-harness.ps1' (New-GacWrite $agents "# A`n`n**다음 작업**: T7 진행`n")
 Assert-Case -Name "guard-harness-content: '다음 작업' 볼드 제목 차단" -R $r -ExpectExit 2
@@ -37,6 +40,7 @@ Assert-Case -Name "guard-harness-content: '남긴 것/다음 회차' 인용 볼�
 $tree = "# A`n`n``````" + "`n├── src/`n│   └── app/`n└── docs/`n" + "``````" + "`n"
 $r = Invoke-Hook 'guard-harness.ps1' (New-GacWrite $agents $tree)
 Assert-Case -Name "guard-harness-content: 디렉터리 트리 차단" -R $r -ExpectExit 2 -ExpectContains 'AGENTS.md 에 디렉터리 트리를 넣으려 합니다'
+Assert-Case -Name "guard-harness-content: 트리 차단 안내의 경계 문서가 절대 경로" -R $r -ExpectExit 2 -ExpectContains $gacBoundaryAbs
 
 # Edit 도구 경로도 같은 판정 (new_string 검사)
 $r = Invoke-Hook 'guard-harness.ps1' (New-GacEdit $agents "├── src/`n│   └── app/`n└── docs/`n")

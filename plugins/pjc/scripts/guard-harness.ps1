@@ -122,7 +122,7 @@ if ($text -match $handoffRx) {
     [Console]::Error.WriteLine("해결 방법:")
     [Console]::Error.WriteLine("  1) 진행 중인 상태 -> plan.md 의 ``## Progress Log``·``## Next Steps``")
     [Console]::Error.WriteLine("  2) 끝난 회차의 기록 -> git 커밋 본문 (영구 기록의 정본)")
-    [Console]::Error.WriteLine("  3) 경계 전체 -> plugins/pjc/skills/AGENTS-BOUNDARY.md")
+    [Console]::Error.WriteLine("  3) 경계 전체 -> $(Split-Path -Parent $PSScriptRoot)/skills/AGENTS-BOUNDARY.md")
     [Console]::Error.WriteLine("  4) 긴급 우회는 사용자만 가능 (Claude Code 시작 전 터미널에서):")
     [Console]::Error.WriteLine("     `$env:CLAUDE_HARNESS_QUICK = '1'")
     Write-GacEvent 'block' '인계 서술'
@@ -154,7 +154,7 @@ if ($treeHit) {
     [Console]::Error.WriteLine("해결 방법:")
     [Console]::Error.WriteLine("  1) 구조 설명 -> 위키 허브(``20_projects/…``)의 온보딩 절")
     [Console]::Error.WriteLine("  2) AGENTS.md 에는 위키 포인터 1줄만")
-    [Console]::Error.WriteLine("  3) 경계 전체 -> plugins/pjc/skills/AGENTS-BOUNDARY.md")
+    [Console]::Error.WriteLine("  3) 경계 전체 -> $(Split-Path -Parent $PSScriptRoot)/skills/AGENTS-BOUNDARY.md")
     [Console]::Error.WriteLine("  4) 긴급 우회는 사용자만 가능 (Claude Code 시작 전 터미널에서):")
     [Console]::Error.WriteLine("     `$env:CLAUDE_HARNESS_QUICK = '1'")
     Write-GacEvent 'block' '디렉터리 트리'

@@ -29,7 +29,7 @@
     "externalHead": "[EXTERNAL OP WARNING] 외부·비가역 작업이 감지되었습니다:",
     "localHead": "[LOCAL OP WARNING] 로컬 비가역 작업이 감지되었습니다:",
     "externalBody": [
-      "이 작업들은 자율 루프 권한 밖입니다 (규칙 12 — push·병합·태그·릴리즈·PR).",
+      "이 작업들은 자율 루프 권한 밖입니다 (push·병합·태그·릴리즈·PR — 별도 승인 대상 · 예외는 `pjc:llm-wiki` 의 vault push 와 `pjc:chain-plan` 의 체인 worktree 로컬 병합 둘이며 그 스킬 규약을 따른다).",
       "사용자에게 '그 행위를 이름으로 적어' 별도 승인받았는지 확인하세요. 승인 없이 실행하지 마세요."
     ],
     "localBody": "로컬 비가역: 미커밋 변경이 영구 소실될 수 있습니다 — reflog로는 커밋된 것만 일부 복구됩니다. 진행 전 의도된 되돌리기인지 확인하세요.",

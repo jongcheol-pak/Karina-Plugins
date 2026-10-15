@@ -141,7 +141,7 @@ try {
                         if ($source -eq 'compact') {
                             # ⚠ 경로 리터럴을 보존한다 — 골든이 ExpectContains로 재고 있어, 문면을 다듬다
                             #   경로가 빠지면 즉시 FAIL한다. 조정 대상은 경로를 감싸는 서술뿐이다.
-                            $lines.Add("[pjc 세션 컨텍스트] 진행 중 plan이 있습니다 — 아래에 자율 루프 규칙 원문을 함께 주입했습니다. 그 밖의 절차가 필요하면 Read로 확인하세요(스킬 재invoke로는 복구되지 않습니다): implement/SKILL.md. 그 파일이 참조하는 WIKI.md도 필요하면 함께 읽으세요.")
+                            $lines.Add("[pjc 세션 컨텍스트] 진행 중 plan이 있습니다 — 아래에 자율 루프 규칙 원문을 함께 주입했습니다. 그 밖의 절차가 필요하면 Read로 확인하세요(스킬 재invoke로는 복구되지 않습니다): $(Split-Path -Parent $PSScriptRoot)/skills/implement/SKILL.md. 그 파일이 참조하는 WIKI.md도 필요하면 함께 읽으세요.")
 
                             # 경로만 지시하면 실제로 읽었는지 검증할 장치가 없다. 루프가 멈추는 것을 막는 — 근거는 `rules/session-context-rationale.md` §11
                             $secRules = Get-SkillSection -Path (Join-Path $skillsDir 'implement/SKILL.md') -StartHeading '## 자율 루프' -StopHeading '## 검증'
@@ -165,7 +165,7 @@ try {
 
         # ---- 계획 세션의 압축 리마인더 — 근거는 `rules/session-context-rationale-plan.md` §17
         if ($source -eq 'compact' -and (-not $planPath -or $all -eq 0 -or $open -eq 0) -and ($planPath -or (Test-Path -LiteralPath (Join-Path $cwd 'AGENTS.md')))) {
-            $lines.Add("[pjc 세션 컨텍스트] 계획을 세우던 중이었다면 — plan/SKILL.md를 Read로 재확인하세요(스킬 재invoke로는 복구되지 않습니다). 인터뷰 절차·영향 범위 실측·작업 분해가 요약으로 뭉개집니다.")
+            $lines.Add("[pjc 세션 컨텍스트] 계획을 세우던 중이었다면 — $(Split-Path -Parent $PSScriptRoot)/skills/plan/SKILL.md를 Read로 재확인하세요(스킬 재invoke로는 복구되지 않습니다). 인터뷰 절차·영향 범위 실측·작업 분해가 요약으로 뭉개집니다.")
             # 이 줄은 compact 리마인더라 vault 게이팅 신호가 아니다 — 기존 리마인더 — 근거는 `rules/session-context-rationale-plan.md` §18
             $cwdBaseCount++
 

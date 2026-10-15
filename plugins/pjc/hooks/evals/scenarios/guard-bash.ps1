@@ -262,6 +262,9 @@ Assert-Case -Name "split: 따옴표 안 | 가 있어도 위험 대입 경고가 
 # ST4 (경고 축 — warn-external-ops): 같은 형태로 외부 작업 경고가 살아 있는지.
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo "a|b" && git push origin main')
 Assert-Case -Name "split: 따옴표 안 | 뒤의 git push 를 여전히 잡는다 (ST4)" -R $r -ExpectExit 0 -ExpectContains '[EXTERNAL OP WARNING]'
+# ST4b·ST4c (경고 문면): 승인 경계를 현행 규칙으로 말하는가 — 새 문면(양성)과 죽은 규칙 번호(음성)를 갈라 잰다.
+Assert-Case -Name "split: 외부 작업 경고가 별도 승인 대상을 말한다 (ST4b)" -R $r -ExpectExit 0 -ExpectContains '별도 승인 대상'
+Assert-Case -Name "split: 외부 작업 경고에 죽은 규칙 번호가 없다 (ST4c)" -R $r -ExpectExit 0 -ExpectNotContains '규칙 12'
 
 # ST5 (도구별 이스케이프): PowerShell 도구에서 `\` 는 리터럴이라 `"C:\"` 가 닫힌 문자열이고
 #   뒤의 `;` 가 구분자로 선다. bash 규칙으로 읽으면 인용이 열린 채 남아 분리가 안 된다(회차 44).
