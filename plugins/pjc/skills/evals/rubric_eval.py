@@ -87,7 +87,7 @@ def build_prompt(rubric_text, plan_name, plan_text):
                          for i, line in enumerate(plan_text.splitlines(), 1))
     return (
         "당신은 소프트웨어 계획 문서를 평가하는 심사자입니다. 아래 루브릭에 따라 plan을 채점하세요.\n"
-        "근거를 지목할 수 없는 항목은 점수 대신 \"N/A\"를 쓰고, 출력은 지정된 JSON 한 덩어리만 하세요.\n\n"
+        "근거를 지목할 수 없는 항목은 점수 대신 \"N/A\"를 쓰세요.\n\n"
         "===== 루브릭 =====\n"
         f"{rubric_text}\n\n"
         f"===== 채점 대상: {plan_name} (각 줄 앞의 번호가 라인 번호입니다) =====\n"
@@ -95,21 +95,50 @@ def build_prompt(rubric_text, plan_name, plan_text):
     )
 
 
-def extract_json(text):
-    """judge 응답 텍스트에서 JSON 객체를 뽑는다.
+def build_schema(keys):
+    """judge 응답의 JSON 스키마 — `claude -p --json-schema` 로 넘겨 형식을 호출측이 강제한다.
 
-    '코드펜스 없이 JSON만'을 지시해도 설명이 앞뒤로 붙는 경우가 있어, 첫 '{'부터 마지막 '}'까지를
-    잘라 파싱한다(관대한 파싱 — 형식 흔들림으로 채점 자체를 잃지 않기 위해).
+    「JSON만 출력하라」는 지시와 관대한 재파싱 대신 구조화 출력을 쓰는 이유는, 형식이 흔들릴
+    여지 자체를 없애 judge 호출을 파싱 실패 재시도로 날리지 않기 위해서다. 키는 rubric.md에서
+    뽑은 목록을 그대로 쓴다(load_rubric과 같은 이유). 「근거 없는 점수」 같은 의미 검사는
+    스키마가 하지 않으므로 normalize_scores가 그대로 맡는다.
     """
-    if not text:
-        return None
-    start, end = text.find("{"), text.rfind("}")
-    if start < 0 or end <= start:
-        return None
-    try:
-        return json.loads(text[start:end + 1])
-    except json.JSONDecodeError:
-        return None
+    item = {
+        "type": "object",
+        "properties": {
+            "score": {"anyOf": [{"type": "integer", "minimum": 1, "maximum": 10},
+                                {"const": "N/A"}]},
+            "evidence": {"type": ["string", "null"]},
+            "note": {"type": ["string", "null"]},
+        },
+        "required": ["score", "evidence", "note"],
+        "additionalProperties": False,
+    }
+    return {
+        "type": "object",
+        "properties": {"scores": {
+            "type": "object",
+            "properties": {k: item for k in keys},
+            "required": list(keys),
+            "additionalProperties": False,
+        }},
+        "required": ["scores"],
+        "additionalProperties": False,
+    }
+
+
+def parse_envelope(envelope):
+    """`claude -p --output-format json` 봉투에서 구조화 출력을 꺼내 (parsed, 오류 문자열)을 낸다.
+
+    `result` 텍스트는 다시 파싱하지 않는다 — 스키마를 통과한 값은 `structured_output` 에만
+    담기고, 텍스트 쪽을 읽으면 스키마 강제를 거치지 않은 응답도 받아들이게 된다.
+    """
+    if envelope.get("is_error"):
+        return None, str(envelope.get("subtype") or envelope.get("result"))[:200]
+    parsed = envelope.get("structured_output")
+    if not isinstance(parsed, dict):
+        return None, "judge 응답에 structured_output 이 없음"
+    return parsed, None
 
 
 def normalize_scores(raw, keys):
@@ -173,10 +202,11 @@ def kill_tree(proc):
             pass
 
 
-def score_one(prompt, model, config_dir, cwd):
+def score_one(prompt, schema, model, config_dir, cwd):
     """judge를 1회 호출해 (파싱된 응답, 오류 문자열)을 반환한다. 오류 시 1회 재시도한다."""
     cmd = ["claude", "-p", "--output-format", "json",
-           "--max-turns", str(MAX_TURNS), "--permission-mode", "manual"]
+           "--max-turns", str(MAX_TURNS), "--permission-mode", "manual",
+           "--json-schema", json.dumps(schema)]
     if model:
         cmd += ["--model", model]
     env = os.environ.copy()
@@ -207,12 +237,9 @@ def score_one(prompt, model, config_dir, cwd):
         except json.JSONDecodeError:
             last_err = (stderr.strip().splitlines() or ["stdout 파싱 실패"])[-1][:200]
             continue
-        if envelope.get("is_error"):
-            last_err = str(envelope.get("subtype") or envelope.get("result"))[:200]
-            continue
-        parsed = extract_json(envelope.get("result") or "")
-        if parsed is None:
-            last_err = "judge 응답에서 JSON을 찾지 못함"
+        parsed, err = parse_envelope(envelope)
+        if err:
+            last_err = err
             continue
         return parsed, None
     return None, last_err
@@ -271,6 +298,7 @@ def main():
         print("[중단] claude CLI를 찾을 수 없습니다. PATH를 확인하세요.")
         sys.exit(2)
     rubric_text, keys = load_rubric()
+    schema = build_schema(keys)
     plans = collect_plans(args.plans_dir)
     if args.filter:
         plans = [p for p in plans if args.filter in os.path.basename(p)]
@@ -305,7 +333,7 @@ def main():
                 case["issues"].append(f"입력이 {MAX_PLAN_CHARS}자로 절단됨(뒷부분 미채점)")
             started = time.time()
             for rep in range(args.repeats):
-                parsed, err = score_one(prompt, args.model, config_dir, neutral_cwd)
+                parsed, err = score_one(prompt, schema, args.model, config_dir, neutral_cwd)
                 if err:
                     case["issues"].append(f"{rep + 1}회차 실패: {err}")
                     continue

@@ -61,19 +61,19 @@ task 단위·전체 단위 검증 방법이 **명령 수준**으로 특정되는
 
 ## 출력 형식
 
-아래 JSON **한 덩어리만** 출력한다. 코드펜스·설명·인사말을 붙이지 않는다.
+출력 형식은 호출측이 JSON 스키마로 강제한다. 각 항목의 모양은 아래와 같다(값은 형식 설명용이다).
 
 ```
 {
   "scores": {
-    "goal_clarity":            {"score": 8,     "evidence": "plan.md:15", "note": "한 줄 사유"},
-    "task_decomposition":      {"score": 7,     "evidence": "plan.md:220", "note": "..."},
+    "goal_clarity":            {"score": <1–10 또는 "N/A">, "evidence": "<plan.md:라인>", "note": "<한 줄 사유>"},
+    "task_decomposition":      {"score": <1–10 또는 "N/A">, "evidence": "<plan.md:라인>", "note": "<한 줄 사유>"},
     "acceptance_verifiability":{"score": "N/A", "evidence": null,          "note": "근거를 지목할 수 없음"},
-    "decisions_resolved":      {"score": 9,     "evidence": "plan.md:138", "note": "..."},
-    "impact_analysis":         {"score": 6,     "evidence": "plan.md:91",  "note": "..."},
-    "edge_cases":              {"score": 8,     "evidence": "plan.md:234", "note": "..."},
-    "verification_strategy":   {"score": 7,     "evidence": "plan.md:430", "note": "..."},
-    "conciseness":             {"score": 5,     "evidence": "plan.md:46",  "note": "..."}
+    "decisions_resolved":      {"score": <1–10 또는 "N/A">, "evidence": "<plan.md:라인>", "note": "<한 줄 사유>"},
+    "impact_analysis":         {"score": <1–10 또는 "N/A">, "evidence": "<plan.md:라인>", "note": "<한 줄 사유>"},
+    "edge_cases":              {"score": <1–10 또는 "N/A">, "evidence": "<plan.md:라인>", "note": "<한 줄 사유>"},
+    "verification_strategy":   {"score": <1–10 또는 "N/A">, "evidence": "<plan.md:라인>", "note": "<한 줄 사유>"},
+    "conciseness":             {"score": <1–10 또는 "N/A">, "evidence": "<plan.md:라인>", "note": "<한 줄 사유>"}
   }
 }
 ```
