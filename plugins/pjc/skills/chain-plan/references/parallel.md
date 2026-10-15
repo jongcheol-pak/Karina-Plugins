@@ -23,11 +23,11 @@
 - **그룹의 계획을 한 번에 띄운다 — 대상 레포 폴더가 아니라 새 worktree 다:**
 
   ```
-  <CLI> orchestration worker-start --json --task <task id> --agent claude --worktree new-child --repo "<대상 레포 경로>" --base-branch <체인 브랜치> --name chain-<Run id 앞 8자>-p<N> 2>/dev/null
+  <CLI> orchestration worker-start --json --task <task id> --agent claude --worktree new-child --repo "<대상 레포 경로>" --base-branch <체인 브랜치> --name chain-<Run id 의 run_ 뒤 8자>-p<N> 2>/dev/null
   ```
 
   - **응답 갈래는 「워커 루프」와 같다 — `ok: false` 는 `cli-errors.md`「오류 응답」, `ok: true` 인 이상 응답은 `cli-errors.md`「시작 이상 응답」.** 이름이 같은 폴더가 이미 있다는 거절이면 그 worktree 를 `--worktree "<그 경로>"` 로 다시 쓴다.
-  - **`--name` 에 Run 과 계획 번호를 넣는다** — 기본 이름은 무작위라, 넣지 않으면 재개(`resume.md`)가 브랜치를 계획에 잇지 못한다.
+  - **`--name` 에 Run 과 계획 번호를 넣는다** — 기본 이름은 무작위라, 넣지 않으면 재개(`resume.md`)가 브랜치를 계획에 잇지 못한다. Run id 는 `run_` 로 시작해 앞 8자로 자르면 체인끼리 갈리지 않으므로 `run_` 뒤에서 8자를 뗀다. 이름을 고를 때는 `-p<N>` 을 끝에 고정해 맞춘다 — `-p1` 이 `-p10` 에도 걸리지 않게.
   - **응답 `worker.workingDir` 이 그 계획의 worktree 경로이고 브랜치는 `git -C "<workingDir>" branch --show-current` 다** — 응답에 브랜치 필드가 없다.
 - **첫 워커의 `workingDir` 이 대상 레포 루트 아래면 그룹의 나머지를 띄우지 않는다 — 뜬 워커는 끝까지 돌려 「병합」으로 넣고 나머지는 그 뒤 직렬로 돌린다** — Karina 설정 `workspace_dir` 이 레포 안이면 hook 이 worktree 루트에서 멈추지 않고 주 레포의 낡은 `plan.md` 로 게이트를 통과한다. 그 설정은 CLI 로 읽지 못해 띄운 뒤에야 안다.
 - **대기는 워커마다 `--dispatch`·`--repo`·`--label` 을 같은 순서로 이어 한 번 띄운다:**
@@ -44,7 +44,7 @@
 `worker_done`(succeeded)을 받은 순서대로 하나씩 한다. 병합 중에 다른 워커가 끝나면 앞 병합이 끝난 뒤에 한다.
 
 - **ⓐ 주 레포가 깨끗할 때만 한다 — `git -C "<대상 레포 경로>" status --porcelain --untracked-files=no` 가 비어 있고 현재 브랜치가 체인 브랜치여야 한다. 아니면 병합하지 않고 보고하고 멈춘다(stash·폐기하지 않는다)** — 미커밋 변경이 있으면 git 이 병합을 거부하거나 `--abort` 가 그 변경을 되살리지 못할 수 있고, 섞인 트리의 검증은 판정이 오염된다. 워커에 넘겨도 주 레포는 고칠 수 없다.
-- **ⓑ 속성이 걸리는지 본다 — `git -C "<대상 레포 경로>" -c core.attributesFile="<skill>/scripts/chain-merge.gitattributes" check-attr merge -- docs/plans/chain-<Run id>.md`** — `core.attributesFile` 은 우선순위가 가장 낮아 레포의 `.gitattributes` 가 같은 경로를 정하면 그쪽이 이긴다. `union` 이 아니면 그 경로는 일반 병합으로 두고 진행한다.
+- **ⓑ 속성이 걸리는지 본다 — `git -C "<대상 레포 경로>" -c core.attributesFile="<skill>/scripts/chain-merge.gitattributes" check-attr merge -- docs/plans/chain-<Run id>.md docs/plans/history.md plan.md notes.md`** — `core.attributesFile` 은 우선순위가 가장 낮아 레포의 `.gitattributes` 가 같은 경로를 정하면 그쪽이 이긴다. `union`·`chaintheirs` 가 아닌 경로는 일반 병합으로 두고 진행한다(충돌하면 「충돌·검증 실패」).
 - **ⓒ 커밋하지 않고 병합한다:**
 
   ```
