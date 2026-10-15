@@ -28,6 +28,7 @@ description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순�
 ## 인터뷰
 
 - **워커를 띄우기 전에 계획마다 사용자와 인터뷰를 끝낸다 — 절차는 `../plan/references/interview.md` 2-1~2-6 그대로이고, 결과는 계획마다 재진술 6항목이다** — 워커 화면은 사용자가 보지 않아, 거기서 인터뷰하면 질문이 추측으로 메워진다. **단 2-6 의 재진술은 계획마다 보이되 동의는 기다리지 않는다 — 체인 승인이 겸한다** — 같은 성공의 모습·범위 밖을 두 번 승인받지 않게 한다.
+- **이 절의 첫 셸 호출에 현재 시각 출력을 얹어(없으면 단독 1회) 체인 시작으로 둔다 — `회차 경계:` 넘김이면 plan Step 1 시각 · 쓰는 자리는 objective 와 `references/report.md`**
 - **재료는 대상 레포 `AGENTS.md`(컨텍스트에 전문이 없을 때만 Read)와 계획마다의 실측이다 — `회차 실측:` 이 없거나 `미측정` 칸이 있는 계획은 `references/measure.md`「계획 실측」 으로 먼저 잰다(계획마다 `Explore` 서브에이전트)** — 실측 없이 나눈 계획은 워커가 처음 재는 순간 빈틈이 드러나 `[요청 밖]` 질문으로 사용자를 다시 부른다. 위키는 워커 Step 1 이 읽는다 — **단 후보 라운드 전에 vault `decisions.md` 를 후보 키워드로 grep 해 기각·보류 이력과 겹치는 후보를 뺀다**(경로는 `../WIKI.md` 머리의 vault 경로와 대상 `AGENTS.md` 의 `## 위키` 절 · vault 가 없으면 생략하고 체인 승인에 그 사실 한 구).
 - **실측 뒤 나란한 두 계획의 task 초안 수 합이 6 이하면 다른 질문보다 먼저 `references/merge.md`「계획 묶기」 를 따른다.**
 - **묻는 것은 실측이 드러낸 작업 갈림길이다 — 답에 따라 만들 것이 달라지는 동작·UX·데이터 형식·범위를 계획마다 갈림길은 2-2 서식으로 하나씩, 요청 밖·대장 겹침·추가 기능 후보는 `../plan/references/interview.md`「후보 라운드」 목록으로 한 번에 묻는다. 후보의 답은 `references/handoff.md`「확인 인터뷰」 를 따른다** — 근거로 정해지는 것을 묻는 인터뷰는 작업 대신 자동 진행의 허락만 받는다.
@@ -81,7 +82,7 @@ plan 2: …
 - **모든 `<CLI>` 응답이 `ok: false` 면 `references/cli-errors.md`「오류 응답」 을 읽고 따른다** — 재전송·재실행으로 복구되는 코드가 있다.
 
 ```
-<CLI> orchestration run-create --json --objective "<계획 목록 한 줄> [체인 승인: <사용자 답 원문>]"
+<CLI> orchestration run-create --json --objective "<계획 목록 한 줄> [체인 시작: <시각>] [체인 승인: <사용자 답 원문>]"
 <CLI> orchestration task-create --json --task-title "plan <N>/<총> — <한 줄>" --deps <앞 task id> --spec "$(cat <<'EOF'
 <spec 서식을 채운 것>
 EOF
