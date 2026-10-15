@@ -33,6 +33,8 @@ description: 코드 변경을 하나의 plan.md로 계획한다 — 요구를 1�
 
 - **읽은 결과는 Investigation Log에 남긴다** — 다음 세션이 같은 근거를 재조회 없이 쓴다.
 
+- **Step 1 의 첫 셸 호출에 현재 시각 출력(Bash `date '+%F %H:%M'` · PowerShell `Get-Date -Format 'yyyy-MM-dd HH:mm'`)을 얹는다 — 셸 호출이 없으면 단독 1회 · Step 5 가 그 값을 `plan.md` 의 `> 시작:` 에 적는다(서식 `references/plan-template.md`「Goal」)** — 완료 보고의 소요는 이 시각부터 잰다. 모델은 현재 시각을 모르고, 따로 부르면 왕복이 하나 는다.
+
 - **2번에서 읽은 함정은 Log 에 적고 끝내지 말고 그것이 쓰이는 시점의 자리로 보낸다** — 기준은 `../WIKI.md` §1 「기록 의무」, 서식은 `references/plan-template.md` 다.
 
 ### AGENTS.md가 없을 때
