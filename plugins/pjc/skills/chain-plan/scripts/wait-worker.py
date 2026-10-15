@@ -23,6 +23,11 @@
 행이 없거나 Karina `holds_place_at` 기준으로 놓았으면 freed 다. 시한·멈춤 판정은 없다 — 사람이 탭을 놓아야
 풀리는 상태도 있어서다. 이 모드의 message·freed 지시문은 --place 재기동을 말하고 error 는 두 모드가 같다.
 
+병렬 대기(`--dispatch` 여러 번 — `--repo`·`--label` 도 주면 같은 수·같은 순서): 배치는 코디네이터 터미널에 오므로
+`check` 는 주기마다 한 번이고, 화면 비교·멈춤 연속 수·진행 감지만 dispatch 마다 따로 둔다. 멈추면 그 dispatch 하나를
+지목하고 지시문은 references/parallel.md 「멈춤」 을 가리킨다. 잠금은 dispatch 마다 하나씩이고 전부 쥐었을 때만
+소유다(AllLocks) — 끝난 워커를 뺀 나머지로 다시 띄운 대기가 집합이 겹치는 앞 대기를 물린다.
+
 멈춤 판정: `check` 가 시한 만료(count 0)로 돌아올 때마다 `worker-read`(커서 없음 — 커서는 출처에 묶여
 다른 출처로 넘기면 `source_changed` 다)로 화면을 읽고, 앞 체크포인트와 `lines` 가 같으면 연속 수(일치한 비교
 횟수 — 같은 화면 장 수보다 하나 적다)를 올린다.
@@ -78,7 +83,7 @@ def screen_hash(lines):
     return hashlib.sha1('\n'.join(lines).encode('utf-8')).hexdigest()[:16]
 
 
-def _action(kind, dispatch, streak=0, on_place=False):
+def _action(kind, dispatch, streak=0, on_place=False, parallel=False):
     if kind == 'message' and on_place:
         return ('배치를 chain-plan 「워커 루프」 규칙대로 처리하고 ack 한 뒤 같은 --place 대기를 다시 띄운다 '
                 '(자리 대기 중이라 --dispatch 대기를 띄우지 않는다)')
@@ -88,7 +93,12 @@ def _action(kind, dispatch, streak=0, on_place=False):
     if kind == 'message':
         return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고, 배치를 chain-plan 「워커 루프」 규칙대로 '
                 '처리하고 ack 한 뒤 대기를 다시 띄운다 (이 배치의 deliveryId 를 이미 ack 했으면 처리하지 않고 대기만 다시 띄운다 · '
-                'worker_done·사후 완료 status 면 다시 띄우지 않고 다음 계획의 worker-start 뒤에 띄운다)')
+                'worker_done·사후 완료 status 면 다시 띄우지 않고 다음 계획의 worker-start 뒤에 띄운다 · '
+                '남은 병렬 워커가 있으면 그 dispatch 들로 곧바로 다시 띄운다 — references/parallel.md)')
+    if kind == 'stall' and parallel:
+        return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고(화면은 구분 줄 뒤다), '
+                '같은 화면이 체크포인트마다 %d장 이어졌다 — worker-retain --dispatch %s 후 '
+                '병렬 대기라 references/parallel.md 「멈춤」 을 따른다' % (streak, dispatch))
     if kind == 'stall':
         return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고(화면은 구분 줄 뒤다), '
                 '같은 화면이 체크포인트마다 %d장 이어졌다 — worker-retain --dispatch %s 후 보고하고 멈춘다 '
@@ -139,65 +149,80 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
     """대기 반복. call(args)->str 은 `<CLI> orchestration <args>` 의 stdout, lock.owned() 는 잠금 소유,
     progress 는 진행 감지(Progress — 없으면 끈다)다 — 바깥에서 넣어 골든이 Karina·git 없이 갈래를 잰다.
     poll_ms 가 없으면 timeout_ms 와 같아 주기마다 화면을 읽는다. 시한은 두지 않는다 — 백그라운드 실행은
-    45분(2,700초)까지 살아 완료 알림을 냈다 — 그 이상은 미측정(2026-10-06 실측)."""
-    streak, last_hash = 0, None
+    45분(2,700초)까지 살아 완료 알림을 냈다 — 그 이상은 미측정(2026-10-06 실측).
+    dispatch 는 하나(str) 또는 병렬 워커 여럿(list)이고, progress 도 하나 또는 같은 순서의 list 다 —
+    배치는 코디네이터 터미널에 오므로 check 는 한 번이고, 화면 비교·멈춤만 dispatch 마다 따로 센다."""
+    ids = [dispatch] if isinstance(dispatch, str) else list(dispatch)
+    progs = [] if progress is None else (list(progress) if isinstance(progress, list) else [progress])
+    parallel = len(ids) > 1
+    head = ids[0] if not parallel else ' '.join(ids)
+    streak = {d: 0 for d in ids}
+    last_hash = {d: None for d in ids}
     poll = poll_ms or timeout_ms
     remaining = timeout_ms
-    if progress is not None:
-        progress.start()
+    for p in progs:
+        p.start()
 
-    def emit(kind, body, lines_done, **kw):
+    def poll_all():
+        return [line for p in progs for line in p.poll()]
+
+    def commit_all():
+        for p in progs:
+            p.commit()
+
+    def emit(kind, body, lines_done, who=head, **kw):
         # 진행 줄을 실어 내보낼 때만 그 상태를 저장한다 — 진행만 있는 주기에는 깨우지도 저장하지도 않아,
         # 다음 주기가 같은 기준에서 같은 줄을 다시 계산한다(물러나거나 끊겨도 줄을 잃지 않는다).
-        if progress is not None:
-            progress.commit()
-        return _result(kind, dispatch, lines_done + list(body), **kw)
+        commit_all()
+        return _result(kind, who, lines_done + list(body), **kw)
 
     while True:
         wait = min(poll, remaining)
         try:
             raw = call(['check', '--json', '--wait', '--timeout-ms', str(wait)])
         except OSError as e:
-            return _result('error', dispatch, ['CLI 실행 실패: %s' % e])
+            return _result('error', head, ['CLI 실행 실패: %s' % e])
         if alive is not None and not alive():
-            return _result('orphaned', dispatch)
+            return _result('orphaned', head)
         # 진행 감지(git 하위 프로세스)를 잠금 확인보다 먼저 한다 — 확인 뒤에 돌리면 그 사이 잠금을 잃은
         # 대기가 배치를 싣고 나간다. poll 은 저장하지 않으므로 앞에 둬도 상태를 쓰지 않는다.
-        lines_done = progress.poll() if progress is not None else []
+        lines_done = poll_all()
         if not lock.owned():
-            return _result('superseded', dispatch)
+            return _result('superseded', head)
         data, err = _parse(raw)
         if err is not None:
             return emit('error', [err], lines_done)
         if data.get('count', 0) > 0:
             return emit('message', [_compact(data)[:RESULT_CAP]], lines_done)
-        if not lines_done and progress is not None:
+        if not lines_done and progs:
             # 줄 없는 갱신(HEAD 시드·무효 기준 복구·비 task 커밋만 지난 sha 전진)은 이 주기에 저장한다 —
             # 미루면 첫 출력 때 그 사이 task 커밋이 기준 뒤로 묻힌다.
-            progress.commit()
+            commit_all()
         remaining -= wait
         if remaining > 0:
             continue
         remaining = timeout_ms
 
-        try:
-            raw = call(['worker-read', '--json', '--dispatch', dispatch])
-        except OSError as e:
-            return _result('error', dispatch, ['CLI 실행 실패: %s' % e])
-        if not lock.owned():
-            return _result('superseded', dispatch)
-        data, err = _parse(raw)
-        if err is not None:
-            return emit('error', [err], lines_done)
-        lines = [str(l) for l in data.get('lines') or []]
-        h = screen_hash(lines)
-        streak = streak + 1 if h == last_hash else 0
-        last_hash = h
-        # streak 은 일치한 비교 횟수라 같은 화면 장 수는 그보다 하나 많다 — 첫 화면이 1장이다.
-        if streak + 1 >= stall:
-            # 진행 줄이 있으면 화면과 섞이지 않게 구분 줄을 둔다 — 화면 끝 40줄은 형식이 정해져 있지 않다.
-            sep = ['— 화면 끝 %d줄 —' % STALL_TAIL] if lines_done else []
-            return emit('stall', sep + lines[-STALL_TAIL:], lines_done, streak=streak + 1)
+        for d in ids:
+            try:
+                raw = call(['worker-read', '--json', '--dispatch', d])
+            except OSError as e:
+                return _result('error', head, ['CLI 실행 실패: %s' % e])
+            if not lock.owned():
+                return _result('superseded', head)
+            data, err = _parse(raw)
+            if err is not None:
+                return emit('error', [err], lines_done)
+            lines = [str(l) for l in data.get('lines') or []]
+            h = screen_hash(lines)
+            streak[d] = streak[d] + 1 if h == last_hash[d] else 0
+            last_hash[d] = h
+            # streak 은 일치한 비교 횟수라 같은 화면 장 수는 그보다 하나 많다 — 첫 화면이 1장이다.
+            if streak[d] + 1 >= stall:
+                # 진행 줄이 있으면 화면과 섞이지 않게 구분 줄을 둔다 — 화면 끝 40줄은 형식이 정해져 있지 않다.
+                sep = ['— 화면 끝 %d줄 —' % STALL_TAIL] if lines_done else []
+                return emit('stall', sep + lines[-STALL_TAIL:], lines_done, who=d,
+                            streak=streak[d] + 1, parallel=parallel)
 
 
 # Karina `Worker::holds_place_at` 이 「자리를 쥐고 있다」로 보는 state — 그 밖이거나 놓았으면(released) 빈자리다.
@@ -264,6 +289,21 @@ class FileLock:
                 os.remove(self.path)
             except OSError:
                 pass
+
+
+class AllLocks:
+    """병렬 대기의 잠금 — dispatch 마다 FileLock 하나씩이고 전부 쥐었을 때만 소유다. 새 대기의 dispatch 집합이
+    하나라도 겹치면(끝난 워커를 뺀 나머지로 다시 띄운 대기) 앞 대기가 물러나 같은 배치를 두 대기가 받지 않는다."""
+
+    def __init__(self, locks):
+        self.locks = list(locks)
+
+    def owned(self):
+        return all(l.owned() for l in self.locks)
+
+    def release(self):
+        for l in self.locks:
+            l.release()
 
 
 def pick_watch_targets(chain):
@@ -524,16 +564,20 @@ def main(argv=None):
     sys.stdout.reconfigure(encoding='utf-8')
     ap = argparse.ArgumentParser(description='chain-plan 워커 대기')
     ap.add_argument('--cli', required=True)
-    ap.add_argument('--dispatch', default=None)
+    # --dispatch·--repo·--label 은 병렬 워커마다 한 번씩 같은 순서로 준다(한 번이면 종전 단일 대기).
+    ap.add_argument('--dispatch', action='append', default=None)
     ap.add_argument('--place', default=None)
     ap.add_argument('--timeout-ms', type=int, default=540000)
     ap.add_argument('--stall', type=int, default=3)
-    ap.add_argument('--repo', default=None)
-    ap.add_argument('--label', default='')
+    ap.add_argument('--repo', action='append', default=None)
+    ap.add_argument('--label', action='append', default=None)
     ap.add_argument('--poll-ms', type=int, default=None)
     a = ap.parse_args(argv)
     if (a.dispatch is None) == (a.place is None):
         ap.error('--dispatch 와 --place 중 하나만 준다')
+    for name, vals in (('--repo', a.repo), ('--label', a.label)):
+        if vals is not None and a.dispatch is not None and len(vals) != len(a.dispatch):
+            ap.error('%s 는 --dispatch 와 같은 수만큼 같은 순서로 준다' % name)
     alive = make_alive()
     if a.place is not None:
         lock = FileLock('place-%s' % a.place)
@@ -542,14 +586,17 @@ def main(argv=None):
         print('\n'.join(out), flush=True)
         return 0
     sweep_stale(tempfile.gettempdir(), time.time())
+    ids = a.dispatch
+    labels = a.label or [''] * len(ids)
     progress = None
     poll_ms = a.poll_ms
     if a.repo:
-        progress = Progress(make_git(a.repo), make_read_plan(a.repo), FileStore(a.dispatch), a.label)
+        progress = [Progress(make_git(r), make_read_plan(r), FileStore(d), lb)
+                    for d, r, lb in zip(ids, a.repo, labels)]
         poll_ms = poll_ms or 60000
-    lock = FileLock(a.dispatch)
-    out = wait_loop(make_call(a.cli), lock, dispatch=a.dispatch, timeout_ms=a.timeout_ms, stall=a.stall,
-                    poll_ms=poll_ms, progress=progress, alive=alive)
+    lock = FileLock(ids[0]) if len(ids) == 1 else AllLocks([FileLock(d) for d in ids])
+    out = wait_loop(make_call(a.cli), lock, dispatch=ids if len(ids) > 1 else ids[0], timeout_ms=a.timeout_ms,
+                    stall=a.stall, poll_ms=poll_ms, progress=progress, alive=alive)
     lock.release()
     print('\n'.join(out), flush=True)
     return 0

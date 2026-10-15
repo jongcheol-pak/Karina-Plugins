@@ -896,6 +896,87 @@ def git_timeout_is_git_failure():
     assert kw.get('timeout') == 30 and kw.get('stdin') is subprocess.DEVNULL, kw
 
 
+# ── 병렬 대기(--dispatch 여러 개) ──────────────────────────────────────────
+
+@case
+def multi_dispatch_repo_count_mismatch_rejected():
+    saved = (ww.make_call, ww.FileLock)
+    ww.make_call = lambda c: FakeCli([msg_batch()])
+    ww.FileLock = lambda dispatch: FakeLock()
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+    try:
+        sys.stdout = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
+        sys.stderr = io.StringIO()
+        try:
+            ww.main(['--cli', 'x', '--dispatch', 'disp_a', '--dispatch', 'disp_b', '--repo', 'r1'])
+        except SystemExit as e:
+            assert e.code == 2, e.code
+        else:
+            raise AssertionError('dispatch 2개에 --repo 1개를 받아들였다')
+    finally:
+        ww.make_call, ww.FileLock = saved
+        sys.stdout, sys.stderr = real_stdout, real_stderr
+
+
+@case
+def multi_overlapping_set_supersedes():
+    # 앞 대기가 {a, b} 를 쥐었는데 새 대기가 {b, c} 를 띄우면 b 가 넘어가 앞 대기는 물러난다.
+    tag = 'multi-%d' % os.getpid()
+    old = ww.AllLocks([ww.FileLock(tag + '-a'), ww.FileLock(tag + '-b')])
+    assert old.owned(), '띄운 직후에는 전부 쥐고 있다'
+    new = ww.AllLocks([ww.FileLock(tag + '-b'), ww.FileLock(tag + '-c')])
+    try:
+        assert not old.owned(), '하나라도 넘어가면 앞 대기는 소유가 아니다'
+        assert new.owned()
+        out = run(FakeCli([msg_batch()]), lock=old, dispatch=['disp_a', 'disp_b'])
+        assert first(out).startswith('RESULT: superseded — '), out
+    finally:
+        new.release()
+        old.release()
+        for k in ('-a', '-b', '-c'):
+            try:
+                os.remove(os.path.join(tempfile.gettempdir(), 'pjc-chain-wait-%s%s.lock' % (tag, k)))
+            except OSError:
+                pass
+
+
+@case
+def multi_worker_read_per_dispatch():
+    cli = FakeCli([EMPTY, msg_batch()], [screen('a'), screen('b')])
+    run(cli, dispatch=['disp_a', 'disp_b'])
+    reads = [c[c.index('--dispatch') + 1] for c in cli.calls if c[0] == 'worker-read']
+    assert reads == ['disp_a', 'disp_b'], reads
+
+
+@case
+def multi_stall_names_stalled_dispatch():
+    # disp_a 는 화면이 바뀌고 disp_b 는 같은 화면 3장 — 멈춘 것은 disp_b 하나다.
+    reads = []
+    for i in range(3):
+        reads += [screen('spin %d' % i), screen('same')]
+    out = run(FakeCli([EMPTY] * 3, reads), dispatch=['disp_a', 'disp_b'])
+    assert first(out).startswith('RESULT: stall — '), out
+    assert 'worker-retain --dispatch disp_b' in first(out), out
+    assert 'disp_a' not in first(out), out
+
+
+@case
+def multi_progress_lines_from_two_repos():
+    p2 = prog(FakeGit(logs=[[('h1', '기능: T1 — 사각형')]]), label='Plan 2')
+    p3 = prog(FakeGit(logs=[[('k1', '기능: T2 — 원')]]), label='Plan 3')
+    try:
+        out = runp(FakeCli([msg_batch()]), [p2, p3], dispatch=['disp_a', 'disp_b'])
+    except AttributeError as e:
+        raise AssertionError('진행 감지 여러 개를 받지 못했다: %s' % e)
+    assert out[1:3] == ['Plan 2: T1/T5 완료 — 사각형 · T2 시작', 'Plan 3: T2/T5 완료 — 원 · T3 시작'], out
+
+
+@case
+def message_action_mentions_remaining_parallel():
+    out = run(FakeCli([msg_batch()]))
+    assert 'parallel.md' in first(out) and '남은' in first(out), out
+
+
 @case
 def orphaned_when_middle_parent_killed():
     # 실제 프로세스: cmd 아래 띄운 대기에서 cmd 만 죽인다(트리 킬이 아닌 고아 상황). 가짜 CLI 는 1초 쉬고 빈 배치를
