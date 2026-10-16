@@ -1,6 +1,6 @@
 # record-work-start 근거
 
-> `plugins/pjc/scripts/record-work-start.ps1` 의 주석이 가리키는 근거다. 시작 시각을 소비하는 규칙의 정본은 `plugins/pjc/skills/plan/SKILL.md` Step 1 · `plugins/pjc/skills/implement/references/report-format.md` 「소요 기록」 · `plugins/pjc/skills/chain-plan/references/report.md` 이고, 이 파일은 hook 쪽의 「왜」만 담는다.
+> `plugins/pjc/scripts/record-work-start.ps1` 의 주석이 가리키는 근거다. 시작 시각을 소비하는 규칙의 정본은 `plugins/pjc/skills/plan/SKILL.md` Step 1 · `plugins/pjc/skills/implement/references/report-format.md` 「소요 기록」 · `plugins/pjc/skills/chain-plan/references/report.md` 「체인 시작 시각」 이고, 이 파일은 hook 쪽의 「왜」만 담는다.
 
 ## §1 왜 hook 이 시작 시각을 남기는가
 
