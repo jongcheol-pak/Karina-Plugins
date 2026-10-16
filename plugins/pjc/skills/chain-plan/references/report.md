@@ -42,4 +42,4 @@ HUMAN-VERIFY·미검증: <워커 --body 에서 받은 것 전부>
 
 ## 체인 시작 시각
 
-**`../SKILL.md` 「인터뷰」가 이번 발동의 `[pjc 작업 시작]` 줄을 찾지 못했을 때만 연다(hook 미발화 — 옛 설치본·hook 꺼짐).** 인터뷰 첫 셸 호출에 `"<skill>/../implement/scripts/work-clock.ps1"`(`<skill>` 은 `../SKILL.md` 의 폴더) 를 인자 없이 얹고, 출력의 `pjc-clock <YYYY-MM-DD HH:mm>` 을 체인 시작으로 objective 의 `[체인 시작: …]` 에 적는다 — 호출형은 `../../implement/references/report-format.md`「소요 기록」 이다. **그 줄이 없으면 `[체인 시작: 시각 미확인]` 으로 적는다** — 보고 때 `시작 모름` 으로 이어진다. 시작 때 재지 않으면 끝에 잴 기준이 없고, 끝에 이 폴백을 따르면 시작이 곧 완료 시각이 되어 `0h 0m` 이 서식에 맞는 채 실린다.
+**`../SKILL.md` 「인터뷰」가 이번 발동의 `[pjc 작업 시작]` 줄을 찾지 못했을 때만 연다(hook 미발화 — 옛 설치본·hook 꺼짐).** 인터뷰 첫 셸 호출에 `"<skill>/../implement/scripts/work-clock.ps1"`(`<skill>` 은 `../SKILL.md` 의 폴더) 를 인자 없이 얹고, 출력의 `pjc-clock <YYYY-MM-DD HH:mm>` 을 체인 시작으로 objective 의 `[체인 시작: …]` 에 적는다 — 호출형은 `../../implement/references/report-format.md`「소요 기록」 이다. **그 줄이 없으면 `[체인 시작: 시각 미확인]` 으로 적는다** — 보고 때 그 값을 `-Since` 에 넘기면 `ERROR` 줄이 나와 `시작 판독 실패` 로 이어진다. 시작 때 재지 않으면 끝에 잴 기준이 없고, 끝에 이 폴백을 따르면 시작이 곧 완료 시각이 되어 `0h 0m` 이 서식에 맞는 채 실린다.

@@ -87,7 +87,7 @@ $rwHit = @('pjc:plan', 'plan', 'pjc:chain-plan', 'chain-plan', 'pjc:implement', 
     elseif ($rwExactOnly) { ($rwUpeMatcher -split '[|,]' | ForEach-Object { $_.Trim() }) -contains $_ }
     else { $_ -match $rwUpeMatcher }
 })
-Assert-Case -Name "record-work-start: UserPromptExpansion matcher 가 plan·chain-plan 두 형태씩 받고 implement 는 받지 않는다" -R @{ code = 0; out = "hits=$($rwHit -join ',')" } -ExpectContains 'hits=pjc:plan,plan,pjc:chain-plan,chain-plan'
+Assert-Case -Name "record-work-start: UserPromptExpansion matcher 가 plan·chain-plan 두 형태씩 받고 implement 는 받지 않는다" -R @{ code = 0; out = "hits=$($rwHit -join ',')" } -ExpectContains 'hits=pjc:plan,plan,pjc:chain-plan,chain-plan' -ExpectNotContains 'implement'
 $rwPre = @($rwHooks.hooks.PreToolUse | Where-Object { $_.matcher -eq 'Skill' -and (($_.hooks.command -join ' ') -match 'record-work-start') })
 Assert-Case -Name "record-work-start: PreToolUse Skill 블록이 이 스크립트를 부른다" -R @{ code = 0; out = "blocks=$($rwPre.Count)" } -ExpectContains 'blocks=1'
 
