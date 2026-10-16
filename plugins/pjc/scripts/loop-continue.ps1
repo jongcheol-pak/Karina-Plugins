@@ -106,7 +106,7 @@ $shown = ($ids | Select-Object -First 5) -join ', '
 $more = if ($ids.Count -gt 5) { " 외 $($ids.Count - 5)개" } else { '' }
 $msg = "[pjc loop-continue] $($planHit.Label) 에 미완 task 가 남은 채 turn 이 끝났습니다: ${shown}${more}. " +
     "사용자 답에 의존하지 않는 다음 task 를 이어서 진행하십시오. 막혔다면 무엇이 막는지 한 줄로 말하십시오 — " +
-    "implement 「멈추는 넷」·「목록 밖의 넷」에 해당하는 정지(승인 대기 등)라면 그 정지를 유지합니다."
+    "implement 「멈추는 넷」·「목록 밖의 넷」에 해당하는 정지(승인 대기 등)이거나 사용자가 중단을 지시한 경우라면 그 정지를 유지합니다."
 $out = @{ hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $msg } }
 [Console]::Out.Write(($out | ConvertTo-Json -Compress -Depth 4))
 exit 0

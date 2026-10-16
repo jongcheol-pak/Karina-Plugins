@@ -39,6 +39,7 @@ $r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-i1' $lcProj)
 Assert-Case -Name "loop-continue: 마커+미완이면 additionalContext 로 주입" -R $r -ExpectExit 0 -ExpectContains '"additionalContext"'
 Assert-Case -Name "loop-continue: 주입 안내가 미완 ID 를 적는다" -R $r -ExpectExit 0 -ExpectContains 'T2-1, T2-2'
 Assert-Case -Name "loop-continue: 완료 task 는 안내에 없다" -R $r -ExpectExit 0 -ExpectNotContains 'T1-1'
+Assert-Case -Name "loop-continue: 주입 안내가 사용자 중단을 유지할 정지로 적는다" -R $r -ExpectExit 0 -ExpectContains '사용자가 중단을 지시'
 
 # ---- 침묵 경로 ----
 $r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-s1' $lcProj)
