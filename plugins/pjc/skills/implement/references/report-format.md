@@ -1,6 +1,6 @@
 # 최종 보고 서식
 
-> `pjc:implement`가 **전 task 완료 후 1회** 읽는다. 회차 끝에만 쓰이는 서식이라 `SKILL.md` 본문에 두지 않는다 — 매 task 상시 로드하면 그 바이트가 루프 내내 실린다. 아래 「소요 기록」의 식은 체인 보고(`../../chain-plan/references/report.md`)도 가리킨다 — 그쪽이 쓰는 것은 식뿐이다.
+> `pjc:implement`가 **전 task 완료 후 1회** 읽는다. 회차 끝에만 쓰이는 서식이라 `SKILL.md` 본문에 두지 않는다 — 매 task 상시 로드하면 그 바이트가 루프 내내 실린다. 아래 「소요 기록」의 호출과 판정은 체인 보고(`../../chain-plan/references/report.md`)도 가리킨다 — 그쪽이 쓰는 것은 같은 스크립트 호출과 `pjc-clock` 줄 판정뿐이다.
 
 ## 보고 형식
 
@@ -34,22 +34,22 @@
 
 **`../SKILL.md` 「최종 리뷰」 완료 순서의 「완료 시각 기록」에서 쓴다. 시각과 소요는 셸 출력만 쓴다** — 모델은 현재 시각을 모르고, 시각 차를 손으로 셈하면 날짜 경계에서 틀린다.
 
-**식 (공용)** — `<시작>` 은 `plan.md` `## Goal` 의 `> 시작:` 값(`YYYY-MM-DD HH:mm`)이고, 출력은 `<완료 YYYY-MM-DD HH:mm> <H>h <M>m` 이다. 보고에는 `N시간 M분` 으로 옮긴다 — 출력에 한글을 두지 않는 것은 Git Bash 를 거친 PowerShell 출력에서 한글이 깨지기 때문이다.
+**호출 (공용)** — `<스크립트>` 는 `"<skill>/scripts/work-clock.ps1"`(`<skill>` 은 `pjc:implement` 의 SKILL.md 폴더 — plan·chain-plan 에서는 `"<skill>/../implement/scripts/work-clock.ps1"`)이고, `<시작>` 은 `YYYY-MM-DD HH:mm` 이다.
 
 ```
-Bash:       s=$(date -d "<시작>" +%s); e=$(date +%s); m=$(( (e-s)/60 )); echo "$(date -d @$e '+%F %H:%M') $((m/60))h $((m%60))m"
-PowerShell: $s=[datetime]'<시작>'; $e=Get-Date; $t=$e-$s; '{0:yyyy-MM-dd HH:mm} {1}h {2}m' -f $e,[int][math]::Floor($t.TotalHours),$t.Minutes
+Bash:       "$(command -v pwsh || echo powershell)" -NoProfile -File "<스크립트>" -Since '<시작>'
+PowerShell: & "<스크립트>" -Since '<시작>'
 ```
 
-- **Bash 식이 실패하면 PowerShell 식을 쓴다 — 실패는 종료 코드가 아니라 stderr 가 나오거나 출력이 위 서식과 다른 것으로 본다** — macOS 기본 `date` 는 `-d` 가 없고, 그때도 마지막 `echo` 가 엉뚱한 한 줄을 내고 exit 0 으로 끝난다. PowerShell 식은 Windows PowerShell 5.1 과 pwsh 7 양쪽에서 돈다.
-- **`<시작>` 이 없으면 식 대신 현재 시각만 낸다** — Bash `date '+%F %H:%M'` · PowerShell `Get-Date -Format 'yyyy-MM-dd HH:mm'`.
+- **판정은 출력의 `pjc-clock ` 줄 하나로 한다 — `pjc-clock <완료> <H>h <M>m` 이 소요 · `pjc-clock <완료> ERROR <사유>` 면 `시작 판독 실패` 로 적고 완료 시각은 같은 줄에서 얻는다 · 그 줄이 없으면(실행기·경로·정책 실패) `시각 미확인`** — 다른 명령에 `;` 로 이으면 그 명령의 stderr 가 섞여, stderr 로 가르면 정상 경우에도 실패로 읽힌다. 실행기는 한 명령 안에서 골라 실패 후 재호출이 없고, 스크립트는 PS 5.1·7 양쪽에서 돈다.
+- **`<시작>` 이 없으면 `-Since` 없이 불러 완료 시각만 얻고, 보고에는 `<H>h <M>m` 을 `N시간 M분` 으로 옮긴다** — 시작이 없어도 완료 시각은 남아야 하고, 출력에 한글을 두지 않는 것은 Git Bash 를 거친 PowerShell 출력에서 한글이 깨지기 때문이다.
 
-**`plan.md` 기록 (`pjc:implement` 전용)**
+**`plan.md` 기록 (`pjc:implement` 전용)** — `<시작>` 은 `plan.md` `## Goal` 의 `> 시작:` 값이다.
 
-- **식을 plan 파일 커밋 판정 명령(`git ls-files --error-unmatch -- <plan 경로>`) 앞에 `;` 로 잇는다** — 따로 부르면 왕복이 하나 늘고, `&&` 로 이으면 식이 실패할 때 판정까지 건너뛴다.
-- **그 출력으로 `> 완료:` 줄을 `> 완료: <완료> · 소요 <N시간 M분>` 로 Edit 한 뒤 (추적 레포면) 커밋한다 — 그 줄이 없는 옛 서식이면 `> 시작:`(없으면 `> 승인:`) 아래에 넣는다** — Edit 이 커밋보다 늦으면 추적 레포에 미커밋 변경이 남는다. 중계 모드면 인계 절 커밋(`../../plan/references/relay-mode.md`)보다 먼저다.
-- **`> 시작:` 이 없거나 자리표시 그대로면 `시작 미기록` 으로 적고 완료 시각만 남긴다** — 옛 서식의 plan 이거나 plan 작성 전 압축으로 시작 시각을 잃은 경우다.
-- **보고의 `- **소요**:` 줄은 이 두 줄에서 옮긴다.**
+- **호출을 plan 파일 추적 판정(`git ls-files --error-unmatch -- <plan 경로>`)에만 `;` 로 잇는다** — 따로 부르면 왕복이 하나 늘고, `&&` 로 이으면 호출이 실패할 때 판정까지 건너뛴다.
+- **그 출력으로 `> 완료:` 줄을 `> 완료: <완료> · 소요 <N시간 M분>` 로 Edit 한 뒤, 추적 레포면 `git status --porcelain -- <plan 경로>` 로 커밋 여부를 잰다 — 그 줄이 없는 옛 서식이면 `> 시작:`(없으면 `> 승인:`) 아래에 넣는다** — `ls-files` 결과는 Edit 로 바뀌지 않지만 `status` 는 바뀌어, Edit 전에 재면 「커밋 불필요」로 판정된 채 미커밋 변경이 남는다. 중계 모드면 인계 절 커밋(`../../plan/references/relay-mode.md`)보다 먼저다.
+- **`> 시작:` 이 없거나 자리표시 그대로면 `시작 미기록` 으로 적고 완료 시각만 남긴다** — 옛 서식의 plan 이거나, hook 이 발화하지 않았고 Step 1 폴백도 비어 시작 시각이 남지 않은 경우다.
+- **보고의 `- **소요**:` 줄은 `> 시작:` 과 위에서 Edit 한 `> 완료:` 줄에서 옮긴다** — 보고를 쓸 때 다시 재면 `> 완료:` 와 다른 시각이 실려, 기록과 보고가 갈린다.
 
 ## 사실 주장의 실측
 
