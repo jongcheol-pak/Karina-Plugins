@@ -1100,7 +1100,7 @@ if (Test-HookSelected @('session-context')) {
     #   $iso 를 보도록 이 블록 동안만 되돌린다(:164 과 같은 형태).
     $scMkProj = Join-Path $work 'sc-marker-proj'
     New-Item -ItemType Directory $scMkProj -Force | Out-Null
-    $scMkDirs = @('post-write-warn', 'suggest-agents-record', 'loop-continue', 'trivial-tally')
+    $scMkDirs = @('post-write-warn', 'suggest-agents-record', 'loop-continue', 'trivial-tally', 'work-start')
     foreach ($d in $scMkDirs) {
         $md = Join-Path $iso ('.claude/.state/' + $d)
         New-Item -ItemType Directory $md -Force | Out-Null
@@ -1122,6 +1122,32 @@ if (Test-HookSelected @('session-context')) {
         Remove-Item -Force (Join-Path $md 'sc-ttl-new') -ErrorAction SilentlyContinue
     }
     Remove-Item -Recurse -Force $scMkProj -ErrorAction SilentlyContinue
+
+    # ---- compact 직후 작업 시작 시각 재주입 (record-work-start 의 상태 파일) ----
+    # 상태 파일은 record-work-start 가 sid 를 [^A-Za-z0-9._-] → _ 로 바꿔 쓴다 — 같은 식으로 찾는지
+    #   특수문자 sid 로 잰다. 위 블록과 같은 이유로 USERPROFILE 을 $iso 로 되돌린다.
+    $scWsProj = Join-Path $work 'sc-ws-proj'
+    New-Item -ItemType Directory $scWsProj -Force | Out-Null
+    $scWsDir = Join-Path $iso '.claude/.state/work-start'
+    New-Item -ItemType Directory $scWsDir -Force | Out-Null
+    '{"plan":"2026-10-16 09:00","chain-plan":"2026-10-16 09:30"}' | Set-Content -LiteralPath (Join-Path $scWsDir 'sc-ws1.json') -Encoding UTF8
+    '{"plan":"2026-10-16 08:15"}' | Set-Content -LiteralPath (Join-Path $scWsDir 'sc-ws2.json') -Encoding UTF8
+    '{"plan":"2026-10-16 07:45"}' | Set-Content -LiteralPath (Join-Path $scWsDir 'sc_ws3_x.json') -Encoding UTF8
+    $scWsSaved = $env:USERPROFILE
+    try {
+        $env:USERPROFILE = $iso
+        $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scWsProj; session_id = 'sc-ws1' } | ConvertTo-Json -Compress)
+        Assert-Case -Name "session-context: compact 직후 plan·chain-plan 시작 시각을 다시 주입한다" -R $r -ExpectExit 0 -ExpectContains '[pjc 작업 시작] (압축 전 기록) pjc:plan 2026-10-16 09:00 · pjc:chain-plan 2026-10-16 09:30'
+        $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scWsProj; session_id = 'sc-ws2' } | ConvertTo-Json -Compress)
+        Assert-Case -Name "session-context: compact 재주입은 있는 키만 싣는다" -R $r -ExpectExit 0 -ExpectContains '[pjc 작업 시작] (압축 전 기록) pjc:plan 2026-10-16 08:15' -ExpectNotContains 'pjc:chain-plan 20'
+        $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scWsProj; session_id = 'sc/ws3:x' } | ConvertTo-Json -Compress)
+        Assert-Case -Name "session-context: compact 재주입이 특수문자 sid 를 record-work-start 와 같은 식으로 찾는다" -R $r -ExpectExit 0 -ExpectContains 'pjc:plan 2026-10-16 07:45'
+        $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scWsProj; session_id = 'sc-ws1' } | ConvertTo-Json -Compress)
+        Assert-Case -Name "session-context: startup 에는 작업 시작 줄을 싣지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[pjc 작업 시작]'
+        $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scWsProj; session_id = 'sc-ws-none' } | ConvertTo-Json -Compress)
+        Assert-Case -Name "session-context: 상태 파일이 없으면 compact 에도 작업 시작 줄이 없다" -R $r -ExpectExit 0 -ExpectNotContains '[pjc 작업 시작]'
+    } finally { $env:USERPROFILE = $scWsSaved }
+    Remove-Item -Recurse -Force $scWsProj, $scWsDir -ErrorAction SilentlyContinue
 
     # ---- [회차 3 T6] Get-StaleFeatures 전체 시간 상한 (단위 — 함수를 직접 부른다) ----
     # 상한 0 이면 feature 를 하나도 재지 않고 `TimedOut` 으로 멈춰야 한다. 상한이 없던 구현은

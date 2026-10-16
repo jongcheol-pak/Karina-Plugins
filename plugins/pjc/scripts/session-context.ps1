@@ -10,7 +10,7 @@ try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch
 try { . (Join-Path $PSScriptRoot 'session-end-cleanup-lib.ps1'); $null = Invoke-OrphanProcessCleanup -Hook 'session-context' } catch {}
 
 # [상태 마커 정리] 30일 지난 디듑 마커를 세션 시작에 한 번 걷는다 — 근거는 `rules/session-context-rationale.md` §38
-$staleMarkerDirs = @('post-write-warn', 'suggest-agents-record', 'loop-continue', 'trivial-tally')
+$staleMarkerDirs = @('post-write-warn', 'suggest-agents-record', 'loop-continue', 'trivial-tally', 'work-start')
 $staleMarkerHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
 foreach ($d in $staleMarkerDirs) {
     try {
@@ -78,12 +78,28 @@ try {
     try { $inp = $raw | ConvertFrom-Json } catch { exit 0 }
     $cwd = [string]$inp.cwd
     $source = [string]$inp.source   # startup|resume|clear|compact|fork (부재 시 빈 문자열 → 비compact 취급. fork는 compact가 아니라 startup과 같은 경로를 탄다)
+    $sid = [string]$inp.session_id
 
     $lines = New-Object System.Collections.Generic.List[string]
 
     # ---- compact 리마인더 (plan 유무 무관) ----
     if ($source -eq 'compact') {
         $lines.Add("[pjc 세션 컨텍스트] 컨텍스트 요약 직후입니다 — 진행 중이던 작업이 있으면 plan.md의 현재 task와 활성 스킬(pjc:implement 등)의 중단 조건·승인 게이트·커밋 프로토콜을 요약 기억에 의존하지 말고 SKILL 문서·plan.md 원문에서 재확인하세요. 그리고 **아직 plan.md에 적지 않은** 발견(이연할 항목·확인된 사실)이 요약 전에 있었다면 지금 plan.md에 적으세요 — 대화에만 있던 것은 요약을 지나면 근거 없이 사라집니다.")
+    }
+
+    # ---- compact 직후 작업 시작 시각 재주입 — 근거는 `rules/session-context-rationale.md` §39 ----
+    if ($source -eq 'compact' -and -not [string]::IsNullOrWhiteSpace($sid)) {
+        try {
+            $wsHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+            $wsPath = Join-Path $wsHome ('.claude/.state/work-start/' + ($sid -replace '[^A-Za-z0-9._-]', '_') + '.json')
+            $ws = Get-Content -LiteralPath $wsPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+            $wsParts = @()
+            foreach ($k in @('plan', 'chain-plan')) {
+                $v = [string]$ws.$k
+                if ($v) { $wsParts += "pjc:$k $v" }
+            }
+            if ($wsParts.Count) { $lines.Add('[pjc 작업 시작] (압축 전 기록) ' + ($wsParts -join ' · ')) }
+        } catch {}
     }
 
     if (-not [string]::IsNullOrWhiteSpace($cwd) -and (Test-Path -LiteralPath $cwd -PathType Container)) {

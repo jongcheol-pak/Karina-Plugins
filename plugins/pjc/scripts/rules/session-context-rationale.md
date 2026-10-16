@@ -198,7 +198,7 @@
 
 ## §38 [상태 마커 정리] 30일 지난 디듑 마커를 세션 시작에 한 번 걷는다
 
-**대상은 `post-write-warn`·`suggest-agents-record`·`loop-continue`·`trivial-tally` 폴더다**(목록 정본은 `session-context.ps1` 의 `$staleMarkerDirs`). `trivial-tally` 는 `guard-write` 의 요청 단위 누적 기록이다(2026-10-09 — 차단 hook 쪽에 정리 코드를 새로 넣지 않으려고 여기 모았다 · 근거 `trivial-gate-rationale.md` 「§3 요청 단위 누적 판정」). 마커는 세션×파일(또는 프로젝트·카테고리)×경고 종류당 1개라 걷지 않으면 무한히 쌓인다. 파일명에 세션 ID 가 들어가 세션이 끝나면 다시 매치되지 않으므로 지워도 잃는 것이 없다.
+**대상은 `post-write-warn`·`suggest-agents-record`·`loop-continue`·`trivial-tally`·`work-start` 폴더다**(목록 정본은 `session-context.ps1` 의 `$staleMarkerDirs`). `trivial-tally` 는 `guard-write` 의 요청 단위 누적 기록이다(2026-10-09 — 차단 hook 쪽에 정리 코드를 새로 넣지 않으려고 여기 모았다 · 근거 `trivial-gate-rationale.md` 「§3 요청 단위 누적 판정」). 마커는 세션×파일(또는 프로젝트·카테고리)×경고 종류당 1개라 걷지 않으면 무한히 쌓인다. 파일명에 세션 ID 가 들어가 세션이 끝나면 다시 매치되지 않으므로 지워도 잃는 것이 없다.
 
 **왜 세션 시작인가.** 2026-10-08 전에는 그 마커를 쓰는 hook 이 **호출마다** 폴더를 열거했다 — 파일 쓰기·Bash·Skill 호출마다 한 번씩이다. 30일 기준은 하루 단위로만 의미가 있어 세션당 한 번이면 충분하다. 2026-08-19 결정이 정리를 공통 모듈로 빼지 않은 근거(「호출마다 뜨는 hook 에 상시 로드 의존이 생긴다」)는 세션 시작 한 곳으로 옮기면 사라진다.
 
@@ -207,3 +207,11 @@
 **`guard-write` 의 `require-plan-warn` 은 대상이 아니다.** 차단 hook 은 동작을 보존하는 정리만 한다(2026-10-08 감사 intent). 그 폴더는 여전히 `guard-write.ps1` 이 호출마다 걷는다.
 
 **폴더마다 `try` 와 `-ErrorAction Stop` 이다.** 이 파일은 머리에서 `$ErrorActionPreference = 'SilentlyContinue'` 를 세워, 지역 `Stop` 이 없으면 폴더 부재가 `catch` 로 가지 않는다. 한 폴더가 없어도 나머지는 걷는다. 골든은 폴더마다 1건(31일 마커는 지워지고 3일 마커는 남는다)이다.
+
+## §39 compact 직후 작업 시작 시각 재주입
+
+**`record-work-start` 가 `pjc:plan`·`pjc:chain-plan` 발동 때 남긴 `~/.claude/.state/work-start/<sid>.json` 을 compact 직후 읽어 `[pjc 작업 시작] (압축 전 기록) pjc:plan <시각> · pjc:chain-plan <시각>`(있는 키만) 한 줄을 더한다.** 발동 때 주입된 줄은 압축 요약에서 사라질 수 있는데, plan 은 그 값을 Step 5 에 `plan.md` `> 시작:` 으로 옮기고 체인은 끝의 소요를 그 값으로 잰다. 근거 정본은 `work-start-rationale.md` 다.
+
+**sid 는 `[^A-Za-z0-9._-]` 를 `_` 로 바꿔 파일명으로 쓴다** — `record-work-start.ps1` 이 같은 식으로 쓴다. 갈리면 이 줄이 출력 없이 빠져 아무도 모르므로 골든이 특수문자 sid 로 잰다.
+
+**compact 에만 싣는다.** startup·resume 은 새 세션이거나 그 세션 컨텍스트가 그대로라 다시 실을 이유가 없다. 파일이 없거나 읽지 못하면 줄을 내지 않는다 — 시각이 없으면 문서 쪽이 `work-clock.ps1` 로 폴백한다.
