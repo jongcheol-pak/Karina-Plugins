@@ -116,7 +116,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | **큐 태그 열거를 담은 파일** — `llm-wiki/references/**` · `llm-wiki/scripts/lint.py` · `llm-wiki/evals/lint-cases.json` · `skills/WIKI.md` · `README.md` · `skills/evals/check_wiki_circuit.py` | 해당 행에 더해 **`python plugins/pjc/evals/check-harness-consistency.py`**(축 ㉑ — 열거 자리의 집합과 「세 태그」류 수 표현이 정본과 맞는가). **태그를 늘리는 회차는 이 축의 `[NOTICE]` 부분 열거 목록이 조회 대상이다** — 게이트에 걸리지 않는 2~3종 자리가 거기 있다. 정본은 `plugins/pjc/evals/harness-consistency-tagenum-rationale.md` 의 「축 ㉑ — 큐 태그 열거 정합」. |
 | `plugins/pjc/skills/evals/**` (스킬 트리거·루브릭 eval) | **`python plugins/pjc/skills/evals/test_exit_code.py`**(종료 코드·첫 발동 판정·조기 종료·진단 부착·스킬 로드 누락·`run_claude` stderr 배수 **32케이스(기계 미대조)** — 모델 호출 없음·1초) + 러너 자체 실행(`--filter`로 스모크) + Build + Test(JSON 3종). **eval 전량 실행은 명시 호출 전용 — 기본 검증 경로·최종 검증에 포함하지 않는다**(실제 모델 호출이라 비용이 크다). **`rubric_eval.py`·`compare_evals.py` 에 이 표의 행이 없는 것은 누락이 아니다** — 전자의 입력은 `docs/plans/` 의 plan 이고 후자는 두 결과 JSON 이라, 레포 소스를 고치는 것이 그 둘의 트리거가 아니다(회차 30 판정). **케이스 수를 바꿨으면 `python plugins/pjc/evals/check-harness-consistency.py`(축 ⑰ 계수 정합)도 필수다** — 「검증 명령 상세」의 기준선이 이 매니페스트를 적고 있어, 안 부르면 그 드리프트가 커밋까지 통과한다. |
 
-- **`[면제 ⑤]` 대상 — 이 레포에서 「문면이 판정을 바꾸는 자산」은 `plugins/pjc/agents/*.md` 와 `plugins/pjc/skills/` 아래의 모든 `*.md` 다**(`skills/DESIGN.md` 처럼 하위 디렉터리 없는 최상위 파일도 포함). 범주와 대체 근거(놓친 인스턴스·구조 동형·삭제형)는 배포 템플릿의 면제 표가 정본이고, 그 표가 어느 파일이 해당하는지를 레포 규약에 맡기므로 여기서 지정한다.
+- **`[면제 ⑤]` 대상 — 이 레포에서 「문면이 판정을 바꾸는 자산」은 `plugins/pjc/agents/*.md` 와 `plugins/pjc/skills/` 아래의 모든 `*.md` 다**(`skills/DESIGN.md` 처럼 하위 디렉터리 없는 최상위 파일도 포함). 범주와 대체 근거(놓친 인스턴스·구조 동형·삭제형·외부 선례)는 배포 템플릿의 면제 표가 정본이고, 그 표가 어느 파일이 해당하는지를 레포 규약에 맡기므로 여기서 지정한다.
 
 ## 조건부 참조 문서 크기 임계
 
@@ -124,7 +124,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 49,024 | 137,000 |
+| `docs/harness-conventions.md` | 49,030 | 137,000 |
 | `docs/golden-runner.md` | 13,567 | 28,000 |
 | `plugins/pjc/skills/llm-wiki/references/lookup-rules.md` | 11,787 | 37,000 |
 
