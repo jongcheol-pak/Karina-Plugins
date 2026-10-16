@@ -9,7 +9,7 @@
 #   3. skill 6개 모두 등록
 #   3-1. 가이드 문서 5개 존재 (DESIGN/AUTHORING/BUDGET/WIKI/AGENTS-BOUNDARY)
 #   4. agent 전부 등록
-#   5. hook 10개 모두 등록 + BOM 확인
+#   5. hook 11개 모두 등록 + BOM 확인
 #   6. 모든 ps1 파일에 UTF-8 BOM
 #   7. JSON 파일 파싱 가능
 
@@ -158,7 +158,7 @@ foreach ($a in $actualAgents) {
 Write-Host ""
 
 # 5. Hooks (expected 목록 존재 + BOM + 미등록 탐지)
-$hooks = @('block-destructive.ps1', 'guard-bash.ps1', 'guard-write.ps1', 'guard-harness.ps1', 'post-write-checks.ps1', 'suggest-agents-record.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1', 'loop-continue.ps1')
+$hooks = @('block-destructive.ps1', 'guard-bash.ps1', 'guard-write.ps1', 'guard-harness.ps1', 'post-write-checks.ps1', 'suggest-agents-record.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1', 'loop-continue.ps1', 'record-work-start.ps1')
 # hook 아닌 스크립트(미등록 탐지 경고 제외) — dot-source 헬퍼 9종: secret-patterns(시크릿 패턴)·
 #   guard-commit-secrets·guard-stale-docs(커밋 시점 시크릿·문서 낡음 검사 — guard-bash 가 부른다)·write-gate-trivial(작은 변경 통과 판정)·write-gate-exempt(PLAN-EXEMPT 면제 판정 —
 #   guard-write 가 부른다)·session-wiki-signals·session-ledger-signal(세션 주입 신호 — session-context 가

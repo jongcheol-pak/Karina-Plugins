@@ -10,6 +10,7 @@
     "hook-event-log",
     "loop-continue",
     "post-write-checks",
+    "record-work-start",
     "secret-patterns",
     "session-context",
     "session-end-cleanup",

@@ -56,6 +56,17 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/record-work-start.ps1\"; exit $LASTEXITCODE",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -127,6 +138,17 @@
             "type": "command",
             "shell": "powershell",
             "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/loop-continue.ps1\"; exit $LASTEXITCODE",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "^(pjc:)?(plan|chain-plan)$",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/record-work-start.ps1\"; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]
