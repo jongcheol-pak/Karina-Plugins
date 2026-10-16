@@ -280,6 +280,10 @@ plan.md 를 추적하는 레포에서는 마무리에 plan.md 도 한 번 커밋
 | "버그", "에러", "안 돼" | 디버깅 |
 | "위키에 등록/업데이트" | 위키 운영 |
 | "plan 1: …, plan 2: … 순서로 각각 새 세션에서" | 계획 체인 |
+| "T6부터 계속" | 멈춘 구현을 그 task부터 재개 |
+| "위키에서 {무엇} 찾아줘" | 위키 조회 |
+| "빌드 명령 기록해줘" | 프로젝트 사실 기록 |
+| "plan N부터" | 멈춘 계획 체인 재개 |
 
 ---
 
@@ -506,6 +510,34 @@ Claude Code를 재시작하거나 `/reload-plugins`를 실행하세요. 그래�
 <summary>한글이 깨져요</summary>
 
 PowerShell 인코딩 문제일 수 있습니다. pjc의 모든 스크립트는 UTF-8(BOM)로 저장되어 있으니, Claude Code와 터미널이 UTF-8을 쓰는지 확인하세요.
+
+</details>
+
+<details>
+<summary>구현이 중간에 멈췄어요</summary>
+
+"T<N>부터 계속"이라고 말하면 승인된 계획서의 그 task부터 마지막 task와 최종 검증까지 이어서 진행합니다. 계획서의 체크박스가 진행 상태의 기준이라 끝난 task는 다시 하지 않습니다.
+
+</details>
+
+<details>
+<summary>계획 없이 고치려는데 편집이 막혀요</summary>
+
+계획이 없을 때 한 요청 안에서 서로 다른 파일 3개째 또는 4번째 편집부터 안전장치가 막습니다. 한 파일만 고치면 되는 일이면, 계획이 필요한지 묻는 화면에서 바로 수정을 고르세요 — 그 파일 편집이 통과합니다. 고칠 곳이 여럿이면 계획을 먼저 세우는 것이 정상 경로입니다.
+
+</details>
+
+<details>
+<summary>업데이트했는데 바뀐 동작이 안 보여요</summary>
+
+「설치 관리」의 업데이트 두 줄(`claude plugin marketplace update pjc-harness` → `claude plugin update pjc@pjc-harness`)을 차례로 실행한 뒤 Claude Code를 재시작하거나 `/reload-plugins`를 실행하세요.
+
+</details>
+
+<details>
+<summary>화면 확인을 매번 저한테 넘겨요</summary>
+
+`AGENTS.md`의 `Verify (앱 조작)` 줄에 앱을 실제로 조작해 확인하는 레포 검증 스킬 경로를 적어 두세요. 구현이 화면 확인을 넘기기 전에 그 스킬로 먼저 조작하고, 그래도 사람 눈이 필요한 것만 완료 보고에 남깁니다.
 
 </details>
 
