@@ -7,8 +7,12 @@
   "delRecurseForce": "(?i)(-Recurse\\b|-Force\\b|--recursive\\b|--force\\b|(^|\\s)-[rfRF]+(\\s|$)|\\s/[sq]\\b)",
   "patterns": [
     {
-      "rx": "git\\s+((-c|-C)\\s+\\S+\\s+)*push\\s+.*(--force|--force-with-lease)",
+      "rx": "git\\s+((-c|-C)\\s+\\S+\\s+)*push\\s+.*--force(?![-\\w])",
       "why": "git push --force (git -c/-C 선행 옵션으로 우회 방지)"
+    },
+    {
+      "rx": "git\\s+((-c|-C)\\s+\\S+\\s+)*push(?!(\\s+-(?!-(all|mirror|tags)(\\s|$))\\S+)*\\s+[^\\s-]\\S*((\\s+-(?!-(all|mirror|tags)(\\s|$))\\S+)*\\s+([^\\s:+]+:)?(refs/heads/)?pjc/[^\\s:]+)+(\\s+-(?!-(all|mirror|tags)(\\s|$))\\S+)*(\\s+\\d*>>?(\\s*[^\\s&|;-]\\S*)?)?\\s*$)\\s.*--force-with-lease",
+      "why": "git push --force-with-lease — 에이전트 pjc/ 브랜치를 refspec 으로 명시한 경우만 통과(브랜치 생략·main·공유 브랜치·HEAD·--all/--mirror/--tags 는 차단)"
     },
     {
       "rx": "git\\s+((-c|-C)\\s+\\S+\\s+)*push\\s+-f(\\s|$)",
