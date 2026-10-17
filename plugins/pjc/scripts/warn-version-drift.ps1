@@ -42,7 +42,7 @@ try {
                         $remoteTag = & git ls-remote --tags origin "v$pushedVer" 2>$null
                         $remoteExit = $LASTEXITCODE   # 즉시 캡처 — 아래 문자열 연산이 값을 덮어쓰기 전에
                         if ($remoteExit -eq 0 -and [string]::IsNullOrWhiteSpace(($remoteTag -join ''))) {
-                            Write-Output "[pjc 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 v${pushedVer}를 로컬·원격 어디에서도 찾지 못했습니다 — 이 레포 규약은 '버전 업 커밋 push 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create v$pushedVer --target <full-sha> (short sha는 거부됩니다)."
+                            Write-Output "[pjc 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 v${pushedVer}를 로컬·원격 어디에서도 찾지 못했습니다 — 이 레포 규약은 '버전 전용 PR merge(또는 버전 커밋 push) 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create v$pushedVer --target <main 에 올라간 버전 커밋 — 버전 전용 PR 이면 그 merge 커밋 — 의 full-sha> (short sha는 거부됩니다)."
                         } elseif ($remoteExit -eq 0) {
                             # 원격에 있다 — 다른 버전의 기록을 지우고 이 버전만 남긴다(캐시 실패는 삼킨다, 비차단).
                             try {

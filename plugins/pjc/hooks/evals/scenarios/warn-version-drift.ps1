@@ -50,7 +50,7 @@ try {
     Assert-Case -Name "version-drift: CLAUDE_PLUGIN_ROOT 부재 무출력(fail-open)" -R $r -ExpectExit 0 -ExpectSilent $true
 
     # ---- 릴리즈 누락 감지 (v1.158.0) ----
-    # 규약("버전 업 커밋 push 뒤 곧바로 릴리즈")을 기계가 보게 한 검사. 판정 기준은 워킹트리가 아니라
+    # 규약("버전 전용 PR merge·버전 커밋 push 뒤 곧바로 릴리즈")을 기계가 보게 한 검사. 판정 기준은 워킹트리가 아니라
     # **origin/main에 올라간 plugin.json 버전**이라, 픽스처도 git 저장소 + origin/main ref로 만든다.
     if ($gitOk) {
         $vdGit = Join-Path $work 'vd-gitrepo'
@@ -138,6 +138,9 @@ try {
         # 이 어서션이 없으면 문면이 옛 표현(「태그가 없습니다」)으로 되돌아가도 골든이 green이다.
         # v1.204.0 F-7이 같은 형태를 지적해 SC33d(잔량 단독 문구 고정)를 더한 선례가 있다.
         Assert-Case -Name "version-drift: 릴리즈 누락 문구가 두 소스를 밝힌다" -R $r -ExpectExit 0 -ExpectContains '로컬·원격'
+        # 문면 고정 — v1.385.0 이 Release 를 버전 전용 PR 로 바꿨다. 옛 규약(「버전 업 커밋 push 뒤」)으로
+        # 되돌아가면 경고가 사용자를 옛 절차로 안내하므로 새 규약 낱말을 단언한다.
+        Assert-Case -Name "version-drift: 릴리즈 누락 문구가 버전 전용 PR 을 밝힌다" -R $r -ExpectExit 0 -ExpectContains '버전 전용 PR'
 
         # 8-1) [회차 3 T7] ①과 ② 사이 — 확인된 태그 캐시가 있으면 원격을 보지 않는다
         #     원격에는 아직 태그가 없으므로, 원격을 조회하면 위 ①처럼 발화한다. 무출력이면 원격을 보지
