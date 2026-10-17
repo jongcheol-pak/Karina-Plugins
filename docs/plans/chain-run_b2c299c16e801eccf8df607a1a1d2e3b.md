@@ -22,3 +22,24 @@
   - 태그·릴리즈·배포는 plan·스킬 안에서도 승인이다 — Release 를 PR 로 바꾸더라도 릴리즈 발행은 승인 대상으로 남는다.
 - 미해결
   - 설치본은 1.382.0 이다. 이 회차의 스킬·hook 변경은 push → 릴리즈 → `/plugin update` 전까지 plan 2·3 워커에 적용되지 않는다(글로벌 지침만 즉시 반영). 릴리즈는 사용자 승인 대상이다.
+
+## plan 2
+
+- BASE: 2463cef272865342843f604a98c239835e98149b (intent 커밋)
+- intent: `intent/2026-10-17-pr-flow.md`
+- 커밋: dd2563b4 … ed6f85fe (T1 dd2563b4 · T2 10130d36 · T6 d2284102 · T4 6d2ec01a · T5 096c5a0c · T3 dccb9ea7 · 버전 2a385e0b · 리뷰 반영 ed6f85fe) — 이 인계 커밋이 끝
+- 바꾼 것
+  - 새 `implement/references/pr-flow.md`: 「적용 판정」(GitHub 원격 · `gh auth status` · **중계 모드면 spec 에 `PR 모드: 켬` 줄**) · 「브랜치」(기본 브랜치 판정 `git symbolic-ref` → `gh repo view` 폴백 · 기본 브랜치면 `git switch -c pjc/<intent 슬러그>` 뒤 `git branch -f <기본> origin/<기본>` · MERGED 된 `pjc/*` 에서 시작하면 원격 기본에서 갈라 cherry-pick, 충돌이면 PR 건너뜀) · 「PR 열기」(`git push -u origin <브랜치>` refspec 명시 · OPEN PR 있으면 push 만 · `gh pr create --body-file` ready · `gh pr view` 로 확인).
+  - `implement/SKILL.md`: 루프 진입 전 pr-flow.md Read · 완료 순서 「… → plan 파일 커밋(`report-format.md`「plan 파일 커밋」) → PR 열기 → 최종 보고」. plan 추적 커밋 불릿은 `report-format.md` 「plan 파일 커밋」 으로 옮겼다(11,841자). 보고 블록에 `- **PR**:` 줄.
+  - 새 스킬 `pjc:pr`(`skills/pr/` — SKILL·references/babysit.md·ship.md) · 새 에이전트 `agents/pr-verifier.md`(Read·Grep·Glob·Bash). ship 은 매번 PR head 를 fetch 해 worktree 에서 pr-verifier 를 돌리고 `gh pr merge --squash --match-head-commit <sha> --subject --body-file` 로 merge, merged 를 다시 읽는다. merge 뒤 버전 전용 PR 을 잇는다(릴리즈는 승인 항목).
+  - Release 정본(`docs/harness-conventions.md`): 버전 전용 PR. ⓐ PR 모드 회차는 회차 plan 에 버전 task 를 두지 않고 ship 이 `pjc/release-v<버전>` PR 을 잇는다 ⓑ PR 모드가 꺼진 회차(체인 로컬 병합)는 버전만 올린 별도 커밋. `warn-version-drift` 문구 · Hook 골든 기준선 1151 · 트리거 케이스 79(`--filter pr`) · CI push 는 main 만.
+- 결정과 근거
+  - 판정 코멘트는 merge 근거로 쓰지 않고 ship 마다 다시 검증한다(계획 리뷰 BLOCKER — 코멘트 작성자를 믿을 수 없다).
+  - babysit 은 rebase·force push 를 하지 않고 충돌을 보고만 한다(pstack babysit 4). 고친·기각한 스레드는 `resolveReviewThread`.
+- 뒤 계획이 지킬 제약
+  - **implement 가 읽는 PR 모드 계약은 spec 의 `PR 모드: 켬` 줄 하나다** — plan 3 이 spec 서식(`chain-plan/references/spec-format.md`)에 이 줄을 넣어야 워커가 브랜치 전환·PR 을 한다. 이름을 바꾸면 `pr-flow.md` 「적용 판정」 도 함께 고친다.
+  - **중계 + PR 모드에서 인계 절 커밋과 PR 열기의 순서가 아직 정해지지 않았다** — `relay-mode.md` 는 인계 절 커밋을 「최종 보고 직전」, `pr-flow.md` 는 push 를 「plan 파일 커밋 뒤·최종 보고 전」 에 둔다. 인계 커밋이 push 뒤에 오면 PR 에 실리지 않는다. plan 3 이 순서를 정한다(인계 커밋 → push 권장).
+  - PR 모드 회차의 버전 커밋은 회차 PR 에 넣지 않는다(Release ⓐ). 브랜치 이름은 `pjc/<intent 슬러그>`.
+- 미해결
+  - v1.385.0 릴리즈는 사용자 승인 대상이다. 리뷰 반영 커밋 ed6f85fe 가 버전 커밋 뒤에 `plugins/` 를 고쳤으므로 릴리즈 대상은 이 회차 마지막 커밋이 맞다.
+  - 실제 GitHub 에서의 PR 생성·babysit·ship·CI 1회 실행은 재설치 뒤 HUMAN-VERIFY 다.
