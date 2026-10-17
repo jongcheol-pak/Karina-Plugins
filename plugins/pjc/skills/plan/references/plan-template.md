@@ -158,8 +158,8 @@
 
 **다음은 plan에 적혀 있어도 실행 시점에 별도 승인을 받는다.**
 
-- 파괴적 작업 — force push · history rewrite · DB DROP/TRUNCATE · WHERE 없는 UPDATE/DELETE · 권한 변경
-- 외부·비가역 작업 — push · 병합 · 태그 · 릴리즈 · PR
+- 파괴적 작업 — force push(자기 `pjc/` 브랜치를 이름으로 지정한 `--force-with-lease` 제외) · history rewrite(자기 `pjc/` 브랜치 rebase 제외) · DB DROP/TRUNCATE · WHERE 없는 UPDATE/DELETE · 권한 변경
+- 외부·비가역 작업 — 태그 · 릴리즈 · 배포. push·PR 생성·PR 코멘트·PR merge·로컬 병합은 이 목록에 들지 않는다 — plan 승인으로 실행한다
 - 인증정보가 필요한 신규 외부 서비스
 - plan 에 없던 복구 불가 삭제 — 판정은 `deletion-recoverability.md`「삭제 복구 경로 판정」
 
