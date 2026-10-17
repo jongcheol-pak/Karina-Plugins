@@ -14,7 +14,7 @@
 # 무엇을: scripts/*.ps1 hook을 격리 USERPROFILE·중립 cwd에서 stdin JSON으로 실행해
 #   exit code·출력 키워드를 대조한다. 케이스 정본은 두 곳 —
 #   ① hook-cases.json: 무상태(command 기반) 케이스 (block-destructive·warn-external-ops)
-#   ② scenarios/*.ps1 15개: 상태 필요(plan 폴더·git repo·AGENTS.md 마커·post-write 파일)
+#   ② scenarios/*.ps1: 상태 필요(plan 폴더·git repo·AGENTS.md 마커·post-write 파일)
 #   공용 헬퍼·격리 구성은 eval-common.ps1이며, 이 파일과 run-scenario.ps1이 함께 dot-source한다.
 #
 # 실행 구조(v1.159.0): 기본은 **시나리오 그룹 단위 병렬**이다 — 그룹마다 자식 pwsh를 띄워
@@ -113,6 +113,7 @@ $scenarioGroups = @(
     @('guard-stale-docs'),
     @('loop-continue'),
     @('work-clock'),
+    @('check-plan'),
     @('record-work-start')
 )
 
@@ -278,8 +279,9 @@ try {
         Get-ChildItem -LiteralPath (Join-Path $evalsDirTop 'scenarios') -Filter *.ps1 -File -ErrorAction SilentlyContinue
         Get-ChildItem -LiteralPath $evalsDirTop -Filter *.json -File -ErrorAction SilentlyContinue
         Get-ChildItem -LiteralPath (Join-Path (Split-Path (Split-Path $evalsDirTop -Parent) -Parent) 'scripts') -Filter *.ps1 -File -ErrorAction SilentlyContinue
-        # 골든이 재는 스킬 로컬 스크립트(work-clock) — scripts/ 밖이라 따로 넣지 않으면 고쳐도 -Resume 이 옛 판정을 쓴다
+        # 골든이 재는 스킬 로컬 스크립트(work-clock·check-plan) — scripts/ 밖이라 따로 넣지 않으면 고쳐도 -Resume 이 옛 판정을 쓴다
         Get-ChildItem -LiteralPath (Join-Path (Split-Path (Split-Path $evalsDirTop -Parent) -Parent) 'skills/implement/scripts') -Filter *.ps1 -File -ErrorAction SilentlyContinue
+        Get-ChildItem -LiteralPath (Join-Path (Split-Path (Split-Path $evalsDirTop -Parent) -Parent) 'skills/plan/scripts') -Filter *.ps1 -File -ErrorAction SilentlyContinue
     ) | Sort-Object FullName
     $md5 = [System.Security.Cryptography.MD5]::Create()
     $acc = New-Object System.Text.StringBuilder
@@ -495,7 +497,7 @@ Write-TimingLine -Total $total
 #   매니페스트의 기준선 줄을 건너뛰고(`COUNT_SKIP_BASELINE`), 대신 러너가 자기 총계를 여기서
 #   상수와 대조한다. 선례는 llm-wiki `check_consistency.py` 의 `TRIGGER_ALLOWLIST_BASELINE`.
 # **경고이지 게이트가 아니다** — 판정은 FAIL 수가 하고, 이 줄은 문서가 낡았음을 알린다.
-$GoldenTotalBaseline = 1104
+$GoldenTotalBaseline = 1128
 if (-not $deadGroups.Count -and -not $Filter -and $total -ne $GoldenTotalBaseline) {
     Write-Host ("[WARN] 총계가 기준선과 다릅니다: {0} != {1} (`$GoldenTotalBaseline`)." -f $total, $GoldenTotalBaseline)
     # 합산 규칙을 함께 싣는다 — 이것이 없으면 어긋났을 때 「케이스가 빠졌나 / 세는 법이
