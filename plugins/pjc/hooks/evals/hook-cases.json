@@ -436,6 +436,90 @@
     },
     {
       "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — git grep 검색 패턴 속 명령 이름 무경고 (데이터 문자열)",
+      "command": "git grep -l 'gh pr merge'",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — rg 검색 패턴 속 명령 이름 무경고",
+      "command": "rg \"git push\" docs",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — echo 인자 문자열 속 명령 이름 무경고",
+      "command": "echo \"gh release create 예시\"",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — 데이터 수신자(head)로 파이프한 grep 패턴 무경고",
+      "command": "grep -n \"gh pr merge\" f | head -3",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — 표준오류만 /dev/null 로 보낸 grep 패턴 무경고",
+      "command": "grep -rn \"gh pr merge\" . 2>/dev/null",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — bash -c 따옴표는 실행되므로 경고 유지",
+      "command": "bash -c \"git push origin main\"",
+      "expect_exit": 0,
+      "expect_contains": "git push"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — 명령 치환이 든 따옴표는 경고 유지",
+      "command": "echo \"$(git push origin main)\"",
+      "expect_exit": 0,
+      "expect_contains": "git push"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — 데이터 명령 뒤 세그먼트의 실제 push 는 경고 유지",
+      "command": "grep x f && git push",
+      "expect_exit": 0,
+      "expect_contains": "git push"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — 셸로 파이프한 echo 문자열은 경고 유지",
+      "command": "echo \"git push origin main\" | bash",
+      "expect_exit": 0,
+      "expect_contains": "git push"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — sudo bash 로 파이프한 echo 문자열은 경고 유지 (수신자 허용목록 밖)",
+      "command": "echo \"git push origin main\" | sudo bash",
+      "expect_exit": 0,
+      "expect_contains": "git push"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — 파일로 쓰는 echo 문자열은 경고 유지 (리다이렉트)",
+      "command": "echo \"git push origin main\" > deploy.sh",
+      "expect_exit": 0,
+      "expect_contains": "git push"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — &> 로 파일에 쓰는 echo 문자열은 경고 유지",
+      "command": "echo \"git push origin main\" &> deploy.sh",
+      "expect_exit": 0,
+      "expect_contains": "git push"
+    },
+    {
+      "hook": "guard-bash.ps1",
       "name": "npm publish 경고 (H5)",
       "command": "npm publish",
       "expect_exit": 0,
@@ -925,6 +1009,13 @@
       "command": "tee migrations/002.sql <<EOF\nDROP TABLE old_schema;\nEOF",
       "expect_exit": 0,
       "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "heredoc 소비자 판정 — 실행자 출력을 tee 로 받아도 본문은 실행된다 (차단 유지)",
+      "command": "bash <<'EOF' 2>&1 | tee run.log\ngit push --force-with-lease origin main\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "BLOCKED"
     },
     {
       "hook": "block-destructive.ps1",
@@ -1954,6 +2045,34 @@
       "command": "bash <<'EOF'\nsed -i 's/a/b/' plan.md\nEOF",
       "expect_exit": 2,
       "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 소비자 판정 — 실행자 출력을 tee 로 받아도 본문을 본다 (마지막 세그먼트 판정 미탐 보완)",
+      "command": "bash <<'EOF' | tee run.log\ncp notes.md plan.md\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "heredoc 소비자 판정 — cat 을 tee 로 받는 본문은 데이터 (델타 음성)",
+      "command": "cat <<'EOF' | tee notes.md\nhello; cp notes.md plan.md\nEOF",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — 2>&1 뒤 파일로 쓰는 echo 문자열은 경고 유지",
+      "command": "echo \"git push origin main\" 2>&1 > deploy.sh",
+      "expect_exit": 0,
+      "expect_contains": "git push"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "외부 작업 경고 — 파일로 쓴 뒤 2>/dev/null 이 붙어도 echo 문자열은 경고 유지",
+      "command": "echo \"git push origin main\" > deploy.sh 2>/dev/null",
+      "expect_exit": 0,
+      "expect_contains": "git push"
     },
     {
       "hook": "guard-bash.ps1",
