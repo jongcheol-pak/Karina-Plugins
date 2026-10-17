@@ -74,7 +74,7 @@
 - **아키텍처**: 계층 없음 — 실행 단위가 hook 스크립트와 Markdown 지침이라 도메인/UI/인프라로 가를 대상이 없다(글로벌 「단순 스크립트·유틸리티는 대상이 아니다」).
 - **인코딩**: `.ps1` 은 **UTF-8 BOM 필수**(PS 5.1 한글 호환), 그 외는 **BOM 없음**.
 - **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i` 도 `Edit` 도구도 python 텍스트 쓰기(`open(p,'w')`)도 파일 전체를 LF 로 바꿔 놓는다** — 편집 후 `git ls-files --eol` 로 확인(정본은 `docs/harness-conventions.md` 의 「편집 스크립트 사고」).
-- **주석**: 한글, "왜"를 설명한다.
+- **주석**: 한글 · 무엇을 남기는가는 `plugins/pjc/skills/implement/references/code-style.md` 「주석」, 근거를 어디로 내리는가는 `plugins/pjc/skills/BUDGET.md` 「처방 ④의 단서 셋」.
 - **명령 출력 예산**: 판정용 명령은 **최소 형식**으로 낸다(정본은 `docs/harness-conventions.md` 「명령 출력 예산」).
 - **파일 크기**: 상한 표·초과 처방·참조 깊이·목차 규칙은 `plugins/pjc/skills/BUDGET.md`「예산 표」가 정본. **처방은 묻지 않고 적용하고, 상한을 올리는 것은 처방이 아니다.**
 - **병행 세션의 커밋은 `git commit -- <경로…>` 다** — `git add` 경로 한정으로는 상대의 staged 를 삼킨다. 커밋 명령에 `2>&1` 을 붙이고 **시크릿 스캔과 커밋을 한 명령에 잇지 않는다**. 커밋 메시지는 `-m "$(cat <<'MSG' … MSG)"` 로 넘긴다(바로 쓴 `-m` 은 백틱을 치환한다 — `guard-bash` 는 `-F` 파일·heredoc 은 읽고, 변수 `-m` 은 읽지 못해 경고만 낸다). 근거·부분 스테이징 주의는 `docs/harness-conventions.md` 「병행 세션의 커밋」.
