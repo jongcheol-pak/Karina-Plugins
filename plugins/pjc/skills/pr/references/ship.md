@@ -16,14 +16,14 @@
 8. **merge 한다 — 검증한 head 에 묶는다** — 제목·본문을 파일로 넘겨 squash 커밋 메시지를 레포 설정에 맡기지 않는다:
    `gh pr merge <n> --squash --match-head-commit <검증한 head full SHA> --subject "<PR 제목>" --body-file <PR 본문 파일>`
    head 가 바뀌어 거부되면 merge 하지 않고 보고한다. `--auto` 는 쓰지 않는다.
-9. **다시 읽어 확인한다** — `gh pr view <n> --json state,mergedAt,baseRefName,mergeCommit`. `state` 가 `MERGED` 이고 `baseRefName` 이 기본 브랜치여야 merge 다. 명령이 성공을 말해도 큐에 들어가기만 했거나 auto-merge 가 걸린 것은 merge 가 아니다.
-10. **로컬을 맞춘다** — 작업 트리가 깨끗하면(`git status --porcelain` 빈 출력) `git switch <기본>` → `git pull --ff-only`. 깨끗하지 않거나 `pull --ff-only` 가 실패하면 하지 않고 그 사실을 보고한다.
+9. **다시 읽어 확인한다** — `gh pr view <n> --json state,mergedAt,baseRefName,mergeCommit`. `state` 가 `MERGED` 이고 `baseRefName` 이 1번의 `baseRefName` 과 같아야 merge 다. 명령이 성공을 말해도 큐에 들어가기만 했거나 auto-merge 가 걸린 것은 merge 가 아니다.
+10. **로컬을 맞춘다** — 작업 트리가 깨끗하면(`git status --porcelain` 빈 출력) `git switch <1번의 baseRefName>` → `git pull --ff-only`. 깨끗하지 않거나 `switch`·`pull --ff-only` 가 실패하면 하지 않고 그 사실을 보고한다.
 
 ## 버전 전용 PR 잇기
 
-**대상 레포 `AGENTS.md` 의 Release 줄이 「버전 전용 PR」 을 지목하고, 방금 merge 한 PR 이 그 레포가 정한 배포 대상을 바꿨으면 버전 PR 을 이어서 연다.** 이 하니스 레포는 `plugins/` 가 배포 대상이고 버전 정본은 `plugins/pjc/.claude-plugin/plugin.json` 이다(`docs/harness-conventions.md` 「Release」).
+**대상 레포 `AGENTS.md` 의 Release 줄이 「버전 전용 PR」 을 지목하고, 방금 merge 한 PR 이 그 레포가 정한 배포 대상을 바꿨으면 버전 PR 을 이어서 연다.** 이 하니스 레포는 `plugins/` 가 배포 대상이고 버전 정본은 `plugins/pjc/.claude-plugin/plugin.json` 이다(`docs/harness-conventions.md` 「Release」). **체인 PR 모드의 병렬 워커는 이 절을 건너뛴다 — `../../chain-plan/references/pr-mode.md`「병렬」**(그룹원끼리 같은 다음 버전을 다툰다).
 
-1. 10번에서 기본 브랜치로 돌아온 뒤 `git switch -c pjc/release-v<다음 버전>`. 다음 버전은 그 레포 규약이 정한다 — 정하지 않았으면 minor 를 1 올린다.
+1. 10번에서 1번의 `baseRefName` 으로 돌아온 뒤 `git switch -c pjc/release-v<다음 버전>`. 다음 버전은 그 레포 규약이 정한다 — 정하지 않았으면 minor 를 1 올린다.
 2. 그 레포 규약이 지목한 버전 자리만 고친다(이 레포는 `plugin.json` 의 `version` 과 `README.md` 상단 `**버전**:` 줄). 다른 변경을 섞지 않는다 — squash 해도 기본 브랜치에 「버전만 올린 커밋」 하나가 남아야 다음 판정(`git log <마지막 v 커밋>..HEAD -- plugins/`)이 그 커밋을 기준으로 삼는다.
 3. 커밋 `설정: v<버전> — <요약>` → `git push -u origin pjc/release-v<버전>` → PR 생성(`../../implement/references/pr-flow.md`「PR 열기」 와 같은 방식) → 이 절차 1~10번으로 검증·merge.
 4. **릴리즈는 발행하지 않는다** — 태그·릴리즈는 외부·비가역이라 스킬 안에서도 별도 승인이다. 보고에 「승인 필요 — `gh release create v<버전> --target <버전 PR merge 커밋 full SHA>`」 를 싣는다. merge 커밋 SHA 는 9번 출력의 `mergeCommit.oid` 다.
