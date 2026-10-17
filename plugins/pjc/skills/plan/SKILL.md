@@ -82,6 +82,7 @@ description: 코드 변경을 하나의 plan.md로 계획한다 — 요구를 1�
 
 ## Step 6. 리뷰와 승인
 
+- **리뷰어를 부르기 전에 `"<skill>/scripts/check-plan.ps1" "<plan.md>"` 를 work-clock 과 같은 호출형(`../implement/references/report-format.md`「소요 기록」)으로 돌린다 — exit 1 이면 출력 줄마다 고치고 다시 돌려 exit 0 을 보고, 오탐이면 Investigation Log 에 `check-plan 오탐` 행으로, 같은 코드가 3회 연속 남으면 `check-plan 미해소 — <코드>` 행으로 적고 넘어간다. exit 2 나 출력이 없으면 `check-plan 미실행 — <사유>` 줄을, `skip` 줄이 있으면 그 줄을, 오탐·미해소 행이 있으면 그 행을 리뷰어 전달물에 싣는다** — 문자열로 갈리는 판정은 결정적 검사가 먼저 걸러야 리뷰 라운드가 판단에만 쓰인다. 코드 뜻은 스크립트 머리 주석이 정본이다.
 - **`pjc:plan-reviewer` 서브에이전트를 호출한다(최소 1회)** — 전달: `plan.md` 경로, 대상 레포 경로, `AGENTS.md` 경로.
 - **리뷰어는 read-only 라 고치는 것은 이 세션이다.** **호출되지 않는 환경이면 그 사실을 plan 에 적고 승인 단계로 간다** — 리뷰 부재를 통과로 적지 않는다.
 - **BLOCKER·MAJOR는 plan을 고쳐 해소한 뒤 다시 호출한다** — 지적이 남은 계획을 승인받으면 그 결함이 구현 중에 드러난다. **MINOR는 처방이 정해져 있으면 고치고, 아니면 버린다 — 대장 등재는 종결로가 아니다** — 구현 전이라 실해가 원리상 관측되지 않아, 완료 리뷰의 「필터 패스」 실해 축을 쓰면 MINOR 가 전부 버려진다. (중계 모드 예외는 `references/relay-mode.md`「중계 모드」)

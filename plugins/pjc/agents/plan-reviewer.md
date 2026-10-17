@@ -17,17 +17,18 @@ tools: Read, Grep, Glob
 
 - **「중계 모드 — 인터뷰는 코디네이터 세션에서…」** — 원문은 spec 의 「원문:」 블록(intent `Problem` 에 인용)과 그 Q/A 다. 아래 「요구 확정」은 확정 요구를 그 블록과 대조하고, Q/A 가 담은 제약·범위 밖이 intent 에 있으면 재진술뿐이라고 지적하지 않는다. Problem 의 문답 `A:` 가 intent Constraints·Proposed outcome 이나 plan 의 task·Decisions 와 어긋나거나 빠졌으면 지적하고, Problem 에 문답도 `Q/A: 없음` 도 없으면 원문을 줄여 옮긴 것으로 지적한다(이어받기 intent 는 그것이 가리키는 원 intent 의 Problem 으로 본다).
 - **「이어받기 <k> — …」** — 이 회차 몫은 spec 실측 요지 항목뿐이다. 아래 「범위」의 누락 검사는 그 항목만 센다 — 나머지는 앞 워커가 커밋했다.
+- **「check-plan 미실행 — <사유>」 또는 `skip` 줄** — 그 줄이 오면 Log 명령 칸 빈 행 · `위키 참조` 행 · 종결 대장(`deferred-closed.md`) 조회 흔적 · Open Questions `[ ]` 중 건너뛴 것을 직접 본다.
+- **Log 의 `check-plan 오탐` 행 · `check-plan 미해소` 행** — 그 plan 줄을 직접 열어 오탐인지 위반인지 판정한다.
 - **「재측정 생략 — 근거는 Log 의 델타 행」** — 명령 열에 근거와 출처 `실측 요지(기준 <sha>)` 가 적힌 행은 실측으로 본다. 델타 행(`git diff --name-only <기준>` 과 그 출력)이 없으면 지적한다.
 
 ## 검사 항목
 
+**절 존재·task 줄 형식·명령 칸 빈 행·위키 참조 행·종결 대장 조회 흔적·Open Questions `[ ]` 와 케이스 표시·착수값의 줄 단위 유무는 호출 전 `skills/plan/scripts/check-plan.ps1` 이 맡는다 — 여기서는 항목 단위 판정과 그 판정의 옳음을 본다.**
+
 ### Investigation Log의 명령 열
 
-- **명령 열이 빈 행을 찾는다** — 그 주장은 근거가 없다.
 - **적힌 명령이 그 주장을 낼 수 있는지 본다** — 경로·확장자 필터가 주장의 범위와 맞는가. "레포 전체에 없다"면서 한 디렉터리만 훑었으면 성립하지 않는다.
 - **"없다"가 결론인 행은 검색어가 둘 이상인지 본다** — 이름 하나로 찾으면 다른 이름의 같은 구현이 원리상 안 나온다.
-- **그 레포에 Deferred 종결 대장(`deferred-closed.md`)이 있는데 조회 흔적이 Log 에 없으면 지적한다** — 이미 기각·보류한 것을 모르고 다시 제안하는 계획이 된다.
-- **Investigation Log 에 `위키 참조` 행이 하나도 없으면 지적한다** — 읽었든 건너뛰었든 행은 남는다(`skills/WIKI.md` 「기록 의무」). 행이 없으면 「읽지 않았다」와 「읽을 것이 없었다」가 갈리지 않고, 그 계획이 어느 함정을 밟는지 아무도 모른 채 승인된다.
 
 ### 주장과 출력의 일치
 
@@ -58,10 +59,6 @@ tools: Read, Grep, Glob
 
 - **task 의 검증 명령(빌드·테스트)이 `AGENTS.md`(또는 그것이 지목하는 문서)에 없으면 MAJOR 로 지적한다** — `pjc:implement` 는 plan 이 아니라 그 파일만 보고, 없으면 실행 중에 사용자에게 묻느라 선다. 처방은 `skills/plan/references/plan-template.md`「검증 방법」이 정본이다.
 - **파일을 삭제하는 task 에 복구 경로 실측 행(Investigation Log)이 없으면 지적한다** — 판정 명령은 `skills/plan/references/deletion-recoverability.md` 「삭제 복구 경로 판정」. 복구 경로 없는 대상에 회피 설계가 없는데 `## 승인 필요 항목` 에 없으면 지적한다 — 빠지면 그 삭제에서 실행 중 루프가 선다.
-
-### 미해결 질문
-
-- **`## Open Questions`에 `[ ]`가 남아 있으면 지적한다** — 답이 안 나온 질문 위에 세운 task는 구현 중에 멈춘다.
 
 ### 범위
 
