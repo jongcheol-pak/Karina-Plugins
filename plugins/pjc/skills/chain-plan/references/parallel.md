@@ -10,7 +10,7 @@
   - ③ 검증이 새 체크아웃에서 돈다 — Karina 는 `git worktree add` 만 하고 무시 대상 파일을 옮기지 않는다. 대상 레포 `git status --ignored --short` 에 검증 명령이 읽는 경로(`.env`·로컬 설정·빌드 캐시)가 있으면 그 레포에서는 묶지 않는다
   - ④ 그룹 크기는 동시 상한 이하다 — 기본 2. 사용자가 체인 승인 `E` 로 바꾼다
 - **체인 승인의 `병렬:` 줄은 `그룹 A = plan 2·3 · 그룹 B = plan 5·6 — 동시 상한 2 · 체인 브랜치 <이름> (근거: 의존 없음·바뀌는 파일 겹침 없음)` 이고, 없으면 `없음 — <이유 한 구>` 다** — 체인 브랜치는 체인 시작 때 대상 레포의 `git branch --show-current` 이고 병합이 들어갈 곳이다.
-- **`Y` 는 이 그룹의 worktree 로컬 병합(양방향)도 위임한다** — 글로벌 `~/.claude/CLAUDE.md` 「스킬·계획 우선」의 체인 worktree 예외가 이 위임을 별도 승인에서 뺀다. push·PR 은 승인 대상이 아니라 위임할 것이 없고(스킬 실행 안), rebase 는 덮지 않는다.
+- **`Y` 는 이 그룹의 worktree 로컬 병합(양방향)도 위임한다** — 글로벌 `~/.claude/CLAUDE.md` 「스킬·계획 우선」의 체인 worktree 예외가 이 위임을 별도 승인에서 뺀다. push·PR 은 승인 대상이 아니라 위임할 것이 없고(스킬 실행 안 — PR 모드의 워커 merge 도 같다), rebase 는 덮지 않는다.
 
 ## Run·Task
 
@@ -20,6 +20,7 @@
 
 ## 띄우기
 
+- **PR 모드 체인이면 띄우기 전에 `pr-mode.md`「병렬」 의 그룹 전 확인을 먼저 한다** — 로컬 체인 브랜치가 원격보다 앞서 있으면 그 그룹은 직렬로 돈다.
 - **그룹의 계획을 한 번에 띄운다 — 대상 레포 폴더가 아니라 새 worktree 다:**
 
   ```
@@ -41,7 +42,7 @@
 
 ## 병합
 
-`worker_done`(succeeded)을 받은 순서대로 하나씩 한다. 병합 중에 다른 워커가 끝나면 앞 병합이 끝난 뒤에 한다.
+`worker_done`(succeeded)을 받은 순서대로 하나씩 한다. 병합 중에 다른 워커가 끝나면 앞 병합이 끝난 뒤에 한다. **PR 모드 체인이면 이 절·「충돌·검증 실패」·「버전」 대신 `pr-mode.md`「병렬」 을 따른다** — 워커가 PR 을 원격에서 merge 하므로 여기서 로컬로 다시 병합하면 체인 브랜치가 원격과 갈라진다.
 
 - **ⓐ 주 레포가 깨끗할 때만 한다 — `git -C "<대상 레포 경로>" status --porcelain --untracked-files=no` 가 비어 있고 현재 브랜치가 체인 브랜치여야 한다. 아니면 병합하지 않고 보고하고 멈춘다(stash·폐기하지 않는다)** — 미커밋 변경이 있으면 git 이 병합을 거부하거나 `--abort` 가 그 변경을 되살리지 못할 수 있고, 섞인 트리의 검증은 판정이 오염된다. 워커에 넘겨도 주 레포는 고칠 수 없다.
 - **ⓑ 속성이 걸리는지 본다 — `git -C "<대상 레포 경로>" -c core.attributesFile="<skill>/scripts/chain-merge.gitattributes" check-attr merge -- docs/plans/chain-<Run id>.md docs/plans/history.md plan.md notes.md`** — `core.attributesFile` 은 우선순위가 가장 낮아 레포의 `.gitattributes` 가 같은 경로를 정하면 그쪽이 이긴다. `union`·`chaintheirs` 가 아닌 경로는 일반 병합으로 두고 진행한다(충돌하면 「충돌·검증 실패」).
@@ -87,7 +88,7 @@
 
 ## 닫기
 
-- **병합 커밋이 끝난 뒤 `release.md`「닫기」 로 닫고, 그 탭의 마지막 dispatch(재배정했으면 재배정 dispatch)로 닫는다** — 앞 dispatch 의 release 도 같은 탭을 닫는다.
+- **병합 커밋(PR 모드면 주 레포 fast-forward)이 끝난 뒤 `release.md`「닫기」 로 닫고, 그 탭의 마지막 dispatch(재배정했으면 재배정 dispatch)로 닫는다** — 앞 dispatch 의 release 도 같은 탭을 닫는다.
 - **worktree 폴더와 브랜치는 지우지 않는다 — 경로·브랜치는 보고에 싣는다** — Karina 에 지우는 CLI 가 없고, 폴더 안 `plan.md` 는 gitignore 인 레포에서 복구 경로가 없다. 재개(`resume.md`)도 그 `plan.md` 로 완료를 판정한다.
 
 ## 중단·이어받기·사후 완료
@@ -103,4 +104,4 @@
 
 ## 보고
 
-- **`report.md`「보고 서식」 의 `병렬 병합:` 줄에 그룹마다 plan · 병합 커밋 sha(또는 미병합 사유) · worktree 경로 · 브랜치를 싣는다.**
+- **`report.md`「보고 서식」 의 `병렬 병합:` 줄에 그룹마다 plan · 병합 커밋 sha(PR 모드면 PR URL·merge 커밋 — 또는 미병합 사유) · worktree 경로 · 브랜치를 싣는다.**
