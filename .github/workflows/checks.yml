@@ -19,10 +19,13 @@
 # ⚠ **exit 2 는 통과가 아니다** — `check-harness-consistency.py` 는 앵커 파싱 실패,
 #   `run-evals.py` 는 `cases.json` 서식 위반·미추적 픽스처에서 2 를 낸다. Actions 는
 #   0 이 아닌 종료 코드를 실패로 잡으므로 별도 처리가 필요 없다.
+# **push 는 main 에만 건다** — PR 브랜치 push 는 `pull_request` 가 이미 돌려, 둘 다 열어 두면
+#   PR 브랜치 push 한 번에 같은 검사가 두 번 돈다. main 은 merge 결과를 다시 재려고 push 를 둔다.
 name: checks
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
