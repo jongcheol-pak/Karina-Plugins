@@ -141,7 +141,7 @@ foreach ($g in $guides) {
 Write-Host ""
 
 # 4. Agents (expected 목록 존재 + 미등록 탐지)
-$agents = @('plan-reviewer', 'completion-reviewer', 'wiki-page-writer')
+$agents = @('plan-reviewer', 'completion-reviewer', 'wiki-page-writer', 'pr-verifier')
 Write-Host "4. Agents $($agents.Count)개" -ForegroundColor Yellow
 foreach ($a in $agents) {
     $agentPath = Join-Path $pluginRoot "agents/$a.md"
