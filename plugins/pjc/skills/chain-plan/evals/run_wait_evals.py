@@ -1019,6 +1019,197 @@ def message_action_mentions_remaining_parallel():
     assert 'parallel.md' in first(out) and '남은' in first(out), out
 
 
+
+# ── PR 단계(`--pr <base>`) — 계획 체인 PR 모드 ──
+
+def pr_list(state, number=7, url='https://github.com/o/r/pull/7'):
+    return (True, json.dumps([{'number': number, 'state': state, 'url': url}]))
+
+
+def pr_checks(*buckets):
+    return (True, json.dumps([{'bucket': b} for b in buckets]))
+
+
+class FakeGh:
+    """`gh <args>` 응답 — `pr list` 와 `pr checks` 마다 응답 열을 차례로 돌려주고, 다 쓰면 마지막 값을 되풀이한다."""
+
+    def __init__(self, lists=(), checks=()):
+        self.lists = list(lists)
+        self.checks = list(checks)
+        self.calls = []
+
+    def __call__(self, args):
+        self.calls.append(list(args))
+        queue = self.lists if args[:2] == ['pr', 'list'] else self.checks
+        if not queue:
+            return (False, '')
+        return queue.pop(0) if len(queue) > 1 else queue[0]
+
+
+def branch_git(*branches):
+    """`git branch --show-current` 만 답하는 대역 — 차례로 내고 다 쓰면 마지막 값을 되풀이한다."""
+    seq = list(branches)
+
+    def git(args):
+        assert args[:2] == ['branch', '--show-current'], args
+        return (True, seq.pop(0) if len(seq) > 1 else seq[0])
+    return git
+
+
+def pr_prog(gh, branches=('pjc/x',), store=None, base='main'):
+    stage = ww.pr_stage.PrStage(branch_git(*branches), gh, base, 'Plan 3')
+    return ww.Progress(FakeGit(history=[]), lambda: PLAN5,
+                       store if store is not None else FakeStore({'sha': 'h0', 'shown': []}), 'Plan 3', pr=stage)
+
+
+def pr_lines(out):
+    return [l for l in out if l.startswith('Plan 3: PR')]
+
+
+@case
+def pr_pending_checks_do_not_stall():
+    # ⓐ CI 대기 중인 워커는 turn 을 끝내 화면·HEAD 가 함께 멈춘다 — pending 이면 같은 화면을 멈춤으로 세지 않는다.
+    gh = FakeGh(lists=[pr_list('OPEN')], checks=[pr_checks('pass', 'pending')])
+    cli = FakeCli([EMPTY] * 5 + [msg_batch()], [screen('idle')] * 5)
+    out = runp(cli, pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: message — '), out
+
+
+@case
+def pr_checks_done_still_stalls():
+    # ⓑ 체크가 다 끝났는데 화면·HEAD 가 그대로면 멈춤이다.
+    gh = FakeGh(lists=[pr_list('OPEN')], checks=[pr_checks('pass', 'skipping')])
+    cli = FakeCli([EMPTY] * 3, [screen('idle')] * 3)
+    out = runp(cli, pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: stall — '), out
+
+
+@case
+def pr_stage_lines_in_order_once():
+    # ⓒ 열림 → CI green → merged 를 한 번씩 차례로 낸다.
+    gh = FakeGh(lists=[pr_list('OPEN'), pr_list('OPEN'), pr_list('MERGED')],
+                checks=[pr_checks('pending'), pr_checks('pass')])
+    reads = [screen('spin %d' % i) for i in range(3)]
+    cli = FakeCli([EMPTY] * 3 + [msg_batch()], reads)
+    out = runp(cli, pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert pr_lines(out) == ['Plan 3: PR #7 열림 — https://github.com/o/r/pull/7', 'Plan 3: PR #7 CI green',
+                             'Plan 3: PR #7 merged'], out
+
+
+@case
+def pr_first_seen_merged_emits_all():
+    # ⓒ merged 를 처음 본 주기에 앞 단계까지 함께 낸다 — 1분 주기 안에 열림부터 merge 까지 끝날 수 있다.
+    gh = FakeGh(lists=[pr_list('MERGED')])
+    out = runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert pr_lines(out) == ['Plan 3: PR #7 열림 — https://github.com/o/r/pull/7', 'Plan 3: PR #7 CI green',
+                             'Plan 3: PR #7 merged'], out
+
+
+@case
+def pr_branch_remembered_after_return_to_base():
+    # ⓓ ship 이 merge 한 뒤 워커는 base 로 돌아온다 — 기억한 브랜치로 merged 를 낸다.
+    gh = FakeGh(lists=[pr_list('OPEN'), pr_list('MERGED')], checks=[pr_checks('pending')])
+    reads = [screen('spin %d' % i) for i in range(2)]
+    cli = FakeCli([EMPTY] * 2 + [msg_batch()], reads)
+    out = runp(cli, pr_prog(gh, branches=('pjc/x', 'main')), timeout_ms=60000, poll_ms=60000)
+    assert 'Plan 3: PR #7 merged' in out, out
+    heads = [c[c.index('--head') + 1] for c in gh.calls if '--head' in c]
+    assert heads and all(h == 'pjc/x' for h in heads), gh.calls
+
+
+@case
+def pr_gh_failure_is_no_info():
+    # ⓔ gh 실패·JSON 아님 → 단계 줄 없음, 멈춤 판정은 PR 모드가 아닐 때와 같다.
+    gh = FakeGh(lists=[(False, ''), (True, 'not json')])
+    cli = FakeCli([EMPTY] * 3, [screen('idle')] * 3)
+    out = runp(cli, pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: stall — '), out
+    assert not [l for l in out if 'PR #' in l], out
+
+
+@case
+def pr_flag_absent_never_calls_gh():
+    # ⓕ `--pr` 없이 띄운 대기는 gh 를 만들지 않는다(ⓐ 의 음성 짝 — 구현 전에도 통과해야 한다).
+    stage_mod = getattr(ww, 'pr_stage', None)
+    made = []
+    saved = (ww.make_call, ww.FileLock, ww.FileStore)
+    ww.make_call = lambda c: FakeCli([msg_batch()])
+    ww.FileLock = lambda dispatch: FakeLock()
+    ww.FileStore = lambda dispatch: FakeStore({'sha': 'h0', 'shown': []})
+    if stage_mod is not None:
+        saved_gh = stage_mod.make_gh
+        stage_mod.make_gh = lambda repo: made.append(repo) or (lambda args: (False, ''))
+    real_stdout = sys.stdout
+    sys.stdout = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
+    try:
+        ww.main(['--cli', 'x', '--dispatch', 'disp_np', '--repo', tempfile.gettempdir(), '--timeout-ms', '10'])
+    finally:
+        sys.stdout = real_stdout
+        ww.make_call, ww.FileLock, ww.FileStore = saved
+        if stage_mod is not None:
+            stage_mod.make_gh = saved_gh
+    assert made == [], made
+
+
+@case
+def pr_shown_stage_not_repeated_after_restart():
+    # ⓖ 재기동한 대기는 상태 파일에 적힌 낸 단계를 다시 내지 않는다.
+    store = FakeStore({'sha': 'h0', 'shown': [], 'pr': {'branch': 'pjc/x', 'number': 7, 'shown': ['open']}})
+    gh = FakeGh(lists=[pr_list('OPEN')], checks=[pr_checks('pass')])
+    out = runp(FakeCli([msg_batch()]), pr_prog(gh, store=store), timeout_ms=60000, poll_ms=60000)
+    assert pr_lines(out) == ['Plan 3: PR #7 CI green'], out
+
+
+@case
+def pr_flag_requires_repo():
+    # ⓗ `--pr` 는 레포를 봐야 하므로 `--repo` 없이 받지 않는다.
+    saved = (ww.make_call, ww.FileLock)
+    ww.make_call = lambda c: FakeCli([msg_batch()])
+    ww.FileLock = lambda dispatch: FakeLock()
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+    sys.stdout = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
+    sys.stderr = io.StringIO()
+    try:
+        ww.main(['--cli', 'x', '--dispatch', 'disp_p', '--pr', 'main'])
+    except SystemExit as e:
+        assert e.code == 2, e.code
+        last = sys.stderr.getvalue().strip().splitlines()[-1]
+        assert '--pr' in last and '--repo' in last, last
+    else:
+        raise AssertionError('--repo 없는 --pr 를 받아들였다')
+    finally:
+        ww.make_call, ww.FileLock = saved
+        sys.stdout, sys.stderr = real_stdout, real_stderr
+
+
+@case
+def pr_gh_call_arguments():
+    # ⓘ gh 는 레포 폴더에서 · stdin 없이 · stderr 를 잇지 않고 · 시한을 두고 돈다. 시한 초과는 실패로 받는다.
+    fake = RecordingRun()
+    gh = ww.pr_stage.make_gh('D:/repo')
+    saved = ww.pr_stage.subprocess.run
+    ww.pr_stage.subprocess.run = fake
+    try:
+        result = gh(['pr', 'list'])
+    finally:
+        ww.pr_stage.subprocess.run = saved
+    assert result == (False, ''), result
+    cmd, kw = fake.calls[0]
+    assert cmd[:3] == ['gh', 'pr', 'list'], cmd
+    assert kw.get('cwd') == 'D:/repo' and kw.get('timeout') and kw.get('stdin') == subprocess.DEVNULL, kw
+    assert kw.get('stderr') == subprocess.DEVNULL, kw
+
+
+@case
+def pr_pending_too_long_stalls():
+    # ⓙ pending 인 채 같은 화면이 6비교를 넘으면 다시 멈춤으로 센다 — 1장 + 6비교 + 멈춤까지 2비교 = 9장.
+    gh = FakeGh(lists=[pr_list('OPEN')], checks=[pr_checks('pending')])
+    cli = FakeCli([EMPTY] * 12, [screen('idle')] * 12)
+    out = runp(cli, pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: stall — '), out
+    assert len([c for c in cli.calls if c[0] == 'worker-read']) == 9, out
+
+
 @case
 def orphaned_when_middle_parent_killed():
     # 실제 프로세스: cmd 아래 띄운 대기에서 cmd 만 죽인다(트리 킬이 아닌 고아 상황). 가짜 CLI 는 1초 쉬고 빈 배치를

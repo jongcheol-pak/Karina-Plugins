@@ -1,9 +1,5 @@
 """pjc:chain-plan 코디네이터의 워커 대기 — Bash `run_in_background` 로 띄우고 끝날 때만 코디네이터를 깨운다.
 
-왜 따로 두는가: 코디네이터가 `check --wait` 를 9분마다 직접 돌리면 그때마다 큰 컨텍스트를 다시 읽는다
-(2026-10-04 실측 — 체인 1회 폴링에 53~68턴 · 21~32M 토큰). 이 스크립트가 그 반복과 멈춤 판정을 맡고,
-코디네이터는 출력 첫 줄의 지시만 따른다.
-
 출력 — 첫 줄 `RESULT: <갈래> — <다음 행동>`, 이어 본문:
 - message    `check` 가 배치를 돌려줬다(빈 값의 키를 빼고 subject·body 밖의 긴 값을 자른 JSON 한 줄).
              ack 는 하지 않는다 — 코디네이터가 처리한 뒤 한다.
@@ -12,52 +8,16 @@
 - superseded 같은 dispatch 의 새 대기가 잠금을 가져갔다. 받은 배치는 싣지 않는다 —
              Karina `check` 는 ack 전까지 같은 배치를 다시 주므로 새 대기가 받는다.
 - freed      (`--place` 만) 지켜보던 다른 세션 워커가 자리를 놓았다(그 dispatch 행 — message 와 같은 축약).
-- orphaned   대기를 띄운 셸·세션이 사라졌다(두 모드 공통 · 본문 없음). 아래 「고아 감시」.
+- orphaned   대기를 띄운 셸·세션이 사라졌다(두 모드 공통 · 본문 없음).
 
-진행 줄(`--repo` 를 줬을 때만): 워커가 끝낸 task 마다 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작` 한 줄.
-따로 깨우지 않고 message·stall·error 원문 앞에 싣는다 — task 마다 깨우면 코디네이터가 그때마다 큰 컨텍스트를
-다시 읽어, 이 스크립트가 없애려던 폴링 턴이 task 수만큼 되살아난다(2026-10-12 감사).
+진행 줄(`--repo` 를 줬을 때만): 워커가 끝낸 task 마다 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작` 한 줄,
+`--pr <base>` 면 PR 단계마다 `<label>: PR #<n> 열림 — <url>` · `… CI green` · `… merged` 한 줄. 따로 깨우지 않고
+message·stall·error 원문 앞에 싣는다.
 
-자리 대기(`--place <dispatch>`): `worker-start` 가 `duplicate_worker` 로 다른 세션 워커를 이름 댔을 때 띄운다.
-주기(`--poll-ms`, 기본 1분)마다 `check --wait` 로 쉬고 `worker-list --json`(전 Run)에서 그 dispatch 행을 본다.
-행이 없거나 Karina `holds_place_at` 기준으로 놓았으면 freed 다. 시한·멈춤 판정은 없다 — 사람이 탭을 놓아야
-풀리는 상태도 있어서다. 이 모드의 message·freed 지시문은 --place 재기동을 말하고 error 는 두 모드가 같다.
+모드: `--dispatch` 하나(단일) · 여럿(병렬 — `--repo`·`--label` 도 같은 수·같은 순서) · `--place <dispatch>`(자리 대기).
 
-병렬 대기(`--dispatch` 여러 번 — `--repo`·`--label` 도 주면 같은 수·같은 순서): 배치는 코디네이터 터미널에 오므로
-`check` 는 주기마다 한 번이고, 화면 비교·멈춤 연속 수·진행 감지만 dispatch 마다 따로 둔다. 멈추면 그 dispatch 하나를
-지목하고 지시문은 references/parallel.md 「멈춤」 을 가리킨다. 잠금은 dispatch 마다 하나씩이고 전부 쥐었을 때만
-소유다(AllLocks) — 끝난 워커를 뺀 나머지로 다시 띄운 대기가 집합이 겹치는 앞 대기를 물린다.
-
-멈춤 판정: `check` 가 시한 만료(count 0)로 돌아올 때마다 `worker-read`(커서 없음 — 커서는 출처에 묶여
-다른 출처로 넘기면 `source_changed` 다)로 화면을 읽고, 앞 체크포인트와 `lines` 가 같으면 연속 수(일치한 비교
-횟수 — 같은 화면 장 수보다 하나 적다)를 올린다.
-일하는 워커는 대개 스피너 경과 시간이 바뀌어 화면이 같지 않다. 그러나 워커가 커밋을 쌓는 동안 `worker-read` 가
-고정된 화면을 돌려준 사례가 있어(2026-10-15), 진행 감지(`--repo`)가 켜져 있으면 앞 비교 뒤 그 dispatch 레포의
-HEAD 가 움직였을 때 화면이 같아도 연속 수를 0 으로 되돌린다. 즉 멈춤은 같은 화면이면서 HEAD 가 움직이지 않은 것이다.
-HEAD 를 처음 본 비교와 git 이 실패한 주기는 움직임으로 세지 않는다. 병렬 대기는 dispatch 마다 자기 레포만 본다.
-화면 비교까지 남은 대기를 시계가 아니라 차감으로 센다 — `check` 시한은 min(--poll-ms, 남은 대기)이고
-남은 대기가 0 이 된 주기에만 화면을 읽는다(비교 간격을 9분으로 지킨다).
-
-진행 감지: 주기마다 `git -C <repo> log <본 sha>..HEAD` 에서 제목이 `<유형>: T<N> — <무엇을>`
-(implement 「커밋」 형식)인 커밋을 고른다. 분모는 `<repo>/plan.md` 의 `### T<N>.` 번호 최댓값(implement 의
-`T<N>/T<M>` 과 같은 정의)이고 다음 시작은 N 보다 큰 최소 번호다 — N 이 최댓값보다 크면 분모·다음 시작 없이 낸다.
-본 sha 와 표시한 번호는 dispatch 별 상태 파일에 두어 재기동해도 같은 커밋·같은 task 의 후속 커밋(「수정: T2」)을
-다시 표시하지 않는다. 진행 줄이 있는 갱신은 그 줄을 결과에 실어 낼 때만 저장하고, 그때까지는 주기마다 같은 기준에서
-다시 계산한다. 진행 감지는 잠금 확인보다 먼저 돌고, 잠금을 잃은 대기는 상태를 쓰지 않는다.
-시작할 때 임시 폴더의 7일 지난 `pjc-chain-wait-*` 를 지운다(sweep_stale).
-
-고아 감시: 시작할 때 자기 조상 사슬에서 앞쪽 python(WindowsApps 스텁)을 건너뛰고 셸들과 첫 비셸(claude.exe 등)을
-고르고(pick_watch_targets), Windows 는 그 프로세스마다 SYNCHRONIZE 핸들을 연다. `check` 가 돌아올 때마다 하나라도
-끝났으면 orphaned 로 끝난다 — 잔존 상한은 한 주기(`--repo` 경로 60초)다. TaskStop 은 셸 트리째 죽이지만(실측)
-claude.exe 자체가 죽을 때 백그라운드 트리가 함께 죽는지는 재지 못해 둔 감시다. 사슬 조회나 핸들 열기가 전부 실패하면
-감시 없이 종전대로 기다리고, 일부만 열리면 연 것만 본다. POSIX 는 직계 부모 변경만 본다(실험적 지원).
-외부 호출 시한: `check --wait --timeout-ms X` 는 X 에 60초를 더한 시각, 그 밖 CLI 호출은 60초, git 은 30초다. CLI 시한
-초과는 error(「CLI 실행 실패」), git 시한 초과는 다른 git 실패와 같이 대기를 끊지 않는다.
-git 실패는 대기를 끊지 않고, 본 sha 가 무효하면 HEAD 로 다시 채운다. 상태 파일이 없으면(시작 때 HEAD 를
-못 잡음) 주기마다 다시 잡고, 있는데 읽지 못하면 덮어쓰지 않는다. 상태 파일은 임시 파일을 바꿔 넣어 쓰고,
-저장 실패는 대기를 끊지 않는다.
-
-stdout 을 utf-8 로 바꾸는 것은 필수다 — 백그라운드 stdout 은 cp949 라 첫 줄의 「—」에서 죽는다(실측).
+판정 근거(멈춤·진행 감지·PR 단계·고아 감시·외부 호출 시한·stdout 인코딩)는
+`../references/wait-worker-rationale.md` 가 정본이다.
 """
 import argparse
 import hashlib
@@ -68,6 +28,9 @@ import subprocess
 import sys
 import tempfile
 import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pr_stage
 
 STALL_TAIL = 40
 RAW_LIMIT = 4000
@@ -80,6 +43,7 @@ CLI_TIMEOUT_SEC = 60         # worker-read·worker-list 처럼 기다리지 않�
 CLI_WAIT_MARGIN_SEC = 60     # check --wait 는 자기 --timeout-ms 에 이만큼 더한 뒤에야 응답 불능으로 본다
 GIT_TIMEOUT_SEC = 30         # lint.py·relocate-agents.py 의 git 시한과 같다
 SWEEP_AGE_SEC = 7 * 24 * 3600
+PR_PENDING_MAX = 6           # CI pending 인 같은 화면을 움직임으로 세는 연속 비교 상한(약 54분)
 
 
 def screen_hash(lines):
@@ -163,6 +127,7 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
     last_hash = {d: None for d in ids}
     # 직전 화면 비교 때 본 그 워커 레포의 HEAD — progs[i] 가 ids[i] 의 레포다(같은 수·같은 순서).
     head_at_read = {d: None for d in ids}
+    pending_run = {d: 0 for d in ids}
     poll = poll_ms or timeout_ms
     remaining = timeout_ms
     for p in progs:
@@ -227,6 +192,9 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
             cur_head = progs[i].last_head if i < len(progs) else None
             moved = None not in (cur_head, head_at_read[d]) and cur_head != head_at_read[d]
             head_at_read[d] = cur_head
+            busy = i < len(progs) and progs[i].pr_busy
+            pending_run[d] = pending_run[d] + 1 if busy and h == last_hash[d] else 0
+            moved = moved or (busy and pending_run[d] <= PR_PENDING_MAX)
             streak[d] = streak[d] + 1 if h == last_hash[d] and not moved else 0
             last_hash[d] = h
             # streak 은 일치한 비교 횟수라 같은 화면 장 수는 그보다 하나 많다 — 첫 화면이 1장이다.
@@ -435,8 +403,9 @@ PLAN_TASK = re.compile(r'^### T(\d+)\. ', re.M)
 class Progress:
     """task 완료 커밋을 표시 줄로 바꾼다. git(args)->(성공, 출력) · read_plan()->str|None · store(load/save) 는 주입한다."""
 
-    def __init__(self, git, read_plan, store, label):
+    def __init__(self, git, read_plan, store, label, pr=None):
         self.git, self.read_plan, self.store, self.label = git, read_plan, store, label
+        self.pr = pr
         self.pending = None
         # 마지막으로 본 HEAD — 멈춤 판정이 화면 비교 사이의 커밋을 진행으로 센다. 저장 기준(`sha`)과 달리
         # 메모리에만 두고, git 이 실패한 주기에는 바꾸지 않는다(실패를 「달라짐」으로 세지 않게).
@@ -449,11 +418,26 @@ class Progress:
                 self.store.save({'sha': head, 'shown': []})
                 self.last_head = head
 
+    @property
+    def pr_busy(self):
+        return self.pr is not None and self.pr.busy
+
     def poll(self):
-        """새 진행 줄을 돌려주고 갱신할 상태를 pending 에 둔다 — 저장은 commit() 이 한다(잠금 확인 뒤).
+        """새 진행 줄(task 완료 · PR 단계)을 돌려주고 갱신할 상태를 pending 에 둔다 — 저장은 commit() 이 한다(잠금 확인 뒤).
         plan.md 는 매치가 있는 주기에 한 번만 읽는다."""
         self.pending = None
         st = self.store.load()
+        done = self._poll_tasks(st)
+        if self.pr is not None:
+            # 기준 sha 가 없는 상태(부재·읽지 못함)에는 PR 상태만 저장하지 않는다 — 저장하면 task 진행 감지가 꺼진다.
+            base = self.pending if self.pending is not None else (st or {})
+            lines, pr_st = self.pr.poll(base.get('pr'))
+            if base.get('sha') and pr_st != (base.get('pr') or {}):
+                self.pending = dict(base, pr=pr_st)
+            done += lines
+        return done
+
+    def _poll_tasks(self, st):
         if st is None:
             # 시작 때 HEAD 를 못 잡았다(커밋 없는 레포·일시 실패) — 다시 잡지 않으면 이 대기가 끝날 때까지 꺼진다.
             ok, head = self.git(['rev-parse', 'HEAD'])
@@ -468,7 +452,7 @@ class Progress:
         if not ok:
             ok, head = self.git(['rev-parse', 'HEAD'])
             if ok and head:
-                self.pending = {'sha': head, 'shown': shown}
+                self.pending = dict(st, sha=head, shown=shown)
                 self.last_head = head
             return []
         done, last, nums = [], st['sha'], None
@@ -484,7 +468,7 @@ class Progress:
             if nums is None:
                 nums = sorted({int(x) for x in PLAN_TASK.findall(self.read_plan() or '')})
             done.append(self._line(int(m.group(2)), m.group(3).strip(), nums))
-        self.pending = {'sha': last, 'shown': shown}
+        self.pending = dict(st, sha=last, shown=shown)
         self.last_head = last
         return done
 
@@ -591,9 +575,12 @@ def main(argv=None):
     ap.add_argument('--repo', action='append', default=None)
     ap.add_argument('--label', action='append', default=None)
     ap.add_argument('--poll-ms', type=int, default=None)
+    ap.add_argument('--pr', default=None)
     a = ap.parse_args(argv)
     if (a.dispatch is None) == (a.place is None):
         ap.error('--dispatch 와 --place 중 하나만 준다')
+    if a.pr is not None and not a.repo:
+        ap.error('--pr 는 --repo 와 함께 준다')
     for name, vals in (('--repo', a.repo), ('--label', a.label)):
         if vals is not None and a.dispatch is not None and len(vals) != len(a.dispatch):
             ap.error('%s 는 --dispatch 와 같은 수만큼 같은 순서로 준다' % name)
@@ -610,7 +597,8 @@ def main(argv=None):
     progress = None
     poll_ms = a.poll_ms
     if a.repo:
-        progress = [Progress(make_git(r), make_read_plan(r), FileStore(d), lb)
+        progress = [Progress(make_git(r), make_read_plan(r), FileStore(d), lb,
+                             pr=pr_stage.PrStage(make_git(r), pr_stage.make_gh(r), a.pr, lb) if a.pr else None)
                     for d, r, lb in zip(ids, a.repo, labels)]
         poll_ms = poll_ms or 60000
     lock = FileLock(ids[0]) if len(ids) == 1 else AllLocks([FileLock(d) for d in ids])
