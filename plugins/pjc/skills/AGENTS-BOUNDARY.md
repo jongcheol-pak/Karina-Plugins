@@ -40,7 +40,7 @@
 - **Build**: `<명령>`   - **Run (개발)**: `<명령>`   - **Test**: `<명령>`
 - **Lint/Format**: `<있으면>`   - **Clean**: `<있으면>`
 - **Release**: `<버전을 올린 뒤 무엇을 하는가 — 태그·발행·배포 명령. 없으면 "없음">`
-- **Verify (앱 조작)**: `<앱을 실제로 조작해 확인하는 레포 검증 스킬 경로 — 없으면 "없음">`
+- **Verify (앱 조작)**: `<앱을 실제로 조작해 확인하는 레시피 스킬 경로 — Claude Code 내장 /run-skill-generator 가 만드는 .claude/skills/run-이름/ 또는 /verify 가 기록하는 .claude/skills/verify/ · 없으면 사용자가 /run-skill-generator 를 돌려 만든다 — 그 전에는 "없음">`
 > ⚠️ Build/Test가 비면 `pjc:implement`의 검증이 무의미해진다.
 
 <검증 매핑 표 — 변경 파일 패턴 → 필수 검증. 축이 둘 이상일 때만 만든다>
