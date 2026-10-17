@@ -58,7 +58,7 @@ PowerShell: & "<스크립트>" -Since '<시작>'
 
 **`../SKILL.md` 「최종 리뷰」 완료 순서의 「plan 파일 커밋」 에서 쓴다 — 완료 시각 기록 뒤, PR 열기 전이다.**
 
-- **`plan.md` 를 추적하는 레포면 최종 보고 직전에 `plan.md` 를 커밋한다** — `git ls-files --error-unmatch -- <plan 경로>` 가 성공하고 `git status --porcelain -- <plan 경로>` 가 비어 있지 않을 때 `문서: plan.md 진행 기록` 커밋 1개를 만들고, 중계 모드면 마지막 인계 절 커밋에 함께 담는다(인계 절을 쓰지 않는 계획이면 단독 커밋). gitignore 인 레포는 건너뛴다 — 남기면 다음 회차가 미커밋 변경 위에서 시작한다.
+- **`plan.md` 를 추적하는 레포면 PR 열기 전에(PR 을 열지 않으면 최종 보고 직전에) `plan.md` 를 커밋한다** — `git ls-files --error-unmatch -- <plan 경로>` 가 성공하고 `git status --porcelain -- <plan 경로>` 가 비어 있지 않을 때 `문서: plan.md 진행 기록` 커밋 1개를 만들고, 중계 모드면 마지막 인계 절 커밋에 함께 담는다(인계 절을 쓰지 않는 계획이면 단독 커밋). gitignore 인 레포는 건너뛴다 — 남기면 다음 회차가 미커밋 변경 위에서 시작한다.
 
 ## 사실 주장의 실측
 
