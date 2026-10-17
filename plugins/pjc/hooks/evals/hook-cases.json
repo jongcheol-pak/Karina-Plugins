@@ -1182,6 +1182,35 @@
     },
     {
       "hook": "guard-bash.ps1",
+      "name": "[2026-10-17 권한 개정] git push 경고는 plan·스킬 안이면 진행하라는 문구를 단다",
+      "command": "git push origin pjc/feat-x",
+      "expect_exit": 0,
+      "expect_contains": "승인된 plan·발동된 스킬 안이면 묻지 않고 진행"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "[2026-10-17 권한 개정] git tag 경고는 항상 승인 문구만 달고 진행 문구는 없다",
+      "command": "git tag v1.0.0",
+      "expect_exit": 0,
+      "expect_contains": "plan·스킬 안에서도 별도 승인 대상",
+      "expect_not_contains": "안이면 묻지 않고 진행"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "[2026-10-17 권한 개정] gh pr comment 도 외부 작업 경고에 든다",
+      "command": "gh pr comment 12 --body \"확인\"",
+      "expect_exit": 0,
+      "expect_contains": "gh pr comment"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "[2026-10-17 권한 개정] gh release create --help 는 무경고 (도움말 조회 — 실제 반영 아님)",
+      "command": "gh release create --help",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
       "name": "gh release --notes 값 속 git tag 텍스트는 오탐 아님",
       "command": "gh release create v1.181.0 --notes \"이 회차는 git tag v1.181.0 으로 표시했다\"",
       "expect_exit": 0,

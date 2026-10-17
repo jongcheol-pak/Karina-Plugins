@@ -170,7 +170,9 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 
 ## §13 판정 데이터·문면 외부화와 로드 실패 격리
 
-`warn-external-ops` 의 판정 패턴(`externalOps` 13 · `localOps` 6)과 경고 문면은 `rules/external-ops.json` 이 정본이다. **순수 데이터라 hook 스크립트에 두지 않는다** — 그것이 `guard-bash.ps1` 을 문서 예산 상한 위로 밀어 올렸고, 「상한을 올리는 것은 처방이 아니다」이므로 데이터를 내렸다.
+`warn-external-ops` 의 판정 패턴(`externalOps` 14 · `localOps` 6)과 경고 문면은 `rules/external-ops.json` 이 정본이다. **순수 데이터라 hook 스크립트에 두지 않는다** — 그것이 `guard-bash.ps1` 을 문서 예산 상한 위로 밀어 올렸고, 「상한을 올리는 것은 처방이 아니다」이므로 데이터를 내렸다.
+
+**경고 문면은 승인 갈래 둘로 나뉜다(2026-10-17 권한 개정).** push·merge·`gh pr create`·`gh pr comment`·`gh pr merge` 는 `"approval": "context"` 로 표시하고 「승인된 plan·발동된 스킬 안이면 묻지 않고 진행 · 그 밖의 일반 작업이면 승인」 문구(`contextBody`)를 단다. 태그·릴리즈·배포는 「plan·스킬 안에서도 승인」 문구(`alwaysBody`)를 단다. **목록에서 빼지 않은 이유는 hook 이 plan·스킬 맥락을 모르기 때문이다** — 빼면 일반 작업의 push 경고까지 사라진다. 같은 세그먼트의 `--help` 는 `--dry-run` 처럼 조회로 보아 경고하지 않는다(`gh release create --help` 오탐).
 
 **로드 실패는 그 검사만 건너뛴다.** `Invoke-WarnExternalOps` 는 디스패처 안의 **함수**이므로 `catch` 에서 `exit` 을 쓰면 안 된다 — PowerShell 의 `exit` 는 함수 스코프를 무시하고 프로세스 전체를 즉시 종료하며, 디스패처의 `try { & $c.fn $data } catch {…}` 로도 가로채지지 않는다. 그러면 `require-task-checkbox`·`block-plan-write` **차단 게이트까지 함께 꺼진다**. 그래서 종료 수단은 `return New-HookResult` 다. 같은 자리의 구 가드(`guard-commit-secrets` 부재 시 `exit 0`)는 6검사 전부를 끄는 형태이며, 이 가드는 그것을 답습하지 않는다.
 

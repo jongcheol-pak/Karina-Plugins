@@ -230,7 +230,7 @@ function Invoke-BlockPlanWrite {
     ) -Context "plan.md 쓰기가 차단됐습니다($where). Write·Edit 도구를 쓰세요 — 그 둘은 파일 상태를 추적해 잘림을 막습니다."
 }
 
-# ---- warn-external-ops: 외부·비가역 작업(push·merge·tag·gh release/pr·배포)·로컬 비가역(reset --hard 등) 경고 ----
+# ---- warn-external-ops: 외부·비가역 작업(push·merge·gh pr — plan·스킬 안이면 진행 / tag·gh release·배포 — 항상 승인)·로컬 비가역(reset --hard 등) 경고 ----
 function Invoke-WarnExternalOps {
     param($data)
     $cmd = $data.tool_input.command
@@ -258,13 +258,15 @@ function Invoke-WarnExternalOps {
     $segments = Split-TopLevel (Remove-HeredocDataSink $scanCmd) $script:IsPsTool
     $hits = New-Object System.Collections.Generic.List[string]
     $hitsLocal = New-Object System.Collections.Generic.List[string]
+    $hitContext = $false; $hitAlways = $false
     foreach ($seg in $segments) {
         if ([string]::IsNullOrWhiteSpace($seg)) { continue }
-        $segHasDryRun = $seg -match '--dry-run'
+        $segIsQuery = $seg -match '--dry-run|(^|\s)--help(\s|$)'
         foreach ($op in $ops.externalOps) {
             if ($seg -match $op.rx) {
-                if ($segHasDryRun) { continue }   # 조회성(실제 반영 아님) — 같은 세그먼트 dry-run만 인정
+                if ($segIsQuery) { continue }   # 조회성(실제 반영 아님) — 같은 세그먼트의 dry-run·help만 인정
                 if (-not $hits.Contains($op.label)) { $hits.Add($op.label) }
+                if ($op.approval -eq 'context') { $hitContext = $true } else { $hitAlways = $true }
             }
         }
         foreach ($op in $ops.localOps) {
@@ -285,7 +287,8 @@ function Invoke-WarnExternalOps {
         foreach ($h in $hitsLocal) { $lines += "  - $h" }
     }
     $lines += ""
-    if ($hits.Count -gt 0) { $lines += $t.externalBody }
+    if ($hitContext) { $lines += $t.contextBody }
+    if ($hitAlways) { $lines += $t.alwaysBody }
     if ($hitsLocal.Count -gt 0) { $lines += $t.localBody }
     $lines += $t.footer
     $msg = ($lines -join "`n")
