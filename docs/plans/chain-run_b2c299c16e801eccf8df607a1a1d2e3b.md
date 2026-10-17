@@ -38,7 +38,7 @@
   - babysit 은 rebase·force push 를 하지 않고 충돌을 보고만 한다(pstack babysit 4). 고친·기각한 스레드는 `resolveReviewThread`.
 - 뒤 계획이 지킬 제약
   - **implement 가 읽는 PR 모드 계약은 spec 의 `PR 모드: 켬` 줄 하나다** — plan 3 이 spec 서식(`chain-plan/references/spec-format.md`)에 이 줄을 넣어야 워커가 브랜치 전환·PR 을 한다. 이름을 바꾸면 `pr-flow.md` 「적용 판정」 도 함께 고친다.
-  - **중계 + PR 모드에서 인계 절 커밋과 PR 열기의 순서가 아직 정해지지 않았다** — `relay-mode.md` 는 인계 절 커밋을 「최종 보고 직전」, `pr-flow.md` 는 push 를 「plan 파일 커밋 뒤·최종 보고 전」 에 둔다. 인계 커밋이 push 뒤에 오면 PR 에 실리지 않는다. plan 3 이 순서를 정한다(인계 커밋 → push 권장).
+  - **중계 + PR 모드에서 인계 절 커밋과 PR 열기의 순서가 아직 정해지지 않았다** — `relay-mode.md` 는 인계 절 커밋을 최종 보고 직전에, `pr-flow.md` 는 push 를 plan 파일 커밋 뒤·최종 보고 전에 둔다. 인계 커밋이 push 뒤에 오면 PR 에 실리지 않는다. plan 3 이 순서를 정한다(인계 커밋 → push 권장).
   - PR 모드 회차의 버전 커밋은 회차 PR 에 넣지 않는다(Release ⓐ). 브랜치 이름은 `pjc/<intent 슬러그>`.
 - 미해결
   - v1.385.0 릴리즈는 사용자 승인 대상이다. 리뷰 반영 커밋 ed6f85fe 가 버전 커밋 뒤에 `plugins/` 를 고쳤으므로 릴리즈 대상은 이 회차 마지막 커밋이 맞다.
