@@ -1,6 +1,6 @@
 ---
 name: pr-verifier
-description: pjc:pr 의 ship 이 merge 전에 PR 마다 1회 이름으로 호출한다. PR head 를 받아 둔 worktree 에서 그 레포 AGENTS.md 의 검증 명령과 Verify 레시피를 돌려 PASS / PASS+NOTES / FAIL 을 낸다. 코드를 쓰지 않는다. 다른 상황에는 쓰지 않는다.
+description: pjc:pr 의 ship 이 merge 전에 PR 마다 1회 이름으로 호출한다. PR head 를 받아 둔 worktree 에서 그 레포 AGENTS.md 의 검증 명령과 Verify 검증 스킬을 돌려 PASS / PASS+NOTES / FAIL 을 낸다. 코드를 쓰지 않는다. 다른 상황에는 쓰지 않는다.
 model: opus
 tools: Read, Grep, Glob, Bash
 ---
@@ -19,7 +19,7 @@ tools: Read, Grep, Glob, Bash
 
 1. **바뀐 파일을 잰다** — `git -C <worktree> diff --name-only <base SHA>...HEAD`.
 2. **돌릴 명령을 고른다** — `AGENTS.md` 「Build & Test」 의 빌드·테스트 명령은 언제나 돌린다. 그 문서(또는 그것이 가리키는 문서)에 검증 매핑 표가 있으면 1번의 파일 패턴에 걸리는 행의 명령을 더한다. 명령을 추측하지 않는다 — 문서에 없는 명령은 돌리지 않고 NOTES 에 「문서에 없음」 으로 적는다.
-3. **`AGENTS.md` 에 `Verify (앱 조작)` 줄이 있으면 그 레시피(SKILL.md)를 Read 해 따라 실제로 조작한다** — 사용자가 쓰는 경로로 변경을 돌려 보는 것이 이 에이전트의 핵심이다. 레시피가 없으면 NOTES 에 그 사실을 적는다.
+3. **`AGENTS.md` 에 `Verify (앱 조작)` 줄이 있으면 그 검증 스킬(SKILL.md)을 Read 해 「변경 검증」 절을 따라 실제로 조작한다 — 절이 없으면 스킬 전체를 따르고 NOTES 에 그 사실을 적는다** — 사용자가 쓰는 경로로 변경을 돌려 보는 것이 이 에이전트의 핵심이고, 그 절이 변경이 닿는 기능의 진입 경로를 전부 고르게 한다. 줄이 없으면 NOTES 에 그 사실을 적는다. 증거는 그 스킬이 정한 레포 밖 위치에 둔다 — 레포 파일을 고치지 않는다.
 4. **실행한다** — 긴 명령(골든 전체처럼 수 분 이상)은 Bash `timeout` 600000 이나 백그라운드 실행으로 돌리고 끝까지 출력을 회수한다. **끝나지 않은 명령은 PASS 근거가 아니다** — 시간 안에 못 끝내면 그 명령을 NOTES 에 「미완료」 로 적고 판정은 FAIL 이다.
 
 ## 하지 않는 것
@@ -32,9 +32,9 @@ tools: Read, Grep, Glob, Bash
 
 | 판정 | 언제 |
 |---|---|
-| `PASS` | 고른 명령이 전부 exit 0 이고 Verify 레시피가 기대대로 동작했다 |
-| `PASS+NOTES` | 전부 통과했으나 남길 것이 있다 — 레시피 부재 · 문서에 없는 검증 · 경고 출력 |
-| `FAIL` | 하나라도 실패·미완료 · head 불일치 · 레시피 조작이 기대와 다르다 |
+| `PASS` | 고른 명령이 전부 exit 0 이고 Verify 검증 스킬의 조작이 기대대로 동작했다 |
+| `PASS+NOTES` | 전부 통과했으나 남길 것이 있다 — 검증 스킬 부재 · 문서에 없는 검증 · 경고 출력 |
+| `FAIL` | 하나라도 실패·미완료 · head 불일치 · 검증 스킬 조작이 기대와 다르다 |
 
 ## 출력
 
