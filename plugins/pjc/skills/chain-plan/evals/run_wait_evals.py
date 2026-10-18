@@ -196,10 +196,11 @@ def every_branch_has_action_line():
         run(FakeCli([msg_batch()]), lock=FakeLock(owned_until=0)),
         ww.place_loop(FakeCli([EMPTY], [workers()]), FakeLock(), 'disp_o', 60000),
         run(FakeCli([EMPTY, msg_batch()]), alive=lambda: False),
+        run(FakeCli([EMPTY]), answer_by=5, now=lambda: 10),
     ]
     kinds = [first(o).split(' — ')[0] for o in outs]
     assert kinds == ['RESULT: message', 'RESULT: stall', 'RESULT: error', 'RESULT: superseded',
-                     'RESULT: freed', 'RESULT: orphaned'], kinds
+                     'RESULT: freed', 'RESULT: orphaned', 'RESULT: deadline'], kinds
     assert all(len(first(o).split(' — ', 1)[1]) > 10 for o in outs), '다음 행동 문구가 있어야 한다'
 
 
@@ -239,6 +240,94 @@ def message_action_mentions_acked_delivery():
     out = run(FakeCli([msg_batch()]))
     assert 'ack' in first(out) and 'deliveryId' in first(out), out
     assert 'worker_done' in first(out), 'worker_done 이면 다시 띄우지 않는다는 지시'
+
+
+# ── 미답 시한(--answer-by — 사용자에게 넘긴 질문) ───────────────────────────────
+
+class ClockCli(FakeCli):
+    """check 마다 받은 --timeout-ms 만큼 가짜 시계를 앞으로 민다 — 실제로 기다리지 않고 시한 도달을 잰다."""
+
+    def __init__(self, checks, reads=(), start=0.0):
+        super().__init__(checks, reads)
+        self.t = start
+
+    def now(self):
+        return self.t
+
+    def __call__(self, args):
+        if args[0] == 'check':
+            self.t += int(args[args.index('--timeout-ms') + 1]) / 1000
+        return super().__call__(args)
+
+
+@case
+def answer_by_reached_gives_deadline():
+    cli = ClockCli([EMPTY] * 4)
+    out = run(cli, answer_by=1800, now=cli.now)
+    assert first(out).startswith('RESULT: deadline — '), out
+    assert '미답 기본값' in first(out), out
+
+
+@case
+def answer_by_skips_worker_read():
+    # 화면 읽기가 하나라도 일어나면 reads 가 비어 IndexError 다 — 넘긴 질문을 기다리는 워커는 화면이 그대로다.
+    cli = ClockCli([EMPTY] * 4)
+    out = run(cli, answer_by=240, now=cli.now, timeout_ms=60000)
+    assert first(out).startswith('RESULT: deadline — '), out
+    assert not [c for c in cli.calls if c[0] == 'worker-read'], cli.calls
+
+
+@case
+def answer_by_caps_check_wait():
+    cli = ClockCli([EMPTY] * 4)
+    run(cli, answer_by=1800, now=cli.now)
+    waits = [c[c.index('--timeout-ms') + 1] for c in cli.calls if c[0] == 'check']
+    assert waits == ['540000', '540000', '540000', '180000'], waits
+
+
+@case
+def answer_by_message_repeats_value():
+    cli = ClockCli([EMPTY, msg_batch()])
+    out = run(cli, answer_by=1792341369, now=cli.now)
+    assert first(out).startswith('RESULT: message — '), out
+    assert '--answer-by 1792341369' in first(out), out
+
+
+@case
+def answer_by_superseded_before_deadline():
+    cli = ClockCli([EMPTY])
+    out = run(cli, lock=FakeLock(owned_until=0), answer_by=1800, now=cli.now)
+    assert first(out).startswith('RESULT: superseded — '), out
+
+
+@case
+def answer_by_args_rejected():
+    saved = (ww.make_call, ww.FileLock)
+    ww.make_call = lambda c: FakeCli([msg_batch()])
+    ww.FileLock = lambda dispatch: FakeLock()
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+    soon, far = str(int(time.time()) + 600), str(int(time.time()) + 3600)
+    try:
+        for extra in (['--dispatch', 'disp_a', '--answer-by', far],
+                      ['--dispatch', 'disp_a', '--dispatch', 'disp_b', '--answer-by', soon],
+                      ['--place', 'disp_o', '--answer-by', soon]):
+            sys.stdout = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
+            sys.stderr = io.StringIO()
+            try:
+                ww.main(['--cli', 'x'] + extra)
+            except SystemExit as e:
+                assert e.code == 2, (extra, e.code)
+            else:
+                raise AssertionError('%s 를 받아들였다' % extra)
+        sys.stdout = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
+        try:
+            code = ww.main(['--cli', 'x', '--dispatch', 'disp_a', '--answer-by', soon])
+        except SystemExit as e:
+            raise AssertionError('45분 안의 --answer-by 를 거절했다 (exit %s)' % e.code)
+        assert code == 0, code
+    finally:
+        ww.make_call, ww.FileLock = saved
+        sys.stdout, sys.stderr = real_stdout, real_stderr
 
 
 
@@ -1022,8 +1111,11 @@ def message_action_mentions_remaining_parallel():
 
 # ── PR 단계(`--pr <base>`) — 계획 체인 PR 모드 ──
 
-def pr_list(state, number=7, url='https://github.com/o/r/pull/7'):
-    return (True, json.dumps([{'number': number, 'state': state, 'url': url}]))
+def pr_list(state, number=7, url='https://github.com/o/r/pull/7', body=''):
+    return (True, json.dumps([{'number': number, 'state': state, 'url': url, 'body': body}]))
+
+
+SCREEN_BODY = '## 왜\n화면을 바꾼다\n\n## 화면\n- main.png — %TEMP%\\pjc-verify\\main.png\n'
 
 
 def pr_checks(*buckets):
@@ -1100,6 +1192,50 @@ def pr_stage_lines_in_order_once():
 def pr_first_seen_merged_emits_all():
     # ⓒ merged 를 처음 본 주기에 앞 단계까지 함께 낸다 — 1분 주기 안에 열림부터 merge 까지 끝날 수 있다.
     gh = FakeGh(lists=[pr_list('MERGED')])
+    out = runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert pr_lines(out) == ['Plan 3: PR #7 열림 — https://github.com/o/r/pull/7', 'Plan 3: PR #7 CI green',
+                             'Plan 3: PR #7 merged'], out
+
+
+@case
+def pr_screen_stage_after_green_with_marker():
+    # ⓙ 본문에 `## 화면` 이 있는 OPEN PR 이 CI green 이면 화면 확인 대기 줄을 green 뒤에 낸다.
+    gh = FakeGh(lists=[pr_list('OPEN', body=SCREEN_BODY)], checks=[pr_checks('pass')])
+    out = runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert pr_lines(out) == ['Plan 3: PR #7 열림 — https://github.com/o/r/pull/7', 'Plan 3: PR #7 CI green',
+                             'Plan 3: PR #7 화면 확인 대기'], out
+
+
+@case
+def pr_screen_marker_crlf_body():
+    # ⓙ 본문 줄 끝이 CRLF 여도 같은 표지로 읽는다.
+    gh = FakeGh(lists=[pr_list('OPEN', body=SCREEN_BODY.replace('\n', '\r\n'))], checks=[pr_checks('pass')])
+    out = runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert 'Plan 3: PR #7 화면 확인 대기' in pr_lines(out), out
+
+
+@case
+def pr_screen_list_requests_body():
+    # ⓙ 표지를 보려면 `gh pr list` 가 본문을 함께 받아야 한다.
+    gh = FakeGh(lists=[pr_list('OPEN')], checks=[pr_checks('pass')])
+    runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    fields = [c[c.index('--json') + 1] for c in gh.calls if c[:2] == ['pr', 'list']]
+    assert fields and all('body' in f.split(',') for f in fields), gh.calls
+
+
+@case
+def pr_screen_absent_without_marker():
+    # ⓙ 음성 짝 — 표지 없는 green PR 은 화면 확인 대기 줄을 내지 않는다(`## 화면 시나리오` 같은 다른 머리도 표지가 아니다).
+    gh = FakeGh(lists=[pr_list('OPEN', body='## 검증\n화면 시나리오: a · 스크린샷 a.png\n## 화면 시나리오\n')],
+                checks=[pr_checks('pass')])
+    out = runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
+    assert pr_lines(out) == ['Plan 3: PR #7 열림 — https://github.com/o/r/pull/7', 'Plan 3: PR #7 CI green'], out
+
+
+@case
+def pr_screen_skipped_when_merged():
+    # ⓙ 음성 짝 — merged 를 본 주기에는 화면 확인 대기를 내지 않는다(사용자가 이미 확인했다).
+    gh = FakeGh(lists=[pr_list('MERGED', body=SCREEN_BODY)])
     out = runp(FakeCli([msg_batch()]), pr_prog(gh), timeout_ms=60000, poll_ms=60000)
     assert pr_lines(out) == ['Plan 3: PR #7 열림 — https://github.com/o/r/pull/7', 'Plan 3: PR #7 CI green',
                              'Plan 3: PR #7 merged'], out
