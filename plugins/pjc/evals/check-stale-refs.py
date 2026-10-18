@@ -71,13 +71,16 @@ DEAD = [
     # 구 chain-plan 참조 2 (2026-10-12 감사 2회차) — 이웃 파일의 절로 합쳤다(cli-errors 「시작 이상 응답」·user-relay 「봉투 밖 승인 요청」).
     #  'delegation.md' 만 쓰면 살아 있는 `plan/references/measure-delegation.md` 가 부분 일치로 잡혀 경로 접두를 붙인다.
     'references/delegation.md', 'worker-start.md',
+    # 구 plan 참조 1 (2026-10-18 체인 plan 3) — intent 산출물 폐지. 요구·BASE 는 plan-template 「Goal」 로 옮겼다.
+    #  옛 intent/ 파일들이 이 이름을 인용하지만 intent/ 는 스캔 범위 밖이다.
+    'intent-rules.md',
 ]
 
 # DEAD **총량**의 기준선(= 목록 길이). 늘거나 줄면 불일치다 — 이 목록이 곧 검사 대상이라
 #  항목이 조용히 빠지면 그 이름의 잔존이 **검출되지 않는 채 통과**한다(축이 좁아진 것과
 #  전건 통과가 구분되지 않는다). 정당한 증감이면 **이 값을 함께 갱신한다** — 그 diff 가
 #  목록 변경의 기록이다(`check-harness-consistency.py` 의 허용목록 기준선과 같은 형태).
-DEAD_BASELINE = 30
+DEAD_BASELINE = 31
 
 RX = re.compile('|'.join(re.escape(d) for d in DEAD))
 
@@ -169,7 +172,7 @@ def prose_lines(text):
 # **그래서 아래 셋은 전부 구조 규칙이고 개별 토큰 목록이 아니다.** 회차 66 실측(후보 115 기준):
 #   기준 8 → hex 제외 5 → `--` 제외 2 → 구분자 요구 **1**. 남은 1 은 제거된 파일명을 백틱으로
 #   인용한 이력 서술이었고 **문서에서 백틱을 벗겨** 닫았다(백틱은 실재 주장이고, 제거된 이름을
-#   논할 때는 감싸지 않는다 — `docs/plans/deferred-closed.md` 머리말의 `사유 미상` 규약과 같다).
+#   논할 때는 감싸지 않는다).
 # 커밋 SHA — 이력 인용의 대부분이 이 형태다. 짧은 해시 7자부터 전체 40자까지 받는다.
 PROSE_SYMBOL_HEX_RX = re.compile(r'^[0-9a-f]{7,40}$')
 # CLI 플래그 — `--json`·`--porcelain` 처럼 **외부 도구의 옵션**이라 이 레포에 실재할 상대가 없다.
