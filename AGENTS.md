@@ -7,7 +7,7 @@
 
 - **프로젝트 페이지**: 20_projects/personal/claude-harness-pjc.md (LLM WIKI vault)
 - 프로젝트 성격·기술 스택·구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다(단 `## Conventions` 의 아키텍처 선언 1줄은 남는다).
-- 작업 규약·함정: 같은 폴더의 `conventions.md`(+ `conventions-*.md` 하위)
+- 작업 함정: 레포 `docs/conventions.md` (규약 `plugins/pjc/skills/REPO-CONVENTIONS.md`)
 
 ## Build & Test
 
@@ -56,7 +56,7 @@
   ```
   python plugins/pjc/skills/evals/trigger_eval.py --filter <plan|impl|rec|wiki|dbg|chain|pr>
   ```
-- **위키 회로 검사** (`implement/SKILL.md`·`WIKI.md`·`plan/SKILL.md`·`skills/llm-wiki/**` 수정 시 필수):
+- **위키 회로 검사** (`implement/SKILL.md`·`WIKI.md`·`REPO-CONVENTIONS.md`·`plan/SKILL.md`·`agents/completion-reviewer.md`·`skills/llm-wiki/**` 수정 시 필수):
   ```
   python plugins/pjc/skills/evals/check_wiki_circuit.py
   ```
