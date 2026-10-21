@@ -96,13 +96,16 @@ DEAD = [
     # 개명 전 이름 5 (2.0.0 플러그인 개명) — 스킬 호출 접두·플러그인 폴더·마켓 이름·hook 태그와 지운 설치 스크립트.
     #  `pjc/` 브랜치 접두와 단어 `pjc` 는 넣지 않는다: 다른 프로젝트 슬러그 `pjc-homepage`·작성자 이니셜이 오탐된다.
     'pjc:', 'plugins/pjc', 'pjc-harness', '[pjc ', 'install.ps1',
+    # 모노레포 이전 2 (jongcheol-pak/Karina-Plugins) — 옛 마켓 이름과 옛 레포 이름.
+    #  옛 플러그인 폴더 `plugins/karina` 는 넣지 않는다: 새 캐시 경로 `cache/karina-plugins/karina/` 가 그 글자를 품어 오탐된다.
+    'karina-harness', 'claude-harness-pjc',
 ]
 
 # DEAD **총량**의 기준선(= 목록 길이). 늘거나 줄면 불일치다 — 이 목록이 곧 검사 대상이라
 #  항목이 조용히 빠지면 그 이름의 잔존이 **검출되지 않는 채 통과**한다(축이 좁아진 것과
 #  전건 통과가 구분되지 않는다). 정당한 증감이면 **이 값을 함께 갱신한다** — 그 diff 가
 #  목록 변경의 기록이다(`check-harness-consistency.py` 의 허용목록 기준선과 같은 형태).
-DEAD_BASELINE = 37
+DEAD_BASELINE = 39
 
 RX = re.compile('|'.join(re.escape(d) for d in DEAD))
 

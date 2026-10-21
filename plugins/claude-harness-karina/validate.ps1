@@ -25,10 +25,9 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 # 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
 $homeBase = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
 
-# 플러그인 설치 캐시 레이아웃은 Claude Code 버전에 따라 다르다 — 실재하는 쪽을 탐지한다:
-#   신: cache/karina-harness/karina/<버전>/  (버전 디렉터리 누적 — 최신 버전을 검사)
-#   구: cache/karina-harness/plugins/karina
-$cacheBase = Join-Path $homeBase ".claude/plugins/cache/karina-harness"
+# 플러그인 설치 캐시: cache/<마켓>/<플러그인>/<버전>/ (버전 디렉터리 누적 — 최신 버전을 검사).
+#   마켓은 모노레포 jongcheol-pak/Karina-Plugins 의 karina-plugins 다.
+$cacheBase = Join-Path $homeBase ".claude/plugins/cache/karina-plugins"
 $pluginRoot = $null
 $verRoot = Join-Path $cacheBase "karina"
 if (Test-Path -LiteralPath $verRoot) {
@@ -42,14 +41,10 @@ if (Test-Path -LiteralPath $verRoot) {
     }
 }
 if (-not $pluginRoot) {
-    $legacy = Join-Path $cacheBase "plugins/karina"
-    if (Test-Path -LiteralPath (Join-Path $legacy ".claude-plugin/plugin.json")) { $pluginRoot = $legacy }
-}
-if (-not $pluginRoot) {
     # 어느 레이아웃도 없음 — 아래 Test-Item-Exists가 FAIL로 안내하도록 신 레이아웃 경로를 기본값으로
     $pluginRoot = $verRoot
 }
-$marketplaceRoot = Join-Path $homeBase ".claude/plugins/marketplaces/karina-harness"
+$marketplaceRoot = Join-Path $homeBase ".claude/plugins/marketplaces/karina-plugins"
 
 $pass = 0
 $fail = 0
@@ -203,7 +198,7 @@ if (Test-Path -LiteralPath $userSettings) {
                 } elseif ($karinaKey.Value -eq $false) {
                     $enableStatus = "disabled"
                     Write-Host "  [FAIL] settings.json에 karina가 false로 설정됨" -ForegroundColor Red
-                    Write-Host "         해결: claude plugin enable karina@karina-harness" -ForegroundColor DarkGray
+                    Write-Host "         해결: claude plugin enable karina@karina-plugins" -ForegroundColor DarkGray
                     Write-Host "         또는 settings.json에서 해당 항목 제거" -ForegroundColor DarkGray
                     $script:fail++
                 }

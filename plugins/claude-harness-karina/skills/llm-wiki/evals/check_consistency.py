@@ -1439,7 +1439,7 @@ def check_schema_citations(bundle):
         dirnames[:] = [d for d in dirnames if d != "__pycache__"]
         if dirpath == root:
             # 하니스 루트에는 개발 자산(docs·intent·assets)도 있다 — 이력 문서가 옛 § 를 인용하므로
-            #   스캔은 플러그인 런타임 폴더로 한정한다(이전 전 범위 plugins/karina 와 같다).
+            #   스캔은 플러그인 런타임 폴더로 한정한다(모노레포 이전 전의 플러그인 폴더 범위와 같다).
             dirnames[:] = [d for d in dirnames if d in PLUGIN_RUNTIME_DIRS]
             filenames = []
         for fn in sorted(filenames):

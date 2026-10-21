@@ -8,7 +8,7 @@
 > <br>(계획·검증 로직은 OS 무관 — 단 `chain-plan` 은 Karina 앱(Windows)가 필요하다, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
 
 **버전**: 2.0.0
-**저장소**: https://github.com/jongcheol-pak/claude-harness-karina
+**저장소**: https://github.com/jongcheol-pak/Karina-Plugins (모노레포 — 이 하니스는 plugins/claude-harness-karina/ 폴더)
 **Claude Code**: 최소 v2.0 — 플러그인을 쓰는 데는 이것으로 충분하다. CLAUDE.md 가 없는 프로젝트에서 Claude Code 가 AGENTS.md 를 직접 불러오는 것은 v2.1.277+ 이고, 그 미만이면 세션 시작 hook 의 Read 지시가 대신한다 · **하니스 자체를 고칠 때(eval 러너)는 권장 v2.1.269+** — `--filter` 이름 검증과 골든 러너 병렬 모드가 안정된 판이라, 그 미만에서는 부분 실행 필터가 조용히 0건을 돌 수 있다. <!-- verified: 2026-09-12 -->
 
 ---
@@ -56,12 +56,12 @@ Claude Code에게 코딩을 맡기면 가끔 이렇게 합니다:
 ### 2. 설치
 
 ```powershell
-claude plugin marketplace add jongcheol-pak/claude-harness-karina
-claude plugin install karina@karina-harness
-claude plugin enable karina@karina-harness
+claude plugin marketplace add jongcheol-pak/Karina-Plugins
+claude plugin install karina@karina-plugins
+claude plugin enable karina@karina-plugins
 ```
 
-설치가 끝나면 Claude Code를 다시 시작합니다.
+설치가 끝나면 Claude Code를 다시 시작합니다. 마켓 `karina-plugins` 는 여러 플러그인을 담고, 플러그인마다 `<플러그인>@karina-plugins` 로 따로 설치합니다.
 
 ### 3. 첫 사용
 
@@ -457,22 +457,22 @@ karina는 **특정 언어 전용이 아닙니다.** 빌드·테스트 명령은 
 
 ```powershell
 # 업데이트
-claude plugin marketplace update karina-harness
-claude plugin update karina@karina-harness
+claude plugin marketplace update karina-plugins
+claude plugin update karina@karina-plugins
 
 # 제거
 claude plugin uninstall karina
-claude plugin marketplace remove karina-harness
+claude plugin marketplace remove karina-plugins
 ```
 
 <details>
 <summary>배포 워크플로</summary>
 
-설치는 GitHub 마켓플레이스 경로 하나뿐입니다 — 로컬 폴더에서 직접 설치하지 않습니다. 수정은 커밋 → push → 아래 흐름으로 배포한 뒤 사용 PC에서 업데이트합니다.
+설치는 GitHub 마켓플레이스 경로 하나뿐입니다 — 로컬 폴더에서 직접 설치하지 않습니다. 개발은 jongcheol-pak/Karina-Plugins 의 plugins/claude-harness-karina/ 폴더에서 세션을 열고 합니다(레포 루트에서 열면 하니스 판정 hook 이 꺼집니다). 수정은 커밋 → push → 아래 흐름으로 배포한 뒤 사용 PC에서 업데이트합니다.
 
 ```powershell
 # 배포 (개발 PC에서 수정 후) — 회차 PR 이 merge 되면 karina:pr ship 이 버전 전용 PR 을 이어 merge 한다
-# 그 merge 커밋으로 릴리즈 발행(별도 승인): gh release create v<버전> --target <merge 커밋 full-sha>
+# 그 merge 커밋으로 릴리즈 발행(별도 승인): gh release create karina-v<버전> --target <merge 커밋 full-sha>
 # → 사용 PC에서 위의 "업데이트" 명령 실행
 ```
 
@@ -481,7 +481,7 @@ claude plugin marketplace remove karina-harness
 <details>
 <summary>구버전 캐시 회수</summary>
 
-`/plugin update`는 버전마다 `~/.claude/plugins/cache/karina-harness/karina/<버전>/` 을 새로 만들고 예전 것을 지우지 않아 캐시가 단조 증가합니다. 회수는 손으로 합니다 — 그 폴더 아래에서 **지금 설치된 버전 폴더를 뺀** 예전 버전 폴더를 지웁니다.
+`/plugin update`는 버전마다 `~/.claude/plugins/cache/karina-plugins/karina/<버전>/` 을 새로 만들고 예전 것을 지우지 않아 캐시가 단조 증가합니다. 회수는 손으로 합니다 — 그 폴더 아래에서 **지금 설치된 버전 폴더를 뺀** 예전 버전 폴더를 지웁니다.
 
 **설치본 버전 폴더는 지우지 않습니다** — 지금 돌고 있는 세션의 hook이 그 폴더에 살아 있어, 지우면 그 세션의 안전장치가 통째로 사라집니다. 설치본 버전은 `claude plugin list` 로 확인합니다. 회수한 구버전이 다시 필요하면 GitHub 태그에서 재설치합니다.
 
@@ -494,7 +494,7 @@ claude plugin marketplace remove karina-harness
 <details>
 <summary>plugin 명령이 안 보여요</summary>
 
-Claude Code를 재시작하거나 `/reload-plugins`를 실행하세요. 그래도 안 되면 `claude plugin enable karina@karina-harness`로 활성화 상태를 확인하세요.
+Claude Code를 재시작하거나 `/reload-plugins`를 실행하세요. 그래도 안 되면 `claude plugin enable karina@karina-plugins`로 활성화 상태를 확인하세요.
 
 </details>
 
@@ -533,7 +533,7 @@ PowerShell 인코딩 문제일 수 있습니다. karina의 모든 스크립트�
 <details>
 <summary>업데이트했는데 바뀐 동작이 안 보여요</summary>
 
-「설치 관리」의 업데이트 두 줄(`claude plugin marketplace update karina-harness` → `claude plugin update karina@karina-harness`)을 차례로 실행한 뒤 Claude Code를 재시작하거나 `/reload-plugins`를 실행하세요.
+「설치 관리」의 업데이트 두 줄(`claude plugin marketplace update karina-plugins` → `claude plugin update karina@karina-plugins`)을 차례로 실행한 뒤 Claude Code를 재시작하거나 `/reload-plugins`를 실행하세요.
 
 </details>
 

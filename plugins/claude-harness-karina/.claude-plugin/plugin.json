@@ -5,8 +5,8 @@
   "author": {
     "name": "pjc"
   },
-  "homepage": "https://github.com/jongcheol-pak/claude-harness-karina",
-  "repository": "https://github.com/jongcheol-pak/claude-harness-karina",
+  "homepage": "https://github.com/jongcheol-pak/Karina-Plugins/tree/main/plugins/claude-harness-karina",
+  "repository": "https://github.com/jongcheol-pak/Karina-Plugins",
   "license": "MIT",
   "displayName": "Karina Harness",
   "keywords": [

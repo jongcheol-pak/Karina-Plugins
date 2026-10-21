@@ -474,6 +474,23 @@
     ]
   },
   {
+    "id": "stale-migrate-old-names",
+    "checker": "stale",
+    "fixture": "refs-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "skills/sample/SKILL.md",
+        "find": "이 스킬 문서에는 삭제된 자산의 이름이 없다.",
+        "replace": "옛 마켓 `karina-harness` 와 옛 레포 `claude-harness-pjc` 를 그대로 적었다."
+      }
+    ],
+    "expect_keywords": [
+      "[FAIL] 살아 있는 자산에 2건",
+      "sample/SKILL.md"
+    ]
+  },
+  {
     "id": "stale-rename-marker-exempt",
     "checker": "stale",
     "fixture": "refs-repo",
@@ -1344,12 +1361,12 @@
     "mutate": [
       {
         "file": "evals/check-stale-refs.py",
-        "find": "DEAD_BASELINE = 37",
-        "replace": "DEAD_BASELINE = 38"
+        "find": "DEAD_BASELINE = 39",
+        "replace": "DEAD_BASELINE = 40"
       }
     ],
     "expect_keywords": [
-      "[FAIL] DEAD 총량이 기준선과 다르다: 37 != 38",
+      "[FAIL] DEAD 총량이 기준선과 다르다: 39 != 40",
       "DEAD_BASELINE"
     ]
   },
