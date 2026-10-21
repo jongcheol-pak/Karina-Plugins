@@ -107,7 +107,7 @@ Test-Json-Valid (Join-Path $pluginRoot "hooks/hooks.json") "hooks.json 파싱" |
 Write-Host ""
 
 # 3. Skills (expected 목록 존재 + 미등록 탐지 — 카운트는 목록에서 산출)
-$skills = @('plan', 'implement', 'karina-systematic-debugging', 'llm-wiki', 'record-project-fact', 'chain-plan', 'pr', 'create-verification-skill', 'maintain-verification-skill', 'create-formal-verification-skill', 'maintain-formal-verification-skill')
+$skills = @('plan', 'implement', 'karina-systematic-debugging', 'llm-wiki', 'record-project-fact', 'chain-plan', 'pr', 'create-verification-skill', 'maintain-verification-skill', 'create-formal-verification-skill', 'maintain-formal-verification-skill', 'reflect')
 Write-Host "3. Skills $($skills.Count)개" -ForegroundColor Yellow
 foreach ($s in $skills) {
     $skillPath = Join-Path $pluginRoot "skills/$s/SKILL.md"
@@ -136,7 +136,7 @@ foreach ($g in $guides) {
 Write-Host ""
 
 # 4. Agents (expected 목록 존재 + 미등록 탐지)
-$agents = @('plan-reviewer', 'completion-reviewer', 'wiki-page-writer', 'pr-verifier')
+$agents = @('plan-reviewer', 'completion-reviewer', 'wiki-page-writer', 'pr-verifier', 'reflect-reviewer')
 Write-Host "4. Agents $($agents.Count)개" -ForegroundColor Yellow
 foreach ($a in $agents) {
     $agentPath = Join-Path $pluginRoot "agents/$a.md"
