@@ -111,6 +111,7 @@
 
 ### 도구·환경 함정
 
+- [2026-10-21] **레포를 다른 레포의 하위 폴더로 옮길 때 `git filter-repo` 는 쓸 수 없다 — `block-destructive` 가 `--version` 까지 「히스토리 재작성」 으로 막는다.** 대신 `git merge --allow-unrelated-histories` 로 옛 main 을 합친 뒤, 내용 변경 없이 rename 만 담은 `git mv` 커밋을 따로 둔다 — 원래 SHA 가 그대로 남아 문서의 SHA 참조가 열리고 `git log --follow` 가 이동 전 이력을 잇는다. 새 clone 에는 `core.longpaths=true` 를 먼저 둔다(픽스처 경로가 260자를 넘는다) (실측 — Karina-Plugins #1)
 - [2026-10-20] **`AGENTS.md` 의 Build 명령(`pwsh -NoProfile -Command "$f=0; … $e …"`)을 Claude Code 의 Bash 도구로 돌리면 bash 가 `$f`·`$e`·`$_` 를 빈 문자열로 치환해 PowerShell 이 ParserError 를 낸다 — PowerShell 도구로 돌리거나, Bash 에서는 명령 전체를 작은따옴표로 감싼다.** 실패 출력이 깨진 한글 ParserError 라 원인이 치환이라는 것이 보이지 않는다. (실측)
 - [2026-10-14] **스크립트가 자식 프로세스(git·claude)를 띄우며 stderr 를 리다이렉트했으면 반드시 비우거나 임시 파일로 받는다** — stdout 만 읽는 동안 stderr 파이프가 차면 자식이 stderr 쓰기에서 막혀 시한·watchdog 에 걸리고, 그 실패는 「느리다」나 케이스 timeout 으로만 보인다. 같은 원인이 두 자리에서 났다 — 세션 시작 위키 뒤처짐 계산의 git(`scripts/session-wiki-signals.ps1` — 비동기로 비움)과 트리거 eval 의 claude(`skills/evals/trigger_eval.py` `run_claude` — 임시 파일). 리다이렉트를 풀면 경고가 hook stderr 로 새므로 푸는 것은 답이 아니다 (실측 — 1583cdd3·f6b1af96 커밋 본문: `GIT_TRACE=1`+긴 경로에서 5초 상한 초과, 비우면 46ms)
 - [2026-10-14] **Git Bash 에서 띄운 python 의 직계 부모는 세션이 아니라 WindowsApps python 스텁이다** — 부모 생존으로 「띄운 세션이 사라졌는가」를 재면 스텁만 보게 된다. 조상 사슬에서 스텁·셸을 건너뛴 첫 비셸 프로세스를 감시 대상으로 고르고, 사슬을 못 얻으면 감시 없이 종전대로 기다린다(fail-open) (실측 — bd5fe8ba 커밋 본문: python → python(스텁) → bash×3 → claude.exe)
@@ -334,6 +335,7 @@
 
 ### 설치·반영
 
+- [2026-10-21] **하니스 세션은 모노레포의 하니스 폴더(`plugins/claude-harness-karina/`)에서 연다 — 레포 루트에서 열면 hook 3종(`guard-stale-docs`·`warn-version-drift`·`session-ledger-signal`)이 하니스를 찾지 못해 조용히 꺼진다.** 판정은 cwd 에서 위로 올라가며 이름 karina 매니페스트와 `docs/harness-conventions.md` 를 함께 찾는다(`scripts/harness-root.ps1`) — 위로만 찾으므로 루트에서는 아래 폴더를 보지 못한다 (실측 — 설치본에 루트 cwd 입력 시 출력 0바이트)
 - [2026-07-09] 플러그인 레포 수정은 릴리즈 후 **재설치(install.ps1)·업데이트 전까지 설치본 세션에 미반영** — 적용 버전은 `~/.claude/plugins/installed_plugins.json`의 pjc 항목으로 확인.
 
 - [2026-07-10] **재설치(install.ps1) 직후 기존 세션은 hook이 전면 미발화(fail-open)** — 재설치가 세션이 참조하던 구버전 캐시 디렉터리를 삭제하기 때문(구형 발화도 아니고 아예 무발화 — 안전망 부재 상태). **재설치 후 즉시 세션 재시작 필수**, 재시작 전 그 세션에서 코드 작업 금지 (근거: 실배선 검증 실측 — canary 차단 실패 + 프로세스 샘플러 훅 0건 관찰).
@@ -342,6 +344,7 @@
 
 ### 실행 환경 함정
 
+- [2026-10-21] **새 레포(Karina-Plugins)의 첫 PR 에서 `checks` 워크플로가 돌지 않았다 — Copilot 리뷰만 돌고 `gh pr checks` 는 「no checks reported」.** PR 을 닫았다 다시 열자(head 불변) `pull_request` 이벤트가 다시 나 돌았다. 원인은 확인하지 못했다(추정: 기본 브랜치에 워크플로가 없던 레포의 첫 실행). 「no checks」 를 통과로 읽지 말고 `gh run list` 로 워크플로 실행 자체를 확인한다
 - [2026-07-10] **skill-creator `run_eval.py`(트리거 eval)는 Windows 미호환** — `select.select`가 Windows 파이프를 미지원해 전 쿼리가 즉시 실패하는데 **전부 trigger_rate 0.0으로 집계돼 정상 실측처럼 보인다**(은닉 실패 — 1분 내 완주가 신호). Windows에서 돌리려면 ① 판정 로직 복제 드라이버(blocking readline + watchdog kill) ② `PYTHONUTF8=1` ③ **`CLAUDE_CONFIG_DIR` 격리 config**(실설치 스킬이 eval용 사본 대신 트리거를 흡수하는 교란 제거)가 필요하다.
 
 - [2026-07-10] **PowerShell 문자열 보간에서 한글이 변수명에 달라붙는다** — `"$all개"`는 `$all개` 변수로 해석돼 빈 값이 된다(hook 한글 문구에서 빈발). 항상 `"${all}개"`로 중괄호 구분한다.
@@ -386,6 +389,7 @@
 
 ### 문서·검사기 구조와 용어
 
+- [2026-10-21] **다른 레포 안의 경로를 산문에 백틱으로 적으면 `check-stale-refs.py` 산문 경로 축이 이 레포 경로로 읽어 [FAIL] 로 잡는다 — 링크(URL)로 적는다.** 옛 레포 이전 안내의 `plugins/claude-harness-karina/` 가 그렇게 FAIL 났다. 같은 축에서 옛 폴더 이름을 DEAD 에 넣을 때는 **새 경로가 그 글자를 품는지 먼저 본다** — `plugins/karina` 는 새 캐시 경로 `cache/karina-plugins/karina/` 에 글자로 들어 있어 골든 표본 30여 줄이 오탐된다 (실측)
 - [2026-10-20] **스킬 문서 산문의 백틱 경로에 `../` 를 쓰면 `check-stale-refs.py` 의 산문 경로 실존 축이 [FAIL] 로 잡는다** — 그 축은 백틱 토큰을 `git ls-files` 목록에 **접미 매치**로 대조하므로 `../agents/pr-verifier.md` 의 `..` 조각이 어느 추적 경로에도 맞지 않는다. 대상이 실재해도 실패한다. 레포 루트 기준 경로(`agents/pr-verifier.md`)나 접미로 특정되는 경로(`agents/pr-verifier.md` 꼴 — 동명이인이 없을 때)로 쓴다. (실측)
 - [2026-10-05] **새 파일 이름이 `check-stale-refs.py` 의 DEAD 이름을 부분 문자열로 품으면 그 파일을 가리키는 살아 있는 자산 전부가 [FAIL] 로 잡힌다** — 검사가 경로가 아니라 문자열 부분 일치로 세기 때문이다: `plan/references/deletion-recovery.md` 가 DEAD 이름 `recovery.md` 를 품어 그 파일을 가리키는 포인터 5건이 [FAIL] 이었다. **처방: 새 파일 이름을 정하기 전에 그 검사기의 DEAD 목록과 부분 일치를 확인하고, 걸리면 커밋 전에 이름을 바꾼다**(`deletion-recoverability.md` 로 비켜 갔다). (실측)
 
