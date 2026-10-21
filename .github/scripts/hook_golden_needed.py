@@ -8,15 +8,17 @@ import argparse
 import subprocess
 import sys
 
+# 경로는 git 루트 기준이다 — `git diff --name-only` 출력이 그렇다. 하니스는 모노레포의 플러그인 폴더에 있다.
+HARNESS = 'plugins/claude-harness-karina/'
 INPUT_PREFIXES = (
-    'plugins/karina/scripts/',
-    'plugins/karina/hooks/',
-    'plugins/karina/skills/',
+    HARNESS + 'scripts/',
+    HARNESS + 'hooks/',
+    HARNESS + 'skills/',
     '.github/',
 )
 INPUT_FILES = (
-    'docs/golden-runner.md',
-    'docs/harness-conventions.md',
+    HARNESS + 'docs/golden-runner.md',
+    HARNESS + 'docs/harness-conventions.md',
 )
 
 

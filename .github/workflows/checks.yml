@@ -28,14 +28,22 @@
 #   PR 브랜치 push 한 번에 같은 검사가 두 번 돈다. main 은 merge 결과를 다시 재려고 push 를 둔다.
 name: checks
 
+# **하니스 폴더 변경에만 돈다** — 레포는 여러 플러그인을 담는 모노레포(jongcheol-pak/Karina-Plugins)이고
+#   하니스는 plugins/claude-harness-karina/ 다. 다른 플러그인만 바꾼 PR 에 11분짜리 검사를 돌리지 않는다.
 on:
   push:
     branches: [main]
+    paths: ['plugins/claude-harness-karina/**', '.github/**']
   pull_request:
+    paths: ['plugins/claude-harness-karina/**', '.github/**']
 
 jobs:
   checks:
     runs-on: windows-latest
+    # 명령은 AGENTS.md 「Build & Test」 그대로 하니스 루트에서 돈다(경로 판정 두 단계만 git 루트).
+    defaults:
+      run:
+        working-directory: plugins/claude-harness-karina
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,45 +63,47 @@ jobs:
 
       - name: Test — JSON 매니페스트 유효성
         shell: pwsh
-        run: '@(''plugins/karina/.claude-plugin/plugin.json'',''plugins/karina/hooks/hooks.json'',''.claude-plugin/marketplace.json'') | ForEach-Object { $c = Get-Content -LiteralPath $_ -Raw -ErrorAction Stop; $null = $c | ConvertFrom-Json; Write-Host ($_ + '' OK'') }'
+        run: '@(''.claude-plugin/plugin.json'',''hooks/hooks.json'',''../../.claude-plugin/marketplace.json'') | ForEach-Object { $c = Get-Content -LiteralPath $_ -Raw -ErrorAction Stop; $null = $c | ConvertFrom-Json; Write-Host ($_ + '' OK'') }'
 
       # ── python 검사기 10종 ───────────────────────────────────────────
       - name: 하니스 정합 셀프체크
-        run: python plugins/karina/evals/check-harness-consistency.py
+        run: python evals/check-harness-consistency.py
 
       - name: evals 골든 회귀
-        run: python plugins/karina/evals/run-evals.py
+        run: python evals/run-evals.py
 
       - name: 삭제 자산 참조 검사
-        run: python plugins/karina/evals/check-stale-refs.py
+        run: python evals/check-stale-refs.py
 
       - name: 잘린 주석 검사
-        run: python plugins/karina/evals/check-comment-truncation.py
+        run: python evals/check-comment-truncation.py
 
       - name: 차단 경로 커버리지
-        run: python plugins/karina/hooks/evals/check-block-coverage.py
+        run: python hooks/evals/check-block-coverage.py
 
       - name: 위키 회로 검사
-        run: python plugins/karina/skills/evals/check_wiki_circuit.py
+        run: python skills/evals/check_wiki_circuit.py
 
       - name: 트리거 러너 종료 코드
-        run: python plugins/karina/skills/evals/test_exit_code.py
+        run: python skills/evals/test_exit_code.py
 
       - name: llm-wiki 상수·배치 정합
-        run: python plugins/karina/skills/llm-wiki/evals/check_consistency.py
+        run: python skills/llm-wiki/evals/check_consistency.py
 
       - name: llm-wiki lint 골든 회귀
-        run: python plugins/karina/skills/llm-wiki/evals/run_lint_evals.py
+        run: python skills/llm-wiki/evals/run_lint_evals.py
 
       - name: AGENTS.md 이관 골든
-        run: python plugins/karina/skills/record-project-fact/evals/run_relocation_evals.py
+        run: python skills/record-project-fact/evals/run_relocation_evals.py
 
       # ── Hook 골든 경로 판정 ──────────────────────────────────────────
       - name: CI 경로 판정 테스트
+        working-directory: .
         run: python .github/scripts/test_hook_golden_needed.py
 
       - name: Hook 골든 경로 판정
         id: paths
+        working-directory: .
         shell: pwsh
         run: |
           $out = python .github/scripts/hook_golden_needed.py --event ${{ github.event_name }}
@@ -105,7 +115,7 @@ jobs:
       - name: Hook 골든 회귀
         if: steps.paths.outputs.hook_golden == 'true'
         shell: pwsh
-        run: pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/karina/hooks/evals/run-hook-evals.ps1
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File hooks/evals/run-hook-evals.ps1
 
       - name: Hook 골든 회귀 건너뜀
         if: steps.paths.outputs.hook_golden != 'true'
