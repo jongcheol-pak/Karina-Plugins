@@ -52,7 +52,7 @@ except Exception:
     pass
 
 EVALS_DIR = os.path.dirname(os.path.abspath(__file__))
-PLUGIN_DIR = os.path.dirname(os.path.dirname(EVALS_DIR))  # .../plugins/karina
+PLUGIN_DIR = os.path.dirname(os.path.dirname(EVALS_DIR))  # 하니스 루트(플러그인 루트)
 CASES_JSON = os.path.join(EVALS_DIR, "trigger-cases.json")
 
 # 케이스당 상한. 판정에 필요한 만큼만 넓히고 그 이상은 비용이다.

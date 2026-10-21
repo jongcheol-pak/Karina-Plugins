@@ -61,12 +61,12 @@
     "expect_rc": 0,
     "mutate": [
       {
-        "file": "plugins/karina/skills/implement/references/loop-stop-patterns.md",
+        "file": "skills/implement/references/loop-stop-patterns.md",
         "find": "축이 발화한다.\r\n",
         "replace": "축이 발화한다.\r\n- **태그 앵커** · **짧은 규칙이다** — 포인터가 이 이름으로 닿는다.\r\n"
       },
       {
-        "file": "plugins/karina/skills/sample/SKILL.md",
+        "file": "skills/sample/SKILL.md",
         "find": "여기서 추출이 멈춘다.",
         "replace": "여기서 추출이 멈춘다.\r\n\r\n- 태그 인용: `loop-stop-patterns.md`「태그 앵커」"
       }
@@ -86,12 +86,12 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/implement/references/loop-stop-patterns.md",
+        "file": "skills/implement/references/loop-stop-patterns.md",
         "find": "축이 발화한다.\r\n",
         "replace": "축이 발화한다.\r\n- **다른 태그** · **짧은 규칙이다** — 포인터가 이 이름으로 닿지 않는다.\r\n"
       },
       {
-        "file": "plugins/karina/skills/sample/SKILL.md",
+        "file": "skills/sample/SKILL.md",
         "find": "여기서 추출이 멈춘다.",
         "replace": "여기서 추출이 멈춘다.\r\n\r\n- 태그 인용: `loop-stop-patterns.md`「태그 앵커」"
       }
@@ -211,7 +211,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/sample/SKILL.md",
+        "file": "skills/sample/SKILL.md",
         "find": "## 주입 대상 절",
         "replace": "## 이름이 바뀐 절"
       }
@@ -228,7 +228,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/BUDGET.md",
+        "file": "skills/BUDGET.md",
         "find": "| `SKILL.md` | **12,000자** | **게이트** |",
         "replace": "| `SKILL.md` | **10자** | **게이트** |"
       }
@@ -298,7 +298,7 @@
     "expect_rc": 2,
     "mutate": [
       {
-        "file": "plugins/karina/skills/BUDGET.md",
+        "file": "skills/BUDGET.md",
         "find": "## 예산 표",
         "replace": "## 예산표"
       }
@@ -328,7 +328,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/scripts/sample-hook.ps1",
+        "file": "scripts/sample-hook.ps1",
         "find": "# 종결부로 끝나는 충분히 긴 표제라서 절단으로 보지 않는다 — 근거는",
         "replace": "# 표제가 길이 캡에 눌려 단어 중간에서 끊긴 형태를 재는 케이스이며 종결부 없이 여기서 그대로 잘린 — 근거는"
       }
@@ -345,7 +345,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/evals/sample-checker.py",
+        "file": "evals/sample-checker.py",
         "find": "# 짧은 표제 — 근거는",
         "replace": "# 표제가 길이 캡에 눌려 단어 중간에서 끊긴 형태를 검사기 경로에서도 재는 케이스이며 종결부 없이 잘린 — 근거는"
       }
@@ -362,7 +362,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/scripts/rules/sample-rationale.md",
+        "file": "scripts/rules/sample-rationale.md",
         "find": "## §1 짧은 표제",
         "replace": "## §9 짧은 표제"
       }
@@ -379,7 +379,7 @@
     "expect_rc": 0,
     "mutate": [
       {
-        "file": "plugins/karina/scripts/rules/sample-rationale.md",
+        "file": "scripts/rules/sample-rationale.md",
         "find": "## §1 짧은 표제",
         "replace": "## §1 표제가 바뀐 절"
       }
@@ -398,7 +398,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/scripts/sample-hook.ps1",
+        "file": "scripts/sample-hook.ps1",
         "find": "# 짧은 표제 — 근거는 `rules/sample-rationale.md` §1",
         "replace": "# 짧은 표제 — 근거는 `rules/sample-rationale.md`의 「§1 짧은 표제」"
       }
@@ -446,7 +446,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/sample/SKILL.md",
+        "file": "skills/sample/SKILL.md",
         "find": "이 스킬 문서에는 삭제된 자산의 이름이 없다.",
         "replace": "절차 상세는 `references/phase-f-detail.md`를 읽는다."
       }
@@ -463,7 +463,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/sample/SKILL.md",
+        "file": "skills/sample/SKILL.md",
         "find": "이 스킬 문서에는 삭제된 자산의 이름이 없다.",
         "replace": "옛 이름 `pjc:plan` · `plugins/pjc/` · `pjc-harness` · `[pjc 세션 컨텍스트]` · `install.ps1` 을 그대로 적었다."
       }
@@ -480,7 +480,7 @@
     "expect_rc": 0,
     "mutate": [
       {
-        "file": "plugins/karina/skills/sample/SKILL.md",
+        "file": "skills/sample/SKILL.md",
         "find": "이 스킬 문서에는 삭제된 자산의 이름이 없다.",
         "replace": "옛 접두 `pjc:plan` 흔적만 있으면 차단한다 — 개명 전 이름을 일부러 심은 음성 케이스다."
       }
@@ -704,7 +704,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/implement/references/loop-stop-patterns.md",
+        "file": "skills/implement/references/loop-stop-patterns.md",
         "delete": true
       }
     ],
@@ -719,7 +719,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/implement/SKILL.md",
+        "file": "skills/implement/SKILL.md",
         "find": "`references/loop-stop-patterns.md`",
         "replace": "`references/gone.md`"
       }
@@ -867,7 +867,7 @@
     "expect_rc": 0,
     "mutate": [
       {
-        "file": "plugins/karina/skills/sample/SKILL.md",
+        "file": "skills/sample/SKILL.md",
         "find": "여기서 추출이 멈춘다.",
         "replace": "여기서 추출이 멈춘다.\r\n\r\n- 임시 인용: `loop-stop-patterns.md`「루프를 멈추는 형태 (픽스처)」"
       }
@@ -886,7 +886,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/implement/SKILL.md",
+        "file": "skills/implement/SKILL.md",
         "find": "# Implement (픽스처)",
         "replace": "# Implement (픽스처)\n\n검증은 Phase V-3 에서 수행한다."
       }
@@ -904,7 +904,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/DESIGN.md",
+        "file": "skills/DESIGN.md",
         "find": "- **폐기한 것**: Phase V 9단계(V-1~V-9) · Phase F 8단계 · Phase G.",
         "replace": "- 구 검증 단계는 전부 사라졌다."
       }
@@ -989,7 +989,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/scripts/guard-bash.ps1",
+        "file": "scripts/guard-bash.ps1",
         "find": "        } elseif ($ch -eq ';' -or $ch -eq '|') {",
         "replace": "        } elseif ($ch -eq ';') {"
       }
@@ -1006,7 +1006,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/scripts/loop-continue.ps1",
+        "file": "scripts/loop-continue.ps1",
         "find": "if ($parent -eq $dir) { break }",
         "replace": "if ($parent -eq $base) { break }"
       }
@@ -1023,7 +1023,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/scripts/session-context.ps1",
+        "file": "scripts/session-context.ps1",
         "find": "$planBulletRx = '(?m)^\\s*([-*+]|\\d+[.)])\\s*'",
         "replace": "$planBulletRx = '(?m)^\\s*([-*]|\\d+[.)])\\s*'"
       }
@@ -1040,7 +1040,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/scripts/guard-bash.ps1",
+        "file": "scripts/guard-bash.ps1",
         "find": "(?<tag>\\w+)\\k<q>",
         "replace": "(?<tag>[\\w-]+)\\k<q>"
       }
@@ -1057,7 +1057,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/scripts/loop-continue.ps1",
+        "file": "scripts/loop-continue.ps1",
         "find": "$planBulletRx = '(?m)^\\s*([-*+]|\\d+[.)])\\s*'",
         "replace": "# 사본이 지워졌다"
       }
@@ -1093,7 +1093,7 @@
       }
     ],
     "expect_keywords": [
-      "계수 정합: `plugins/karina/evals/cases.json` 는 2건인데 문서는 **기준선 3케이스**로 적었다"
+      "계수 정합: `evals/cases.json` 는 2건인데 문서는 **기준선 3케이스**로 적었다"
     ]
   },
   {
@@ -1145,7 +1145,7 @@
       }
     ],
     "expect_keywords": [
-      "계수 정합: `plugins/karina/hooks/evals/hook-cases.json` 는 3건인데 문서는 5건으로 적었다"
+      "계수 정합: `hooks/evals/hook-cases.json` 는 3건인데 문서는 5건으로 적었다"
     ]
   },
   {
@@ -1171,7 +1171,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "file": "skills/fm-sample/SKILL.md",
         "find": "description: frontmatter 길이 축의 변이 대상 픽스처.",
         "replace": "description: 가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가"
       }
@@ -1189,7 +1189,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "file": "skills/fm-sample/SKILL.md",
         "find": "description: frontmatter 길이 축의 변이 대상 픽스처.",
         "replace": "description: 가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가 frontmatter 길이 축의 변이 대상 픽스처."
       }
@@ -1207,7 +1207,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "file": "skills/fm-sample/SKILL.md",
         "find": "name: fm-sample",
         "replace": "name: nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
       }
@@ -1223,7 +1223,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "file": "skills/fm-sample/SKILL.md",
         "find": "name: fm-sample",
         "replace": "name: claude-sample"
       }
@@ -1240,7 +1240,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "file": "skills/fm-sample/SKILL.md",
         "find": "name: fm-sample",
         "replace": "name: <b>fm</b>"
       }
@@ -1257,7 +1257,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "file": "skills/fm-sample/SKILL.md",
         "find": "description: frontmatter",
         "replace": "description: <tag>frontmatter"
       }
@@ -1274,7 +1274,7 @@
     "expect_rc": 0,
     "mutate": [
       {
-        "file": "plugins/karina/skills/sample/SKILL.md",
+        "file": "skills/sample/SKILL.md",
         "find": "# Sample",
         "replace": "# Sample\r\n\r\ndescription: 가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가"
       }
@@ -1343,7 +1343,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/evals/check-stale-refs.py",
+        "file": "evals/check-stale-refs.py",
         "find": "DEAD_BASELINE = 37",
         "replace": "DEAD_BASELINE = 38"
       }
@@ -1360,7 +1360,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/evals/check-harness-consistency.py",
+        "file": "evals/check-harness-consistency.py",
         "find": "CRITICAL_POINTERS_BASELINE = 1",
         "replace": "CRITICAL_POINTERS_BASELINE = 2"
       }
@@ -1378,7 +1378,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/implement/SKILL.md",
+        "file": "skills/implement/SKILL.md",
         "find": "K 5-2가 정본이다",
         "replace": "K 5-9가 정본이다"
       }
@@ -1407,7 +1407,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/evals/check-harness-consistency.py",
+        "file": "evals/check-harness-consistency.py",
         "find": "CRITICAL_LITERALS_BASELINE = 3",
         "replace": "CRITICAL_LITERALS_BASELINE = 4"
       }
@@ -1425,7 +1425,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/evals/check-harness-consistency.py",
+        "file": "evals/check-harness-consistency.py",
         "find": "DEPRECATED_TOKENS_BASELINE = 7",
         "replace": "DEPRECATED_TOKENS_BASELINE = 8"
       }
@@ -1443,7 +1443,7 @@
     "expect_rc": 0,
     "mutate": [
       {
-        "file": "plugins/karina/skills/implement/SKILL.md",
+        "file": "skills/implement/SKILL.md",
         "find": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.",
         "replace": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다**(핵심 포인터 축의 검사 대상이다)."
       }
@@ -1451,7 +1451,7 @@
     "expect_keywords": [
       "규칙 근거 보유",
       "**1건**",
-      "plugins/karina/skills/implement/SKILL.md:3"
+      "skills/implement/SKILL.md:3"
     ]
   },
   {
@@ -1461,7 +1461,7 @@
     "expect_rc": 0,
     "mutate": [
       {
-        "file": "plugins/karina/skills/implement/SKILL.md",
+        "file": "skills/implement/SKILL.md",
         "find": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.",
         "replace": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.\r\n- **5**: 지시가 아니라 눈금이다."
       }
@@ -1478,7 +1478,7 @@
     "expect_rc": 0,
     "mutate": [
       {
-        "file": "plugins/karina/skills/implement/SKILL.md",
+        "file": "skills/implement/SKILL.md",
         "find": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.",
         "replace": "- **루프를 멈추는 형태는 `references/loop-stop-patterns.md`에 있다** — 핵심 포인터 축의 검사 대상이다.\r\n- **Files**: <경로> · <경로>"
       }
@@ -1528,8 +1528,8 @@
     "mutate": [
       {
         "file": "docs/harness-conventions.md",
-        "find": "- 글롭: `plugins/karina/evals/*.json`",
-        "replace": "- 글롭: `plugins/karina/evals/*.json`\r\n\r\n아래 다섯은 백틱 안에 있으나 경로가 아니다 — 후보 수가 4 그대로여야 한다.\r\n\r\n- 명령 조각: `python plugins/karina/evals/nowhere.py`\r\n- 정규식 리터럴: `\\r\\n`\r\n- 홈 경로: `~/.claude/nowhere.md`\r\n- 절대 경로: `/etc/nowhere`\r\n- 자리표시: `skills/<name>/nowhere.md`"
+        "find": "- 글롭: `evals/*.json`",
+        "replace": "- 글롭: `evals/*.json`\r\n\r\n아래 다섯은 백틱 안에 있으나 경로가 아니다 — 후보 수가 4 그대로여야 한다.\r\n\r\n- 명령 조각: `python evals/nowhere.py`\r\n- 정규식 리터럴: `\\r\\n`\r\n- 홈 경로: `~/.claude/nowhere.md`\r\n- 절대 경로: `/etc/nowhere`\r\n- 자리표시: `skills/<name>/nowhere.md`"
       }
     ],
     "expect_keywords": [
@@ -1673,7 +1673,7 @@
     "expect_keywords": [
       "[MISMATCH]",
       "영향 검토 3축 미기재: `병목` 행이",
-      "Files 가 plugins/karina/evals/ 를 담아 대상이다"
+      "Files 가 evals/ 를 담아 대상이다"
     ]
   },
   {
@@ -1692,7 +1692,7 @@
       "영향 검토 3축 미기재: `충돌` 행이",
       "영향 검토 3축 미기재: `도달성` 행이",
       "영향 검토 3축 미기재: `병목` 행이",
-      "Files 가 plugins/karina/evals/ 를 담아 대상이다"
+      "Files 가 evals/ 를 담아 대상이다"
     ]
   },
   {
@@ -1703,7 +1703,7 @@
     "mutate": [
       {
         "file": "plan.md",
-        "find": "- **Files**: `plugins/karina/evals/check-harness-consistency.py`",
+        "find": "- **Files**: `evals/check-harness-consistency.py`",
         "replace": "- **Files**: `README.md`"
       },
       {
@@ -1732,7 +1732,7 @@
     "mutate": [
       {
         "file": "plan.md",
-        "find": "- **Files**: `plugins/karina/evals/check-harness-consistency.py`",
+        "find": "- **Files**: `evals/check-harness-consistency.py`",
         "replace": "- **Files**: `README.md`"
       },
       {
@@ -1755,13 +1755,13 @@
     "mutate": [
       {
         "file": "README.md",
-        "find": "- 정상 경로: `plugins/karina/skills/sample/SKILL.md`",
-        "replace": "- 정상 경로: `plugins/karina/skills/gone-second/SKILL.md`"
+        "find": "- 정상 경로: `skills/sample/SKILL.md`",
+        "replace": "- 정상 경로: `skills/gone-second/SKILL.md`"
       }
     ],
     "expect_keywords": [
       "[FAIL] 산문이 가리키는 경로가 없습니다 — 1건",
-      "README.md -> `plugins/karina/skills/gone-second/SKILL.md`"
+      "README.md -> `skills/gone-second/SKILL.md`"
     ]
   },
   {
@@ -1772,8 +1772,8 @@
     "mutate": [
       {
         "file": "docs/harness-conventions.md",
-        "find": "- 글롭: `plugins/karina/evals/*.json`",
-        "replace": "- 글롭: `plugins/karina/evals/*.json`\r\n- 분수·비율(경로가 아니다): `29/30` · `13/14`"
+        "find": "- 글롭: `evals/*.json`",
+        "replace": "- 글롭: `evals/*.json`\r\n- 분수·비율(경로가 아니다): `29/30` · `13/14`"
       }
     ],
     "expect_keywords": [
@@ -1791,8 +1791,8 @@
     "mutate": [
       {
         "file": "docs/harness-conventions.md",
-        "find": "- 글롭: `plugins/karina/evals/*.json`",
-        "replace": "- 글롭: `plugins/karina/evals/*.json`\r\n- URL(레포 밖이다): `platform.claude.com/docs/ko/nowhere`"
+        "find": "- 글롭: `evals/*.json`",
+        "replace": "- 글롭: `evals/*.json`\r\n- URL(레포 밖이다): `platform.claude.com/docs/ko/nowhere`"
       }
     ],
     "expect_keywords": [
@@ -2160,7 +2160,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "file": "skills/fm-sample/SKILL.md",
         "find": "name: fm-sample",
         "replace": "name: fm-other"
       }
@@ -2180,7 +2180,7 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "plugins/karina/skills/fm-sample/SKILL.md",
+        "file": "skills/fm-sample/SKILL.md",
         "find": "name: fm-sample",
         "replace": "name: Fm_Sample"
       }

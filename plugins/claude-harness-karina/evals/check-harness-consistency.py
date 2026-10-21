@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 18개로 잰다.
 
-사용법: python plugins/karina/evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
-       python plugins/karina/evals/check-harness-consistency.py --fix [--dry-run]
+사용법: python evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
+       python evals/check-harness-consistency.py --fix [--dry-run]
 
 축: ① 포인터 도달성(+하위 통지 「줄이 지워진 절」) ② Deferred 집계 ③ 볼드 마커 짝 ④ 한 줄 문장 중복 ⑤ batch 차수 수열
     ⑥ 추출 앵커 도달성 ⑦ 문서 예산 ⑧ 줄바꿈 정합 ⑨ 종결 사유 명시 ⑩ 핵심 포인터 실재
@@ -22,8 +22,8 @@ import re
 import subprocess
 import sys
 
-# repo 루트 = 이 파일의 3단계 상위 (plugins/karina/evals/ → repo)
-ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+# 하니스 루트 = 이 파일의 1단계 상위 (evals/ → 하니스 루트 · 모노레포 plugins/claude-harness-karina/)
+ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 CONV_MD = os.path.join(ROOT, "docs", "harness-conventions.md")
 LEDGER_MD = os.path.join(ROOT, "docs", "plans", "deferred.md")
@@ -34,7 +34,7 @@ LEDGER_HISTORY_MD = os.path.join(ROOT, "docs", "plans", "deferred-history.md")
 AGENTS_MD = os.path.join(ROOT, "AGENTS.md")
 # 축 11이 읽는다. **레포 루트의 이 파일만 gitignore 대상이라 커밋되지 않는다** — 없는 것이
 #   정상이므로 부재는 조용히 통과한다(회차 시작 전·plan 없는 세션이 그 상태다).
-#   ⚠ **픽스처 사본은 다르다** — `.gitignore` 의 `!plugins/karina/evals/fixtures/**/plan.md` 예외로
+#   ⚠ **픽스처 사본은 다르다** — `.gitignore` 의 `!evals/fixtures/**/plan.md` 예외로
 #   추적되며, 이 축의 골든 2건이 성립하는 근거가 그 커밋된 파일이다.
 PLAN_MD = os.path.join(ROOT, "plan.md")
 
@@ -132,7 +132,7 @@ def _pointer_sources():
     # hook 스크립트도 포인터 소스다 — 마크다운만 보던 때 스크립트의 끊긴 포인터 46건이 exit 0으로 통과했다.
     #   근거 주석은 `§N` 꼴이라 「」 가 없어 여기 포인터가 아니다(번호 실재는 `check-comment-truncation.py` 축 B).
     out = []
-    for src in list(_md_files()) + sorted(glob.glob(os.path.join(ROOT, "plugins/karina/scripts/*.ps1"))):
+    for src in list(_md_files()) + sorted(glob.glob(os.path.join(ROOT, "scripts/*.ps1"))):
         rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
         # 과거 plan·로컬 노트·문서 아카이브는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
         # 판정을 `_is_record_doc` 와 공유한다 — 따로 두면 한쪽만 낡는다.
@@ -160,7 +160,7 @@ def _resolve_pointer(src, ref_path, by_suffix):
             os.path.join(os.path.dirname(src), ref_path.replace("/", os.sep))]
     target = next((c for c in cand if os.path.exists(c)), None)
     if target is None:
-        # 부분 경로 표기(`implement/SKILL.md`처럼 `plugins/karina/skills/`
+        # 부분 경로 표기(`implement/SKILL.md`처럼 `skills/`
         # 접두가 빠진 형제-스킬 참조)를 접미 색인으로 해석한다. 후보가 여럿이면
         # 어느 것을 뜻하는지 확정할 수 없으므로 해석하지 않는다(추측 금지).
         hits = by_suffix.get(ref_path, [])
@@ -429,7 +429,7 @@ def check_deleted_section_pointers():
 
 
 # 대장 항목 1건의 문자 상한. 정본 문면은 `docs/plans/deferred.md` 머리말과
-#  `plugins/karina/skills/BUDGET.md` 이고, 이 상수는 그것을 재는 쪽이다.
+#  `skills/BUDGET.md` 이고, 이 상수는 그것을 재는 쪽이다.
 #  **바이트가 아니라 문자로 재는 이유는 문서 예산 축과 같다** — 한글 1자가 3바이트라
 #  바이트로 재면 같은 정보량이 언어에 따라 다른 비용으로 계산된다(`BUDGET.md` 「예산 표」
 #  단위 문단). 785 B 로 초과를 내던 항목이 실측 391자로 상한 안이었다.
@@ -652,7 +652,7 @@ def check_compact_anchors():
     **단위는 hook과 같게 LF 조인 UTF-8**이다(hook은 CRLF를 LF로 정규화한 뒤 재므로, 원문을
     그대로 재면 줄 수만큼 바이트가 더해져 임박 시점이 갈린다).
     """
-    hook = os.path.join(ROOT, "plugins", "karina", "scripts", "session-context.ps1")
+    hook = os.path.join(ROOT, "scripts", "session-context.ps1")
     txt = read(hook)
     calls = re.findall(
         r"Get-SkillSection\s+-Path\s+\(Join-Path\s+\$skillsDir\s+'([^']+)'\)"
@@ -671,7 +671,7 @@ def check_compact_anchors():
     issues = []
     checked = 0
     for rel, start, stop in calls:
-        target = os.path.join(ROOT, "plugins", "karina", "skills", *rel.split("/"))
+        target = os.path.join(ROOT, "skills", *rel.split("/"))
         if not os.path.exists(target):
             # 앵커 2개(시작·종료)를 잴 수 없게 된 것이므로 2를 더한다 —
             #   1만 더하면 정상 경로와 집계 단위가 갈려 배너의 항목 수가 어긋난다.
@@ -712,24 +712,24 @@ def check_compact_anchors():
 
 
 
-DESIGN_MD = os.path.join(ROOT, "plugins", "karina", "skills", "DESIGN.md")
+DESIGN_MD = os.path.join(ROOT, "skills", "DESIGN.md")
 # 예산 표의 정본. `DESIGN.md` 에서 분리됐다 — 그 파일은 폐기 식별자 축이 계속 쓴다.
-BUDGET_MD = os.path.join(ROOT, "plugins", "karina", "skills", "BUDGET.md")
+BUDGET_MD = os.path.join(ROOT, "skills", "BUDGET.md")
 
 # 예산 축이 보는 대상 — `BUDGET.md` 「예산 표」의 「대상」 열 리터럴 → 실제 파일 glob.
 #   표를 정본으로 읽어 값을 여기 박지 않는다. 대상 매핑만 여기 두는 이유는 표가 사람이 읽는
 #   이름("단일 `references/*.md`")을 쓰고 그것이 glob 과 1:1이 아니기 때문이다.
 BUDGET_TARGETS = [
-    ("`SKILL.md`", ["plugins/karina/skills/*/SKILL.md"]),
-    ("단일 `references/*.md`", ["plugins/karina/skills/*/references/*.md"]),
-    ("에이전트 정의 `agents/*.md`", ["plugins/karina/agents/*.md"]),
+    ("`SKILL.md`", ["skills/*/SKILL.md"]),
+    ("단일 `references/*.md`", ["skills/*/references/*.md"]),
+    ("에이전트 정의 `agents/*.md`", ["agents/*.md"]),
     # 글롭 하나로 잡는다 — 파일을 이름으로 열거하면 `WIKI.md` 처럼 나중에 온 것이
     #  어느 행에도 안 걸린 채 상한 없이 자란다.
-    ("스킬 트리 최상위 `skills/*.md`", ["plugins/karina/skills/*.md"]),
+    ("스킬 트리 최상위 `skills/*.md`", ["skills/*.md"]),
 ]
 
 # `llm-wiki` 트리 면제 — 선언과 근거는 `BUDGET.md` 「예산 표」가 정본이다(면제이지 통과가 아니다).
-BUDGET_EXEMPT_PREFIX = ("plugins/karina/skills/llm-wiki/",)
+BUDGET_EXEMPT_PREFIX = ("skills/llm-wiki/",)
 
 # 게이트 등급의 임박 통지 임계. 추출 앵커 축의 80% 보다 높게 잡았다 — 실측에서 SKILL.md 6개가
 #   전부 87% 이상이라 80% 로 두면 **매 실행에 6건이 상시로 떠 신호가 소음이 된다**
@@ -742,9 +742,9 @@ BUDGET_NEAR_RATIO = 0.9
 # 배제 넷·형식 정규식의 근거는 `harness-consistency-rationale.md` 의
 #   「축 ⑱ — 규칙 근거 보유」. **배제이지 통과가 아니다.**
 RULE_SCOPE_GLOBS = [
-    "plugins/karina/skills/plan/**/*.md",
-    "plugins/karina/skills/implement/**/*.md",
-    "plugins/karina/agents/*.md",
+    "skills/plan/**/*.md",
+    "skills/implement/**/*.md",
+    "agents/*.md",
 ]
 RULE_EXCLUDE_FIXTURE_SEG = "/evals/fixtures/"
 RULE_EXCLUDE_LABEL_RX = re.compile(r"^- \*\*\d+\*\*[:：]")
@@ -1019,8 +1019,8 @@ def check_close_reasons():
 #   기준은 폭에 따라 1~69건으로 갈려 재현되지 않는다. 여기 적힌 것은
 #   문면이 스스로 그 문서 없이는 규칙이 사라진다고 선언한 자리다.
 CRITICAL_POINTERS = [
-    ("plugins/karina/skills/implement/SKILL.md",
-     "plugins/karina/skills/implement/references/loop-stop-patterns.md",
+    ("skills/implement/SKILL.md",
+     "skills/implement/references/loop-stop-patterns.md",
      "자율 루프 정지 형태 판정의 정본(1차 방어선) — loop-continue hook 은 plan 미완만 보고 형태를 가르지 않는다"),
 ]
 
@@ -1035,13 +1035,13 @@ CRITICAL_POINTERS_BASELINE = 1
 #   리터럴은 **그 파일에서 유일한 형태**로 잡는다. `> BASE:` 나 `({근거})` 처럼 짧게 잡으면
 #   같은 파일의 *규칙 서술 줄*이 함께 매치돼 **슬롯만 지워도 통과**한다(각각 실측 2건).
 CRITICAL_LITERALS = [
-    ("plugins/karina/skills/plan/references/plan-template.md",
+    ("skills/plan/references/plan-template.md",
      "> BASE: <승인 시점 HEAD 의 SHA>",
      "회차 BASE 를 적을 자리 — 서식에 슬롯이 없으면 규약이 요구해도 빠지고, 그 회차는 diff 범위를 되찾을 수단을 잃는다"),
-    ("plugins/karina/skills/REPO-CONVENTIONS.md",
+    ("skills/REPO-CONVENTIONS.md",
      "무엇을 해야 하는가} ({근거})",
      "레포 `docs/conventions.md` 항목의 근거 꼬리 — 이 꼬리가 없으면 그 줄을 얼마나 믿을지 정할 근거가 사라진다"),
-    ("plugins/karina/skills/implement/SKILL.md",
+    ("skills/implement/SKILL.md",
      "K 5-2",
      "구현 종료 시점의 `[DECISION]`(보류·기각) 일괄 큐잉 호출 — 규약이 지목하는 유일한 배치 시점이라, 부르는 자리가 없으면 결정이 대화에만 남는다"),
 ]
@@ -1221,8 +1221,8 @@ def check_critical_pointers():
 #   검사기(`evals/`)를 넣은 것은 그것이 판정 로직이어서다 — 축을 늘리고 줄이는 변경이
 #   충돌·병목을 가장 자주 만든다.
 IMPACT_GATE_PREFIXES = (
-    "plugins/karina/scripts/", "plugins/karina/skills/", "plugins/karina/agents/",
-    "plugins/karina/evals/", "plugins/karina/hooks/",
+    "scripts/", "skills/", "agents/",
+    "evals/", "hooks/",
     "docs/harness-conventions.md", "AGENTS.md",
 )
 # **라벨만 본다 — 내용은 보지 않는다.** 정본이 *"재지 않은 축은 「없음」이 아니라 「미측정」으로
@@ -1295,7 +1295,7 @@ _DEPRECATED_ANCHOR = "**폐기 식별자(기계 대조)**:"
 _DEPRECATED_EXTS = (".md", ".ps1", ".py", ".json")
 
 # 근거는 `harness-consistency-rationale.md` 의 「축 ⑭ — 폐기 식별자 스캔이 대장 3파일을 제외하는 이유」.
-_DEPRECATED_SKIP_RELS_EXTRA = {"plugins/karina/evals/cases.json"}
+_DEPRECATED_SKIP_RELS_EXTRA = {"evals/cases.json"}
 _DEPRECATED_SKIP_RELS = {
     "docs/plans/deferred.md",
     "docs/plans/deferred-closed.md",
@@ -1305,11 +1305,11 @@ _DEPRECATED_SKIP_RELS = {
 # 허용목록 — `(레포 상대경로, 그 줄을 특정하는 조각)`. **줄 번호를 쓰지 않는다**(밀린다).
 #  전부 폐기 사실·유래·과거 사례의 **인용**이라 현행 규정을 가리키지 않는다.
 DEPRECATED_QUOTE_ALLOWLIST = [
-    ("plugins/karina/skills/DESIGN.md", "**폐기한 것**:"),
-    ("plugins/karina/skills/DESIGN.md", _DEPRECATED_ANCHOR),
+    ("skills/DESIGN.md", "**폐기한 것**:"),
+    ("skills/DESIGN.md", _DEPRECATED_ANCHOR),
     ("docs/harness-conventions.md", "구 근거였던 「F-4 스캔」은 대상이 소멸했다"),
-    ("plugins/karina/hooks/evals/scenarios/post-write-checks.ps1", "전재 폴백으로 경고 유지"),
-    ("plugins/karina/skills/llm-wiki/evals/lint-cases.json", "M1이 잡은 미커버 축이다"),
+    ("hooks/evals/scenarios/post-write-checks.ps1", "전재 폴백으로 경고 유지"),
+    ("skills/llm-wiki/evals/lint-cases.json", "M1이 잡은 미커버 축이다"),
 ]
 
 # 면제 **총량**의 기준선(= 목록 길이). 정당한 증감이면 이 값을 함께 올린다 — 숫자를 맞추려 면제를 지우지 않는다.
@@ -1523,14 +1523,14 @@ def check_copy_sync():
 
     함수는 주석 줄을 뺀 본문을, 리터럴은 작은따옴표 값을 그대로 비교한다. 항목 수는 읽어 낸 사본 수다.
     """
-    scripts = os.path.join(ROOT, "plugins", "karina", "scripts")
+    scripts = os.path.join(ROOT, "scripts")
     issues, n = [], 0
     for group, kind, members in COPY_SYNC_GROUPS:
         got = []
         for fname, name in members:
             path = os.path.join(scripts, fname)
             if not os.path.exists(path):
-                issues.append("복제 사본 동기: `%s` 묶음 — 파일 없음: plugins/karina/scripts/%s" % (group, fname))
+                issues.append("복제 사본 동기: `%s` 묶음 — 파일 없음: scripts/%s" % (group, fname))
                 continue
             text = open(path, encoding="utf-8-sig").read()
             if kind == "function":
@@ -1577,16 +1577,16 @@ _UNMEASURED_MARK = "(기계 미대조)"
 COUNT_SKIP_BASELINE = {"hook-cases.json"}
 
 
-PLUGIN_JSON = os.path.join(ROOT, "plugins", "karina", ".claude-plugin", "plugin.json")
+PLUGIN_JSON = os.path.join(ROOT, ".claude-plugin", "plugin.json")
 README_MD = os.path.join(ROOT, "README.md")
 # ⓒ 형태로 적힌 파일명을 레포 경로로 되돌리기 위한 목록. 문서가 파일명만 적으므로
 #  여기 없는 이름은 이 축의 대상이 아니다(다른 문맥의 json 언급을 세지 않는다).
 _MANIFEST_PATHS = (
-    "plugins/karina/hooks/evals/hook-cases.json",
-    "plugins/karina/skills/llm-wiki/evals/lint-cases.json",
-    "plugins/karina/skills/record-project-fact/evals/relocation-cases.json",
-    "plugins/karina/evals/cases.json",
-    "plugins/karina/skills/evals/trigger-cases.json",
+    "hooks/evals/hook-cases.json",
+    "skills/llm-wiki/evals/lint-cases.json",
+    "skills/record-project-fact/evals/relocation-cases.json",
+    "evals/cases.json",
+    "skills/evals/trigger-cases.json",
 )
 
 
@@ -1689,7 +1689,7 @@ def check_count_and_version(conv):
                               % (hit, actual, fm.group(2)))
 
     desc_total, skill_ids = 0, set()
-    for path in sorted(glob.glob(os.path.join(ROOT, "plugins", "karina", "skills",
+    for path in sorted(glob.glob(os.path.join(ROOT, "skills",
                                                "*", "SKILL.md"))):
         fm = _RX_FRONTMATTER.match(read(path))
         # frontmatter 가 없으면 스킵 — 근거는 rationale 「축 ⑰ — 스킬 이름·README 목록 대조」.
@@ -1753,7 +1753,7 @@ def _readme_list_issues(skill_ids):
     """README 「Skills」·「Subagents」 표 첫 칸 ↔ 스킬 폴더·에이전트 파일(근거는 rationale 같은 절)."""
     text = read(README_MD)
     agents = {os.path.splitext(os.path.basename(p))[0] for p in
-              glob.glob(os.path.join(ROOT, "plugins", "karina", "agents", "*.md"))}
+              glob.glob(os.path.join(ROOT, "agents", "*.md"))}
     out = []
     for head, want, kind, unk, rx in (
             ("Skills", skill_ids, "스킬", "id", r"`karina:([a-z0-9-]+)`"),

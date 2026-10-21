@@ -8,7 +8,7 @@
 ```
 # guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 7종 검사를 한 프로세스에서 수행
 #
-# 담당 조항(정본: `plugins/karina/skills/DESIGN.md`의 hook 담당 조항 표):
+# 담당 조항(정본: `skills/DESIGN.md`의 hook 담당 조항 표):
 #   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신.
 #   부수 경고 둘(전역 탐색·위험값 대입)은 대응하는 독립 hook이 없고 이 파일이 유일한 실행 경로다.
 #
@@ -46,7 +46,7 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
   파일 끝의 `$checks` 배열이 함수명 ↔ **rule 이름**을 짝지어 순서대로 부른다.
 - **rule 이름은 옛 hook 이름을 그대로 쓴다** — `warn-external-ops` 등 다섯은 hook 으로는
   사라졌지만 이벤트 로그·골든 필터가 그 이름으로 돌아 식별자로 살아 있다. **삭제 자산으로
-  오인하지 말 것**(`plugins/karina/evals/check-stale-refs.py` 의 DEAD 목록이 이 다섯을 뺀 이유).
+  오인하지 말 것**(`evals/check-stale-refs.py` 의 DEAD 목록이 이 다섯을 뺀 이유).
 - **함수 계약**: 파싱된 `$data`(hook stdin JSON) → 결과 객체
   `@{ Block = [bool]; Stderr = [string[]]; Context = [string] }`.
   **`Block = $true`(exit 2)를 내는 경로는 넷이다** — `guard-bash.ps1` 2곳(`block-plan-write` 의

@@ -39,7 +39,7 @@ except Exception:
     pass
 
 EVALS_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(EVALS_DIR))))
+REPO_ROOT = os.path.dirname(os.path.dirname(EVALS_DIR))   # 하니스 루트
 RUBRIC_MD = os.path.join(EVALS_DIR, "rubric.md")
 DEFAULT_PLANS_DIR = os.path.join(REPO_ROOT, "docs", "plans")
 

@@ -21,9 +21,9 @@ import sys
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-ROOT = pathlib.Path(__file__).resolve().parents[3].parent
-SCRIPTS = ROOT / 'plugins' / 'karina' / 'scripts'
-EVALS = ROOT / 'plugins' / 'karina' / 'hooks' / 'evals'
+ROOT = pathlib.Path(__file__).resolve().parents[2]   # 하니스 루트
+SCRIPTS = ROOT / 'scripts'
+EVALS = ROOT / 'hooks' / 'evals'
 
 # 차단 사유 문구를 여는 마커 — 이 뒤 문면이 케이스가 대조할 수 있는 고유 문자열이다
 REASON_RX = re.compile(

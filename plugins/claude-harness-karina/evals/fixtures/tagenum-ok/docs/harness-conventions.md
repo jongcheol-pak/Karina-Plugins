@@ -2,9 +2,9 @@
 
 ## 검증 명령 상세 (무엇을 대조하는가 · 함정)
 
-**Hook 골든 회귀** — 케이스 정본은 `plugins/karina/hooks/evals/hook-cases.json` + 러너 내장 시나리오이고 **기준선 9케이스**다. **이 수는 기계로 세어지지 않는다** — `hook-cases.json`은 3건이고 나머지는 러너 내장 시나리오라 파일 하나를 세면 어긋난다.
+**Hook 골든 회귀** — 케이스 정본은 `hooks/evals/hook-cases.json` + 러너 내장 시나리오이고 **기준선 9케이스**다. **이 수는 기계로 세어지지 않는다** — `hook-cases.json`은 3건이고 나머지는 러너 내장 시나리오라 파일 하나를 세면 어긋난다.
 
-**evals 골든 러너** — 케이스 정본은 `plugins/karina/evals/cases.json`이고 **기준선 2케이스**다.
+**evals 골든 러너** — 케이스 정본은 `evals/cases.json`이고 **기준선 2케이스**다.
 
 **러너 내장 케이스** — 매니페스트가 없어 **4케이스(기계 미대조)** 다.
 
@@ -12,7 +12,7 @@
 
 | 변경 파일 패턴 | 필수 검증 |
 |---|---|
-| `plugins/karina/evals/**` | `python plugins/karina/evals/check-harness-consistency.py` |
+| `evals/**` | `python evals/check-harness-consistency.py` |
 
 이 절의 계수도 같은 축이 잰다 — 종료 코드 판정 **5케이스(기계 미대조)** 다.
 

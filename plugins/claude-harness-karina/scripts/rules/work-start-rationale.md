@@ -1,6 +1,6 @@
 # record-work-start 근거
 
-> `plugins/karina/scripts/record-work-start.ps1` 의 주석이 가리키는 근거다. 시작 시각을 소비하는 규칙의 정본은 `plugins/karina/skills/plan/SKILL.md` Step 1 · `plugins/karina/skills/implement/references/report-format.md` 「소요 기록」 · `plugins/karina/skills/chain-plan/references/report.md` 「체인 시작 시각」 이고, 이 파일은 hook 쪽의 「왜」만 담는다.
+> `scripts/record-work-start.ps1` 의 주석이 가리키는 근거다. 시작 시각을 소비하는 규칙의 정본은 `skills/plan/SKILL.md` Step 1 · `skills/implement/references/report-format.md` 「소요 기록」 · `skills/chain-plan/references/report.md` 「체인 시작 시각」 이고, 이 파일은 hook 쪽의 「왜」만 담는다.
 
 ## §1 왜 hook 이 시작 시각을 남기는가
 
@@ -24,7 +24,7 @@ stdin 이 JSON 이 아니거나 `session_id` 가 없거나 대상 스킬이 아�
 `~/.claude/.state/work-start/<sid>.json` 에 `{ "plan": "<YYYY-MM-DD HH:mm>", "chain-plan": "…" }` 를 둔다.
 
 - **sid 는 `[^A-Za-z0-9._-]` 를 `_` 로 바꿔 파일명으로 쓴다** — `loop-continue.ps1` 과 같은 식이고, compact 재주입(`session-context.ps1`)도 같은 식으로 이 파일을 찾는다. 두 식이 갈리면 재주입이 출력 없이 빠져 아무도 모른다.
-- **발동마다 그 키를 덮어쓴다** — 같은 세션에서 계획을 새로 세우면 새 시작이다. 옛 초안을 이어 쓸 때 옛 시각을 보존할지는 `plan.md` 의 `> 시작:` 규칙(`plugins/karina/skills/plan/references/plan-template.md` 「Goal」)이 가르고, 이 파일은 늘 마지막 발동 값이다.
+- **발동마다 그 키를 덮어쓴다** — 같은 세션에서 계획을 새로 세우면 새 시작이다. 옛 초안을 이어 쓸 때 옛 시각을 보존할지는 `plan.md` 의 `> 시작:` 규칙(`skills/plan/references/plan-template.md` 「Goal」)이 가르고, 이 파일은 늘 마지막 발동 값이다.
 - **30일 지난 파일은 `session-context.ps1` 이 세션 시작에 걷는다** — 다른 상태 디렉터리와 같은 정리 목록이다.
 
 ## §5 주입 줄

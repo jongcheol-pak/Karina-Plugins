@@ -221,7 +221,7 @@ AGENTS.md 목표선 — 상한(16,384B, `session-context.ps1`이 정본)과 **�
 - **예약어는 `name` 에만 건다.** `description` 은 스킬을 설명하는 산문이라 그 낱말이 정당하게 들어갈 수 있다 — 이 레포의 스킬 설명이 실제로 그렇다. 거기 걸면 전건이 red 가 된다.
 - **XML 태그는 두 필드에 같이 걸리므로 필드별로 나누지 않는다** — 축으로는 1종이다. **대신 골든은 필드마다 둔다**(`harness-fm-name-xml` · `harness-fm-desc-xml`): 한 필드만 특례로 빠지는 구현 오류는 축이 아니라 케이스가 가른다.
 - **넘으면 그 스킬이 로드되지 않으므로 통지가 아니라 게이트다** — 길이 상한과 같은 등급이다.
-- **사정거리는 `plugins/karina/skills/*/SKILL.md` 다.** `plugins/karina/agents/*.md` 는 이 루프 밖이고 기존 길이 축도 마찬가지다 — 에이전트 정의는 Agent Skills 가 아니라 **설계상 제외**다. 그 사실은 `skills/AUTHORING.md`「description 작성」에도 적혀 있다(안 적으면 다음 세션이 재어지는 줄 안다).
+- **사정거리는 `skills/*/SKILL.md` 다.** `agents/*.md` 는 이 루프 밖이고 기존 길이 축도 마찬가지다 — 에이전트 정의는 Agent Skills 가 아니라 **설계상 제외**다. 그 사실은 `skills/AUTHORING.md`「description 작성」에도 적혀 있다(안 적으면 다음 세션이 재어지는 줄 안다).
 
 ### 축 ⑰ — description 합계 통지선
 

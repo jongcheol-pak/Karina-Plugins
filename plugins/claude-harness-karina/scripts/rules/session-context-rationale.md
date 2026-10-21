@@ -77,7 +77,7 @@
 
 **찾은 plan 을 따르는 판정은 셋 더 있다** — Deferred 미판정 계수(§7) · 압축 리마인더 조건(`-not $planPath`) · vault 줄 게이팅(§4 — plan 요약 줄도 cwd 수집 라인으로 센다). 하위 폴더 세션에서도 vault 줄이 나오는 것은 의도된 변화다. AGENTS.md 목차는 계속 `cwd` 기준이다.
 
-**의도적 사본이다** — `Find-PlanFileUpwards` 와 `$planBulletRx` 는 `loop-continue.ps1` 에 같은 글자로 있다. 공용 `.ps1` 로 빼면 `rules/harness-hooks.json`(목록 = 스크립트 전량)에 올라 차단 hook `guard-harness` 의 보호 범위가 바뀐다. 사본의 일치는 `plugins/karina/evals/check-harness-consistency.py` 의 「복제 사본 동기」 축이 잰다(`skills/DESIGN.md` 2절의 복제 예외).
+**의도적 사본이다** — `Find-PlanFileUpwards` 와 `$planBulletRx` 는 `loop-continue.ps1` 에 같은 글자로 있다. 공용 `.ps1` 로 빼면 `rules/harness-hooks.json`(목록 = 스크립트 전량)에 올라 차단 hook `guard-harness` 의 보호 범위가 바뀐다. 사본의 일치는 `evals/check-harness-consistency.py` 의 「복제 사본 동기」 축이 잰다(`skills/DESIGN.md` 2절의 복제 예외).
 
 ## §5-1 task 계수식
 
@@ -104,7 +104,7 @@
                 # 왜: plan.md는 gitignore + 다음 회차 교체라, `## Deferred / Follow-up` 항목이 대장
                 #   (docs/plans/deferred.md)으로 옮겨지기 전에 회차가 끝나면 통째로 사라진다. task는
                 #   위 두 정규식이 세지만 Deferred는 아무도 세지 않아, "task 전부 완료" 옆에 미이관
-                #   항목이 남아도 완료로 흘러갔다. 마커 규정(정본은 `plugins/karina/skills/plan/references/deferred-rules.md` —
+                #   항목이 남아도 완료로 흘러갔다. 마커 규정(정본은 `skills/plan/references/deferred-rules.md` —
                 #   판정 결과를 plan 항목에 마커로 남긴다)이 그 상태를 기계 판독 가능하게 만들고 여기가 그것을 센다.
                 # **판정은 plan 단위가 아니라 항목 단위다** — "마커가 하나도 없을 때만 폴백"으로 두면
                 #   **마커 혼재 상태**(일부만 [등재], 나머지는 마커 없음 = 이관 도중 압축된 실제 형태)에서

@@ -5,7 +5,7 @@
 이 서브트리에는 골든 러너가 없다. `trigger_eval.py` 본체는 실제 모델을 호출해 비용이
 크므로 회귀 축으로 쓸 수 없고, 판정 로직만 순수 함수로 갈라 여기서 잰다.
 
-    python plugins/karina/skills/evals/test_exit_code.py
+    python skills/evals/test_exit_code.py
 
 변이 실증(2026-09-08): `exit_code`의 `unobserved` 산출을 0으로 고정하면 관측 실패 축
 3건이 red 가 된다 — 판정식을 `failed`만 보도록 되돌린 것과 같은 상태다.

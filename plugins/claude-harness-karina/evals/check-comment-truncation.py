@@ -28,10 +28,10 @@ import sys
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-ROOT = pathlib.Path(__file__).resolve().parents[3]
-SCRIPTS = ROOT / 'plugins' / 'karina' / 'scripts'
+ROOT = pathlib.Path(__file__).resolve().parents[1]   # 하니스 루트
+SCRIPTS = ROOT / 'scripts'
 RULES = SCRIPTS / 'rules'
-EVALS = ROOT / 'plugins' / 'karina' / 'evals'
+EVALS = ROOT / 'evals'
 
 # id 는 줄 끝이다 — `§2-1`·`§3a` 꼴이 실재한다.
 #   `rules/` 접두는 선택이다 — 없으면 인용한 파일과 같은 폴더에서 찾는다(검사기 → `evals/*-rationale.md`).

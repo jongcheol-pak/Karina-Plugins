@@ -1,7 +1,7 @@
 # plan — 픽스처
 
 > 축 11(등재 마커 실재) 전용 픽스처. 검사기가 읽을 대상이 없으면 그 축이 0항목으로 조용히 통과한다.
-> ⚠ **이 파일이 추적되는 근거는 `.gitignore` 의 `!plugins/karina/evals/fixtures/**/plan.md` 예외 한 줄이다**
+> ⚠ **이 파일이 추적되는 근거는 `.gitignore` 의 `!evals/fixtures/**/plan.md` 예외 한 줄이다**
 > — 루트용 `plan.md` 패턴이 경로 무관이라 그 줄이 사라지면 이 파일이 커밋에서 **조용히 빠지고**,
 > 골든 2건이 작성자 워킹트리에서만 통과한다(`run-evals.py` 는 워킹트리를 통째 복사한다).
 > 실제로 그렇게 빠진 채 v1.249.0 이 배포됐다.
@@ -22,7 +22,7 @@
 
 - [x] **T1** 마커를 예시로 인용하는 체크박스 줄 — 본문에 `[등재]` 와 `[미판정]` 을 담지만
   Deferred 절 밖이라 서식 게이트의 대상이 아니다. 이 줄이 위반으로 잡히면 절 한정이 깨진 것이다.
-- **Files**: `plugins/karina/evals/check-harness-consistency.py` — 게이트 경로 1개. 비대상 경로로 바꾸는 변이가 게이트 미발화를 잰다
+- **Files**: `evals/check-harness-consistency.py` — 게이트 경로 1개. 비대상 경로로 바꾸는 변이가 게이트 미발화를 잰다
 
 ## Deferred / Follow-up
 

@@ -131,7 +131,7 @@
 
 ## Conventions
 
-상세는 `plugins/karina/skills/*/SKILL.md`가 정본이다.
+상세는 `plugins/app/skills/*/SKILL.md`가 정본이다.
 
 [Conventions] 이 문단은 파일 크기를 맞추기 위한 본문이다. 이관은 내용을 바꾸지 않고 위치만 옮긴다. 포인터가 남으므로 어디로 갔는지 알 수 있다.
 
@@ -170,7 +170,7 @@
 
 ## Repository Structure
 
-구조 설명은 `plugins/karina/skills/*/SKILL.md`를 함께 본다.
+구조 설명은 `plugins/app/skills/*/SKILL.md`를 함께 본다.
 
 [Structure] 이 문단은 파일 크기를 맞추기 위한 본문이다. 이관은 내용을 바꾸지 않고 위치만 옮긴다. 포인터가 남으므로 어디로 갔는지 알 수 있다.
 
@@ -191,4 +191,4 @@
 
 ## OS
 
-`plugins/karina/skills/*/SKILL.md` 참조. 부록은 `docs/appendix.md`.
+`plugins/app/skills/*/SKILL.md` 참조. 부록은 `docs/appendix.md`.

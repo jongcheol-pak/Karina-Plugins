@@ -4,7 +4,7 @@
 
 ## Build & Test
 
-- 검증: `python plugins/karina/evals/check-harness-consistency.py`
+- 검증: `python evals/check-harness-consistency.py`
 - 상세는 `docs/harness-conventions.md`의 「검증 매핑 (task 검증 선택)」이 정본이다.
 - 모드별 차이는 아래 「실행 모드」 표가 정본이다.
 

@@ -188,11 +188,11 @@ python compare_evals.py <before.json> <after.json>
 
 > **보류된 이관의 사전 조사다** — 지금 착수할 과제가 아니라, 위 판정이 뒤집힐 때 다시 조사하지 않으려고 남긴 기록이다.
 
-네이티브의 기본 eval 디렉터리는 **플러그인 아래 `evals/`**, 곧 `plugins/karina/evals/` 다. 그 자리는 이미 **python 정합 검사기 셋과 그 골든**(`cases.json` 98케이스 · `run-evals.py`)이 쓰고 있어, 케이스 디렉터리를 그 아래 두면 두 체계가 한 폴더를 공유한다.
+네이티브의 기본 eval 디렉터리는 **플러그인 아래 `evals/`**, 곧 `evals/` 다. 그 자리는 이미 **python 정합 검사기 셋과 그 골든**(`cases.json` 98케이스 · `run-evals.py`)이 쓰고 있어, 케이스 디렉터리를 그 아래 두면 두 체계가 한 폴더를 공유한다.
 
 해소 경로는 둘이고 **양립하지 않는다 — 하나를 고른다**:
 
-- `plugins/karina/.claude-plugin/plugin.json` 에 `"experimental": { "evals": "<경로>" }` 를 둔다 — 매니페스트가 정본이 되어 `claude plugin eval` 과 `claude plugin eval init` 이 인자 없이 같은 곳을 본다
+- `.claude-plugin/plugin.json` 에 `"experimental": { "evals": "<경로>" }` 를 둔다 — 매니페스트가 정본이 되어 `claude plugin eval` 과 `claude plugin eval init` 이 인자 없이 같은 곳을 본다
 - 매번 `--eval-dir <경로>` 를 준다 — 두 명령 **모두에** 줘야 하고, 빠뜨린 호출이 기본 `evals/` 를 보게 된다
 
 **전자가 낫다** — 후자는 인자를 빠뜨린 한 번이 조용히 다른 디렉터리를 만든다.

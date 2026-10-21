@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""`plugins/karina/evals/` 세 검사기의 골든 러너 — `cases.json` + `fixtures/`를 돈다.
+"""`evals/` 세 검사기의 골든 러너 — `cases.json` + `fixtures/`를 돈다.
 
 무엇을: 케이스마다 픽스처를 임시 복사본으로 뜨고, **대상 검사기를 그 트리의 같은 상대
 경로에 복사해** subprocess 로 돌린 뒤 종료 코드와 출력 문구를 대조한다.
 
-  왜 사본을 픽스처 안에 두는가: 세 검사기 모두 repo 루트를 **자기 파일의 3단계 상위**로
-  고정한다(표기는 둘이 `Path(__file__).resolve().parents[3]`, `check-harness-consistency.py` 가
-  `os.path.abspath(os.path.join(..., "..", "..", ".."))` — 라인 번호는 문서 편집으로 밀린다). 인자도 환경변수도 주입 지점이 없으므로, 검사기를
-  `<픽스처>/plugins/karina/evals/` 에 놓는 것이 ROOT 를 픽스처로 만드는 유일한 방법이다.
+  왜 사본을 픽스처 안에 두는가: 세 검사기 모두 하니스 루트를 **자기 파일의 1단계 상위**로
+  고정한다(표기는 둘이 `Path(__file__).resolve().parents[1]`, `check-harness-consistency.py` 가
+  `os.path.abspath(os.path.join(..., ".."))` — 라인 번호는 문서 편집으로 밀린다). 인자도 환경변수도 주입 지점이 없으므로, 검사기를
+  `<픽스처>/evals/` 에 놓는 것이 ROOT 를 픽스처로 만드는 유일한 방법이다.
   이 방식은 **검사기 코드를 고치지 않는다** — 테스트를 위해 프로덕션 경로에 훅을 내면
   그 훅 자체가 감시 밖의 분기가 된다.
 
@@ -57,7 +57,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.join(HERE, "fixtures")
 CASES = os.path.join(HERE, "cases.json")
 
-# 검사기 이름 → 실제 파일. 사본은 픽스처의 `plugins/karina/evals/` 에 같은 이름으로 놓인다.
+# 검사기 이름 → 실제 파일. 사본은 픽스처의 `evals/` 에 같은 이름으로 놓인다.
 CHECKERS = {
     "harness": "check-harness-consistency.py",
     "truncation": "check-comment-truncation.py",
@@ -101,7 +101,7 @@ def build_tree(case):
     shutil.copytree(fx, root)
 
     checker = CHECKERS[case["checker"]]
-    dst_dir = os.path.join(root, "plugins", "karina", "evals")
+    dst_dir = os.path.join(root, "evals")
     os.makedirs(dst_dir, exist_ok=True)
     shutil.copyfile(os.path.join(HERE, checker), os.path.join(dst_dir, checker))
 
@@ -168,7 +168,7 @@ def run_case(case):
             rmtree_force(tmp)
         return False, err, None
     try:
-        checker = os.path.join(root, "plugins", "karina", "evals", CHECKERS[case["checker"]])
+        checker = os.path.join(root, "evals", CHECKERS[case["checker"]])
         env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
         # 검사기는 git 을 부르고 레포 전수를 훑으므로 단발 git 보다 상한을 넉넉히 잡는다.
         #   초과는 러너를 죽이지 않고 **그 케이스만 실패**로 돌린다 — 예외가 `main()` 까지
@@ -245,7 +245,7 @@ def check_fixture_tracking():
 
     반환: `(미추적 상대경로 목록, 실패 사유 or None)`.
     """
-    repo = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+    repo = os.path.abspath(os.path.join(HERE, ".."))   # 하니스 루트
     if not os.path.isdir(FIXTURES):
         return [], None                      # 픽스처 폴더가 없으면 잴 것이 없다
     on_disk = set()
@@ -254,7 +254,7 @@ def check_fixture_tracking():
             rel = os.path.relpath(os.path.join(dirpath, f), repo)
             on_disk.add(rel.replace(os.sep, "/"))
     try:
-        out = subprocess.run(["git", "ls-files", "plugins/karina/evals/fixtures"],
+        out = subprocess.run(["git", "ls-files", "evals/fixtures"],
                              cwd=repo, capture_output=True, text=True,
                              timeout=20, stdin=subprocess.DEVNULL)
     except OSError as e:
@@ -334,7 +334,7 @@ def main():
             print("  " + rel)
         print("케이스를 돌리지 않고 멈춥니다 — 이 파일들은 클론·설치본에 없어 "
               "그 케이스가 침묵하는 green 이 됩니다. `.gitignore` 의 경로 무관 패턴을 확인하세요"
-              "(예외 형식: `!plugins/karina/evals/fixtures/**/<파일명>`).")
+              "(예외 형식: `!evals/fixtures/**/<파일명>`).")
         return 2
     if a.filter:
         cases = [c for c in cases if c["checker"] == a.filter]

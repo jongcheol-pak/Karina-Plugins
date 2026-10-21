@@ -8,7 +8,7 @@
 
 ### 검사 대상
 
-격리 USERPROFILE에서 `plugins/karina/hooks/evals/filter-spec.ps1` 의 `GoldenFilterNames` 에 오른 hook을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `plugins/karina/hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
+격리 USERPROFILE에서 `hooks/evals/filter-spec.ps1` 의 `GoldenFilterNames` 에 오른 hook을 stdin JSON 케이스로 실행해 exit code·출력을 대조한다(케이스 정본: `hooks/evals/hook-cases.json` + 러너 내장 시나리오). 전부 OK면 exit 0.
 
 ### 실행 모드 4종
 
@@ -44,7 +44,7 @@
 **전경에서 그냥 돌린다.**
 
 ```
-pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/karina/hooks/evals/run-hook-evals.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File hooks/evals/run-hook-evals.ps1
 ```
 
 - **v1.225.0에서 분리 실행·`Monitor` 폴링 절차가 사라졌다** — 무상태 그룹(313케이스)이 한 자식에서 순차로 돌아 전체 wall-clock을 혼자 결정하던 것을 `stateless-<N>` 8샤드로 나누고 동시 상한을 논리 코어의 절반으로 올렸다. 그때 실측은 **450초**(919케이스, 2026-09-13)였으나 **케이스가 늘어 10분을 넘기는 실행이 이어진다**(684초 — 1059케이스, 2026-10-14). 그래도 전경으로 돌린다 — Claude Code 2.1.299 에서 timeout 600000 으로 띄운 전경 실행이 그 시한에 백그라운드로 넘어가 완주했다(완료 알림 · 2026-10-14 관측 1회).

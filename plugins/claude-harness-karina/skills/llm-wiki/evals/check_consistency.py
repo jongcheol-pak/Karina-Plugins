@@ -76,8 +76,8 @@ FAIL(그 절차의 범위가 통째로 빈다), 헤딩에만 있는 이름은 �
 
 ⑮ 파일명 § 인용 소재 — schema 번들이 여러 파일로 나뉜 뒤, **파일명을 붙인** § 인용(`<파일> §N`)이
 그 § 의 `## N.` 헤딩을 실제로 가진 파일을 가리키는가. 절을 옮기면 파일명 인용은 조용히 틀린
-파일을 지목하는데 다른 축은 이 인용을 보지 않았다(⑧ 은 절차 라벨만 본다). 스캔은 `plugins/karina`
-전역이다 — 인용은 대개 다른 파일에 있다. **파일명 없는 `schema §N`·접두 없는 `§N` 은 대상 밖**이다:
+파일을 지목하는데 다른 축은 이 인용을 보지 않았다(⑧ 은 절차 라벨만 본다). 스캔은 하니스 루트의
+런타임 폴더(skills·agents·scripts·hooks·evals·.claude-plugin) 전역이다 — 인용은 대개 다른 파일에 있다. **파일명 없는 `schema §N`·접두 없는 `§N` 은 대상 밖**이다:
 번호가 번들 전역에서 유일하고 코어 목차가 라우팅하므로 틀린 파일을 지목할 수 없다.
 
 ⑯ 큐 소비 규칙 포인터 실재 — 큐 태그별 소비 규칙(B-1 0)을 옛 파일에서 정본으로 가리키는 줄이
@@ -141,6 +141,8 @@ ROUTING_LETTER_RX = re.compile(r"^([A-Z])\.\s")
 # 절차 헤딩(### 레벨 고정 — #### A-1. 하위 헤딩과 구분)
 PROC_HEADING_RX = re.compile(r"^### ([A-Z])\. ", re.M)
 
+
+PLUGIN_RUNTIME_DIRS = (".claude-plugin", "agents", "evals", "hooks", "scripts", "skills")
 
 def die(msg):
     print(f"[ANCHOR FAIL] {msg}")
@@ -1431,15 +1433,20 @@ def check_schema_citations(bundle):
     for fname, text in bundle.items():
         for hm in re.finditer(r"^## (\d+(?:-\d+)?)\.", text, re.M):
             where.setdefault(hm.group(1), []).append(fname)
-    root = os.path.dirname(os.path.dirname(SKILL_DIR))   # plugins/karina
+    root = os.path.dirname(os.path.dirname(SKILL_DIR))   # 하니스 루트(플러그인 루트)
     issues, checked = [], 0
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+        if dirpath == root:
+            # 하니스 루트에는 개발 자산(docs·intent·assets)도 있다 — 이력 문서가 옛 § 를 인용하므로
+            #   스캔은 플러그인 런타임 폴더로 한정한다(이전 전 범위 plugins/karina 와 같다).
+            dirnames[:] = [d for d in dirnames if d in PLUGIN_RUNTIME_DIRS]
+            filenames = []
         for fn in sorted(filenames):
             if os.path.splitext(fn)[1] not in (".md", ".py", ".json", ".ps1"):
                 continue
             path = os.path.join(dirpath, fn)
-            rel = os.path.relpath(path, os.path.dirname(os.path.dirname(root))).replace(os.sep, "/")
+            rel = os.path.relpath(path, root).replace(os.sep, "/")
             for no, line in enumerate(read(path).splitlines(), 1):
                 for m in SCHEMA_CITE_RX.finditer(line):
                     cited = m.group(1) + ".md"

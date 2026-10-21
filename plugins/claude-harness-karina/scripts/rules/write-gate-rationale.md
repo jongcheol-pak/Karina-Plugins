@@ -8,7 +8,7 @@
 ```
 # guard-write.ps1 — PreToolUse hook: plan 없이 코드를 고치는 것을 차단 (exit 2)
 #
-# 담당 조항(정본: `plugins/karina/skills/DESIGN.md`의 hook 담당 조항 표): E5 plan 게이트.
+# 담당 조항(정본: `skills/DESIGN.md`의 hook 담당 조항 표): E5 plan 게이트.
 #   plan 승인이 자율 루프의 위임장이므로, 그것 없이 코드가 바뀌면 무엇을 왜 바꿨는지의 근거가 없다.
 #
 # 게이트는 둘이다 — ① plan 존재 ② plan 작성(체크박스 형식).

@@ -23,7 +23,7 @@
 맥락에 따로 있는 두 문자열로 참이 되는 거짓 통과를 낸 전력이 있다(옛 회로 4 — 소비 규칙이
 그 파일을 떠난 뒤에도 다른 절이 두 문자열을 함께 담아 통과했다).
 
-실행: python plugins/karina/skills/evals/check_wiki_circuit.py [--skills <경로>]
+실행: python skills/evals/check_wiki_circuit.py [--skills <경로>]
 종료 코드: 0 통과 / 1 실패
 """
 import argparse

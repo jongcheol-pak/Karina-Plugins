@@ -7,5 +7,5 @@
 `PROSE_TARGETS` 가 여럿일 때 **루프가 실제로 도는지**를 재는 자리다 — 대상이 하나뿐이면
 첫 항목만 보는 구현도 green 이다.
 
-- 정상 경로: `plugins/karina/skills/sample/SKILL.md`
+- 정상 경로: `skills/sample/SKILL.md`
 - 정상 심볼: `old-ref.md`

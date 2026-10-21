@@ -31,6 +31,7 @@ exit 에 기여하지 않는다. 「0건」(잴 것을 재서 아무것도 안 �
 없었다)을 가르되, 이 검사기가 다른 레포·골든 픽스처에서도 돌아야 해서 앵커 실패로는 못 본다.
 """
 import fnmatch
+import os
 import pathlib
 import re
 import subprocess
@@ -39,7 +40,23 @@ from collections import Counter
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-ROOT = pathlib.Path(__file__).resolve().parents[3]
+ROOT = pathlib.Path(__file__).resolve().parents[1]   # 하니스 루트
+RUNTIME_DIRS = ('.claude-plugin', 'agents', 'evals', 'hooks', 'scripts', 'skills')
+REQUIRED_DIRS = ('skills', 'docs')
+
+
+def _git_root():
+    # 하니스 루트가 git 루트 아래 폴더일 수 있다 — `.github` 를 찾을 자리다. git 이 없으면 하니스 루트.
+    try:
+        out = subprocess.run(['git', '-C', str(ROOT), 'rev-parse', '--show-toplevel'],
+                             capture_output=True, text=True, timeout=20, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        return ROOT
+    top = out.stdout.strip()
+    return pathlib.Path(top) if out.returncode == 0 and top else ROOT
+
+
+GIT_ROOT = _git_root()
 
 DEAD = [
     # 구 스킬 2 (회차 1)
@@ -100,13 +117,13 @@ EXCEPTIONS = [
     (re.compile(r'^(plan|notes)\.md$'),
      '루트의 진행 메모·이력 — 이 스캐너는 pathlib 순회라 gitignore 를 보지 않는다(둘 다 gitignore 지만 디스크에 실재한다). '
      '지나간 회차가 그때의 대상을 이름으로 적은 것이라 갱신 대상이 아니다'),
-    (re.compile(r'^plugins/karina/evals/check-stale-refs\.py$'),
+    (re.compile(r'^evals/check-stale-refs\.py$'),
      '이 검사기 자신 — DEAD 목록이 곧 검사 대상 문자열이다'),
-    (re.compile(r'^plugins/karina/skills/llm-wiki/evals/fixtures/'),
+    (re.compile(r'^skills/llm-wiki/evals/fixtures/'),
      'lint 골든 픽스처 — 옛 스킬 이름이 테스트 입력의 일부라 바꾸면 기대값이 깨진다'),
     # 이 검사기의 골든은 **케이스 파일에 옛 이름을 적는다** — 변이 문자열이 곧 검사 대상
     #   문자열이라, 픽스처 디렉터리만 빼면 `cases.json` 이 남아 실행이 자기 골든을 잡는다.
-    (re.compile(r'^plugins/karina/evals/(fixtures/|cases\.json$)'),
+    (re.compile(r'^evals/(fixtures/|cases\.json$)'),
      '이 검사기의 골든 — 옛 이름을 심는 것이 케이스의 입력이라 바꾸면 기대값이 깨진다'),
 ]
 # 줄 단위 예외 — 이력 인용. **버전 태그와 제거·개명 동사가 같은 줄에 있어야** 한다.
@@ -134,13 +151,13 @@ PROSE_TARGETS = (
     'AGENTS.md',
     'README.md',
     'docs/golden-runner.md',
-    'plugins/karina/skills/DESIGN.md',
-    'plugins/karina/skills/AUTHORING.md',
-    'plugins/karina/skills/BUDGET.md',
-    'plugins/karina/skills/WIKI.md',
-    'plugins/karina/evals/harness-consistency-rationale.md',
-    'plugins/karina/evals/harness-consistency-pointer-rationale.md',
-    'plugins/karina/evals/harness-consistency-tagenum-rationale.md',
+    'skills/DESIGN.md',
+    'skills/AUTHORING.md',
+    'skills/BUDGET.md',
+    'skills/WIKI.md',
+    'evals/harness-consistency-rationale.md',
+    'evals/harness-consistency-pointer-rationale.md',
+    'evals/harness-consistency-tagenum-rationale.md',
 )
 
 # 백틱 인라인 코드 스팬. 여는·닫는 백틱이 같은 줄에 있는 것만 본다(코드 펜스는 여러 줄이라
@@ -259,26 +276,28 @@ def scan_tree():
     #   루트를 재귀하면 .git·node_modules 배제를 새로 관리해야 하는데 얻는 것이 없다.
     for pat in ('*.ps1', '*.md'):
         targets.extend(p for p in ROOT.glob(pat) if p.is_file())
-    # `.github` 만 **선택**이다 — CI 없는 레포가 정상이라 부재를 앵커 실패로 보면
-    #   이 검사기가 그 레포에서 통째로 exit 2 가 된다(골든 픽스처도 그 상태였다).
-    #   `plugins`·`docs` 는 없으면 잴 것이 없다는 뜻이라 종전대로 앵커 실패다.
-    for base in ('plugins', 'docs', '.github'):
+    # 하니스 루트의 폴더는 **목록으로 고른다** — `intent/`·`assets/` 는 옛 이름을 이력으로
+    #   인용해 범위 밖이다. `skills`·`docs` 는 없으면 잴 것이 없다는 뜻이라 앵커 실패고,
+    #   나머지는 선택이다(골든 픽스처는 일부만 갖는다).
+    # `.github` 는 **git 루트**에 있다(모노레포에서 하니스 루트는 git 루트 아래 플러그인 폴더다).
+    #   CI 없는 레포가 정상이라 부재는 건너뛴다.
+    for base in RUNTIME_DIRS + ('docs', GIT_ROOT / '.github'):
         d = ROOT / base
         if not d.is_dir():
-            if base == '.github':
+            if base not in REQUIRED_DIRS:
                 continue
             print(f'[ANCHOR FAIL] 대상 없음: {d}')
             return 2
         for p in d.rglob('*'):
             if not p.is_file() or p.suffix in ('.pyc', '.png', '.jpg'):
                 continue
-            if SKIP_DIRS & set(p.relative_to(ROOT).parts):
+            if SKIP_DIRS & set(p.parts):
                 continue
             targets.append(p)
 
     hits, excused_n = Counter(), Counter()
     for p in targets:
-        rel = p.relative_to(ROOT).as_posix()
+        rel = pathlib.Path(os.path.relpath(p, ROOT)).as_posix()
         why = excused(rel)
         try:
             text = p.read_text(encoding='utf-8-sig', errors='replace')
@@ -341,7 +360,7 @@ def prose_path_rx(token):
     """경로 토큰을 인덱스에 맞출 정규식으로 바꾼다 — **접미 매치이고 글롭을 받는다**.
 
     이 문서는 앞 포인터가 준 앵커를 생략한 상대 표기를 상용한다(`plan/SKILL.md` 는
-    `plugins/karina/skills/plan/SKILL.md` 를 가리킨다). 완전 경로만 보면 그 표기가 전부
+    `skills/plan/SKILL.md` 를 가리킨다). 완전 경로만 보면 그 표기가 전부
     오탐이라 축이 성립하지 않는다. 대가는 **동명이인**이다 — 가리키던 파일이 사라져도
     같은 접미의 다른 파일이 있으면 통과한다. 이 축이 잡으려는 것은 「대상이 통째로
     사라진 자리」라 그 대가를 받는다.

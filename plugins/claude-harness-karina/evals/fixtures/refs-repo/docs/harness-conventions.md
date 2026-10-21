@@ -6,10 +6,10 @@
 아래 네 줄이 **경로 후보 4건**이고 전부 이 픽스처에 실재한다. 각 줄은 후보 판정의 다른
 형태를 하나씩 맡는다 — 한 줄에 몰면 어느 형태가 걸렸는지 갈리지 않는다.
 
-- 완전 경로: `plugins/karina/skills/sample/SKILL.md`
-- 앵커 생략(접미 매치): `skills/sample/SKILL.md`
+- 완전 경로: `skills/sample/SKILL.md`
+- 앵커 생략(접미 매치): `sample/SKILL.md`
 - 디렉터리: `docs/plans/`
-- 글롭: `plugins/karina/evals/*.json`
+- 글롭: `evals/*.json`
 
 ## 심볼 축
 

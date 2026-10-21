@@ -4,7 +4,7 @@
 
 ## §1 담당 조항과 설계
 
-`plugins/karina/skills/DESIGN.md` §5 의 **E12(자율 루프를 중간에 멈추지 않는다)** 를 담당한다. 형태 판정의 정본은 여전히 `implement/references/loop-stop-patterns.md` 이고, 이 hook 은 **그 문면이 놓친 정지 가운데 plan 에 미완 task 가 남은 것**에만 계속을 주입하는 2차 방어선이다.
+`skills/DESIGN.md` §5 의 **E12(자율 루프를 중간에 멈추지 않는다)** 를 담당한다. 형태 판정의 정본은 여전히 `implement/references/loop-stop-patterns.md` 이고, 이 hook 은 **그 문면이 놓친 정지 가운데 plan 에 미완 task 가 남은 것**에만 계속을 주입하는 2차 방어선이다.
 
 - **transcript 를 읽지 않고 문면도 판정하지 않는다** — v1.225.0 에 제거된 `require-evidence` 가 두 가지를 다 했다. transcript 는 비동기로 쓰여 Stop 시점에 마지막 응답이 빠질 수 있고(공식 hooks 문서 `transcript_path` 항), 파싱 상한·tail 줄 수를 조정할 때마다 fail-open 결함이 새로 났다(대장 종결분 6건). 한국어 정지 문면은 어미 조합이 무한해 정규식이 수렴하지 않는다. 그래서 이 hook 은 **발동 마커 · plan.md 체크박스 · Stop 페이로드의 필드**만 입력으로 쓴다.
 - **`decision:"block"` 이 아니라 `additionalContext` 로 계속시킨다** — 공식 문서가 「설계대로 동작하는 안내」에 권하는 형태이고, 같은 루프 보호(`stop_hook_active`·연속 8회 상한)를 받는다. 트랜스크립트에 hook 오류가 아니라 피드백으로 표시된다. 이 형태는 `exit 0` 이므로 `AGENTS.md` 「hook 출력 규약」의 「차단은 `exit 2` 하나, 그것을 내는 hook 은 넷」을 바꾸지 않는다.
@@ -30,7 +30,7 @@ stdin 파싱 실패 · `session_id` 부재 · `cwd` 부재 · plan 을 못 찾�
 
 **미완 판정식** — `session-context.ps1` 의 미완 계수식(`$planBulletRx` + `\[[ /]\][ \t]*\**T\d+`)에 이름 그룹 ID 캡처(`(?<id>T\d+(?:-\d+)?)`)만 더한 식이다. `$planBulletRx` 가 번호 그룹을 가져 숫자 그룹을 쓰면 ID 가 아니라 불릿을 집는다. 템플릿 정본(`plan/references/plan-template.md` 「작업 단계」)의 `- [ ] **T1-1**` 과 구형 `- [ ] T1:` 을 함께 받고, `[/]`(진행 중)도 미완으로 센다.
 
-**사본이다** — `Find-PlanFileUpwards` 와 `$planBulletRx` 는 두 hook 에 같은 글자로 있고 `plugins/karina/evals/check-harness-consistency.py` 의 「복제 사본 동기」 축이 일치를 잰다(공용 `.ps1` 은 차단 hook 보호 목록을 넓혀 만들지 않는다 — `session-context-rationale.md` §5). 판정식의 뒷부분은 두 hook 에서 모양이 갈려(계수 ↔ ID 캡처) 기계 대조 밖이라 **두 hook 의 근거 문서가 서로를 가리킨다**(이 절 ↔ `session-context-rationale.md`「§5-1 task 계수식」) — 한쪽만 고치면 세션 시작 안내와 계속 주입이 서로 다른 미완 수를 보게 되고, 그것은 두 hook 의 불릿 집합 골든이 각각 잡는다.
+**사본이다** — `Find-PlanFileUpwards` 와 `$planBulletRx` 는 두 hook 에 같은 글자로 있고 `evals/check-harness-consistency.py` 의 「복제 사본 동기」 축이 일치를 잰다(공용 `.ps1` 은 차단 hook 보호 목록을 넓혀 만들지 않는다 — `session-context-rationale.md` §5). 판정식의 뒷부분은 두 hook 에서 모양이 갈려(계수 ↔ ID 캡처) 기계 대조 밖이라 **두 hook 의 근거 문서가 서로를 가리킨다**(이 절 ↔ `session-context-rationale.md`「§5-1 task 계수식」) — 한쪽만 고치면 세션 시작 안내와 계속 주입이 서로 다른 미완 수를 보게 되고, 그것은 두 hook 의 불릿 집합 골든이 각각 잡는다.
 
 ## §5 상태 파일과 정리
 

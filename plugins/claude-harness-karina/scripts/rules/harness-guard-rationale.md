@@ -8,7 +8,7 @@
 ```
 # guard-harness.ps1 — PreToolUse hook: Write/Edit 대상이 하니스 자신·AGENTS.md 경계를 침범하는지 검사
 #
-# 담당 조항(정본: `plugins/karina/skills/DESIGN.md`의 hook 담당 조항 표):
+# 담당 조항(정본: `skills/DESIGN.md`의 hook 담당 조항 표):
 #   E4 하니스 자기 게이트 무력화 차단 · E6 AGENTS.md 내용 경계.
 #   둘을 한 파일에 둔 이유는 판정 입력이 같기 때문이다 — 둘 다 대상 경로 하나로 갈린다.
 #
