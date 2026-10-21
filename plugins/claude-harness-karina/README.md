@@ -215,6 +215,7 @@ plan.md 를 추적하는 레포에서는 마무리에 plan.md 도 한 번 커밋
 | 검증 스킬 유지 (`karina:maintain-verification-skill`) | `/karina:maintain-verification-skill` 직접 호출 | 앱이 바뀐 뒤 기능 지도를 다시 맞춤 — 기능마다 소스를 읽고 모든 기능을 실제로 조작해, 증명된 수정만 PR 하나로 낸다(고칠 것이 없으면 PR 없음) |
 | 형식 검증 스킬 만들기 (`karina:create-formal-verification-skill`) | `/karina:create-formal-verification-skill` 직접 호출 | 깨지면 사용자가 다치고 테스트가 잘 닿지 않는 속성 하나(동시성·재시도·상태 기계·파서)를 골라 맞는 도구(순서 문제는 TLA+)로 형식 검증하고, 일부러 깨뜨린 변경을 잡는지 한 번 증명한 뒤 검증 스킬(`.claude/skills/formal-영역/`)을 AGENTS.md 의 `Verify (형식 검증)` 줄에 등록 · 이후 그 코드를 건드린 task·PR·디버깅 수정에서 검사를 다시 돌린다 · 검증 도구 설치는 승인을 받은 뒤에만 |
 | 형식 검증 스킬 유지 (`karina:maintain-formal-verification-skill`) | `/karina:maintain-formal-verification-skill` 직접 호출 | 코드가 바뀐 뒤 형식 검증을 코드에 다시 맞춤 — 동기 커밋부터 덮는 코드의 변경을 읽어 모델·하네스·속성을 고치고 다시 돌려, 검증 드리프트와 코드 버그를 갈라 보고하고 증명된 검증 수정만 PR 하나로 낸다(검증 도구가 없으면 설치하지 않고 blocked) |
+| 세션 회고 (`karina:reflect`) | `/karina:reflect` 직접 호출 | 현재 세션의 대화 전사(서브에이전트 포함)를 요약해 읽기 전용 리뷰어가 karina 스킬·hook 의 개선 후보 표를 내고, 사용자가 번호로 고른 것만 Deferred 대장에 올려 로컬 커밋한다 — 스킬 파일은 고치지 않고, karina 하니스 레포 밖에서 부르면 대장 줄을 보고에만 낸다 |
 
 계획 체인은 Karina 앱이 떠 있고 이 세션이 Karina 앱 탭 안에 있어야 하며, 워커 세션은 **agent 권한 확인을 끈 채** 돈다 — 하니스 차단 hook 은 그대로 동작하지만 사람이 보는 권한 확인 층은 없다. 워커는 Karina 앱에서 어느 워크트리를 보고 있든 대상 레포 폴더에서 돌고(병렬 그룹의 워커는 각자 새 worktree 에서 돈다), 그 폴더를 다른 세션 워커가 쓰고 있으면 끝날 때까지 기다린다. PR 모드는 GitHub 원격과 `gh` 로그인이 있고, 지금 브랜치에 미커밋 변경도 기본 브랜치에 없는 커밋(push 안 된 커밋 포함 · merge 된 karina/ 접두 브랜치는 그 PR 뒤 커밋만 센다)도 없을 때만 고를 수 있다. 스택 모드(`T`)는 같은 조건에 더해 병렬 그룹이 없을 때만 고를 수 있다. `Y` 로 승인해도 체인이 끝나면 PR 하나를 엽니다(체인 끝 PR — GitHub 원격과 `gh` 로그인이 있을 때 · merge 는 요청할 때).
 
@@ -227,8 +228,9 @@ plan.md 를 추적하는 레포에서는 마무리에 plan.md 도 한 번 커밋
 | plan-reviewer | Opus | 계획 완성 후(지적을 고치면 다시 — 최대 3라운드, 3라운드는 2라운드에 BLOCKER가 있었을 때만 · 남은 지적은 승인 화면에 · 경량 계획에서는 부르지 않음) | 계획이 **실측 위에 서 있는지** — 적힌 명령이 그 주장을 낼 수 있는지(조사 기록의 빈 명령 칸·위키 기록 유무는 사전 스크립트가 먼저 거르고, 스크립트가 못 돌았을 때만 리뷰어가 직접 본다), 읽은 함정이 계획·구현 어느 자리로든 갔는지, 바꿀 심볼의 호출자가 파일 목록에 다 있는지, 승인이 필요한 항목에 그것이 생기지 않는 다른 설계(회피 설계)가 있는지, 검증 명령이 프로젝트 지침(`AGENTS.md`)에 있는지, 삭제 대상을 되살릴 수 있는지(복구 경로)를 쟀는지, 계획이 고른 설계의 결함을 스스로 받아들이지 않았는지, 설명 속 사실 주장을 잴 수 있는데 실측도 추정 표시도 없이 썼는지 |
 | completion-reviewer | Opus | 모든 task 완료 후 1회(경량 계획은 실제 변경이 3파일 이상일 때만 — 그 밖에는 작업 세션이 같은 다섯 항목을 직접 재서 보고에 싣는다) | 계획 전체와 최종 상태의 대조 — 요구가 산출물에 나타났는지, 완료 표시가 진실인지(task 커밋 본문의 검증 결과를 증거로 읽고 표본을 다시 돌려 본다), 성공 기준을 직접 재봤을 때 참인지, 판정·근거 줄의 주장을 잴 수 있는데 재지 않고 추정으로 남겼는지 |
 | pr-verifier | Opus | `karina:pr` ship 이 merge 하기 전 PR 마다 1회 | PR head 를 받아 둔 worktree 에서 그 레포 `AGENTS.md` 의 빌드·테스트·검증 명령과 Verify 검증 스킬을 돌리고, PR 본문의 화면 시나리오를 head 와 BASE worktree(PR 의 부모)에서 조작해 BASE 거짓·head 참을 판정하고, 실패한 명령은 BASE 에서 재실행해 head 에만 있는 실패를 가르며, 체크를 끄거나 soft-fail 로 바꾼 변경은 FAIL 로 내고 PASS / PASS+NOTES / FAIL 과 스크린샷 경로를 돌려준다 — 코드를 쓰지 않은 쪽의 판정만 merge 근거가 된다 |
+| reflect-reviewer | Opus | 사용자가 `/karina:reflect` 를 부를 때 1회 | 현재 세션 전사의 요약을 끝까지 읽고 사용자가 손으로 메운 일·hook 오탐·반복 실패를 찾아, karina 스킬·hook·에이전트의 개선 후보 표(고칠 파일·근거·등재 하한선·대장 그룹·기존 대장과의 겹침·대장 줄 초안)를 낸다 — 파일을 고치지 않는다 |
 
-**검토자 호출은 이 두 곳뿐입니다(독립 검증자는 `karina:pr` ship 이 merge 전에만 부릅니다).** task마다 검토자를 부르지 않습니다 — Claude Opus 5는 지시 없이도 자기 작업을 검증하므로, 그 위에 검토 단계를 얹으면 비용과 시간만 배가 되고 품질은 오르지 않습니다([Anthropic 프롬프팅 가이드](https://platform.claude.com/docs/ko/build-with-claude/prompt-engineering/prompting-claude-opus-5)의 권고).
+**검토자 호출은 이 두 곳뿐입니다(독립 검증자는 `karina:pr` ship 이 merge 전에만, `reflect-reviewer` 는 사용자가 부른 `/karina:reflect` 안에서만 부릅니다).** task마다 검토자를 부르지 않습니다 — Claude Opus 5는 지시 없이도 자기 작업을 검증하므로, 그 위에 검토 단계를 얹으면 비용과 시간만 배가 되고 품질은 오르지 않습니다([Anthropic 프롬프팅 가이드](https://platform.claude.com/docs/ko/build-with-claude/prompt-engineering/prompting-claude-opus-5)의 권고).
 
 검토 흐름의 규칙:
 
@@ -304,6 +306,7 @@ plan.md 를 추적하는 레포에서는 마무리에 plan.md 도 한 번 커밋
 | `/karina:maintain-verification-skill` | 검증 스킬 유지 (직접 호출 전용) |
 | `/karina:create-formal-verification-skill` | 형식 검증 스킬 만들기 (직접 호출 전용) |
 | `/karina:maintain-formal-verification-skill` | 형식 검증 스킬 유지 (직접 호출 전용) |
+| `/karina:reflect` | 세션 회고 — 개선 후보를 대장에 등재 (직접 호출 전용) |
 
 ---
 
