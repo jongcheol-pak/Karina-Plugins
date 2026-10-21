@@ -316,7 +316,8 @@ def prepare_git_repo_vault(fixture_dir, synced_mode, repo_layout="flat"):
     레포 경로가 git 루트의 하위 폴더 `sub` 다(§7-39 — 근거 경로는 `sub` 기준, `git diff` 는
     git 루트 기준). 커밋 셋: ① 루트 `README.md`·`sub/README.md`·`sub/a.txt`·`tools/ci.yml`·
     `old/b.txt` 생성 ② 루트 `README.md` 수정 · `old/b.txt` → `sub/b.txt` 내용 그대로 이동
-    ③ `sub/a.txt`·`tools/ci.yml` 수정. `sub` 아래에 `.git` 이 없어 §7-26 은 건너뛴다.
+    ③ `sub/a.txt`·`tools/ci.yml` 수정 ④ 루트 `README.md` 만 수정 — 넷째 커밋이 있어 §7-26 뒤처짐이
+    전체 셈(3)과 하위 폴더 한정 셈(2)으로 갈린다. flat 배치는 커밋 셋 그대로다.
     커밋은 전역 git config에 의존하지 않게 `-c user.*`를 케이스 로컬로 준다.
     git이 없거나 실패하면 (None, None) — 호출부가 케이스를 SKIP한다.
     반환: (정리용 임시 루트, vault 경로). 기대 뒤처짐 수는 케이스의 expect_keywords가
@@ -330,7 +331,7 @@ def prepare_git_repo_vault(fixture_dir, synced_mode, repo_layout="flat"):
     try:
         subprocess.run(["git", "init", "-q", repo], check=True, capture_output=True, timeout=20)
         shas = []
-        for i in range(3):
+        for i in range(4 if repo_layout == "monorepo" else 3):
             if repo_layout == "monorepo":
                 _write_monorepo_commit(repo, i)
             else:
@@ -378,9 +379,11 @@ def _write_monorepo_commit(repo, i):
         put("README.md", "README.md v1\n")
         os.makedirs(os.path.join(repo, "sub"), exist_ok=True)
         os.replace(os.path.join(repo, "old", "b.txt"), os.path.join(repo, "sub", "b.txt"))
-    else:
+    elif i == 2:
         put("sub/a.txt", "sub/a.txt v2\n")
         put("tools/ci.yml", "tools/ci.yml v2\n")
+    else:
+        put("README.md", "README.md v3\n")
 
 
 def prepare_aux_split_vault(fixture_dir, concept_count, open_questions):

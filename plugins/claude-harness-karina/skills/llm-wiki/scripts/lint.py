@@ -703,8 +703,9 @@ def feature_index_rows(text):
     return sum(1 for line in sec.splitlines() if is_feat_recipe_row(line))
 
 
-def git_commits_behind(repo_root, sha):
+def git_commits_behind(repo_root, sha, limit_to_root=False):
     """repo_root의 HEAD가 sha 이후로 몇 커밋 쌓였는지 반환(§7-26). 계산 불가면 None.
+    limit_to_root 면 repo_root 아래를 건드린 커밋만 센다(허브 경로가 git 루트의 하위 폴더일 때).
 
     fail-open이 이 함수의 계약이다 — git 미설치·비 git 레포·sha 소실(rebase·force push)·
     타임아웃·예외를 전부 None으로 흡수한다. lint은 읽기 전용 진단 도구라, 환경 차이로
@@ -712,7 +713,8 @@ def git_commits_behind(repo_root, sha):
     코드 내용은 읽지 않고 커밋 '수'만 센다(§7 결과 처리의 레포 접근 범위)."""
     try:
         proc = subprocess.run(
-            ["git", "-C", repo_root, "rev-list", "--count", f"{sha}..HEAD"],
+            ["git", "-C", repo_root, "rev-list", "--count", f"{sha}..HEAD"]
+            + (["--", "."] if limit_to_root else []),
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10,
             stdin=subprocess.DEVNULL,  # 자격증명·에디터 프롬프트로 매달리지 않게 입력을 닫는다
         )
@@ -4028,9 +4030,10 @@ def main():
                          f"(다음 ingest에서 기록, schema §2.2·§7-26)")
             continue
         root = repo_root_for_hub(text)
-        if root is None or not os.path.isdir(os.path.join(root, ".git")):
+        prefix = _git(root, "rev-parse", "--show-prefix") if root is not None else None
+        if prefix is None:
             continue  # 레포 경로 부재·git 아님 → 조용히 skip (fail-open — 다른 PC·비 git 레포)
-        behind = git_commits_behind(root, synced)
+        behind = git_commits_behind(root, synced, limit_to_root=bool(prefix.strip()))
         if behind is None:
             infos.append(f"동기 기준점이 레포 이력에 없음: {r} -> '{synced[:7]}' "
                          f"(rebase·force push 가능 — 다음 ingest에서 재설정, schema §7-26)")

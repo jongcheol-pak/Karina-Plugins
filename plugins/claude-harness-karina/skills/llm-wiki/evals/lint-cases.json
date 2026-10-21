@@ -2118,6 +2118,20 @@
       "rationale": "§7-39 내용 그대로 이동 음성 짝 — 둘째 커밋이 `old/b.txt` 를 `sub/b.txt` 로 내용 그대로 옮겼다. rename 100% 는 근거 내용이 그대로라 낡음이 아니다 — 이동 한 번에 근거 줄 전부가 경고되는 것을 막는다"
     },
     {
+      "fixture": "facts-monorepo",
+      "git_repo": true,
+      "repo_layout": "monorepo",
+      "synced_mode": "first",
+      "expect_keywords": [
+        "위키 뒤처짐",
+        "2커밋 미반영"
+      ],
+      "expect_absent": [
+        "3커밋 미반영"
+      ],
+      "rationale": "§7-26 하위 폴더 — 허브 레포 경로가 git 루트의 하위 폴더 `sub` 면 `.git` 폴더가 없어도 git 으로 레포를 판정하고, 그 폴더를 건드린 커밋만 센다. 첫 커밋 뒤 셋 중 넷째 커밋은 루트 `README.md` 만 바꿔 전체 셈(3)과 한정 셈(2)이 갈린다"
+    },
+    {
       "fixture": "body-code-path-feature",
       "expect_keywords": [
         "본문 코드 경로: 20_projects/personal/x/feat-a.md"
