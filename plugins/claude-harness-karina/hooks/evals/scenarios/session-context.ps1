@@ -788,6 +788,29 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-ScRepoHook
     Assert-Case -Name "session-context: 기능별 뒤처짐 표기 없음 (SC33e)" -R $r -ExpectExit 0 -ExpectContains '위키 뒤처짐' -ExpectNotContains '뒤처진 feature'
 
+    # SC38·SC38b: 모노레포 하위 폴더 허브 — 근거는 `rules/session-context-rationale-wiki.md` §38
+    #   SC33e 뒤에 둔다: synced($scSha31) 뒤 31커밋 중 `docs/` 를 건드린 것은 feat-src 하나라
+    #   하위 폴더 한정 셈(1)과 전체 셈(31)이 갈린다. 일수 축(15일)으로 발화시켜 커밋 수 문구를 본다.
+    #   두 cwd 에 게이팅 마커를 두는 이유는 SC37 준비와 같다.
+    $scDocsDir = Join-Path $scRepo 'docs'
+    $scPlugDir = Join-Path $scRepo 'plugb'
+    New-Item -ItemType Directory $scPlugDir -Force | Out-Null
+    @('# Guide', 'SC_MONO_DOCS_MARKER') | Set-Content -Encoding UTF8 (Join-Path $scDocsDir 'AGENTS.md')
+    @('# Guide', 'SC_MONO_PLUG_MARKER') | Set-Content -Encoding UTF8 (Join-Path $scPlugDir 'AGENTS.md')
+    # SC38 (양성 — 하위 폴더 셈): 허브 경로가 git 루트의 하위 폴더면 그 폴더를 건드린 커밋만 센다.
+    #   기대 문자열에 `위키가` 를 붙이는 이유: `31커밋 미반영` 이 `1커밋 미반영` 을 부분 문자열로 품는다.
+    Write-ScHub -Path $scHubPath -RepoPath $scDocsDir -Sha $scSha31 -DaysAgo 15 -RepoUrl $scRepoUrl
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scDocsDir } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 하위 폴더 허브는 그 폴더 커밋만 센다 (SC38)" -R $r -ExpectExit 0 -ExpectContains '위키가 1커밋 미반영' -ExpectNotContains '31커밋'
+    # SC38b (양성 — 허브 구분): 같은 URL 의 플러그인 허브 둘 중 cwd 가 속한 허브를 고른다.
+    #   이름순으로 앞선 scwiki-a.md 가 다른 플러그인(docs)이라, URL 만 보면 그쪽을 고른다.
+    $scHubPathA = Join-Path $scHubDir 'scwiki-a.md'
+    Write-ScHub -Path $scHubPathA -RepoPath $scDocsDir -Sha $scSha31 -DaysAgo 15 -Project 'SCOther' -RepoUrl $scRepoUrl
+    Write-ScHub -Path $scHubPath -RepoPath $scPlugDir -Sha $scSha31 -DaysAgo 15 -RepoUrl $scRepoUrl
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlugDir } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 같은 URL 의 다른 플러그인 허브를 고르지 않는다 (SC38b)" -R $r -ExpectExit 0 -ExpectContains 'SCWiki 위키가' -ExpectNotContains 'SCOther'
+    Remove-Item -Force $scHubPathA -ErrorAction SilentlyContinue
+
     # SC37~SC37d: 허브 매칭의 **URL 축** (v1.206.0 T3).
     #   위 SC32~SC36b 는 허브에 repo_url 이 없어 전부 **경로 축**으로 통과한다 — 그것이 축②
     #   (구형 허브 폴백)의 실증이고, 아래 넷이 축①과 그 경계를 덮는다.
