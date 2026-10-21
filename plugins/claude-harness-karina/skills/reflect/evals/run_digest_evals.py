@@ -179,10 +179,10 @@ def session_resolution_failures():
     # ⑥ ID 없음 · 파일 0개 · 2개 이상 → exit 2
     t = Tree()
     try:
-        rc, _, _ = digest(t, sid=None)
-        assert rc == 2, ('ID 없음', rc)
-        rc, _, _ = digest(t)
-        assert rc == 2, ('파일 0개', rc)
+        rc, _, err = digest(t, sid=None)
+        assert rc == 2 and '세션 ID 없음' in err, ('ID 없음', rc, err)
+        rc, _, err = digest(t)
+        assert rc == 2 and '세션 전사 0개' in err, ('파일 0개', rc, err)
         t.session('proj-a', SID, BASIC)
         t.session('proj-b', SID, BASIC)
         rc, _, err = digest(t)
