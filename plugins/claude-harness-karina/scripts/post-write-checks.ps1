@@ -1,0 +1,422 @@
+﻿# PostToolUse hook — 근거는 `rules/post-write-rationale.md` §1
+
+$ErrorActionPreference = 'SilentlyContinue'
+
+# 한글 경고가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+# stdin도 UTF-8로 디코딩 (v1.129.0) — Claude Code는 UTF-8 바이트로 보내는데 콘솔 기본 코드페이지(cp949)로
+#   읽으면 한글 경로·명령이 깨진다(경로 판정·경고 문구가 함께 손상). 실패해도 종전 동작 유지.
+try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+
+# ---- stdin JSON 1회 읽기 (두 검사 공유 — 같은 입력을 두 번 읽지 않음) ----
+$inputJson = [Console]::In.ReadToEnd()
+try {
+    $data = $inputJson | ConvertFrom-Json
+    $file = $data.tool_input.path
+    if (-not $file) { $file = $data.tool_input.file_path }
+    if (-not $file) { $file = $data.tool_input.notebook_path }   # NotebookEdit (guard-write와 동일 폴백 사슬)
+} catch {
+    exit 0
+}
+if ([string]::IsNullOrWhiteSpace($file)) { exit 0 }
+if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { exit 0 }
+
+# 두 검사의 경고를 합쳐 단일 stderr + 단일 additionalContext로 출력한다(모델 수신 정보는 분리 hook 때와 동일).
+$allMsgs = New-Object System.Collections.Generic.List[string]
+
+# 섹션 1·2가 나눠 쓰는 `git diff` 결과 — 근거는 `rules/post-write-rationale.md` §2-1
+#   두 섹션이 같은 파일에 같은 diff를 따로 불러 코드 파일 편집마다 git 호출이 1회 낭비였다.
+#   **두 try 블록 밖에서 초기화한다** — 섹션 1이 통째로 실패해도 섹션 2가 $false를 보고
+#   자기 호출로 폴백해야 하고, try 안에서만 선언하면 그 경로에서 변수가 없다.
+$sharedDiffLines = $null
+$sharedDiffOk = $false
+
+# 경고 디듑 마커 — 근거는 `rules/post-write-rationale.md` §2
+$pwStateDir = Join-Path $env:USERPROFILE '.claude/.state/post-write-warn'
+try { New-Item -Force -ItemType Directory -Path $pwStateDir | Out-Null } catch {}
+$pwSid = if ($data.session_id) { ([string]$data.session_id) -replace '[^\w.-]', '_' } else { 'nosid' }
+function Test-WarnOnce {
+    param([string]$Key)
+    try {
+        $md5 = [System.Security.Cryptography.MD5]::Create()
+        $hash = ($md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Key)) | ForEach-Object { $_.ToString('x2') }) -join ''
+        $mk = Join-Path $pwStateDir ($pwSid + '_' + $hash)
+        if (Test-Path -LiteralPath $mk) { return $false }
+        New-Item -Force -ItemType File -Path $mk | Out-Null
+        return $true
+    } catch { return $true }   # 마커 실패 시 경고 누락보다 중복이 낫다(fail-open)
+}
+
+# H2: 하니스 hook 개조 감지 — 근거는 `rules/post-write-rationale.md` §4
+$normFileH2 = $file -replace '\\', '/'
+# 이름 집합은 `rules/harness-hooks.json`이 단일 정본이다 — 탐지(이 파일)와 차단(guard-harness)이
+#   같은 값을 써야 대칭이 성립하는데, 복제하면 hook 신설 시 한쪽만 갱신돼 그 이름이 무방비가 된다.
+$harnessHookName = ''
+# `-ErrorAction Stop` 없이는 이 catch 가 안 걸린다(파일 전역이 'SilentlyContinue') — 아래 폴백이
+#   경고 없이 H2 를 끄므로, 탐지가 사라진 것을 아무도 모른다(회차 53 실측).
+try {
+    $harnessHookName = ((Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/harness-hooks.json') -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json).names -join '|')
+} catch { [Console]::Error.WriteLine('post-write-checks: 규칙 파일을 읽지 못해 하니스 hook 개조 탐지를 건너뜁니다 — rules/harness-hooks.json') }
+# 목록을 못 읽으면 빈 문자열이 되어 아래 정규식이 **모든 `.ps1`에 매치**한다 — 그 상태의 경고는
+#   전부 오탐이므로 검사를 건너뛴다(차단 hook 인 guard-harness 도 같은 상황에서 exit 0 으로 빠진다).
+if ([string]::IsNullOrWhiteSpace($harnessHookName)) { $harnessHookName = '(?!)' }
+# 8.3 단축명 마스킹 감지 — 근거는 `rules/post-write-rationale.md` §5
+$has83H2 = ($normFileH2 -match '(?i)/CLAUDE~[0-9]+(/|$)')
+$suspect83H2 = $has83H2 -and
+    ($normFileH2 -match ('(?i)/(' + $harnessHookName + ')(\.ps1)?(/|$)')) -and
+    ($normFileH2 -match '(?i)/plugins/cache/')
+if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hooks/hooks\.json$') {
+    # 문구 중립화 + 세션·파일당 1회 (v1.98.0): 개발 repo의 정상 hook 개발 편집에도 "개조 시도" 프레임이
+    #   매번 붙던 것을 검증 리마인더로 낮춘다(설치본 개조 '차단'은 guard-harness 소관 — 여긴 리마인더).
+    if (Test-WarnOnce ('hooksrc|' + $normFileH2)) {
+        $allMsgs.Add("[HARNESS] 하니스 hook 스크립트 변경: $file")
+        $allMsgs.Add("  hook 동작 변경은 골든 회귀(run-hook-evals.ps1)로 검증하세요. (세션·파일당 1회 리마인더)")
+        $allMsgs.Add("")
+    }
+} elseif ($suspect83H2) {
+    $allMsgs.Add("[HARNESS] 8.3 단축명(CLAUDE~1) 마스킹 경로 감지: $file")
+    $allMsgs.Add("  설치본 hook 경로를 단축명으로 숨긴 개조 시도일 수 있습니다 — 의도된 것인지 확인하세요.")
+    $allMsgs.Add("")
+} elseif ($normFileH2 -match '/\.claude/settings\.json$') {
+    # M2 — 근거는 `rules/post-write-rationale.md` §21
+    $allMsgs.Add("[HARNESS] .claude/settings.json 변경 감지: $file")
+    $allMsgs.Add("  enabledPlugins로 하니스 전체를 끄는 변경일 수 있습니다 — 의도된 설정 변경인지 확인하세요.")
+    $allMsgs.Add("")
+}
+
+# ============================================================ — 근거는 `rules/post-write-rationale.md` §6
+    try {
+        $utf8Warnings = New-Object System.Collections.Generic.List[string]
+
+        # ---- 1. BOM 검사 ----
+        # .ps1 파일은 PowerShell 5.x 호환성 위해 BOM 필요. 검사에서 제외.
+        $extLower = [System.IO.Path]::GetExtension($file).ToLower()
+        if ($extLower -ne '.ps1') {
+            try {
+                $stream = [System.IO.File]::OpenRead($file)
+                $bytes = New-Object byte[] 3
+                $read = $stream.Read($bytes, 0, 3)
+                $stream.Close()
+
+                if ($read -eq 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+                    $utf8Warnings.Add("BOM 발견 - UTF-8 (BOM 없음)으로 저장 필요")
+                }
+            } catch {
+                # 읽기 실패 시 무시
+            }
+        }
+
+        # ---- 파일 내용 1회 읽기 (영문 주석·시크릿 검사가 공유) ----
+        $raw = $null
+        $content = $null
+        try {
+            $raw = Get-Content -LiteralPath $file -Raw -Encoding UTF8 -ErrorAction Stop
+            if ($null -ne $raw) { $content = $raw -split '\r?\n' }
+        } catch {
+            # 바이너리 등 읽기 불가 파일은 각 검사의 $null 가드로 조용히 통과
+        }
+
+        # ---- 2. 영문 주석 비율 (코드 파일만) ----
+        # 주석 검사용 코드 확장자 — impact 섹션의 caller 검색용 목록($codeExtsImpact)과 다르므로 분리 유지.
+        $extComment = [System.IO.Path]::GetExtension($file).ToLower()
+        $codeExtsComment = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift')
+
+        if (($codeExtsComment -contains $extComment) -and $null -ne $content) {
+            # 언어별 주석 접두 (v1.98.0): 종전 '// 또는 #' 일괄 판정은 C 계열의 전처리 지시문
+            #   (#region/#if/#pragma — 주석 아님)을 영문 주석으로 오집계했다. .py만 #, 나머지는 //.
+            $commentPrefix = if ($extComment -eq '.py') { '^\s*#' } else { '^\s*//' }
+            $commentLines = $content | Where-Object { $_ -match $commentPrefix }
+            $totalComments = @($commentLines).Count
+
+            if ($totalComments -gt 5) {
+                # 한글 음절 유니코드 범위 (AC00-D7AF)
+                $hangulRegex = [regex]'[가-힯]'
+                $engComments = @($commentLines | Where-Object { -not $hangulRegex.IsMatch($_) }).Count
+
+                # 세션·파일당 1회 (v1.98.0): 의도적으로 영어를 쓰는 프로젝트(OSS 등)에서 그 파일을 만질
+                #   때마다 반복 주입돼 기존 영어 주석의 한글화(범위 초과 수정)로 오도하던 것 억제.
+                if ($engComments -gt ($totalComments / 2) -and (Test-WarnOnce ('engcomment|' + ($file -replace '\\', '/')))) {
+                    $utf8Warnings.Add("주석이 대부분 영문($engComments/$totalComments). 한글 주석 규칙 위반 가능 — 단 프로젝트가 의도적으로 영어 주석을 쓰면 그 관례를 따르세요(기존 주석의 일괄 한글화는 범위 초과). (세션·파일당 1회)")
+                }
+            }
+        }
+
+        # ---- 민감 정보 검사 — 근거는 `rules/post-write-rationale.md` §7
+        $skipSecretScan = $file -match '\.(env|env\..*)$' -or $file -match '(^|[\\/])\.git[\\/]'
+        if ((-not $skipSecretScan) -and $raw) {
+            # ---- 스캔 범위: 추적 파일은 HEAD 대비 미커밋 추가 라인만 — 근거는 `rules/post-write-rationale.md` §8
+            $scanText = $raw
+            try {
+                $fileDir = Split-Path -Parent $file
+                if ($fileDir -and (Test-Path -LiteralPath $fileDir -PathType Container)) {
+                    $null = & git -C $fileDir ls-files --error-unmatch -- $file 2>$null
+                    if ($LASTEXITCODE -eq 0) {
+                        $diffOut = @(& git -C $fileDir diff HEAD --unified=0 -- $file 2>$null)
+                        # diff 성공 여부를 반드시 확인한다 — 근거는 `rules/post-write-rationale.md` §9
+                        if ($LASTEXITCODE -eq 0) {
+                            # 섹션 2의 심볼 추출이 같은 diff를 다시 부르지 않도록 원본 줄을 넘긴다 —
+                            #   `+` 를 벗기기 전 형태여야 한다(저쪽 정규식이 `^\+` 로 시작한다).
+                            $sharedDiffLines = $diffOut
+                            $sharedDiffOk = $true
+                            $added = @($diffOut |
+                                Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') } |
+                                ForEach-Object { $_.Substring(1) })
+                            # 추가 라인 0줄(삭제만 있거나 HEAD와 동일) = 스캔할 신규 내용이 없다
+                            $scanText = if ($added.Count -gt 0) { $added -join "`n" } else { '' }
+                        }
+                        # diff 실패면 $scanText는 위에서 넣은 $raw 그대로 — 전재 폴백
+                    }
+                }
+            } catch {
+                $scanText = $raw   # git 호출 실패는 전재 폴백 (fail-open)
+            }
+
+            . (Join-Path $PSScriptRoot 'secret-patterns.ps1')
+            foreach ($label in @(Get-SecretMatches $scanText)) {
+                $utf8Warnings.Add("민감 정보로 보이는 내용 감지: $label. 실제 값을 파일에 남기지 말고, 환경변수 이름만 기록하거나 .env(gitignore)로 분리하세요. (이 파일은 git/스냅샷으로 보존될 수 있음)")
+            }
+        }
+
+        # 섹션 1 경고를 기존 check-utf8 출력 형식 그대로 묶어 합산 리스트에 추가
+        if ($utf8Warnings.Count -gt 0) {
+            $allMsgs.Add("POST-WRITE WARNINGS for ${file}:")
+            foreach ($w in $utf8Warnings) { $allMsgs.Add("  [!] $w") }
+            $allMsgs.Add("")
+            $allMsgs.Add("수정 후 다시 저장하거나, 이유와 함께 plan.md에 follow-up으로 기록하세요.")
+        }
+    } catch {
+        # 섹션 1 전체 실패는 섹션 2 실행을 막지 않는다(격리 — 분리 프로세스였을 때와 동일하게 독립).
+    }
+
+# ============================================================ — 근거는 `rules/post-write-rationale.md` §10
+    try {
+        if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
+            Set-Location -LiteralPath $data.cwd
+        } elseif ($env:CLAUDE_PROJECT_DIR -and (Test-Path -LiteralPath $env:CLAUDE_PROJECT_DIR -PathType Container)) {
+            Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR
+        }
+
+        # 코드 파일만 검사 — 근거는 `rules/post-write-rationale.md` §11
+        $codeExtsImpact = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift', '.vb', '.xaml', '.razor', '.vue', '.svelte', '.sql')
+        $extImpact = [System.IO.Path]::GetExtension($file).ToLower()
+
+        if ($codeExtsImpact -contains $extImpact) {
+            # git 저장소일 때만 진행 — 섹션 1의 diff 를 공유 값으로 쓰는 조건이면 그 `ls-files` 가 이미
+            #   레포를 확인했으므로 `rev-parse` 를 부르지 않는다(근거는 아래 공유 diff 주석이 가리키는 rationale 절).
+            $cwdPrefix = (((Get-Location).Path -replace '\\', '/').TrimEnd('/')) + '/'
+            $useSharedDiff = $sharedDiffOk -and ($file -replace '\\', '/').StartsWith($cwdPrefix, [System.StringComparison]::OrdinalIgnoreCase)
+            $inRepo = $useSharedDiff
+            if (-not $inRepo) {
+                $gitDir = & git rev-parse --git-dir 2>$null
+                $inRepo = [bool]$gitDir -and $LASTEXITCODE -eq 0
+            }
+            if ($inRepo) {
+                # ---- 변경된 public/internal 심볼 추출 (git diff의 + 라인) ----
+                # 섹션 1이 이미 같은 파일의 diff를 떴으면 그것을 쓴다 — 근거는 `rules/post-write-rationale.md` §11-1
+                #   못 떴을 때만 자기가 부르고, 그래서 두 섹션의 격리가 유지된다. 폴백도 `--unified=0` 이다
+                #   — 심볼 추출은 `+` 라인만 보므로 컨텍스트 줄이 필요 없다.
+                # **공유 값은 파일이 cwd 트리 안일 때만 쓴다** — 섹션 1은 `git -C $fileDir`, 여기는
+                #   cwd 기준이라 둘이 다른 레포면 「파일 레포의 diff로 뽑은 심볼을 cwd 레포에서 caller
+                #   검색」하게 되어 기준이 섞인다. 종전 동작은 그때 cwd 기준 diff가 실패해 침묵이었고,
+                #   폴백이 그것을 그대로 복원한다.
+                $diffOk = $false
+                $diffLines = $null
+                if ($useSharedDiff) {
+                    $diffOk = $true
+                    $diffLines = $sharedDiffLines
+                }
+                if (-not $diffOk) {
+                    $diffLines = & git diff HEAD --unified=0 -- $file 2>$null
+                    $diffOk = ($LASTEXITCODE -eq 0)
+                }
+                if ($diffLines -and $diffOk) {
+                    $symbols = New-Object System.Collections.Generic.HashSet[string]
+
+                    foreach ($line in $diffLines) {
+                        if (-not $line.StartsWith('+')) { continue }
+                        if ($line.StartsWith('+++')) { continue }
+
+                        # 언어별 선언 패턴
+                        $patterns = @(
+                            # C#: public/internal/protected 메서드/클래스/속성
+                            '^\+.*\b(public|internal|protected)\s+(?:static\s+|virtual\s+|override\s+|sealed\s+|abstract\s+|async\s+|partial\s+)*(?:[\w<>\[\],\?]+\s+)?(?<sym>[A-Z][a-zA-Z0-9_]*)\s*[\(\<\{]',
+                            # TypeScript/JavaScript: export function/class/const/interface
+                            '^\+\s*export\s+(?:default\s+)?(?:async\s+)?(?:function|class|const|interface|type|enum)\s+(?<sym>[a-zA-Z_][a-zA-Z0-9_]*)',
+                            # Python: def/class (underscore prefix 제외)
+                            '^\+\s*(?:async\s+)?(?:def|class)\s+(?<sym>[A-Za-z][a-zA-Z0-9_]*)',
+                            # Kotlin: fun/class (internal/public 또는 명시 없음)
+                            '^\+\s*(?:(?:public|internal|open|sealed|abstract|data)\s+)*(?:fun|class|interface|object)\s+(?<sym>[A-Z][a-zA-Z0-9_]*)',
+                            # Go: 대문자 시작 함수
+                            '^\+\s*func\s+(?:\([^)]*\)\s+)?(?<sym>[A-Z][a-zA-Z0-9_]*)\s*\(',
+                            # Rust: pub fn/struct/enum
+                            '^\+\s*pub\s+(?:fn|struct|enum|trait)\s+(?<sym>[a-zA-Z_][a-zA-Z0-9_]*)',
+                            # VB.NET: Public/Friend/Protected Sub/Function/Class/Property 등 (C# 자매 언어)
+                            '^\+\s*(?:Public|Friend|Protected(?:\s+Friend)?)\s+(?:Shared\s+|Overrides\s+|Overridable\s+|MustOverride\s+|NotOverridable\s+|ReadOnly\s+|WriteOnly\s+)*(?:Sub|Function|Class|Property|Interface|Structure|Enum|Module)\s+(?<sym>[A-Z][a-zA-Z0-9_]*)'
+                        )
+
+                        foreach ($pattern in $patterns) {
+                            $m = [regex]::Match($line, $pattern)
+                            if ($m.Success) {
+                                $sym = $m.Groups['sym'].Value
+                                # 너무 짧거나 일반적인 이름은 제외 — 근거는 `rules/post-write-rationale.md` §12
+                                if ($sym.Length -ge 4 -and
+                                    $sym -notmatch '^(?i)(get|set|is|has|name|type|data|text|value|item|key|count|index|result|state|status|title|content|message)$') {
+                                    [void]$symbols.Add($sym)
+                                }
+                            }
+                        }
+                    }
+
+                    if ($symbols.Count -gt 0) {
+                        $impactWarnings = New-Object System.Collections.Generic.List[string]
+                        $normalizedFile = $file -replace '\\', '/'
+
+                        # 배치 grep — 근거는 `rules/post-write-rationale.md` §20
+                        $symAlt = ($symbols | ForEach-Object { [regex]::Escape($_) }) -join '|'
+                        #   검색 범위를 코드 확장자 pathspec 으로 좁힌다 — 아래 확장자 필터가 어차피 버릴 파일을
+                        #   git 이 읽지 않게 한다. `icase` 인 이유는 아래 대조가 확장자를 소문자로 바꿔 보기 때문이다.
+                        $extSpecs = @($codeExtsImpact | ForEach-Object { ':(icase)*' + $_ })
+                        $grepOut = & git grep -n --untracked -E "\b($symAlt)\b" -- $extSpecs 2>$null
+
+                        foreach ($sym in $symbols) {
+                            $callers = New-Object System.Collections.Generic.List[string]
+                            foreach ($g in $grepOut) {
+                                if ($g -match '^([^:]+):(\d+):(.*)$') {
+                                    # $matches 덮어쓰기 방지 — 그룹을 먼저 보관
+                                    $callerFileRaw = $matches[1]
+                                    $callerLine = $matches[2]
+                                    $callerContent = $matches[3]
+
+                                    $callerFile = $callerFileRaw -replace '\\', '/'
+                                    # 경로 정규화 — 근거는 「§20 caller 배치 검색」
+                                    $callerAbs = if ([System.IO.Path]::IsPathRooted($callerFileRaw)) { $callerFile }
+                                                 else { (Join-Path (Get-Location).Path $callerFileRaw) -replace '\\', '/' }
+                                    if ($callerAbs -ieq $normalizedFile) { continue }
+
+                                    # 같은 확장자나 코드 파일만 (test도 포함)
+                                    $callerExt = [System.IO.Path]::GetExtension($callerFile).ToLower()
+                                    if ($codeExtsImpact -notcontains $callerExt) { continue }
+
+                                    # 라인이 현재 심볼을 포함할 때만 귀속(「§20」)
+                                    if ($callerContent -notmatch "\b$sym\b") { continue }
+
+                                    $callers.Add("${callerFileRaw}:${callerLine}")
+                                }
+                            }
+
+                            if ($callers.Count -gt 0) {
+                                # 세션·파일·심볼당 1회 — 근거는 `rules/post-write-rationale.md` §13
+                                if (-not (Test-WarnOnce ('impact|' + $normalizedFile + '|' + $sym))) { continue }
+                                # 매치 상한 30 — 근거는 「§20 caller 배치 검색」
+                                if ($callers.Count -gt 30) {
+                                    $impactWarnings.Add("심볼 '$sym' 참조 $($callers.Count)건 (>30) — 흔한 이름이거나 광범위 심볼로 판단해 caller 나열을 생략합니다. 시그니처·계약을 바꿨다면 직접 grep으로 확인하세요.")
+                                    continue
+                                }
+                                $impactWarnings.Add("심볼 '$sym' 참조 발견 (caller가 함께 갱신되었는지 확인):")
+                                foreach ($c in ($callers | Select-Object -First 8)) {
+                                    $impactWarnings.Add("  - $c")
+                                }
+                                if ($callers.Count -gt 8) {
+                                    $impactWarnings.Add("  ... 그 외 $($callers.Count - 8)개")
+                                }
+                            }
+                        }
+
+                        # 섹션 2 경고를 기존 impact-warn 출력 형식 그대로 묶어 합산 리스트에 추가
+                        if ($impactWarnings.Count -gt 0) {
+                            $allMsgs.Add("[IMPACT WARNING] $file 의 public/internal 심볼이 변경되었습니다.")
+                            foreach ($w in $impactWarnings) { $allMsgs.Add($w) }
+                            $allMsgs.Add("")
+                            $allMsgs.Add("위 caller 파일들의 동작이 변경되었을 수 있습니다.")
+                            $allMsgs.Add("각 파일을 Read로 열어 영향을 검증하고, 필요 시 함께 수정하세요.")
+                            $allMsgs.Add("이 경고는 차단이 아닙니다 — 검토 후 진행하세요.")
+                        }
+                    }
+                }
+            }
+        }
+    } catch {
+        # 섹션 2 실패는 섹션 1 결과(이미 $allMsgs에 있음)에 영향 없음(격리).
+    }
+
+# H3: 저장 직후 줄바꿈 — 근거는 `rules/post-write-rationale.md` §15
+try {
+    # 대상 확장자를 좁힌다 — 워킹트리 CRLF 규약이 걸리는 것은 문서·스크립트·설정이고,
+    #   관측된 사고도 .md 였다. 넓히면 다른 레포 픽스처(.cs 등)까지 오탐한다(§15).
+    if ($file -match '(?i)\.(md|ps1|py|json|psm1|psd1)$' -and
+        $file -notmatch '(?i)[\\/]llm-wiki[\\/]evals[\\/]fixtures[\\/]') {
+        # gitignore 가 아니면 대상 — exit 1 만 「repo 안이고 ignore 아님」이다(§15)
+        $null = & git check-ignore -q -- $file 2>$null
+        $notIgnored = ($LASTEXITCODE -eq 1)
+        # 이 hook 은 플러그인이 붙은 **모든 프로젝트**에서 돈다 — 레포 규약을 증거 없이 CRLF 로 단정하면
+        #   LF·혼합 레포에서 저장마다 틀린 지시가 붙는다. 판정 순서와 그 이유(기계 설정을 버린 이유 포함)는
+        #   근거 §15 가 정본이다: ① 파일 단위 `check-attr eol` ② 속성이 없으면 추적 파일의 실제 워킹트리 eol 비율.
+        if ($notIgnored) {
+            $bytes = [System.IO.File]::ReadAllBytes($file)
+            $lf = 0; $crlf = 0
+            for ($i = 0; $i -lt $bytes.Length; $i++) {
+                if ($bytes[$i] -ne 0x0A) { continue }
+                if ($i -gt 0 -and $bytes[$i - 1] -eq 0x0D) { $crlf++ } else { $lf++ }
+            }
+            $crlfRepo = $false; $repoCrlf = 0; $repoTotal = 0
+            if ($lf -gt 0) {
+                $eolAttr = ((& git check-attr eol -- $file 2>$null) -join '')
+                if ($eolAttr -match 'eol:\s*(lf|crlf)\s*$') {
+                    $crlfRepo = ($Matches[1] -eq 'crlf')
+                } else {
+                    # 표본 — 대상 확장자 추적 파일(레포 전체 · 대소문자 무시)의 `w/` 열. 방금 쓴 파일은 빼고
+                    #   (그 `w/` 는 새 내용이다), llm-wiki 픽스처도 뺀다(의도된 LF 테스트 입력 — 위 제외와 같은 이유).
+                    #   `quotepath=off` 는 한글 경로가 이스케이프돼 「쓴 파일」 비교가 빗나가지 않게 한다.
+                    $eolSampleMin = 5; $eolCrlfRatioMin = 0.9
+                    $top = ((& git rev-parse --show-toplevel 2>$null) -join '').Trim()
+                    $self = ($file -replace '\\', '/')
+                    if ($top -and $self.StartsWith($top + '/', [System.StringComparison]::OrdinalIgnoreCase)) {
+                        $self = $self.Substring($top.Length + 1)
+                    }
+                    $specs = @('md', 'ps1', 'py', 'json', 'psm1', 'psd1' | ForEach-Object { ':(top,icase)*.' + $_ })
+                    foreach ($row in @(& git -c core.quotepath=off ls-files --full-name --eol -- $specs 2>$null)) {
+                        $cols = $row -split "`t", 2
+                        if ($cols.Count -lt 2) { continue }
+                        $path = $cols[1]
+                        if ($path -ieq $self -or $path -match '(?i)(^|/)llm-wiki/evals/fixtures/') { continue }
+                        if ($cols[0] -match 'w/crlf') { $repoCrlf++; $repoTotal++ }
+                        elseif ($cols[0] -match 'w/(lf|mixed)') { $repoTotal++ }
+                    }
+                    $crlfRepo = ($repoTotal -ge $eolSampleMin -and ($repoCrlf / $repoTotal) -ge $eolCrlfRatioMin)
+                }
+            }
+            if ($crlfRepo -and (Test-WarnOnce "eol|$file")) {
+                $nm = Split-Path -Leaf $file
+                if ($allMsgs.Count -gt 0) { $allMsgs.Add("") }
+                $allMsgs.Add("[EOL WARNING] ${nm}: 워킹트리 줄바꿈이 LF 입니다 (LF $lf / CRLF $crlf).")
+                $why = if ($repoTotal -gt 0) { "이 레포 추적 파일의 워킹트리 줄바꿈은 대부분 CRLF 입니다 (CRLF $repoCrlf / 전체 $repoTotal)" } else { "이 파일의 .gitattributes 속성은 eol=crlf 입니다" }
+                $allMsgs.Add("$why — Write·Edit 도구는 LF 로 씁니다.")
+                $allMsgs.Add("``git ls-files --eol`` 로 확인하고 CRLF 로 되돌리세요. 이 경고는 차단이 아닙니다.")
+            }
+        }
+    }
+} catch {
+    # 줄바꿈 검사 실패는 위 두 검사 결과에 영향 없음(격리).
+}
+
+# ============================================================ — 근거는 `rules/post-write-rationale.md` §14
+if ($allMsgs.Count -gt 0) {
+    $msg = ($allMsgs -join "`n")
+
+    # stderr: 사용자 가시성용
+    [Console]::Error.WriteLine($msg)
+
+    # [이벤트 로깅] 경고 방출 시 1건 적재 — 검사 판정 무변경, 실패 전면 격리.
+    try {
+        . (Join-Path $PSScriptRoot 'hook-event-log.ps1')
+        if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
+            Write-HookEvent 'post-write-checks' 'warn' ([string]$allMsgs[0]) ([string]$file)
+        }
+    } catch {}
+
+    # stdout JSON: PostToolUse additionalContext로 모델에 전달 (exit 0 비차단).
+    $payload = @{ hookSpecificOutput = @{ hookEventName = 'PostToolUse'; additionalContext = $msg } } | ConvertTo-Json -Compress -Depth 5
+    [Console]::Out.WriteLine($payload)
+}
+
+exit 0

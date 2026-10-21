@@ -1,0 +1,304 @@
+# 페이지 템플릿 모음 (llm-wiki)
+
+> `references/procedures-content.md` A-2/E/I에서 참조. 새 페이지 생성 시 해당 타입 템플릿을 복사해 채운다.
+> 규칙·예산의 정본은 형제 문서 `wiki-schema.md`다 — 값이 갈리면 그쪽이 이긴다(`SKILL.md` §0-3 에 따라 해당 § 만 부분 Read 한다).
+
+## 목차
+- [source-stub](#source-stub)
+- [project (허브)](#project-허브)
+- [feature](#feature)
+- [entity](#entity)
+- [concept](#concept)
+- [guide](#guide)
+- [question](#question)
+- [decision-log](#decision-log)
+
+## source-stub
+```markdown
+---
+type: source-stub
+source_type: project-repo
+project: 프로젝트명
+category: personal | work
+repo_path: "전체 경로"
+ingested: YYYY-MM-DD
+tags: [source, 프로젝트태그]
+---
+
+# 소스: 프로젝트명
+
+- **유형**: 프로젝트 레포지토리
+- **경로**: `전체 경로`
+- **참조 파일**: 존재하는 문서 파일 목록
+- **요약**: 한 줄 요약
+- **기술 스택**: 프레임워크/라이브러리 이름만 나열 (SDK/패키지 major.minor 버전 숫자 제외 — 스텁은 불변이라 버전이 영구 stale, 버전 진실원천은 코드/csproj. `.NET 10`·`WinUI 3` 같은 제품 라인 major 식별자는 허용)
+- **서브프로젝트**: (있으면) 목록
+```
+
+## project (허브)
+```markdown
+---
+type: project
+index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
+project: 프로젝트명
+category: personal | work
+description: "한 줄 요약 (권장 — wiki-schema §12, 검색·인덱스 스니펫용)"
+tech_stack: ["기술1", "기술2"]
+platform: windows-desktop | web | mobile | cli | cross
+status: active
+origin: agent-synthesized | human-validated
+confidence: high | medium | low
+updated: YYYY-MM-DD
+synced_commit: <레포 커밋 sha — 선택. 위키가 레포의 어디까지 담았는지. 등록(A)·ingest(B) 시 HEAD로 기록. 미설정도 유효. git 아닌 레포면 줄째로 생략 — §2.2·§7-26>
+repo_url: "<remote origin URL — 선택. 프로젝트 식별의 1차 앵커. `git remote get-url origin` 출력 그대로. 등록(A-2 2)·ingest 결측 백필(B-2 0-2) 시 기록. 미설정도 유효. git 아니거나 remote 없으면 줄째로 생략 — §2.2>"
+tags: [project, 카테고리, 프로젝트태그]
+---
+
+# 프로젝트명
+
+한 줄 요약.
+
+## 레포 정보
+- **경로**: `전체 경로`
+- **정본 문서**: 존재하는 문서 파일 목록
+- **소스**: [[10_sources/{카테고리}/src-{태그}|소스 스텁]]
+
+## 서브프로젝트
+| 모듈 | 기술 | 역할 |
+|------|------|------|
+
+## 기능 목록
+| 기능 | 한 줄 설명 | 상세 |
+|------|-----------|------|
+| 기능명 | 설명 | [[20_projects/{카테고리}/{프로젝트}/feat-{기능}\|상세]] |
+
+## 관련 위키 지식
+- [[30_knowledge/tech/해당기술|표시이름]] — 간단 설명
+- [[20_projects/{카테고리}/{프로젝트}/decisions|결정 이력]] — 채택·보류·기각·번복 (생성 시 1회 추가)
+
+## 프로젝트 간 공유 패턴
+- **패턴명**: 어떤 프로젝트와 어떻게 공유하는지
+
+<!-- 작업 규약·함정은 이 허브가 아니라 레포 docs/conventions.md 에 둔다(schema-types §2.2 「기록 대상 경계」). -->
+
+## 최근 주요 변경
+<!-- 3~5개 유지. 초과분은 압축하지 않고 가장 오래된 것부터
+     90_archive/20_projects/{카테고리}/{프로젝트}/changes.md 로 롤오버(append) 후
+     아래 "## 아카이브" 포인터 1줄을 갱신한다(§2.2·§8 — 포인터 정합은 lint §7-30ⓐ).
+     설계·동작이 바뀐 것만 — 버전 bump·카운트 현행화·changelog 나열은 등재 금지(§5). -->
+- [YYYY-MM-DD] 변경 내용 한 줄
+
+## 아카이브
+<!-- 롤오버가 한 번이라도 있었을 때만 둔다(없으면 이 섹션 자체를 생략). -->
+- 이전 이력: 90_archive/20_projects/{카테고리}/{프로젝트}/changes.md (YYYY-MM-DD~YYYY-MM-DD, N건)
+```
+
+## feature
+```markdown
+---
+type: feature
+index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
+project: 프로젝트명
+category: personal | work
+feature_name: "기능명"
+description: "한 줄 요약 (권장 — wiki-schema §12)"
+platform: windows-desktop | web | mobile | cli | cross
+status: active   # 코드에서 제거 시 deprecated: YYYY-MM-DD 추가 (폐기 보존, schema-types §2.3)
+origin: agent-synthesized | human-validated
+confidence: high | medium | low
+updated: YYYY-MM-DD
+tags: [feature, 기능태그, 프로젝트태그]
+---
+
+# 기능명
+
+> 작성 전제: 아래 함정·「왜」 서술은 해당 기능의 진입·핵심 소스 파일을 실제로 읽은 뒤 작성한다(enumeration 스캔으로 대체 불가).
+> 코드로 알 수 없는 것만 담는다: 절은 둘(개요·관련 지식·레시피)이고, 코드가 답하는 「어떻게」(사용법·구현 흐름·화면 구성)와 파일 경로·코드 식별자는 쓰지 않는다 (schema §2.3 — `## 관련 파일` 등 폐지 절은 lint §7-38).
+> **단 「근거 보존 4요소」(성립 조건·예외·적용 범위·채택 이유)는 지우는 대상이 아니다 — schema §1.**
+
+## 개요
+기능이 무엇이고 왜 있는지 — 2~3문장.
+
+## 관련 지식·레시피
+<!-- 코드만으로는 알 수 없는 것 — 함정·주의점(구현 트랩·플랫폼 제약·성능/안정성), 채택 이유·기각한 대안·비자명한 제약.
+     코드에 대한 주장은 각주 `[^src-...]`(소스 파일 경로 병기). 함정이 없는 기능이면 비우거나 절을 생략한다.
+     시간민감 사실은 `(as of YYYY-MM)` 표기. -->
+- {함정·주의점 — 증상 → 원인 → 대처}[^src-태그]
+- [[30_knowledge/tech/기술|표시이름]] — 연결 설명
+
+<!-- 섹션이 길어지면 `### ` 소제목으로 구역화한다(§2.3·§7-32) — 6,000자를 초과하면서 소제목이
+     하나도 없으면 lint이 INFO로 알린다. 통짜 섹션은 절차 K가 필요한 대목만 읽지 못하고
+     섹션 전체를 읽게 만든다. 처방은 분리가 아니라 **소제목 추가**다(내용은 그대로 둔다). -->
+### {하위 주제}
+{그 주제의 서술}
+
+## 하위 문서
+<!-- 하위를 분리했을 때만 둔다(없으면 이 섹션 자체를 생략).
+     전 하위 파일을 나열해 조회 홉 1을 유지한다 — 목록 없이 쪼개면 분할이 곧 유실이다.
+     **이 섹션은 전 산문 타입 공통 규약이다**(§4 "재분할 일반 규칙" ②) — feature·entity·concept·guide가
+       하위를 만들면 같은 형식으로 나열한다(project 허브는 산문 분할 대상이 아니다 — schema §4 표 project 행).
+     **하위 파일 상단에는 복귀 링크 `> 상위 문서: [[{진입 파일}|{표시 이름}]]`를 둔다** —
+       그 줄이 "분리해 나온 하위"의 판정 신호이고, 하위만 열고 들어온 세션의 돌아갈 길이다.
+     목록↔실파일 정합은 lint §7-30이 타입별로 기계 검사한다(ⓓ guide · ⓔ 그 밖의 산문 타입 —
+       ⓔ는 정본 포인터의 **절 이름**까지 대조한다).
+     {담당 범위 1줄}은 의무이며 **판정 가능해야 한다** — 절차 K 2가 이 한 줄로 "이번 작업에 어느
+       하위를 열지"를 정하므로, 주제 이름을 되풀이하는 것은 범위 서술이 아니다.
+       "언제 이 파일을 읽어야 하는가"를 쓴다. 빠뜨리면 K가 그 파일을 무조건 읽는 폴백으로 떨어진다. -->
+- [[20_projects/{카테고리}/{프로젝트}/{하위 파일}|{주제}]] — {담당 범위 1줄}
+
+[^src-태그]: [[10_sources/{카테고리}/src-{태그}|소스: 프로젝트명]] — `ViewModels/{기능}ViewModel.cs`, `Views/{기능}Page.xaml` (근거 소스 파일 경로 병기)
+```
+
+**facts 변형** — 새로 만들거나 갱신하는 feature 는 이 형식으로 쓴다(`wiki-schema.md` §1 「facts 형식」 · `schema-types.md` §2.3 facts 변형).
+
+```markdown
+---
+type: feature
+format: facts
+project: 프로젝트명
+category: personal | work
+feature_name: "기능명"
+description: "한 줄 요약"
+platform: windows-desktop | web | mobile | cli | cross
+status: active
+origin: agent-synthesized | human-validated
+confidence: high | medium | low
+updated: YYYY-MM-DD
+tags: [feature, 기능태그, 프로젝트태그]
+---
+
+# 기능명
+
+## 개요
+- {기능이 무엇이고 왜 있는가 — 한 줄} (근거: `{레포 상대경로}`@{커밋 7자 이상})
+
+## 관련 지식·레시피
+- {함정·채택 이유·기각한 대안 — 한 줄} (근거: `{경로}`@{커밋})
+```
+
+## entity
+```markdown
+---
+type: entity
+index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
+entity_name: "기술명"
+description: "한 줄 요약 (권장 — wiki-schema §12)"
+domain: tech
+origin: agent-synthesized | human-validated
+confidence: high | medium | low
+updated: YYYY-MM-DD
+used_by: [프로젝트1, 프로젝트2]
+tags: [entity, 기술태그]
+---
+
+# 기술명
+
+## 핵심
+- 요약/특징
+
+## 사용 프로젝트
+| 프로젝트 | 특이점 |
+|----------|--------|
+
+## 공유 패턴 메모
+- ...
+```
+
+## concept
+```markdown
+---
+type: concept
+index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
+concept_name: "패턴명"
+description: "한 줄 요약 (권장 — wiki-schema §12)"
+origin: agent-synthesized | human-validated
+confidence: high | medium | low
+updated: YYYY-MM-DD
+related_projects: [프로젝트1, 프로젝트2]
+tags: [concept, 패턴태그]
+# budget_split: none            # (선택) 나눌 하위 주제가 없을 때만 — wiki-schema §3 · schema-budget §4
+# budget_split_chars: 0         #   lint 예산 판정과 같은 기준의 문자 수(=임박 메시지의 {현재} 값,
+#                               #   ui-ux·platform-bootstrap guide는 펜스 제외). 부착 후 재측정해 수렴
+# budget_split_reason: ""       #   왜 나눌 수 없는가 ("작아서"는 사유가 아니다)
+---
+
+# 패턴명
+
+## 개요
+패턴이 무엇이고 왜 쓰는지.
+
+## 적용 방법
+핵심 기법·주의점.
+
+## 프로젝트 사례
+- [[20_projects/.../프로젝트|이름]] — 어떻게 적용했는지
+```
+
+## guide
+```markdown
+---
+type: guide
+index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
+guide_kind: platform-bootstrap | ui-ux | recipe
+description: "한 줄 요약 (권장 — wiki-schema §12)"
+platform: windows-desktop | web | mobile | cli | cross
+origin: agent-synthesized | human-validated
+confidence: high | medium | low
+updated: YYYY-MM-DD
+related_projects: [프로젝트1]
+tags: [guide, recipe, 플랫폼태그]
+# budget_split: none            # (선택) 단일 레시피처럼 나눌 하위가 없을 때만 — wiki-schema §3 · schema-budget §4
+# budget_split_chars: 0         #   lint 예산 판정과 같은 기준의 문자 수(=임박 메시지의 {현재} 값,
+#                               #   ui-ux·platform-bootstrap guide는 펜스 제외). 부착 후 재측정해 수렴
+# budget_split_reason: ""       #   왜 나눌 수 없는가 ("작아서"는 사유가 아니다)
+---
+
+# 제목
+
+(platform-bootstrap) ## 대상 플랫폼 / ## 기본 프로젝트 생성 / ## 권장 구조 / ## 필수 의존성 / ## UI/UX 기본 / ## 체크리스트
+(ui-ux) UI/UX 규칙 섹션들
+(recipe) ## 목적 / ## 적용 플랫폼 / ## 단계 / ## 코드 스니펫 / ## 사용 프로젝트 사례 / ## 주의점 / 함정(선택 — 함정형 recipe 권장, schema-types §2.6)
+```
+
+## question
+```markdown
+---
+type: question
+index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
+status: open | investigating | resolved
+priority: high | medium | low
+related_pages: ["[[경로|이름]]"]
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+tags: [question, 관련태그]
+---
+
+# 질문/모순 요약
+
+- **상황**: 무엇이 충돌/미해결인가
+- **관련 페이지**: [[...]]
+- **현재 판단**: (잠정)
+```
+
+## decision-log
+```markdown
+---
+type: decision-log
+project: 프로젝트명
+category: personal | work
+updated: YYYY-MM-DD
+tags: [decision-log, 프로젝트태그]
+---
+
+# 프로젝트명 결정 이력
+
+<!-- 항목 불변: 기록된 결정은 수정·삭제하지 않는다 — 결정이 바뀌면 "번복" 항목을 새로 추가(같은 주제어 재사용, schema-types §2.8).
+     어휘 고정: 채택 | 보류 | 기각 | 번복. 최신이 위. schema-budget §7-2 발동 시 오래된 항목부터 90_archive 원경로 이동.
+     기각·보류는 판정 직후 ": {실제 방향 1줄}"을 붙인다 — 주제가 행위·부정문이면 판정만으로 방향이 뒤집혀 읽히고,
+       조회는 grep으로 행을 특정해 하위 불릿을 못 본다(괄호 부기는 이 자리를 대신하지 못한다, lint §7-33).
+     기록 수준: LLM이 이 기록만 보고 사용자에게 결정 배경을 설명할 수 있어야 함 — 사유가 다층적이거나
+     재검토 조건이 있으면 하위 불릿 1~2줄 추가(하위 불릿 포함이 한 항목 — 롤오버 시 쪼개지 않음).
+     롤오버 시 하단에 "## 아카이브" 포인터 1줄 유지·갱신 필수(§2.8 — 누락 시 오래된 결정 검색 유실, lint §7-24). -->
+- [YYYY-MM-DD] {주제} — **{채택|보류|기각|번복}**: {요지·근거 1줄 — 기각·보류면 실제 방향을 여기 먼저 쓴다}
+  - 재검토 조건·기각한 대안 등 보충 (필요한 결정만, 1~2줄)
+```

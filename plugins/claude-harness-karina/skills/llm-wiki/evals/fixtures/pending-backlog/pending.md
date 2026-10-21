@@ -1,0 +1,2 @@
+- [2026-07-06] [DECISION] demo: 다크 모드 — 보류: 수요 확인 후 재논의.
+- [2026-07-08] [SYMPTOM] demo: 메일 알림 토스트가 안 뜬다 | 재접속 시 POP3 UID 재발급으로 새 메일 오판 | [[40_guides/recipes/demo/gone-recipe|없는 recipe]]

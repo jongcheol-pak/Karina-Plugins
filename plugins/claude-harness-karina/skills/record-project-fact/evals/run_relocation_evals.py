@@ -1,0 +1,210 @@
+# -*- coding: utf-8 -*-
+"""AGENTS.md 이관 골든 러너 — `relocation-cases.json` + `fixtures/`를 돈다.
+
+각 케이스는 픽스처를 **임시 복사본으로** 뜨고 거기서 수행한다(픽스처 원본 무수정).
+모드는 셋이다:
+  - 기본: `relocate()`를 돌리고 stdout 키워드·결과 파일 내용을 대조한다.
+  - `verify_only`: `verify()`를 직접 불러 **검증이 실제로 잡는가**를 본다 — 정상 경로만
+    돌리면 검증 함수는 늘 통과라 「잡는다」가 증명되지 않는다(델타 음성).
+  - `cli_args`: **subprocess로 `main()`을 실제 실행**해 인자 파싱·종료 코드까지 본다.
+    앞의 둘은 모듈을 import해 함수를 직접 부르므로 그 경로를 한 줄도 지나지 않는데,
+    소급 정리가 쓰는 것은 함수가 아니라 명령이다.
+
+전 case PASS면 exit 0, 하나라도 FAIL이면 1.
+"""
+import importlib.util
+import io
+import json
+import os
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+
+# Windows 콘솔(cp949)에서도 한글·줄표가 깨지지 않도록 UTF-8 출력 강제.
+#  형제 스크립트(`llm-wiki/evals/run_lint_evals.py`·`evals/check-harness-consistency.py`)와
+#  같은 관례다 — 이것이 없으면 문서가 안내한 그대로 실행할 때 UnicodeEncodeError로 죽는다.
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+SCRIPT = os.path.join(HERE, "..", "scripts", "relocate-agents.py")
+FIXTURES = os.path.join(HERE, "fixtures")
+CASES = os.path.join(HERE, "relocation-cases.json")
+
+
+def load_script():
+    spec = importlib.util.spec_from_file_location("relocate_agents", os.path.normpath(SCRIPT))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def run_case(mod, case):
+    fx = os.path.join(FIXTURES, case["fixture"])
+    if not os.path.isdir(fx):
+        return False, "픽스처 없음: " + case["fixture"]
+    tmp = tempfile.mkdtemp(prefix="reloc-eval-")
+    dest = os.path.join(tmp, case["fixture"])
+    shutil.copytree(fx, dest)
+    # **git 저장소 형상** — 사본 gitignore 알림(판정 ⓕ)은 대상이 git 작업 트리일 때만 판정한다.
+    #  임시 폴더는 저장소가 아니므로 `git_init` 으로 만들고, 그 케이스 동안 git 설정 환경변수를
+    #  고정한다 — `~/.gitconfig` 만 끄면 기본 전역 ignore 파일(`$XDG_CONFIG_HOME/git/ignore`)이
+    #  남아, 실행 PC 의 전역 설정이 판정을 바꾼다.
+    saved_env = {}
+    if case.get("gitignore") is not None:
+        with open(os.path.join(dest, ".gitignore"), "wb") as fh:
+            fh.write(case["gitignore"].encode("utf-8"))
+    if case.get("git_init"):
+        pinned = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+                  "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.excludesFile",
+                  "GIT_CONFIG_VALUE_0": os.devnull}
+        saved_env = {k: os.environ.get(k) for k in pinned}
+        os.environ.update(pinned)
+        subprocess.run(["git", "init", "-q", dest], timeout=60, stdin=subprocess.DEVNULL,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    try:
+        if case.get("cli_args") is not None:
+            # **CLI 진입점은 subprocess로만 태울 수 있다** — 위 두 모드는 모듈을 import해 함수를
+            #  직접 부르므로 `main()`의 인자 파싱·종료 코드를 한 줄도 지나지 않는다. 소급 정리가
+            #  실제로 쓰는 것은 그 명령이라, 함수만 검증하면 「명령이 도는가」는 미검증으로 남는다.
+            args = [sys.executable, os.path.normpath(SCRIPT)] + \
+                [a.replace("{fx}", dest) for a in case["cli_args"]]
+            env = dict(os.environ, PYTHONIOENCODING="utf-8")
+            # 상한 60초 + `stdin` 차단. **예외를 올려보내지 않는 것이 요점이다** — 이 함수와
+            #  `main()` 루프 어디에도 `TimeoutExpired` 를 잡는 자리가 없어, 그대로 두면 러너가
+            #  미포착 traceback 으로 죽고 이미 돈 케이스의 판정까지 사라진다. 아래 `finally` 의
+            #  임시 폴더 정리는 이 경로에서도 그대로 돈다.
+            try:
+                r = subprocess.run(args, capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace", env=env,
+                                   timeout=60, stdin=subprocess.DEVNULL)
+            except subprocess.TimeoutExpired:
+                return False, "relocate-agents.py 60초 초과 — 매달렸다"
+            out = (r.stdout or "") + (r.stderr or "")
+            if r.returncode != case.get("expect_rc", 0):
+                return False, "종료 코드 불일치 — 기대 %d / 실제 %d (%s)" % (
+                    case.get("expect_rc", 0), r.returncode, out[:120].replace("\n", " "))
+            miss = [k for k in case.get("expect_keywords", []) if k not in out]
+            if miss:
+                return False, "출력 미검출: " + ", ".join(miss)
+            bad = [k for k in case.get("expect_absent", []) if k in out]
+            if bad:
+                return False, "출력에 금지 키워드: " + ", ".join(bad)
+            return True, "CLI rc=%d — %s" % (r.returncode, out.strip().splitlines()[-1][:70])
+
+        if case.get("verify_only"):
+            # 검증 함수를 직접 태운다 — 인자는 픽스처 파일에서 읽는다.
+            agents = open(os.path.join(dest, "AGENTS.md"), "rb").read()
+            dpath = os.path.join(dest, case["dest_rel"].replace("/", os.sep))
+            draw = open(dpath, "rb").read() if os.path.exists(dpath) else b""
+            # 원문은 기본적으로 AGENTS.md 자신이다(이관 전후가 같은 상태의 대조).
+            #  `orig_rel`을 주면 **다른 파일**을 원문으로 삼는다 — 도달 대조는 「원문의 줄이
+            #  결과에 닿았는가」를 보므로, 원문과 결과가 같은 파일이면 그 축이 늘 통과한다.
+            orig = agents
+            if case.get("orig_rel"):
+                orig = open(os.path.join(dest, case["orig_rel"].replace("/", os.sep)), "rb").read()
+            # `ratio`·`slack`을 주면 검증 ①이 **임박선**으로 판정한다 — 발동 조건과 같은
+            #  술어라야 「옮겼는데 여전히 발동 중」이 실패로 잡힌다. 주지 않으면 상한만 본다.
+            ok, problems = mod.verify(agents, draw, case["dest_rel"],
+                                      case.get("limit", 16384), orig,
+                                      tuple(case.get("declared_removals", ())),
+                                      ratio=case.get("ratio"), slack=case.get("slack"))
+            want = case.get("expect_ok", False)
+            if ok != want:
+                return False, "검증 결과 불일치 — 기대 %s / 실제 %s (%s)" % (
+                    want, ok, "; ".join(problems) or "문제 없음")
+            for needle in case.get("expect_problems", []):
+                if not any(needle in p for p in problems):
+                    return False, "기대한 문제 미검출: " + needle
+            return True, "검증 대조: " + ("통과" if ok else "; ".join(problems))
+
+        before = {}
+        for rel in case.get("expect_unchanged", []):
+            before[rel] = open(os.path.join(dest, rel.replace("/", os.sep)), "rb").read()
+        # **쓰기 실패 주입** — 정상 경로만 도는 골든은 원복 코드를 한 줄도 지나지 않는다.
+        #  읽기 전용 파일에 원자적 치환·쓰기는 PermissionError 를 낸다(실측 errno 13).
+        #  lint 러너가 세운 것과 같은 형태이며, 프로덕션 코드에 테스트 훅을 넣지 않는다.
+        readonly = []
+        for rel in case.get("readonly_paths", []):
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            readonly.append((fp, os.stat(fp).st_mode))
+            os.chmod(fp, stat.S_IREAD)
+        orig_verify = mod.verify
+        if case.get("sabotage_verify"):
+            # 검증을 강제로 실패시켜 **원복 경로**를 태운다. 정상 경로만 돌리면 그 코드는
+            #  한 번도 실행되지 않고, 결함이 있어도 골든이 침묵한다.
+            mod.verify = lambda *a, **k: (False, ["강제 실패(원복 경로 검증용)"])
+        try:
+            code, log = mod.relocate(dest, case.get("dry_run", False))
+        finally:
+            mod.verify = orig_verify
+            for fp, mode in readonly:
+                try:
+                    os.chmod(fp, mode)   # 되돌리지 않으면 임시 폴더가 지워지지 않는다
+                except OSError:
+                    pass
+        out = "\n".join(log)
+        if code != case.get("expect_rc", 0):
+            return False, "종료 코드 불일치 — 기대 %d / 실제 %d (%s)" % (
+                case.get("expect_rc", 0), code, out[:120])
+        missing = [k for k in case.get("expect_keywords", []) if k not in out]
+        if missing:
+            return False, "출력 미검출: " + ", ".join(missing)
+        present = [k for k in case.get("expect_absent", []) if k in out]
+        if present:
+            return False, "출력에 금지 키워드: " + ", ".join(present)
+        for rel, needles in (case.get("expect_file_contains") or {}).items():
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            if not os.path.exists(fp):
+                return False, "결과 파일 없음: " + rel
+            ft = io.open(fp, encoding="utf-8-sig").read()
+            miss = [n for n in needles if n not in ft]
+            if miss:
+                return False, "%s에 기대 문자열 없음: %s" % (rel, ", ".join(miss))
+        # **줄바꿈 혼재 검사** — 포인터와 이관처 append 가 LF 를 고정으로 넣으면 CRLF 파일에
+        #  혼재가 생기는데, 그 혼재는 `git diff` 에 보이지 않은 채 이후 편집으로 퍼진다.
+        for rel in case.get("expect_no_mixed_eol", []):
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            if not os.path.exists(fp):
+                return False, "결과 파일 없음: " + rel
+            with open(fp, "rb") as fh:
+                b = fh.read()
+            n_lf, n_crlf = b.count(b"\n"), b.count(b"\r\n")
+            if n_lf != n_crlf:
+                return False, "%s 에 줄바꿈 혼재 — CRLF %d / LF %d" % (rel, n_crlf, n_lf)
+        for rel in case.get("expect_absent_files", []):
+            if os.path.exists(os.path.join(dest, rel.replace("/", os.sep))):
+                return False, "원복 후에도 남아 있다: " + rel
+        for rel, raw in before.items():
+            now = open(os.path.join(dest, rel.replace("/", os.sep)), "rb").read()
+            if now != raw:
+                return False, "원복되지 않았다: " + rel
+        return True, out.splitlines()[0] if out else "(무출력)"
+    finally:
+        for k, v in saved_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def main():
+    mod = load_script()
+    cases = json.load(io.open(CASES, encoding="utf-8"))["cases"]
+    failed = 0
+    for case in cases:
+        ok, msg = run_case(mod, case)
+        print("[%s] %s — %s" % ("PASS" if ok else "FAIL", case["fixture"], msg))
+        if not ok:
+            failed += 1
+    print("\n결과: %d/%d PASS" % (len(cases) - failed, len(cases)))
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

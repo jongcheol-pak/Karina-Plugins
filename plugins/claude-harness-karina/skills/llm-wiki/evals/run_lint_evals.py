@@ -1,0 +1,1206 @@
+#!/usr/bin/env python3
+"""llm-wiki lint.py 골든 회귀 러너.
+
+사용법: python run_lint_evals.py [--jobs N] [--full]   (llm-wiki/evals 폴더 기준)
+  --jobs N  동시에 돌릴 케이스 수(기본 min(8, CPU 수)). `--jobs 1` 은 순차 실행이고,
+            병렬 출력이 순차와 같은지 대조하는 기준이다 — 출력은 어느 쪽이든 케이스 순서다.
+            대조는 `--full` 출력으로 한다(기본 출력에는 통과 줄이 없다).
+  --full    케이스 줄을 전부 낸다. 기본은 통과한 [PASS] 줄을 생략하고 그 수를 [COMPACT] 한 줄로
+            낸다 — FAIL 줄과 git 미설치 SKIP 줄은 기본 출력에도 남는다(150케이스 출력이 18KB 라
+            판정마다 그 비용을 치르던 것을 줄였다).
+
+lint-cases.json의 각 case를 evals/fixtures/<fixture> vault에 대해 lint.py로 실행하고
+결과를 대조한다:
+  - expect_clean=true  → lint 출력에 '[ERR] 오류 0건'·'[WARN] 경고 0건'이 모두 있어야 PASS
+                         (정상 vault를 경고하지 않는지 = 오탐 회귀 방지). INFO는 허용.
+  - expect_keywords    → 나열된 키워드가 lint 출력에 모두 있으면 PASS (부분 매칭 —
+                         lint 문구 미세 변경에 견고).
+  - expect_absent      → (보조) 나열된 키워드가 lint 출력에 하나라도 있으면 FAIL —
+                         "실재 경로는 경고하지 않는다" 같은 무경고 기대를 검증한다.
+  - after_expect_keywords → (fix_mode 보조) --fix 후 재lint 출력에 전부 있어야 PASS —
+                         "--fix가 건드리지 않아야 하는 위반의 잔존"(보수 동작)을 검증한다.
+  - placeholder=true   → fixture를 임시 폴더로 복사한 뒤 .md 안의 __FIXTURE_ROOT__를
+                         복사본 절대경로로 치환해 lint를 실행한다. §7-20처럼 '실재하는
+                         절대경로'가 필요한 fixture를 기계 독립적으로 만든다 (opt-in —
+                         기존 fixture는 그대로 원본 경로로 실행).
+  - expect_file_not_contains → (auto_split 보조) {파일: [문자열]} — 1회 수행 뒤 그 파일에
+                         하나라도 있으면 FAIL. 「무엇이 사라졌는가」가 동작인 처방을 잰다.
+
+lint.py 자체는 수정하지 않고 subprocess로 호출만 한다(실사용 경로와 동일). 표준 라이브러리만
+사용하며(테스트 프레임워크 없음 — AGENTS.md 정합), lint.py를 부른 것과 같은 인터프리터
+(sys.executable)로 실행하므로 'python 부재'로 실패하지 않는다.
+
+exit code: 전 case PASS면 0, 하나라도 FAIL이면 1.
+"""
+import argparse
+import concurrent.futures
+import datetime
+import glob
+import importlib.util
+import json
+import os
+import re
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+
+# Windows 콘솔(cp949)에서도 한글·em-dash가 깨지지 않도록 UTF-8 출력 강제 (lint.py와 동일)
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
+EVALS_DIR = os.path.dirname(os.path.abspath(__file__))
+SKILL_DIR = os.path.dirname(EVALS_DIR)
+LINT_PY = os.path.join(SKILL_DIR, "scripts", "lint.py")
+FIXTURES_DIR = os.path.join(EVALS_DIR, "fixtures")
+CASES_JSON = os.path.join(EVALS_DIR, "lint-cases.json")
+
+# 픽스처 기준일 — lint의 시간 기반 판정(미래 날짜 · 백업 30일 정리)이 **실행 날짜와 무관하게**
+#  같은 결과를 내도록 고정한다. 픽스처의 updated는 커밋된 고정값이라 실제 today로 재면 시간이
+#  지나며 기대 결과가 조용히 뒤집힌다.
+#  **하한은 픽스처 frontmatter `updated`의 최댓값 2026-08-21**이다(그보다 이르면 「미래 날짜」
+#  ERR 오탐). v1.238.0 전에는 상한도 있었다 — 폐지된 신선도 60일 축이 `2026-07-02`+60일인
+#  2026-08-31부터 발화해 그 하루 전이 상한이었고, 실제로 2026-09에 `orphan-lint-report`를
+#  FAIL시킨 것이 이 고정 장치의 계기였다. 그 축이 사라져 지금 걸리는 것은 하한뿐이다.
+FIXTURE_TODAY = "2026-08-27"
+
+
+def run_lint(vault_path, extra_args=None, extra_env=None):
+    """lint.py를 subprocess로 실행하고 (stdout, returncode, stderr)를 반환한다.
+    returncode를 함께 넘겨, lint.py 자체 크래시와 '위반 검출 결과'를 호출부가 구분하게 한다.
+    extra_args: --fix 등 추가 인자(fix_mode 케이스용).
+    extra_env: 이 호출에만 더할 환경변수(git trace2 수집 등 — 기준일 고정보다 먼저 합쳐 그것을 덮지 못한다)."""
+    # 상한 180초 — lint.py 는 vault 전수를 훑으므로 이 파일의 다른 git 단발 호출(20초)보다
+    #  성격이 다르다. `stdin` 을 닫는 것은 자격증명·에디터 프롬프트가 입력을 기다리며 상한까지
+    #  버티는 것을 막기 위해서다(`llm-wiki/scripts/lint.py` 가 자기 git 호출에 쓰는 것과 같다).
+    try:
+        proc = subprocess.run(
+            [sys.executable, LINT_PY, vault_path] + (extra_args or []),
+            capture_output=True, text=True, encoding="utf-8",
+            # 기준일을 고정해 넘긴다(FIXTURE_TODAY 주석 참조). 바깥 환경에 이미 값이 있어도 덮는다 —
+            #  골든 결과가 호출자의 환경에 좌우되면 재현성이 없다.
+            env={**os.environ, **(extra_env or {}), "LLM_WIKI_TODAY": FIXTURE_TODAY},
+            timeout=180, stdin=subprocess.DEVNULL,
+        )
+    except subprocess.TimeoutExpired:
+        # **예외를 올려보내지 않는다** — 이 함수의 호출부 20여 곳과 `main()` 루프 어디에도
+        #  `TimeoutExpired` 를 잡는 자리가 없어, 그대로 두면 러너 전체가 미포착 traceback 으로
+        #  죽고 **이미 돈 케이스의 판정까지 사라진다**(「매달림」이 「커버리지 소실」로 바뀐다).
+        #  기대 rc 로 쓰이지 않는 -9 를 돌려주면 호출부의 rc 대조가 그 케이스만 FAIL 로 처리한다.
+        return "", -9, "lint.py 180초 초과 — 매달렸다"
+    return proc.stdout, proc.returncode, proc.stderr
+
+
+def prepare_placeholder_vault(fixture_dir):
+    """fixture를 임시 폴더로 복사하고 .md 안의 __FIXTURE_ROOT__를 복사본 절대경로(슬래시
+    정규화)로 치환한다. 반환: (정리용 임시 루트, lint에 넘길 vault 경로).
+    §7-20 실존 검사는 허브 '레포 정보 > 경로'가 실재 디렉터리여야 동작하는데, 체크인된
+    fixture에 절대경로를 박으면 다른 PC에서 깨지므로 실행 시점에 만들어 넣는다."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    root_token = dest.replace("\\", "/")
+    for dirpath, _dirs, files in os.walk(dest):
+        for name in files:
+            if not name.endswith(".md"):
+                continue
+            path = os.path.join(dirpath, name)
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            if "__FIXTURE_ROOT__" in text:
+                with open(path, "w", encoding="utf-8", newline="") as fh:
+                    fh.write(text.replace("__FIXTURE_ROOT__", root_token))
+    return tmp, dest
+
+
+def prepare_backup_cleanup_vault(fixture_dir):
+    """fixture를 임시 복사하고 90_archive/backup/ 아래에 날짜 폴더 8종을 만든다(§8 정리 골든).
+    **날짜를 fixture에 체크인할 수 없어서** 여기서 만든다 — 오늘·어제·31일 전 판정은 기준일에
+    대한 상대값이라 폴더명을 그대로 커밋할 수 없다. 기준일은 `FIXTURE_TODAY`이며 lint에 주입하는
+    값과 **같아야 한다** — 갈리면 여기서 만든 폴더의 경과일이 lint의 판정과 어긋나 이 케이스가 깨진다.
+    반환: (정리용 임시 루트, vault 경로, {케이스 토큰: 실제 폴더명} 매핑)."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-backup-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    today = datetime.date.fromisoformat(FIXTURE_TODAY)
+    d1 = (today - datetime.timedelta(days=1)).isoformat()
+    d31 = (today - datetime.timedelta(days=31)).isoformat()
+    names = {
+        "TODAY": today.isoformat(),          # 남는다 — 한 세션분 복구 창
+        "D1": d1,                            # 제거 — 접미사 없는 이전 날짜(누적 금지)
+        "D31": d31,                          # 제거 — 같은 규칙(30일보다 먼저 걸린다)
+        "D1-deleted": d1 + "-deleted",       # 남는다 — 유일 사본
+        "D1-pre-restore": d1 + "-pre-restore",  # 남는다 — 복구 재백업
+        # `-presplit`은 더 이상 생성되지 않는다(git vault는 체크포인트 커밋이 대신한다).
+        #  남아 있는 것은 그 전에 쌓인 잔여물이고, 지우는 것은 사용자 판단이라 보존 특례로 넘어갔다.
+        "D1-presplit": d1 + "-presplit",     # 남는다 — 보존 특례
+        "D31-presplit": d31 + "-presplit",   # 남는다 — 보존 특례(종전에는 30일 경과로 제거)
+        # §4 분할 사본의 **현행 이름** — 시각 접미사라 회수 대상이다. `-presplit` 꼬리를
+        #  떼면서 「문자 접미사 = 보존 특례」에 잘못 걸려 영구 누적되던 자리(회차 70 완료 리뷰).
+        "D1-TIME": d1 + "-123456789",        # 제거 — 이전 날짜 분할 사본
+        "TODAY-TIME": today.isoformat() + "-987654321",   # 남는다 — 오늘 것(복구 창)
+        "NOTADATE": "manual-note",           # 남는다 — 날짜로 읽히지 않는 임의 폴더
+    }
+    root = os.path.join(dest, "90_archive", "backup")
+    for folder in names.values():
+        os.makedirs(os.path.join(root, folder), exist_ok=True)
+        with open(os.path.join(root, folder, "sample.md"), "w", encoding="utf-8", newline="") as fh:
+            fh.write("백업 사본 더미\n")
+    return tmp, dest, names
+
+
+def prepare_bad_encoding_vault(fixture_dir):
+    """fixture를 임시 폴더로 복사하고 CP949(비 UTF-8) .md 파일 1개를 주입한다(M-2 격리 검증).
+    비 UTF-8 파일을 레포에 체크인하면 git·에디터가 손상시킬 수 있어 실행 시점에 만든다.
+    반환: (정리용 임시 루트, lint에 넘길 vault 경로)."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-badenc-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    bad = os.path.join(dest, "20_projects", "personal", "demo", "feat-badenc.md")
+    with open(bad, "wb") as fh:
+        fh.write("---\ntype: feature\n---\n한글 CP949 본문".encode("cp949"))
+    return tmp, dest
+
+
+def prepare_bad_index_vault(fixture_dir):
+    """fixture를 임시 폴더로 복사하고 **index.md 자체**를 CP949로 덮어쓴다.
+    일반 페이지를 깨뜨리는 bad_encoding과 달리 index.md는 메인 루프 밖에서 한 번 더 읽히던
+    경로라, 예외 처리가 없던 시절엔 이 파일 하나로 lint 전체가 traceback으로 죽었다.
+    반환: (정리용 임시 루트, lint에 넘길 vault 경로)."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-badidx-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    bad = os.path.join(dest, "index.md")
+    with open(bad, "wb") as fh:
+        fh.write("# 인덱스\n\n한글 CP949 본문".encode("cp949"))
+    return tmp, dest
+
+
+def inject_split_failures(dest, case):
+    """`--auto-split` 처방을 실패시킬 조건을 복사본에 심는다. 반환: 되돌릴 (경로, 모드) 목록.
+
+    **정상 경로만 도는 골든은 실패 경로를 원리상 못 본다** — 쓰기·읽기 실패에서 원본을
+    지키는지는 실패가 실제로 일어나야 드러나고, 그 실패를 lint.py 안에서 만들면 테스트
+    훅이 실사용 경로에 남는다. 그래서 파일 쪽 조건으로 만든다:
+      `readonly_paths`      — 읽기 전용 파일에 `os.replace`는 PermissionError(실측 errno 13)
+      `bad_encoding_paths`  — CP949로 덮어써 UTF-8 디코딩을 실패시킨다
+    """
+    restore = []
+    for rel in case.get("readonly_paths", []):
+        p = os.path.join(dest, rel.replace("/", os.sep))
+        mode = os.stat(p).st_mode
+        os.chmod(p, stat.S_IREAD)
+        restore.append((p, mode))
+    for rel in case.get("bad_encoding_paths", []):
+        p = os.path.join(dest, rel.replace("/", os.sep))
+        with open(p, "wb") as fh:
+            fh.write("# 2026-07 log\n\n- [2026-07-01] 한글 CP949 본문".encode("cp949"))
+    return restore
+
+
+def apply_lf_paths(dest, lf_rels):
+    """사본의 지정 파일을 **LF로 눕힌다** — `git init` **전**에 부른다.
+
+    **왜 픽스처가 아니라 사본인가**: 이 레포의 워킹트리 규약이 CRLF이고
+    (`AGENTS.md` 「줄바꿈」) `check-harness-consistency.py`의 「줄바꿈 정합」 축이 tracked
+    파일의 전면 LF를 red로 낸다. LF 픽스처를 커밋하면 그 축과 싸우게 되므로
+    `bad_encoding_paths`와 같은 방식 — **파일 쪽 조건을 사본에 심는다**.
+
+    무엇을 재려고 심는가: `core.autocrlf=true`면 인덱스가 줄바꿈을 LF로 담고 체크아웃이
+    그것을 CRLF로 되돌리므로, **원래 LF였던 페이지만** git 원복에서 형상을 잃는다
+    (2026-09-17 실측: 커밋 후 `CRLF 0 / LF 3` → `git checkout --` 뒤 `CRLF 3 / LF 0`).
+    픽스처가 전부 CRLF면 그 왕복이 항등이라 결함이 드러나지 않는다."""
+    for rel in lf_rels:
+        p = os.path.join(dest, rel.replace("/", os.sep))
+        with open(p, "rb") as fh:
+            b = fh.read()
+        with open(p, "wb") as fh:
+            fh.write(b.replace(b"\r\n", b"\n"))
+
+
+def eol_of(root, rel):
+    """vault 상대경로의 줄바꿈 종류 — `"crlf"` · `"lf"` · 파일이 없으면 None.
+
+    CRLF가 하나라도 있으면 `crlf`로 본다 — 원복이 형상을 갈아치우면 전면 변환이라
+    혼재를 따로 가를 필요가 없고, 혼재 자체를 잡는 것은 이 축의 목적이 아니다."""
+    b = _read_bytes(root, rel)
+    if b is None:
+        return None
+    return "crlf" if b"\r\n" in b else "lf"
+
+
+def undo_split_failures(restore):
+    """read-only를 되돌린다 — 그대로 두면 `shutil.rmtree`가 임시 폴더를 지우지 못한다."""
+    for p, mode in restore:
+        try:
+            os.chmod(p, mode)
+        except OSError:
+            pass
+
+
+def setup_git_vault(dest, dirty_rels):
+    """**이미 복사된 vault 사본을 git 저장소로 만든다** — `git init` + 전량 커밋 1회.
+    `dirty_rels`가 있으면 커밋 **뒤에** 그 파일들에 1줄을 덧붙여 미커밋 상태를 만든다.
+    성공하면 True, git이 없거나 실패하면 False(호출부가 케이스를 SKIP한다).
+
+    **`prepare_git_repo_vault`와 대상이 다르다** — 그쪽은 vault **옆에** 코드 레포를 만들어
+    §7-26 뒤처짐 계산을 재고, 이쪽은 **vault 자신**에 `.git`을 둬 `git_vault_root`가 참이
+    되게 한다. 그 분기가 참이어야 체크포인트 커밋·진입 가드 경로가 돈다 — 그 전에는 골든
+    전 케이스가 비 git vault 경로만 태워 **체크포인트가 절차 편집을 삼키는 결함을 재는 축이
+    하나도 없었다**(2026-09-16 실측: 같은 결함이 2회 재발할 때까지 골든은 green).
+
+    복사가 끝난 뒤의 폴더를 받는 것은 두 핸들러(auto_split·fix_mode)가 각자 사본을 뜨기
+    때문이다 — 사본 생성까지 이 함수가 맡으면 그 관용구가 두 곳으로 갈린다."""
+    git = ["git", "-c", "user.name=lint-eval", "-c", "user.email=lint-eval@example.invalid"]
+    try:
+        subprocess.run(["git", "init", "-q", dest], check=True, capture_output=True, timeout=20)
+        subprocess.run(git + ["-C", dest, "add", "-A"], check=True, capture_output=True, timeout=20)
+        subprocess.run(git + ["-C", dest, "commit", "-q", "-m", "vault init"],
+                       check=True, capture_output=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    for rel in dirty_rels:
+        p = os.path.join(dest, rel.replace("/", os.sep))
+        with open(p, "a", encoding="utf-8") as fh:
+            fh.write("\n<!-- 사용자 수기 편집(미커밋) -->\n")
+    return True
+
+
+def rmtree_force(path):
+    """임시 폴더를 지운다 — **read-only 파일을 해제하고 재시도한다.**
+
+    `shutil.rmtree(..., ignore_errors=True)` 로는 **git object 가 남는다** — git 이 object
+    파일을 read-only 로 만들고 Windows 는 그런 파일의 삭제를 거부하는데, `ignore_errors` 가
+    그 실패를 삼켜 폴더가 조용히 누적된다(2026-09-17 실측: `/tmp/lint-eval-*` 1,826건 ·
+    33일치 · 실행마다 +9). 케이스가 vault 사본을 `git init` 하면서 그 경로가 늘었다.
+
+    `onexc` 는 3.12+ 이름이고 그 아래는 `onerror` 다 — 둘 다 받도록 갈라 둔다."""
+    def _clear_readonly(func, p, _exc):
+        try:
+            os.chmod(p, stat.S_IWRITE)
+            func(p)
+        except OSError:
+            pass   # 그래도 못 지우면 넘어간다 — 정리 실패가 판정을 막지는 않는다
+    try:
+        shutil.rmtree(path, onexc=_clear_readonly)
+    except TypeError:
+        shutil.rmtree(path, onerror=_clear_readonly)
+
+
+def commit_git_vault(dest, msg):
+    """git vault 사본의 미커밋 변경을 커밋한다 — 변경이 없으면 아무것도 하지 않는다.
+
+    **처방 호출 사이에 두는 「절차 커밋」의 재현이다**(`wiki-ops-rules.md` 「커밋 시점」 ①).
+    `lint.py`가 진입 시 dirty를 거부하므로, 앞 호출의 산출물을 커밋하지 않고 다음 호출로
+    넘기면 **규약을 어긴 상태를 재게 된다** — 골든이 재야 하는 것은 규약을 지킨 절차다."""
+    git = ["git", "-c", "user.name=lint-eval",
+           "-c", "user.email=lint-eval@example.invalid", "-C", dest]
+    subprocess.run(git + ["add", "-A"], check=True, capture_output=True, timeout=20)
+    if subprocess.run(git + ["status", "--porcelain"], capture_output=True,
+                      text=True, timeout=20).stdout.strip():
+        subprocess.run(git + ["commit", "-q", "-m", msg],
+                       check=True, capture_output=True, timeout=20)
+
+
+def prepare_git_repo_vault(fixture_dir, synced_mode):
+    """fixture를 임시 폴더로 복사하고, 그 옆에 **커밋 3개짜리 임시 git 레포**를 만들어
+    허브의 `__REPO_ROOT__`·`__SYNCED_SHA__`를 실제 값으로 치환한다(§7-26 골든).
+
+    §7-26의 뒤처짐 계산은 실제 git 이력이 있어야만 실증된다 — 스텁으로 대체하면
+    `git rev-list` 실경로가 어디서도 검증되지 않으므로 진짜 레포를 만든다.
+    synced_mode: "first"=첫 커밋 sha(→ 2커밋 뒤처짐) / "missing"=이력에 없는 가짜 sha.
+    커밋은 전역 git config에 의존하지 않게 `-c user.*`를 케이스 로컬로 준다.
+    git이 없거나 실패하면 (None, None) — 호출부가 케이스를 SKIP한다.
+    반환: (정리용 임시 루트, vault 경로). 기대 뒤처짐 수는 케이스의 expect_keywords가
+    문자열로 못박으므로(예: "2커밋 미반영") 따로 반환하지 않는다."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-git-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    repo = os.path.join(tmp, "repo")
+    os.makedirs(repo)
+    git = ["git", "-c", "user.name=lint-eval", "-c", "user.email=lint-eval@example.invalid"]
+    try:
+        subprocess.run(["git", "init", "-q", repo], check=True, capture_output=True, timeout=20)
+        shas = []
+        for i in range(3):
+            with open(os.path.join(repo, f"f{i}.txt"), "w", encoding="utf-8") as fh:
+                fh.write(f"commit {i}\n")
+            subprocess.run(git + ["-C", repo, "add", "-A"], check=True, capture_output=True, timeout=20)
+            subprocess.run(git + ["-C", repo, "commit", "-q", "-m", f"c{i}"],
+                           check=True, capture_output=True, timeout=20)
+            out = subprocess.run(["git", "-C", repo, "rev-parse", "HEAD"],
+                                 check=True, capture_output=True, text=True, timeout=20)
+            shas.append(out.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        rmtree_force(tmp)
+        return None, None  # git 미설치·실행 실패 → 케이스 SKIP
+    # "first" = 첫 커밋 기준 → 이후 2커밋이 미반영. "missing" = 이력에 없는 sha(rebase 소실 재현).
+    synced = shas[0] if synced_mode == "first" else "0" * 40
+    for dirpath, _dirs, files in os.walk(dest):
+        for name in files:
+            if not name.endswith(".md"):
+                continue
+            path = os.path.join(dirpath, name)
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            new = text.replace("__REPO_ROOT__", repo.replace("\\", "/")) \
+                      .replace("__SYNCED_SHA__", synced)
+            if new != text:
+                with open(path, "w", encoding="utf-8", newline="") as fh:
+                    fh.write(new)
+    return tmp, dest
+
+
+def prepare_aux_split_vault(fixture_dir, concept_count, open_questions):
+    """fixture를 임시 복사하고 **본체를 임계 위로 밀어 올릴 만큼** concept을 생성한 뒤,
+    open question을 심는다(§4 1단계 본체 구역 분리 골든).
+
+    concept을 쓰는 이유: feature는 sub-index로 빠져 본체를 키우지 않지만 `## 범용 패턴`은
+    본체 구역이라 행이 그대로 쌓인다. open question은 §7-23 오탐 회귀(구역이 옮겨간 뒤
+    본체만 보면 전부 '미등록'으로 잡히던 것)를 재현하는 데 필요하다 — 질문이 0건이면
+    그 검사가 아무것도 세지 않아 회귀가 침묵한다.
+    반환: (정리용 임시 루트, vault 경로)."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-aux-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    pat = os.path.join(dest, "30_knowledge", "patterns")
+    os.makedirs(pat, exist_ok=True)
+    for i in range(1, concept_count + 1):
+        with open(os.path.join(pat, "bulk-concept-%03d.md" % i), "w",
+                  encoding="utf-8", newline="") as fh:
+            fh.write("---\ntype: concept\n"
+                     'concept_name: "대량 개념 %03d"\n'
+                     'index_label: "대량 개념 %03d (bulk concept %03d)"\n'
+                     "platform: cross\norigin: agent-synthesized\nconfidence: medium\n"
+                     "updated: 2026-07-02\nrelated_projects: [Demo]\ntags: [concept]\n---\n\n"
+                     "# 대량 개념 %03d\n\n## 정의\n골든용 최소 concept.\n" % (i, i, i, i))
+    qd = os.path.join(dest, "30_knowledge", "questions")
+    os.makedirs(qd, exist_ok=True)
+    for i in range(1, open_questions + 1):
+        with open(os.path.join(qd, "q-20260822-bulk%02d.md" % i), "w",
+                  encoding="utf-8", newline="") as fh:
+            fh.write("---\ntype: question\nstatus: open\npriority: medium\n"
+                     "updated: 2026-08-22\nrelated: [Demo]\ntags: [question]\n---\n\n"
+                     "# 미해결 질문 %02d\n\n## 질문\n골든용.\n" % i)
+    return tmp, dest
+
+
+def prepare_chunk_split_vault(fixture_dir, feature_count, stale_names):
+    """fixture를 임시 복사하고 **feature 페이지를 feature_count개 생성**한 뒤,
+    stale_names의 sub-index를 미리 심어 둔다(§4 3단계 순번 분할 골든).
+
+    페이지를 체크인하지 않고 실행 시점에 만드는 이유: 순번 분할은 임계(200행)를 넘겨야
+    발동하는데 그만큼의 md를 레포에 커밋하면 픽스처가 수백 개 파일로 불어난다. 날짜 폴더를
+    실행 시점에 만드는 backup_cleanup 선례와 같은 이유다.
+    반환: (정리용 임시 루트, vault 경로)."""
+    tmp = tempfile.mkdtemp(prefix="lint-eval-chunk-")
+    dest = os.path.join(tmp, os.path.basename(fixture_dir))
+    shutil.copytree(fixture_dir, dest)
+    demo = os.path.join(dest, "20_projects", "personal", "demo")
+    os.makedirs(demo, exist_ok=True)
+    for i in range(1, feature_count + 1):
+        with open(os.path.join(demo, "feat-bulk-%03d.md" % i), "w",
+                  encoding="utf-8", newline="") as fh:
+            fh.write(
+                "---\ntype: feature\nproject: Demo\ncategory: personal\n"
+                'feature_name: "대량 %03d"\nindex_label: "대량 %03d (bulk %03d)"\n'
+                "platform: windows-desktop\nstatus: active\norigin: agent-synthesized\n"
+                "confidence: medium\nupdated: 2026-07-02\ntags: [feature, demo]\n---\n\n"
+                "# 대량 %03d (bulk %03d)\n\n## 개요\n순번 분할 골든용 최소 feature.\n\n"
+                "## 관련 지식·레시피\n- 없음[^src-b]\n\n"
+                "[^src-b]: [[10_sources/personal/src-demo|소스: Demo]] — `src/Demo/Bulk%03d.cs`\n"
+                % (i, i, i, i, i, i))
+    for name in stale_names:
+        with open(os.path.join(dest, name), "w", encoding="utf-8", newline="") as fh:
+            fh.write("---\ntype: index\ntags: [index]\n---\n\n# 옛 순번 파일\n\n"
+                     "## 기능별 인덱스\n\n| 기능 | 플랫폼 | 프로젝트 | 상세 |\n"
+                     "|------|--------|----------|------|\n")
+    # 델타 음성: 이름은 index-*.md지만 type이 index가 아니다 — 삭제되면 안 된다.
+    with open(os.path.join(dest, "index-notes.md"), "w", encoding="utf-8", newline="") as fh:
+        fh.write("---\ntype: guide\nguide_kind: recipe\nplatform: cross\n"
+                 "origin: human-validated\nconfidence: high\nupdated: 2026-07-02\n"
+                 "tags: [guide]\n---\n\n# 사용자 메모\n\n## 목적\n생성물이 아니다.\n")
+    return tmp, dest
+
+
+def _read_bytes(root, rel):
+    """vault 상대경로의 바이트. 없으면 None — 「무변경」 판정이 부재와 내용을 함께 본다."""
+    p = os.path.join(root, rel.replace("/", os.sep))
+    if not os.path.exists(p):
+        return None
+    with open(p, "rb") as fh:
+        return fh.read()
+
+
+def _snapshot_md(root):
+    """vault 안 모든 .md의 (상대경로 -> 바이트) 스냅샷. --build-index --dry-run이 정말로
+    아무것도 쓰지 않았는지 앞뒤 비교로 증명하기 위한 것 — 출력 부재는 미변경의 증거가 아니다."""
+    snap = {}
+    for dirpath, _dirs, files in os.walk(root):
+        for name in files:
+            if not name.endswith(".md"):
+                continue
+            p = os.path.join(dirpath, name)
+            with open(p, "rb") as fh:
+                snap[os.path.relpath(p, root).replace(chr(92), "/")] = fh.read()
+    return snap
+
+
+def load_lint_module():
+    """lint.py를 import해 함수를 직접 부를 수 있게 한다(모듈 캐시).
+
+    이 러너의 기본은 subprocess 실행이다 — 실사용 경로와 같기 때문이다. 단 **공용 함수의
+    사각처럼 지금은 어느 호출부도 밟지 않는 결함**은 vault 단위로 잴 수 없어(증상이 없다)
+    여기서만 함수를 직접 부른다. 형제 러너 `run_relocation_evals.py`가 같은 이유로 검증
+    함수를 직접 태운다."""
+    global _LINT_MOD
+    if _LINT_MOD is None:
+        spec = importlib.util.spec_from_file_location("lint_under_test", LINT_PY)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _LINT_MOD = mod
+    return _LINT_MOD
+
+
+_LINT_MOD = None
+
+
+def check_case(case):
+    """한 case를 실행·대조해 (passed, detail) 반환."""
+    fixture = case["fixture"]
+    vault = os.path.join(FIXTURES_DIR, fixture)
+    if not os.path.isdir(vault):
+        return False, f"픽스처 폴더 없음: {vault}"
+    # unit 케이스: lint.py의 함수를 직접 불러 반환값을 대조한다. `input`은 픽스처 파일이
+    #  아니라 **케이스에 적은 텍스트**다 — 재는 것이 파일 구조가 아니라 함수의 경계 판정이라,
+    #  vault를 만들면 무엇을 재는지가 오히려 흐려진다.
+    if case.get("unit"):
+        mod = load_lint_module()
+        u = case["unit"]
+        fn = getattr(mod, u["func"], None)
+        if fn is None:
+            return False, "lint.py에 함수 없음: " + u["func"]
+        # **기대값이 없으면 실패로 본다** — 없으면 아래 대조를 모두 건너뛰고 통과가 되어,
+        #  오타 한 글자로 「아무것도 재지 않는 케이스」가 조용히 늘어난다. 위 스키마 방어가
+        #  unit 을 제외하므로 그 몫을 여기서 진다.
+        if "expect" not in u:
+            return False, "unit 케이스에 기대값(`expect`)이 없음: " + u["func"]
+        got = fn(*u.get("args", []))
+        # JSON 에는 tuple 이 없다 — 오프셋 쌍을 돌려주는 함수(`section_span`)는 list 로 대조한다.
+        if isinstance(got, tuple):
+            got = list(got)
+        # **반환 전문을 대조한다** — 첫 줄만 재면 시작 경계만 고정되고 끝 경계가 무너져도
+        #  통과한다(회차 45 완료 리뷰 2R 이 그 상태를 실측으로 잡았다).
+        if got != u["expect"]:
+            return False, "%s 반환 불일치 — 기대 %r / 실제 %r" % (u["func"], u["expect"], got)
+        return True, "%s 단위 판정 통과" % u["func"]
+
+    # case 스키마 방어: 기대 조건이 하나도 없으면 오타로 조용히 PASS되는 것을 막는다.
+    #  단 **자체 기대 필드를 갖는 모드**(chunk_split의 expect_total_rows·expect_min_subs 등)는
+    #  키워드 대조를 쓰지 않는다 — 그 모드가 스스로 구조를 세어 판정하므로 여기서 요구하면
+    #  의미 없는 키워드를 형식상 넣게 된다(방어가 오히려 케이스를 왜곡한다).
+    if ("expect_clean" not in case and "expect_keywords" not in case
+            and not case.get("chunk_split") and not case.get("aux_split")
+            and not case.get("index_shape") and not case.get("unit")):
+        return False, "case에 expect_clean·expect_keywords 둘 다 없음(lint-cases.json 오타 의심)"
+
+    # fix_mode 케이스: fixture를 임시 복사본에서 --fix 실행 → 재lint로 위반 해소를 대조한다.
+    #  원본 fixture는 절대 수정하지 않는다(placeholder copytree 패턴 재사용). 대조 3단 —
+    #  ① --fix 실행 출력에 expect_keywords([FIXED] 요약) 전부 존재
+    #  ② 수정 후 재lint 출력에 after_expect_absent(원 위반 문구) 전부 부재
+    #  ③ 수정 후 재lint 출력에 after_expect_keywords 전부 존재 — "--fix가 건드리지 않아야 하는
+    #     위반이 그대로 남았는가"(보수 동작: §7-24 섹션 밖 비제거 등)를 실증하는 보조 필드
+    # backup_cleanup 케이스: §8 백업 정리(cleanup_backups)를 폴더 집합으로 대조한다.
+    #  stdout 키워드만으로는 "지워지지 않아야 할 것이 남았는가"를 증명할 수 없어(출력이 없는 것은
+    #  보존의 증거가 아니다) 실제 디렉터리 목록을 본다. 무플래그 실행도 함께 돌려 read-only 계약
+    #  (정리는 --fix에서만 일어난다)을 같은 케이스에서 실증한다.
+    # build_index 케이스: `--build-index`(생성)를 임시 복사본에서 돌린다.
+    #  ① dry-run은 파일을 한 바이트도 바꾸지 않아야 하고(계약), ② 마커 밖 텍스트가 생성 출력에
+    #  그대로 살아 있어야 하며, ③ 마커가 없는 vault는 덮어쓰지 않고 안내만 내야 한다.
+    #  키워드 대조만으로는 ①을 증명할 수 없어(출력이 없는 것은 미변경의 증거가 아니다) 실제
+    #  파일 바이트를 앞뒤로 비교한다.
+    # build_index_write 케이스: **실제 쓰기 경로**(--dry-run 없이)를 돈다. dry-run만 돌리면
+    #  파일을 만드는 분기가 한 번도 실행되지 않아, sub-index 생성·마커 치환·마커 밖 보존이
+    #  "출력에서만" 맞는 상태로 통과할 수 있다. 여기서는 쓰인 파일을 다시 읽어 대조한다.
+    # index_shape 케이스: 생성기가 index.md의 **BOM·줄바꿈을 보존**하는가.
+    #  마커 밖을 한 글자도 건드리지 않는다는 계약은 내용에 대한 것만이 아니다 — 형상이
+    #  평탄화되면 그 파일 전체가 diff 로 뜨고, 이후 편집이 혼재를 퍼뜨린다. **신설되는
+    #  sub-index·aux 도 같은 형상이어야 한다**: 한 vault 안에서 파일마다 줄바꿈이 갈리면
+    #  그 뒤의 모든 편집이 어느 쪽을 따를지 매번 달라진다.
+    if case.get("index_shape"):
+        tmp = tempfile.mkdtemp(prefix="lint-eval-shape-")
+        dest = os.path.join(tmp, os.path.basename(vault))
+        shutil.copytree(vault, dest)
+        out, rc, err = run_lint(dest, ["--build-index"])
+        made = sorted(n for n in os.listdir(dest)
+                      if n.startswith("index") and n.endswith(".md"))
+        shapes = {}
+        for name in made:
+            with open(os.path.join(dest, name), "rb") as fh:
+                b = fh.read()
+            shapes[name] = (b.startswith(b"\xef\xbb\xbf"), b"\r\n" in b,
+                            b"\r\n" not in b and b"\n" in b)
+        rmtree_force(tmp)
+        if rc != 0:
+            return False, "build-index 종료코드 %d: %s" % (rc, out.strip()[:120])
+        want_bom = case.get("expect_bom", True)
+        want_crlf = case.get("expect_crlf", True)
+        bad = [n for n, (bom, crlf, _lf) in shapes.items()
+               if bom != want_bom or crlf != want_crlf]
+        if bad:
+            return False, "형상 불일치(BOM %s·CRLF %s 기대) — %s" % (
+                want_bom, want_crlf,
+                ", ".join("%s: BOM %s·CRLF %s" % (n, shapes[n][0], shapes[n][1])
+                          for n in bad))
+        for name in case.get("expect_sub_files", []):
+            if name not in shapes:
+                return False, "생성되지 않음: " + name
+        return True, "형상 보존 확인(%d파일: BOM %s·CRLF %s)" % (
+            len(shapes), want_bom, want_crlf)
+
+    if case.get("build_index_write"):
+        tmp, dest = prepare_placeholder_vault(vault)
+        idx = os.path.join(dest, "index.md")
+        with open(idx, "rb") as fh:
+            before = fh.read().decode("utf-8")
+        out, rc, err = run_lint(dest, ["--build-index"])
+        with open(idx, "rb") as fh:
+            after = fh.read().decode("utf-8")
+        subs = sorted(n for n in os.listdir(dest)
+                      if n.startswith("index-") and n.endswith(".md"))
+        leftovers = [n for n in os.listdir(dest) if n.endswith(".tmp-build-index")]
+        sub_text = ""
+        for n in subs:
+            with open(os.path.join(dest, n), "rb") as fh:
+                sub_text += fh.read().decode("utf-8")
+        rmtree_force(tmp)
+        if err.strip():
+            return False, "stderr 발생: " + err.strip().splitlines()[-1]
+        if rc != 0:
+            return False, f"쓰기 실행이 실패함 (rc={rc}): {out.strip()[:120]}"
+        if leftovers:
+            return False, "임시 파일 잔존: " + ", ".join(leftovers)
+        if subs != case.get("expect_sub_files", []):
+            return False, f"sub-index 파일 불일치 — 기대 {case.get('expect_sub_files', [])} / 실제 {subs}"
+        for kw in case.get("expect_outside_preserved", []):
+            if kw not in after:
+                return False, "마커 밖 텍스트가 사라짐: " + kw
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in after + sub_text]
+        if missing:
+            return False, "쓰인 파일에 누락: " + ", ".join(missing)
+        present = [kw for kw in case.get("expect_absent", []) if kw in after + sub_text]
+        if present:
+            return False, "쓰인 파일에 있으면 안 되는 것: " + ", ".join(present)
+        # 섹션 **순서** 검증 — 키워드 존재만 보면 조립 순서가 뒤바뀌어도 통과한다.
+        #  §4 「생성 대상 6섹션」이 순서를 규정하므로 그 순서 자체가 계약이다(T3 리뷰 B1:
+        #  구역 지연 조립로 바꾸며 프로젝트 테이블이 기능별 인덱스 뒤로 밀린 회귀가 실재했다).
+        want_order = case.get("expect_section_order", [])
+        if want_order:
+            got = [ln for ln in after.splitlines() if ln.startswith("## ")]
+            idx, missing_h = -1, []
+            for h in want_order:
+                try:
+                    nxt = got.index(h, idx + 1)
+                except ValueError:
+                    missing_h.append(h)
+                    break
+                idx = nxt
+            if missing_h:
+                return False, ("섹션 순서 불일치 — 기대 %s / 실제 %s" % (want_order, got))
+        if before == after:
+            return False, "index.md가 갱신되지 않음(마커 치환 미발생)"
+        return True, "실제 쓰기 대조: sub-index %d개 · 마커 밖 보존 · 임시 파일 0" % len(subs)
+
+    if case.get("build_index"):
+        tmp, dest = prepare_placeholder_vault(vault)
+        before = _snapshot_md(dest)
+        out, rc, err = run_lint(dest, ["--build-index", "--dry-run"])
+        after = _snapshot_md(dest)
+        rmtree_force(tmp)
+        if err.strip():
+            return False, "stderr 발생: " + err.strip().splitlines()[-1]
+        if before != after:
+            changed = sorted(set(before) ^ set(after)) or [
+                k for k in before if before[k] != after.get(k)]
+            return False, "--dry-run이 파일을 변경함: " + ", ".join(changed[:3])
+        if rc != case.get("expect_rc", 0):
+            return False, f"종료 코드 불일치 — 기대 {case.get('expect_rc', 0)} / 실제 {rc}"
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
+        if missing:
+            return False, "생성 출력 키워드 누락: " + ", ".join(missing)
+        present = [kw for kw in case.get("expect_absent", []) if kw in out]
+        if present:
+            return False, "생성 출력에 있으면 안 되는 문구: " + ", ".join(present)
+        return True, "생성 대조 + 파일 미변경 확인: " + ", ".join(case.get("expect_keywords", []))
+
+    if case.get("backup_cleanup"):
+        tmp, dest, names = prepare_backup_cleanup_vault(vault)
+        root = os.path.join(dest, "90_archive", "backup")
+        before = sorted(os.listdir(root))
+        out0, rc0, err0 = run_lint(dest)                 # 무플래그 = read-only
+        after_ro = sorted(os.listdir(root))
+        out1, rc1, err1 = run_lint(dest, ["--fix"])
+        kept = sorted(os.listdir(root))
+        rmtree_force(tmp)
+        if "== llm-wiki Lint:" not in out0 or "== llm-wiki Lint:" not in out1:
+            tail = (err0 or err1).strip().splitlines()[-1] if (err0 or err1).strip() else "(stderr 없음)"
+            return False, f"lint.py 비정상 종료(무플래그={rc0}/fix={rc1}): {tail}"
+        if after_ro != before:
+            return False, "무플래그 실행이 백업 폴더를 바꿨다(read-only 계약 위반)"
+        expected = sorted(names[tok] for tok in case["expect_backup_kept"])
+        if kept != expected:
+            return False, f"잔존 폴더 불일치 — 기대 {expected} / 실제 {kept}"
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in out1]
+        if missing:
+            return False, "--fix 출력 미검출 키워드: " + ", ".join(missing)
+        return True, f"백업 정리 확인: {len(before)}개 → {len(kept)}개 (제거 {len(before) - len(kept)})"
+
+    # aux_split 케이스: §4 1단계 **본체 구역 분리**를 실제 쓰기로 대조한다.
+    #  ① 본체가 임계 이하로 내려갔는가 ② 덜어낸 구역이 자기 헤딩을 갖고 sub-index로 갔는가
+    #  ③ **§7-23이 오탐하지 않는가** — 구역이 옮겨간 뒤에도 open question이 '등록됨'으로
+    #     판정되는지를 재lint로 확인한다(이 검사가 없으면 「본체만 보는 판정」 회귀가 침묵한다).
+    if case.get("aux_split"):
+        tmp, dest = prepare_aux_split_vault(
+            vault, case.get("concept_count", 260), case.get("open_questions", 2))
+        # **미리보기의 표시 범위가 쓰기 범위와 같은가** — dry-run이 sub-index만 내고 덜어낸
+        #  구역을 빼면, 실제 실행이 만드는 파일 중 일부가 미리보기에 없다(그 차이는 구역을
+        #  덜어내는 vault에서만 드러나 더 늦게 발견된다).
+        dry_out, _rc_dry, _err_dry = run_lint(dest, ["--build-index", "--dry-run"])
+        out, rc, err = run_lint(dest, ["--build-index"])
+        with open(os.path.join(dest, "index.md"), encoding="utf-8-sig") as fh:
+            idx = fh.read()
+        body_lines = idx.count("\n") + 1
+        out2, rc2, err2 = run_lint(dest)
+        problems = []
+        if rc != 0:
+            problems.append("build-index 종료코드 %d" % rc)
+        # 임계는 lint.py 상수에서 읽는다 — 러너에 400 을 따로 적어 두면 lint 임계를 내려도
+        #  골든이 옛 기준으로 조용히 통과한다.
+        limit = load_lint_module().INDEX_BODY_LINES
+        if body_lines > limit:
+            problems.append("본체 %d줄 > 임계 %d(덜어내기 미달)" % (body_lines, limit))
+        for name in case.get("expect_aux_files", []):
+            # **파일 이름이 아니라 그 파일의 미리보기 블록을 찾는다** — 덜어낸 구역은 본체에
+            #  「…는 [[index-patterns|…]]에 있다」 안내 줄로도 등장하므로, 이름만 세면 내용이
+            #  하나도 안 나와도 통과한다(그 느슨한 판정이 실제로 변이를 놓쳤다).
+            if case.get("expect_aux_in_dry_run") and ("---- " + name) not in dry_out:
+                problems.append("dry-run 출력에 덜어낸 구역의 내용 없음: " + name)
+            path = os.path.join(dest, name)
+            if not os.path.exists(path):
+                problems.append("덜어낸 구역 파일 없음: " + name)
+                continue
+            with open(path, encoding="utf-8-sig") as fh:
+                aux = fh.read()
+            if "type: index" not in aux:
+                problems.append("%s에 type: index 없음" % name)
+            if not any(l.startswith("## ") for l in aux.splitlines()):
+                problems.append("%s에 자기 헤딩 없음" % name)
+        for kw in case.get("after_expect_absent", []):
+            if kw in out2:
+                problems.append("수행 후 재lint에 위반 잔존: " + kw)
+        rmtree_force(tmp)
+        if problems:
+            return False, " / ".join(problems)
+        return True, ("본체 %d줄(임계 %d 이하) · 덜어낸 구역 %d개 · §7-23 오탐 0"
+                      % (body_lines, limit, len(case.get("expect_aux_files", []))))
+
+    # chunk_split 케이스: §4 3단계 **순번 분할**과 stale sub-index 정리를 실제 쓰기로 대조한다.
+    #  키워드만으로는 "행이 보존됐는가"·"빈 청크가 안 생겼는가"를 증명할 수 없어 생성된
+    #  파일을 다시 읽어 **행 총계·임계 준수·목록 등재·델타 음성**을 직접 센다.
+    if case.get("chunk_split"):
+        tmp, dest = prepare_chunk_split_vault(
+            vault, case.get("feature_count", 210), case.get("stale_names", []))
+        out, rc, err = run_lint(dest, ["--build-index"])
+        subs = sorted(n for n in os.listdir(dest)
+                      if n.startswith("index-") and n.endswith(".md"))
+        def _rows(name):
+            with open(os.path.join(dest, name), encoding="utf-8-sig") as fh:
+                text = fh.read()
+            sec = text.split("## 기능별 인덱스", 1)[-1]
+            return sum(1 for ln in sec.splitlines()
+                       if ln.startswith("|") and "---" not in ln and "| 기능 |" not in ln
+                       and "| 이름 |" not in ln)
+        with open(os.path.join(dest, "index.md"), encoding="utf-8-sig") as fh:
+            idx = fh.read()
+        gen_subs = [s for s in subs if s != "index-notes.md"]
+        total = sum(_rows(s) for s in gen_subs)
+        limit = case.get("expect_row_limit", load_lint_module().INDEX_FEAT_ROWS)
+        problems = []
+        if rc != 0:
+            problems.append("build-index 종료코드 %d" % rc)
+        over = [s for s in gen_subs if _rows(s) > limit]
+        if over:
+            problems.append("임계 초과 sub-index: " + ", ".join(over))
+        empty = [s for s in gen_subs if _rows(s) == 0]
+        if empty:
+            problems.append("빈 sub-index 생성: " + ", ".join(empty))
+        if case.get("expect_min_subs") and len(gen_subs) < case["expect_min_subs"]:
+            problems.append("sub-index %d개 < 기대 %d개(순번 경로 미발동)"
+                            % (len(gen_subs), case["expect_min_subs"]))
+        if case.get("expect_total_rows") and total != case["expect_total_rows"]:
+            problems.append("행 총계 %d ≠ 기대 %d(분할이 행을 잃거나 늘림)"
+                            % (total, case["expect_total_rows"]))
+        unlisted = [s for s in gen_subs if s[:-3] not in idx]
+        if unlisted:
+            problems.append("index.md 목록 미등재: " + ", ".join(unlisted))
+        for stale in case.get("stale_names", []):
+            if os.path.exists(os.path.join(dest, stale)):
+                problems.append("stale sub-index 미제거: " + stale)
+        for keep in case.get("expect_kept", []):
+            if not os.path.exists(os.path.join(dest, keep)):
+                problems.append("생성물이 아닌 파일이 삭제됨(델타 음성 실패): " + keep)
+        rmtree_force(tmp)
+        if problems:
+            return False, " / ".join(problems)
+        return True, ("순번 분할 %d개·행 %d 보존·임계 %d 준수·stale %d 제거·델타 음성 유지"
+                      % (len(gen_subs), total, limit,
+                         len(case.get("stale_names", []))))
+
+    # auto_split 케이스: `--auto-split`(임계 자동 분할·롤오버)을 임시 복사본에서 돌린다.
+    #  ① dry-run은 파일을 한 바이트도 바꾸지 않아야 하고(계약 — 출력 부재는 미변경의 증거가
+    #     아니므로 실제 바이트를 앞뒤 비교한다) ② 실행 출력에 expect_keywords가 전부 있어야 하며
+    #  ③ after_expect_absent가 있으면 **수행 후 재lint**에서 그 위반이 사라져야 한다.
+    #  `--fix`와 달리 승인 불요 경로라 별도 모드로 둔다(두 규약을 한 케이스에 섞지 않는다).
+    if case.get("auto_split"):
+        tmp = tempfile.mkdtemp(prefix="lint-eval-split-")
+        dest = os.path.join(tmp, os.path.basename(vault))
+        shutil.copytree(vault, dest)
+        # **`git init` 전**이다 — 커밋이 담는 것이 LF여야 원복 왕복(인덱스 LF → 체크아웃
+        #  CRLF)이 재현된다. 뒤에 두면 커밋에는 CRLF가 들어가 그 왕복이 항등이 된다.
+        apply_lf_paths(dest, case.get("lf_paths", []))
+        # git vault 케이스는 사본을 저장소로 만든 뒤에 돈다 — 체크포인트 커밋·진입 가드가
+        #  `vault/.git` 유무로 갈리므로, 이 한 줄이 그 경로 전체의 스위치다.
+        if case.get("git_vault") and not setup_git_vault(dest, case.get("git_vault_dirty", [])):
+            rmtree_force(tmp)
+            return True, "SKIP (git 미설치·실행 실패 — git vault 골든은 git 필요)"
+        dry_before = _snapshot_md(dest)
+        out_dry, rc_dry, err_dry = run_lint(dest, ["--auto-split", "--dry-run"])
+        dry_after = _snapshot_md(dest)
+        if dry_before != dry_after:
+            rmtree_force(tmp)
+            changed = sorted(k for k in set(dry_before) | set(dry_after)
+                             if dry_before.get(k) != dry_after.get(k))
+            return False, "--auto-split --dry-run이 파일을 변경함: " + ", ".join(changed)
+        # dry-run 은 진입 가드(미커밋 거부 등)를 건너뛰므로 git dirty 케이스도 0 이다 —
+        #  0 이 아니면 미리보기 경로 자체가 깨진 것이다.
+        if rc_dry != 0:
+            rmtree_force(tmp)
+            return False, "--auto-split --dry-run 종료코드 %d: %s" % (rc_dry, (err_dry or out_dry)[:200])
+        # 실패 주입은 dry-run 무변경 확인 **뒤**에 건다 — dry-run은 실패 경로와 무관한
+        #  계약이고, 앞에 걸면 그 계약이 「쓰지 못해서 안 바뀐 것」과 구분되지 않는다.
+        restore = inject_split_failures(dest, case)
+        unchanged_before = {rel: _read_bytes(dest, rel)
+                            for rel in case.get("expect_unchanged", [])}
+        # git trace2 를 이 호출에만 건다 — 체크포인트 커밋이 띄우는 자식 프로세스를 재는 축이다
+        #  (`expect_no_git_maintenance`). 뒤의 재lint 에는 걸지 않는다: 그쪽은 커밋하지 않는다.
+        trace_path = os.path.join(tmp, "git-trace2.json")
+        out, rc, err = run_lint(
+            dest, ["--auto-split"],
+            {"GIT_TRACE2_EVENT": trace_path} if case.get("expect_no_git_maintenance") else None)
+        out2, rc2, err2 = run_lint(dest)
+        # **정상 케이스의 종료 코드는 0 하나다.** 1은 `ses.failed`(사본 실패 등 처방 미수행)이
+        #  내는 값이라 골든 픽스처에서는 나올 이유가 없는데, 종전 판정이 0과 1을 함께 통과시켜
+        #  **`ses.failed`가 종료 코드로 나가는 경로 전체가 골든 밖**이었다(실측: 재점검 실패를
+        #  합류시키는 한 줄을 지워도 전건 PASS였다). 당시 27케이스 전부 rc 0임을 실측하고 좁혔다. **지금은 케이스가 기대 종료 코드를 직접 적는다**(`expect_rc`) — 회차 45가 실패 주입 경로를 열면서 rc 1이 정상인 케이스가 생겼고, 0 고정으로 두면 그 케이스가 통과할 수 없다.
+        # **여기서부터 핸들러 끝까지 실패를 즉시 내지 않고 `problems`에 모은다.**
+        #  앞 축이 뒤 축을 가리면 그 뒤 축은 **어떤 변이를 걸어도 검증되지 않는다** — rc 판정이
+        #  먼저 끊어 파일 축(`expect_unchanged`·`expect_absent_files`)이 실제로 무는지가
+        #  한 번도 확인되지 않은 채로 있었다(2026-09-17 회차가 그것을 고친다). 수집형이면
+        #  변이 하나로 걸리는 축이 **전부** 드러난다.
+        #  **조기 종료로 남는 것은 둘뿐이다** — 위 SKIP(git 미설치)과 dry-run 무변경 위반.
+        #  후자는 그 시점에 파일이 이미 오염돼 이후 판정이 무의미하다.
+        #  정리(`undo_split_failures`·`rmtree`)는 각 판정에 붙이지 않고 **끝 한 자리**로 모은다.
+        problems = []
+        want_rc = case.get("expect_rc", 0)
+        if rc != want_rc:
+            tail = err.strip().splitlines()[-1] if err.strip() else "(stderr 없음)"
+            problems.append(f"--auto-split 종료 코드 불일치 — 기대 {want_rc} / 실제 {rc}: {tail}")
+        # **원본이 그대로인가** — 처방이 실패했는데 원본만 갱신되면 항목이 어디에도 없다.
+        #  출력에 `[SPLIT-FAIL]`이 있는 것만으로는 그 유실이 걸러지지 않는다.
+        for rel, before in unchanged_before.items():
+            if _read_bytes(dest, rel) != before:
+                problems.append("처방 실패인데 변경됐다: " + rel)
+        # **원복이 신설물을 걷었는가**(§4 5번) — 사본으로 되돌릴 수 있는 것은 이미 있던
+        #  파일뿐이라, 신설된 하위·아카이브는 지우지 않으면 원복 뒤에도 남는다. 그 상태는
+        #  「원본은 되돌아갔는데 그것이 가리키던 파일은 그대로」다.
+        for rel in case.get("expect_absent_files", []):
+            if _read_bytes(dest, rel) is not None:
+                problems.append("원복 후에도 신설물이 남았다: " + rel)
+        # **원복이 형상을 지켰는가** — git 원복은 워킹트리 바이트가 아니라 인덱스 내용을
+        #  되쓰므로 줄바꿈이 갈아치워질 수 있다. `expect_unchanged`가 못 잡는 자리다:
+        #  그쪽은 **처방이 실패한 대상**(원복이 손대지 않는 파일)을 재고, 이 축은
+        #  **원복이 실제로 되쓴 대상**을 잰다.
+        for rel, want in (case.get("expect_eol") or {}).items():
+            got = eol_of(dest, rel)
+            if got is None:
+                problems.append("줄바꿈 판정 대상 파일 없음: " + rel)
+            elif got != want:
+                problems.append("줄바꿈 불일치 — %s: 기대 %s / 실제 %s" % (rel, want, got))
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
+        if missing:
+            problems.append("--auto-split 출력 미검출 키워드: " + ", ".join(missing))
+        present = [kw for kw in case.get("expect_absent", []) if kw in out]
+        if present:
+            problems.append("--auto-split 출력에 금지 키워드: " + ", ".join(present))
+        # **체크포인트 커밋이 자동 maintenance 를 띄우지 않는가** — Windows 에서는 `git commit` 이
+        #  `maintenance run --auto`(구버전은 `gc --auto`)를 foreground 로 기다려, 느슨한 객체가 쌓이면
+        #  커밋 호출이 `_git` 의 타임아웃을 넘기고 이미 만들어진 커밋이 「실패」로 판정된다.
+        #  발동 조건은 자식 안에서 따지므로 **자식을 띄웠는가**만 보면 객체 수와 무관하게 결정론이다.
+        #  커밋이 한 번도 안 돌았으면 재지 못한 것이라 통과로 두지 않는다.
+        if case.get("expect_no_git_maintenance"):
+            argvs = []
+            if os.path.exists(trace_path):
+                with open(trace_path, encoding="utf-8", errors="replace") as fh:
+                    for line in fh:
+                        try:
+                            ev = json.loads(line)
+                        except ValueError:
+                            continue
+                        if ev.get("event") != "start":
+                            continue
+                        # 하위 명령부터 남긴다 — `git -C <경로> -c k=v commit` 의 전역 옵션 쌍을 건너뛴다.
+                        args = list((ev.get("argv") or [])[1:])
+                        while args and args[0] in ("-C", "-c"):
+                            args = args[2:]
+                        if args:
+                            argvs.append(args)
+            if not any(a[0] == "commit" for a in argvs):
+                problems.append("git trace2 에 commit 이 없다 — 체크포인트 커밋 경로를 재지 못했다")
+            spawned = sorted({" ".join(a[:2]) for a in argvs if a[0] in ("maintenance", "gc")})
+            if spawned:
+                problems.append("체크포인트 커밋이 자동 maintenance 를 띄웠다: " + ", ".join(spawned))
+        residual = [kw for kw in case.get("after_expect_absent", []) if kw in out2]
+        if residual:
+            problems.append("수행 후 재lint에 위반 잔존: " + ", ".join(residual))
+        missing2 = [kw for kw in case.get("after_expect_keywords", []) if kw not in out2]
+        if missing2:
+            problems.append("수행 후 재lint 기대 키워드 미검출: " + ", ".join(missing2))
+        # **롤오버 방향 검증** — 출력 키워드만 보면 「오래된 것부터」인지 알 수 없다.
+        #  log.md는 최신이 위라, 위치로 고르는 구현은 정반대(최신부터)로 옮기면서도
+        #  "롤오버 — log.md"라는 같은 줄을 낸다. 남은 월·옮겨진 월을 직접 센다.
+        want_kept = case.get("expect_kept_months")
+        want_arch = case.get("expect_archive_months")
+        if want_kept or want_arch:
+            lp = os.path.join(dest, "log.md")
+            with open(lp, encoding="utf-8-sig") as fh:
+                lt = fh.read()
+            m = re.search(r"(?ms)^##\s*최근 변경\b.*?(?=^##\s|\Z)", lt)
+            # lint가 `--auto-split` 수행 기록으로 append한 `- [기준일] [SCHEMA] …` 줄은 뺀다
+            #  — 이 판정이 재는 것은 **롤오버 방향**(무엇이 남고 무엇이 옮겨졌나)이지 lint 자신의
+            #  실행 기록이 아니다. 줄 단위로 거른다(정규식에 부정 전방탐색을 넣으면 나중에 다른
+            #  대괄호 태그가 생겼을 때 조용히 어긋난다).
+            sec_lines = [ln for ln in (m.group(0) if m else "").split("\n")
+                         if "[SCHEMA]" not in ln]
+            kept_months = sorted({d[:7] for d in
+                                  re.findall(r"(?m)^- \[(\d{4}-\d{2}-\d{2})\]",
+                                             "\n".join(sec_lines))})
+            arch_months = sorted(os.path.basename(f)[:-3] for f in
+                                 glob.glob(os.path.join(dest, "90_archive", "log", "*.md")))
+            if want_kept is not None and kept_months != want_kept:
+                problems.append("남은 월 불일치 — 기대 %s / 실제 %s(오래된 것부터가 아닐 수 있다)"
+                                % (want_kept, kept_months))
+            if want_arch is not None and arch_months != want_arch:
+                problems.append("아카이브 월 불일치 — 기대 %s / 실제 %s" % (want_arch, arch_months))
+            # 이동 대상이 아닌 항목이 **남아 있는가**(유실 가드). 초기 구현은 날짜 없는 항목을
+            #  이동 목록에 담았다가 월 분배에서 빼면서 어느 파일에도 쓰지 않아 통째로 잃었다.
+            for kw in case.get("expect_kept_contains", []):
+                if kw not in lt:
+                    problems.append("남아야 할 항목이 사라짐(유실): " + kw)
+        # 수행 **결과 파일**의 내용을 직접 대조한다. stdout 키워드는 처방이 「돌았다」만 말하고
+        #  「옳게 썼다」는 말하지 않는다 — 코드 경로 도달과 결과 정확성은 다른 것이라,
+        #  경로만 태우는 케이스는 버그를 되돌려도 그대로 통과한다(T5 quality 2R M1).
+        for rel, needles in (case.get("expect_file_contains") or {}).items():
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            if not os.path.exists(fp):
+                # 사유만 쌓고 **이 파일은 건너뛴다** — 없는 파일을 열면 그 자리에서 죽어
+                #  나머지 축이 또 가려진다(수집형으로 바꾸는 목적과 정반대다).
+                problems.append("결과 파일 없음: " + rel)
+                continue
+            with open(fp, encoding="utf-8-sig") as fh:
+                ft = fh.read()
+            missing_n = [n for n in needles if n not in ft]
+            if missing_n:
+                problems.append("%s에 기대 문자열 없음: %s" % (rel, ", ".join(missing_n)))
+        # **개수**를 대조한다. 중복 등록은 존재 여부로 잡히지 않는다 — 있기는 있기 때문이다.
+        #  재분할이 이전 회차 하위를 허브 표에 다시 넣는 회귀가 정확히 그 형태였다.
+        for rel, wants in (case.get("expect_file_count") or {}).items():
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            if not os.path.exists(fp):
+                problems.append("결과 파일 없음: " + rel)
+                continue
+            with open(fp, encoding="utf-8-sig") as fh:
+                ft = fh.read()
+            for needle, want in wants.items():
+                got = ft.count(needle)
+                if got != want:
+                    problems.append("%s의 '%s' 개수 불일치 — 기대 %d / 실제 %d"
+                                    % (rel, needle, want, got))
+        # **없어야 할 문자열**을 대조한다. 복제 중단처럼 「무엇이 사라졌는가」가 동작인 처방은
+        #  존재 대조로 잴 수 없다 — 포인터가 생겨도 옛 복제가 함께 남으면 contains 는 그대로 통과한다.
+        for rel, needles in (case.get("expect_file_not_contains") or {}).items():
+            fp = os.path.join(dest, rel.replace("/", os.sep))
+            if not os.path.exists(fp):
+                problems.append("결과 파일 없음: " + rel)
+                continue
+            with open(fp, encoding="utf-8-sig") as fh:
+                ft = fh.read()
+            present = [n for n in needles if n in ft]
+            if present:
+                problems.append("%s에 없어야 할 문자열 있음: %s" % (rel, ", ".join(present)))
+        # **2회째 실행은 아무것도 수행하지 않아야 한다 — 케이스마다 붙는 무조건 계약이다.**
+        #  `--auto-split`은 반복 호출이 전제이고 「수렴하면 수행 대상 없음」이 그 계약인데,
+        #  1회만 도는 검사는 **호출 간에 지속되지 않는 상태에 기댄 가드**의 결함을 원리상
+        #  못 본다 — 한 호출 안의 중복 이동만 막는 지역 변수 가드가 그랬고, 그 결함은 호출을
+        #  두 번 해야 드러난다(1회 실행에서는 26케이스 중 25개가 이미 수렴해 조용했다).
+        #  **맨 끝에 두는 이유**: 위 expect_file_contains·expect_file_count는 **1회 수행 후
+        #  상태**를 재는 판정이라, 2회째를 앞에 두면 그 판정들이 다른 상태를 보게 된다.
+        # 종전에 여기 있던 `expect_presplit_dirs` 축은 **사본이 세션마다 고유한가**를 폴더
+        #  개수와 내용으로 쟀다. `-presplit` 사본이 없어지고 그 격리를 「pass 당 1회」 체크포인트
+        #  커밋이 담당하게 되면서 잴 대상이 사라졌다(§4 1번). 같은 픽스처의 `재점검` 키워드
+        #  판정은 그대로 남아 재점검 pass가 실제로 도는지를 계속 잰다.
+        if want_rc != 0 and not problems:
+            # 실패 주입 케이스는 2회째도 같은 실패라 「수렴」이 성립하지 않는다.
+            # **`not problems` 가 함께 걸리는 이유**: `want_rc != 0` 은 「기대한 실패였다」를
+            #  뜻할 뿐 「그 밖은 다 옳았다」를 보장하지 않는다. 위 판정들이 즉시 `return` 하던
+            #  동안에는 여기 도달한다는 것 자체가 그 보장이었는데, 수집형으로 바꾸면서 그
+            #  보장이 사라졌다 — 쌓인 사유가 있는데 여기서 성공을 내면 **변이를 걸어도 PASS**가
+            #  되어 이 회차가 세우려는 검증이 통째로 거짓이 된다.
+            undo_split_failures(restore)
+            rmtree_force(tmp)
+            return True, "--auto-split 실패 경로 확인(rc=%d): %s" % (
+                rc, ", ".join(case.get("expect_keywords", [])))
+        # git vault면 1회째 산출물을 먼저 커밋한다 — 처방 호출 사이의 「절차 커밋」이고,
+        #  빠뜨리면 진입 가드가 2회째를 거부해 **수렴 계약이 아니라 규약 위반을 재게 된다**.
+        if case.get("git_vault"):
+            commit_git_vault(dest, "문서: 1회째 처방 결과")
+        out3, rc3, err3 = run_lint(dest, ["--auto-split"])
+        if rc3 != 0:
+            tail = err3.strip().splitlines()[-1] if err3.strip() else "(stderr 없음)"
+            problems.append(f"2회째 --auto-split 비정상 종료({rc3}): {tail}")
+        # **여기만 `elif` 인 것은 축 억제가 아니라 근거 부재다** — 2회째가 비정상 종료하면
+        #  `out3` 자체가 판정 근거가 못 되므로(출력이 잘렸거나 아예 없다) 수렴 축은 잴 대상이
+        #  없다. 위 「조기 종료로 남는 것은 둘뿐」과 어긋나 보이지만, 그쪽은 **잴 수 있는데
+        #  끊는 것**을 막는 규칙이다.
+        elif "수행 대상 없음" not in out3:
+            # 어느 처방이 수렴하지 않았는지가 판정 근거다 — 건수만으로는 원인을 못 가른다.
+            #  **`== --auto-split:` 배너 뒤만 본다** — 그 앞에는 연쇄 호출한 build_index의
+            #  출력이 같은 들여쓰기로 섞여 있어, 들여쓰기만으로 거르면 무관한 줄이 판정
+            #  근거로 실린다(실측: `라벨 미역이관` 경고의 대상 줄이 딸려 왔다).
+            lines = out3.splitlines()
+            head = next((i for i, ln in enumerate(lines)
+                         if ln.startswith("== --auto-split:")), len(lines))
+            did = [ln.strip() for ln in lines[head + 1:]
+                   if ln.startswith("  ") and ln.strip() and not ln.strip().startswith("사본:")]
+            problems.append("2회째 --auto-split이 수렴하지 않음: "
+                            + ("; ".join(did) if did else out3.strip()))
+        # 정리는 여기 한 자리다 — 위 판정들이 각자 되돌리고 나가던 것을 모았다.
+        undo_split_failures(restore)
+        rmtree_force(tmp)
+        if problems:
+            return False, " / ".join(problems)
+        return True, "--auto-split dry-run 무변경 + 수행 확인: " + ", ".join(case.get("expect_keywords", []))
+
+    # fix_dry_run 케이스: `--fix --dry-run`이 **무엇을 고칠지만** 내는가.
+    #  키워드만 보면 증명되지 않는다 — 출력이 맞아도 파일을 고쳤을 수 있다(종전이 정확히
+    #  그랬다: `main`이 그 플래그를 보지 않아 미리보기 요청이 실제 수정으로 돌았다).
+    #  그래서 `.md` 바이트를 앞뒤로 비교하고, **백업 폴더가 생기지 않았는지**까지 본다
+    #  (백업 생성은 그 자체가 쓰기이며, 30일 정리는 폴더를 지우는 파괴적 동작이다).
+    if case.get("fix_dry_run"):
+        tmp = tempfile.mkdtemp(prefix="lint-eval-fixdry-")
+        dest = os.path.join(tmp, os.path.basename(vault))
+        shutil.copytree(vault, dest)
+        before = _snapshot_md(dest)
+        out, rc, err = run_lint(dest, ["--fix", "--dry-run"])
+        after = _snapshot_md(dest)
+        broot = os.path.join(dest, "90_archive", "backup")
+        made = sorted(os.listdir(broot)) if os.path.isdir(broot) else []
+        rmtree_force(tmp)
+        if before != after:
+            changed = sorted(k for k in set(before) | set(after)
+                             if before.get(k) != after.get(k))
+            return False, "--fix --dry-run이 파일을 변경함: " + ", ".join(changed)
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
+        if missing:
+            return False, "--fix --dry-run 출력 미검출: " + ", ".join(missing)
+        present = [kw for kw in case.get("expect_absent", []) if kw in out]
+        if present:
+            return False, "--fix --dry-run 출력에 금지 키워드: " + ", ".join(present)
+        if made != case.get("expect_backup_kept", []):
+            return False, "백업 폴더 불일치 — 기대 %s / 실제 %s" % (
+                case.get("expect_backup_kept", []), made)
+        return True, "--fix --dry-run 무변경 + 미리보기 확인: " + ", ".join(
+            case.get("expect_keywords", []))
+
+    if case.get("fix_mode"):
+        tmp = tempfile.mkdtemp(prefix="lint-eval-fix-")
+        dest = os.path.join(tmp, os.path.basename(vault))
+        shutil.copytree(vault, dest)
+        if case.get("git_vault") and not setup_git_vault(dest, case.get("git_vault_dirty", [])):
+            rmtree_force(tmp)
+            return True, "SKIP (git 미설치·실행 실패 — git vault 골든은 git 필요)"
+        # F-2는 한 절차 안에서 `--auto-split` 뒤에 `--fix`를 부른다(`procedures-ops.md` :63·:65).
+        #  그 연쇄를 **규약대로**(「커밋 시점」 ① — 부르기 직전마다 커밋) 재현한다: 선행 호출을
+        #  실제로 태우고 그 산출물을 커밋한 뒤 `--fix`로 넘긴다. 상태를 손으로 흉내 내면 그
+        #  경로가 아니다.
+        #  **커밋까지 해야 G2b를 잰다** — 재는 것은 「규약을 지켰는데도 막히는가」이기 때문이다.
+        #  커밋을 빼면 그냥 dirty 거부라 `fix-dirty-reject`와 같은 축이 된다. 선행 처방이
+        #  미커밋을 실제로 남기는지는 픽스처마다 갈린다(재점검 pass가 돌면 그 진입 체크포인트가
+        #  앞 pass 결과를 담아 워킹트리가 깨끗해진다 — 2026-09-16 실측: log-guard는 clean,
+        #  prose-split은 미커밋 3건 — 2026-10-12 `[SCHEMA]` 기록을 끊은 뒤 2건). 갈리는 쪽을 골라야 이 커밋이 실제로 일을 한다.
+        if case.get("pre_auto_split"):
+            run_lint(dest, ["--auto-split"])
+            commit_git_vault(dest, "문서: 선행 처방 결과")
+        # 거부 케이스의 「한 바이트도 안 바뀜」은 rmtree 전에 읽어 둬야 판정할 수 있다 —
+        #  auto_split 핸들러의 `unchanged_before`와 같은 축이고 같은 헬퍼를 쓴다.
+        unchanged_before = {rel: _read_bytes(dest, rel)
+                            for rel in case.get("expect_unchanged", [])}
+        out1, rc1, err1 = run_lint(dest, ["--fix"])
+        out2, rc2, err2 = run_lint(dest)
+        unchanged_after = {rel: _read_bytes(dest, rel)
+                           for rel in case.get("expect_unchanged", [])}
+        rmtree_force(tmp)
+        # auto_split 핸들러와 같은 수집형이다 — 앞 축이 뒤 축을 가리지 않게 한다.
+        #  **정리는 여기서 옮기지 않는다** — 이 핸들러는 판정에 쓸 값을 모두 먼저 읽어 두고
+        #  (`out1`·`out2`·`unchanged_after`) `rmtree` 를 그 뒤에 두는 구조라, 임시 경로에
+        #  의존하는 판정이 남아 있지 않다. auto_split 쪽과 다른 것은 결함이 아니라 구조다.
+        problems = []
+        want_rc = case.get("expect_rc", 0)
+        if rc1 != want_rc:
+            tail = err1.strip().splitlines()[-1] if err1.strip() else "(stderr 없음)"
+            problems.append(f"--fix 종료 코드 불일치 — 기대 {want_rc} / 실제 {rc1}: {tail}")
+        # **거부는 본 lint를 이어 돌리지 않는다** — 「수행하지 않았다」인데 수정 후 상태를
+        #  보고하면 「고쳐졌나」가 흐려지기 때문이다(lint.py `main()`). 그 케이스에서는 이
+        #  헤더가 없는 것이 정상이므로 `expect_lint_output: false`로 가른다. 재실행(out2)은
+        #  언제나 read-only라 헤더가 항상 나온다 — 그쪽은 조건 없이 잰다.
+        if case.get("expect_lint_output", True) and "== llm-wiki Lint:" not in out1:
+            tail = err1.strip().splitlines()[-1] if err1.strip() else "(stderr 없음)"
+            problems.append(f"lint.py 비정상 종료(fix={rc1}): {tail}")
+        if "== llm-wiki Lint:" not in out2:
+            tail = err2.strip().splitlines()[-1] if err2.strip() else "(stderr 없음)"
+            problems.append(f"lint.py 비정상 종료(재실행={rc2}): {tail}")
+        for rel, before in unchanged_before.items():
+            if unchanged_after.get(rel) != before:
+                problems.append("--fix 미수행인데 변경됐다: " + rel)
+        missing = [kw for kw in case.get("expect_keywords", []) if kw not in out1]
+        if missing:
+            problems.append("--fix 출력 미검출 키워드: " + ", ".join(missing))
+        # `expect_keywords` 는 부분 문자열 대조라 옛 꼬리가 붙은 출력도 통과시킨다 — 꼬리를
+        #  걷어낸 문구를 재려면 그 꼬리가 **없다**는 것을 따로 대조해야 한다. `[SKIP]` 줄은
+        #  `--fix` 출력(out1)에만 나오므로 재실행(out2)이 아니라 여기서 잰다.
+        present = [kw for kw in case.get("expect_absent", []) if kw in out1]
+        if present:
+            problems.append("--fix 출력에 있으면 안 되는 문자열: " + ", ".join(present))
+        residual = [kw for kw in case.get("after_expect_absent", []) if kw in out2]
+        if residual:
+            problems.append("수정 후 재lint에 위반 잔존: " + ", ".join(residual))
+        missing2 = [kw for kw in case.get("after_expect_keywords", []) if kw not in out2]
+        if missing2:
+            problems.append("수정 후 재lint 기대 키워드 미검출(비제거 대상이 사라짐 의심): "
+                            + ", ".join(missing2))
+        if problems:
+            return False, " / ".join(problems)
+        return True, "--fix 적용·재lint 해소 확인: " + ", ".join(case.get("expect_keywords", []))
+
+    tmp = None
+    if case.get("git_repo"):
+        # §7-26: 실제 git 이력이 있어야 뒤처짐 계산이 실증된다. git이 없는 환경에선 이 케이스만
+        #  SKIP하고 전체는 통과시킨다(fail-open — 검사 자체가 fail-open이므로 골든도 같은 규약).
+        tmp, vault = prepare_git_repo_vault(vault, case.get("synced_mode", "first"))
+        if tmp is None:
+            return True, "SKIP (git 미설치·실행 실패 — §7-26 골든은 git 필요)"
+    elif case.get("placeholder"):
+        tmp, vault = prepare_placeholder_vault(vault)
+    elif case.get("bad_encoding"):
+        tmp, vault = prepare_bad_encoding_vault(vault)
+    elif case.get("bad_index"):
+        tmp, vault = prepare_bad_index_vault(vault)
+    out, rc, err = run_lint(vault)
+    if tmp:
+        rmtree_force(tmp)
+    # lint.py는 ERR가 있으면 exit 1(L-5 — A-4/B-3 자동 게이트용), 없으면 0, 사용법 오류 2다.
+    #  정상 실행은 stdout에 리포트 헤더('== llm-wiki Lint:')를 내므로, 헤더가 있으면 rc와 무관하게
+    #  결과를 파싱한다(exit 1이 곧 ERR 검출이라 위반 fixture는 정상이다). 헤더가 없는 종료만
+    #  진짜 크래시(런타임 예외)로 보고 FAIL 처리한다.
+    if "== llm-wiki Lint:" not in out:
+        tail = err.strip().splitlines()[-1] if err.strip() else "(stderr 없음)"
+        return False, f"lint.py 비정상 종료(exit {rc}): {tail}"
+
+    if case.get("expect_clean"):
+        # 정상 vault: ERR·WARN 0이어야 한다(INFO는 허용).
+        # expect_absent는 clean 케이스에도 적용한다 — "조용히 건너뛰어야 하는" 동작(§7-26 fail-open 등)은
+        #  ERR/WARN 0만으로는 실증되지 않는다(INFO로 새어나와도 clean 판정은 통과하므로).
+        present = [kw for kw in case.get("expect_absent", []) if kw in out]
+        if present:
+            return False, "부재 기대 키워드가 출력에 존재(오탐): " + ", ".join(present)
+        ok = ("[ERR] 오류 0건" in out) and ("[WARN] 경고 0건" in out)
+        if ok:
+            return True, "WARN/ERR 0 (정상)"
+        return False, "위반 0을 기대했으나 ERR/WARN 발생"
+
+    missing = [kw for kw in case.get("expect_keywords", []) if kw not in out]
+    if missing:
+        return False, "미검출 키워드: " + ", ".join(missing)
+    present = [kw for kw in case.get("expect_absent", []) if kw in out]
+    if present:
+        return False, "부재 기대 키워드가 출력에 존재(오탐): " + ", ".join(present)
+    return True, "검출: " + ", ".join(case.get("expect_keywords", []))
+
+
+def main():
+    if not os.path.isfile(LINT_PY):
+        print(f"lint.py를 찾을 수 없음: {LINT_PY}")
+        sys.exit(2)
+    try:
+        with open(CASES_JSON, encoding="utf-8") as fh:
+            cases = json.load(fh)["cases"]
+    except (OSError, json.JSONDecodeError, KeyError) as e:
+        print(f"lint-cases.json 로드 실패: {e}")
+        sys.exit(2)
+
+    ap = argparse.ArgumentParser(description="llm-wiki lint.py 골든 회귀 러너")
+    ap.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 1),
+                    help="동시에 돌릴 케이스 수 (1 = 순차)")
+    ap.add_argument("--full", action="store_true",
+                    help="케이스 줄을 전부 낸다 (기본은 통과한 [PASS] 줄을 생략)")
+    args = ap.parse_args()
+    jobs = max(1, args.jobs)
+
+    # 단위 케이스가 쓰는 lint 모듈을 먼저 한 번 읽는다 — 여러 스레드가 동시에 처음 부르면
+    #  각자 모듈을 실행해 캐시 대입이 경합한다. 여기서 실패하면 삼키고 넘어간다 — 그 실패는
+    #  단위 케이스가 다시 부를 때 종전과 같은 자리에서 드러난다.
+    try:
+        load_lint_module()
+    except Exception:
+        pass
+
+    print("== llm-wiki lint 골든 회귀 ==")
+    # 케이스마다 lint.py 를 subprocess 로 띄우므로 스레드로 충분하다. 쓰기 모드 케이스는
+    #  임시 사본에서 돌고 원본 픽스처 경로는 읽기만 해, 같은 픽스처를 동시에 읽어도 충돌하지 않는다.
+    #  `map` 은 결과를 입력 순서로 돌려주므로 출력이 순차 실행과 같다.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
+        outcomes = list(pool.map(check_case, cases))
+    passed = 0
+    hidden = 0
+    for case, (ok, detail) in zip(cases, outcomes):
+        if ok:
+            passed += 1
+        # 기본 축약: 통과 줄만 생략한다. git 미설치 SKIP 도 ok 로 돌아오지만 남긴다 — 생략하면
+        #  「150/150 PASS」만 남아 케이스가 실제로는 돌지 않은 커버리지 축소가 보이지 않는다.
+        if ok and not args.full and not detail.startswith("SKIP"):
+            hidden += 1
+            continue
+        mark = "PASS" if ok else "FAIL"
+        print(f"[{mark}] {case['fixture']} — {detail}")
+    if hidden:
+        print(f"[COMPACT] PASS {hidden}줄 생략 — 케이스 줄이 필요하면 --full")
+
+    total = len(cases)
+    print(f"\n결과: {passed}/{total} PASS")
+    sys.exit(0 if passed == total else 1)
+
+
+if __name__ == "__main__":
+    main()
