@@ -649,6 +649,40 @@ def stall_when_git_always_fails():
     assert len([c for c in cli.calls if c[0] == 'worker-read']) == 3, out
 
 
+def bg_screen(footer):
+    # 2026-10-21 실측 — 백그라운드 셸을 걸고 turn 을 끝낸 Claude Code 화면은 끝 줄 「· N shells」 까지 고정된다.
+    return screen('● 테스트를 백그라운드로 돌렸다', '─' * 20, '❯ ', '─' * 20, '  ⚠ context-meter: 12%', '',
+                  '  ⏵⏵ bypass permissions on · %s' % footer)
+
+
+@case
+def background_shell_idle_does_not_stall():
+    # 백그라운드 셸을 기다리는 워커는 화면·HEAD 가 함께 멈춘다 — 입력창 아래 「N shell(s)」 이면 멈춤으로 세지 않는다.
+    for footer in ('1 shell', '2 shells'):
+        cli = FakeCli([EMPTY] * 3 + [msg_batch()], [bg_screen(footer)] * 3)
+        out = run(cli)
+        assert first(out).startswith('RESULT: message — '), (footer, out)
+
+
+@case
+def background_shell_too_long_stalls():
+    # 백그라운드 셸 표시인 채 같은 화면이 6비교를 넘으면 다시 멈춤으로 센다 — PR pending 과 같은 상한(9장).
+    cli = FakeCli([EMPTY] * 12, [bg_screen('1 shell')] * 12)
+    out = run(cli)
+    assert first(out).startswith('RESULT: stall — '), out
+    assert len([c for c in cli.calls if c[0] == 'worker-read']) == 9, out
+
+
+@case
+def shells_text_above_input_box_is_not_background():
+    # 「N shells」 가 입력창 위 대화에만 있으면 백그라운드 표시가 아니다 — 3장째에 멈춘다.
+    idle = screen('● 2 shells 를 띄웠다', '─' * 20, '❯ ', '─' * 20, '  ⏵⏵ bypass permissions on')
+    cli = FakeCli([EMPTY] * 3, [idle] * 3)
+    out = run(cli)
+    assert first(out).startswith('RESULT: stall — '), out
+    assert len([c for c in cli.calls if c[0] == 'worker-read']) == 3, out
+
+
 @case
 def progress_not_saved_until_output():
     # 진행만 있던 주기는 상태를 저장하지 않는다 — 그 대기가 물러나도 새 대기가 같은 줄을 낸다.
