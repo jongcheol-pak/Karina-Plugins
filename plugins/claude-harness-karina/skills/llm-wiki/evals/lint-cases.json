@@ -2067,6 +2067,57 @@
       "rationale": "§7-39 ⓗ 음성 짝 — 근거 커밋이 레포 이력에 없으면(rebase·다른 레포) 낡음을 지어내지 않고 fail-open INFO 1줄이다(§7-26 과 같은 관례)"
     },
     {
+      "fixture": "facts-monorepo",
+      "git_repo": true,
+      "repo_layout": "monorepo",
+      "synced_mode": "first",
+      "expect_keywords": [
+        "facts 근거 낡음 가능",
+        "'a.txt'"
+      ],
+      "rationale": "§7-39 하위 폴더 — 허브 레포 경로가 git 루트의 하위 폴더 `sub` 면 근거 경로는 `sub` 기준이고 `git diff` 는 git 루트 기준이다. 접두를 붙여 대조해야 셋째 커밋이 바꾼 `sub/a.txt` 가 잡힌다"
+    },
+    {
+      "fixture": "facts-monorepo",
+      "git_repo": true,
+      "repo_layout": "monorepo",
+      "synced_mode": "first",
+      "expect_keywords": [
+        "facts 근거 낡음 가능",
+        "'../.github/ci.yml'"
+      ],
+      "expect_absent": [
+        "facts 근거 경로 레포에 없음"
+      ],
+      "rationale": "§7-39 하위 폴더 밖 — `../` 로 git 루트의 `.github/ci.yml` 을 가리킨 근거도 정규화해 대조한다(셋째 커밋이 바꿨다). 메시지는 페이지에 적힌 근거 경로를 그대로 낸다"
+    },
+    {
+      "fixture": "facts-monorepo",
+      "git_repo": true,
+      "repo_layout": "monorepo",
+      "synced_mode": "first",
+      "expect_keywords": [
+        "facts 근거 낡음 가능"
+      ],
+      "expect_absent": [
+        "'README.md'"
+      ],
+      "rationale": "§7-39 하위 폴더 음성 짝 — 둘째 커밋이 git 루트의 `README.md` 를 바꿔도 하위 폴더 근거 `README.md`(= `sub/README.md`, 안 바뀜)는 낡음이 아니다. 기대 키워드는 같은 픽스처의 `a.txt` 신호로 검사가 실제로 돌았음을 보장한다"
+    },
+    {
+      "fixture": "facts-monorepo",
+      "git_repo": true,
+      "repo_layout": "monorepo",
+      "synced_mode": "first",
+      "expect_keywords": [
+        "facts 근거 낡음 가능"
+      ],
+      "expect_absent": [
+        "'b.txt'"
+      ],
+      "rationale": "§7-39 내용 그대로 이동 음성 짝 — 둘째 커밋이 `old/b.txt` 를 `sub/b.txt` 로 내용 그대로 옮겼다. rename 100% 는 근거 내용이 그대로라 낡음이 아니다 — 이동 한 번에 근거 줄 전부가 경고되는 것을 막는다"
+    },
+    {
       "fixture": "body-code-path-feature",
       "expect_keywords": [
         "본문 코드 경로: 20_projects/personal/x/feat-a.md"

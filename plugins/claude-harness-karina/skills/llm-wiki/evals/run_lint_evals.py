@@ -305,13 +305,18 @@ def commit_git_vault(dest, msg):
                        check=True, capture_output=True, timeout=20)
 
 
-def prepare_git_repo_vault(fixture_dir, synced_mode):
+def prepare_git_repo_vault(fixture_dir, synced_mode, repo_layout="flat"):
     """fixture를 임시 폴더로 복사하고, 그 옆에 **커밋 3개짜리 임시 git 레포**를 만들어
     허브의 `__REPO_ROOT__`·`__SYNCED_SHA__`를 실제 값으로 치환한다(§7-26 골든).
 
     §7-26의 뒤처짐 계산은 실제 git 이력이 있어야만 실증된다 — 스텁으로 대체하면
     `git rev-list` 실경로가 어디서도 검증되지 않으므로 진짜 레포를 만든다.
     synced_mode: "first"=첫 커밋 sha(→ 2커밋 뒤처짐) / "missing"=이력에 없는 가짜 sha.
+    repo_layout: "flat"=레포 루트에 `f0~f2.txt` 를 커밋마다 하나씩 더한다 / "monorepo"=허브
+    레포 경로가 git 루트의 하위 폴더 `sub` 다(§7-39 — 근거 경로는 `sub` 기준, `git diff` 는
+    git 루트 기준). 커밋 셋: ① 루트 `README.md`·`sub/README.md`·`sub/a.txt`·`.github/ci.yml`·
+    `old/b.txt` 생성 ② 루트 `README.md` 수정 · `old/b.txt` → `sub/b.txt` 내용 그대로 이동
+    ③ `sub/a.txt`·`.github/ci.yml` 수정. `sub` 아래에 `.git` 이 없어 §7-26 은 건너뛴다.
     커밋은 전역 git config에 의존하지 않게 `-c user.*`를 케이스 로컬로 준다.
     git이 없거나 실패하면 (None, None) — 호출부가 케이스를 SKIP한다.
     반환: (정리용 임시 루트, vault 경로). 기대 뒤처짐 수는 케이스의 expect_keywords가
@@ -326,8 +331,11 @@ def prepare_git_repo_vault(fixture_dir, synced_mode):
         subprocess.run(["git", "init", "-q", repo], check=True, capture_output=True, timeout=20)
         shas = []
         for i in range(3):
-            with open(os.path.join(repo, f"f{i}.txt"), "w", encoding="utf-8") as fh:
-                fh.write(f"commit {i}\n")
+            if repo_layout == "monorepo":
+                _write_monorepo_commit(repo, i)
+            else:
+                with open(os.path.join(repo, f"f{i}.txt"), "w", encoding="utf-8") as fh:
+                    fh.write(f"commit {i}\n")
             subprocess.run(git + ["-C", repo, "add", "-A"], check=True, capture_output=True, timeout=20)
             subprocess.run(git + ["-C", repo, "commit", "-q", "-m", f"c{i}"],
                            check=True, capture_output=True, timeout=20)
@@ -339,6 +347,7 @@ def prepare_git_repo_vault(fixture_dir, synced_mode):
         return None, None  # git 미설치·실행 실패 → 케이스 SKIP
     # "first" = 첫 커밋 기준 → 이후 2커밋이 미반영. "missing" = 이력에 없는 sha(rebase 소실 재현).
     synced = shas[0] if synced_mode == "first" else "0" * 40
+    hub_root = os.path.join(repo, "sub") if repo_layout == "monorepo" else repo
     for dirpath, _dirs, files in os.walk(dest):
         for name in files:
             if not name.endswith(".md"):
@@ -346,12 +355,32 @@ def prepare_git_repo_vault(fixture_dir, synced_mode):
             path = os.path.join(dirpath, name)
             with open(path, encoding="utf-8") as fh:
                 text = fh.read()
-            new = text.replace("__REPO_ROOT__", repo.replace("\\", "/")) \
+            new = text.replace("__REPO_ROOT__", hub_root.replace("\\", "/")) \
                       .replace("__SYNCED_SHA__", synced)
             if new != text:
                 with open(path, "w", encoding="utf-8", newline="") as fh:
                     fh.write(new)
     return tmp, dest
+
+
+def _write_monorepo_commit(repo, i):
+    """하위 폴더 배치 레포의 i 번째 커밋 내용을 워킹트리에 만든다(`prepare_git_repo_vault`)."""
+    def put(rel, text):
+        path = os.path.join(repo, *rel.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+    if i == 0:
+        for rel in ("README.md", "sub/README.md", "sub/a.txt", ".github/ci.yml"):
+            put(rel, f"{rel} v0\n")
+        put("old/b.txt", "b 내용 — 이동해도 같다\n")
+    elif i == 1:
+        put("README.md", "README.md v1\n")
+        os.makedirs(os.path.join(repo, "sub"), exist_ok=True)
+        os.replace(os.path.join(repo, "old", "b.txt"), os.path.join(repo, "sub", "b.txt"))
+    else:
+        put("sub/a.txt", "sub/a.txt v2\n")
+        put(".github/ci.yml", ".github/ci.yml v2\n")
 
 
 def prepare_aux_split_vault(fixture_dir, concept_count, open_questions):
@@ -1108,7 +1137,8 @@ def check_case(case):
     if case.get("git_repo"):
         # §7-26: 실제 git 이력이 있어야 뒤처짐 계산이 실증된다. git이 없는 환경에선 이 케이스만
         #  SKIP하고 전체는 통과시킨다(fail-open — 검사 자체가 fail-open이므로 골든도 같은 규약).
-        tmp, vault = prepare_git_repo_vault(vault, case.get("synced_mode", "first"))
+        tmp, vault = prepare_git_repo_vault(vault, case.get("synced_mode", "first"),
+                                            case.get("repo_layout", "flat"))
         if tmp is None:
             return True, "SKIP (git 미설치·실행 실패 — §7-26 골든은 git 필요)"
     elif case.get("placeholder"):
