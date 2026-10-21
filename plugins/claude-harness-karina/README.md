@@ -215,6 +215,7 @@ plan.md 를 추적하는 레포에서는 마무리에 plan.md 도 한 번 커밋
 | 검증 스킬 유지 (`karina:maintain-verification-skill`) | `/karina:maintain-verification-skill` 직접 호출 | 앱이 바뀐 뒤 기능 지도를 다시 맞춤 — 기능마다 소스를 읽고 모든 기능을 실제로 조작해, 증명된 수정만 PR 하나로 낸다(고칠 것이 없으면 PR 없음) |
 | 형식 검증 스킬 만들기 (`karina:create-formal-verification-skill`) | `/karina:create-formal-verification-skill` 직접 호출 | 깨지면 사용자가 다치고 테스트가 잘 닿지 않는 속성 하나(동시성·재시도·상태 기계·파서)를 골라 맞는 도구(순서 문제는 TLA+)로 형식 검증하고, 일부러 깨뜨린 변경을 잡는지 한 번 증명한 뒤 검증 스킬(`.claude/skills/formal-영역/`)을 AGENTS.md 의 `Verify (형식 검증)` 줄에 등록 · 이후 그 코드를 건드린 task·PR·디버깅 수정에서 검사를 다시 돌린다 · 검증 도구 설치는 승인을 받은 뒤에만 |
 | 형식 검증 스킬 유지 (`karina:maintain-formal-verification-skill`) | `/karina:maintain-formal-verification-skill` 직접 호출 | 코드가 바뀐 뒤 형식 검증을 코드에 다시 맞춤 — 동기 커밋부터 덮는 코드의 변경을 읽어 모델·하네스·속성을 고치고 다시 돌려, 검증 드리프트와 코드 버그를 갈라 보고하고 증명된 검증 수정만 PR 하나로 낸다(검증 도구가 없으면 설치하지 않고 blocked) |
+| 세션 회고 (`karina:reflect`) | `/karina:reflect` 직접 호출 | 현재 세션의 대화 전사(서브에이전트 포함)를 요약해 읽기 전용 리뷰어가 karina 스킬·hook 의 개선 후보 표를 내고, 사용자가 번호로 고른 것만 Deferred 대장에 올려 로컬 커밋한다 — 스킬 파일은 고치지 않고, karina 하니스 레포 밖에서 부르면 대장 줄을 보고에만 낸다 |
 
 계획 체인은 Karina 앱이 떠 있고 이 세션이 Karina 앱 탭 안에 있어야 하며, 워커 세션은 **agent 권한 확인을 끈 채** 돈다 — 하니스 차단 hook 은 그대로 동작하지만 사람이 보는 권한 확인 층은 없다. 워커는 Karina 앱에서 어느 워크트리를 보고 있든 대상 레포 폴더에서 돌고(병렬 그룹의 워커는 각자 새 worktree 에서 돈다), 그 폴더를 다른 세션 워커가 쓰고 있으면 끝날 때까지 기다린다. PR 모드는 GitHub 원격과 `gh` 로그인이 있고, 지금 브랜치에 미커밋 변경도 기본 브랜치에 없는 커밋(push 안 된 커밋 포함 · merge 된 karina/ 접두 브랜치는 그 PR 뒤 커밋만 센다)도 없을 때만 고를 수 있다. 스택 모드(`T`)는 같은 조건에 더해 병렬 그룹이 없을 때만 고를 수 있다. `Y` 로 승인해도 체인이 끝나면 PR 하나를 엽니다(체인 끝 PR — GitHub 원격과 `gh` 로그인이 있을 때 · merge 는 요청할 때).
 
@@ -305,6 +306,7 @@ plan.md 를 추적하는 레포에서는 마무리에 plan.md 도 한 번 커밋
 | `/karina:maintain-verification-skill` | 검증 스킬 유지 (직접 호출 전용) |
 | `/karina:create-formal-verification-skill` | 형식 검증 스킬 만들기 (직접 호출 전용) |
 | `/karina:maintain-formal-verification-skill` | 형식 검증 스킬 유지 (직접 호출 전용) |
+| `/karina:reflect` | 세션 회고 — 개선 후보를 대장에 등재 (직접 호출 전용) |
 
 ---
 
