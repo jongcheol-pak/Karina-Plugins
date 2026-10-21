@@ -1,0 +1,248 @@
+﻿# validate.ps1 — karina plugin 설치 후 정상 동작 검증
+#
+# 사용법:
+#   .\validate.ps1
+#
+# 검증 항목:
+#   1. plugin 디렉터리 존재
+#   2. plugin.json + marketplace.json 유효
+#   3. skill 10개 모두 등록
+#   3-1. 가이드 문서 8개 존재 (DESIGN/AUTHORING/BUDGET/WIKI/AGENTS-BOUNDARY/WRITING/PERF-MEASUREMENT/REPO-CONVENTIONS)
+#   4. agent 전부 등록
+#   5. hook 11개 모두 등록 + BOM 확인
+#   6. 모든 ps1 파일에 UTF-8 BOM
+#   7. JSON 파일 파싱 가능
+
+param(
+    [switch]$Verbose
+)
+
+$ErrorActionPreference = 'Stop'
+
+# 한글 출력이 cp949 콘솔에서 깨지지 않도록 UTF-8 (hook 스크립트들과 동일 규약)
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+
+# 홈 경로: Claude Code 홈과 정합 — Windows는 USERPROFILE(없으면 $HOME 폴백), 비Windows는 $HOME
+$homeBase = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+
+# 플러그인 설치 캐시 레이아웃은 Claude Code 버전에 따라 다르다 — 실재하는 쪽을 탐지한다:
+#   신: cache/karina-harness/karina/<버전>/  (버전 디렉터리 누적 — 최신 버전을 검사)
+#   구: cache/karina-harness/plugins/karina
+$cacheBase = Join-Path $homeBase ".claude/plugins/cache/karina-harness"
+$pluginRoot = $null
+$verRoot = Join-Path $cacheBase "karina"
+if (Test-Path -LiteralPath $verRoot) {
+    $verDirs = @(Get-ChildItem -LiteralPath $verRoot -Directory -ErrorAction SilentlyContinue)
+    # [version] 파싱 가능한 이름을 버전 순으로 정렬해 최신 채택 (파싱 불가만 있으면 이름 정렬 폴백)
+    $latest = $verDirs | Where-Object { $null -ne ($_.Name -as [version]) } |
+        Sort-Object { [version]$_.Name } | Select-Object -Last 1
+    if (-not $latest) { $latest = $verDirs | Sort-Object Name | Select-Object -Last 1 }
+    if ($latest -and (Test-Path -LiteralPath (Join-Path $latest.FullName ".claude-plugin/plugin.json"))) {
+        $pluginRoot = $latest.FullName
+    }
+}
+if (-not $pluginRoot) {
+    $legacy = Join-Path $cacheBase "plugins/karina"
+    if (Test-Path -LiteralPath (Join-Path $legacy ".claude-plugin/plugin.json")) { $pluginRoot = $legacy }
+}
+if (-not $pluginRoot) {
+    # 어느 레이아웃도 없음 — 아래 Test-Item-Exists가 FAIL로 안내하도록 신 레이아웃 경로를 기본값으로
+    $pluginRoot = $verRoot
+}
+$marketplaceRoot = Join-Path $homeBase ".claude/plugins/marketplaces/karina-harness"
+
+$pass = 0
+$fail = 0
+$warnings = @()
+
+function Test-Item-Exists {
+    param([string]$Path, [string]$Description)
+    if (Test-Path -LiteralPath $Path) {
+        Write-Host "  [OK]   $Description" -ForegroundColor Green
+        $script:pass++
+        return $true
+    } else {
+        Write-Host "  [FAIL] $Description" -ForegroundColor Red
+        Write-Host "         경로: $Path" -ForegroundColor DarkGray
+        $script:fail++
+        return $false
+    }
+}
+
+function Test-Json-Valid {
+    param([string]$Path, [string]$Description)
+    try {
+        $null = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+        Write-Host "  [OK]   $Description" -ForegroundColor Green
+        $script:pass++
+        return $true
+    } catch {
+        Write-Host "  [FAIL] $Description" -ForegroundColor Red
+        Write-Host "         오류: $_" -ForegroundColor DarkGray
+        $script:fail++
+        return $false
+    }
+}
+
+function Test-Ps1-Bom {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) { return $false }
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+        return $true
+    }
+    return $false
+}
+
+Write-Host "=== karina plugin 검증 시작 ===" -ForegroundColor Cyan
+Write-Host "검사 대상 plugin 경로: $pluginRoot" -ForegroundColor DarkGray
+Write-Host ""
+
+# 1. Plugin 디렉터리 구조
+Write-Host "1. Plugin 디렉터리 구조" -ForegroundColor Yellow
+Test-Item-Exists $pluginRoot "plugin 루트 디렉터리" | Out-Null
+Test-Item-Exists (Join-Path $pluginRoot ".claude-plugin/plugin.json") "plugin.json" | Out-Null
+Test-Item-Exists $marketplaceRoot "marketplace 루트 디렉터리" | Out-Null
+Write-Host ""
+
+# 2. JSON 파일 유효성
+Write-Host "2. JSON 파일 유효성" -ForegroundColor Yellow
+Test-Json-Valid (Join-Path $pluginRoot ".claude-plugin/plugin.json") "plugin.json 파싱" | Out-Null
+Test-Json-Valid (Join-Path $pluginRoot "hooks/hooks.json") "hooks.json 파싱" | Out-Null
+Write-Host ""
+
+# 3. Skills (expected 목록 존재 + 미등록 탐지 — 카운트는 목록에서 산출)
+$skills = @('plan', 'implement', 'karina-systematic-debugging', 'llm-wiki', 'record-project-fact', 'chain-plan', 'pr', 'create-verification-skill', 'maintain-verification-skill', 'create-formal-verification-skill', 'maintain-formal-verification-skill')
+Write-Host "3. Skills $($skills.Count)개" -ForegroundColor Yellow
+foreach ($s in $skills) {
+    $skillPath = Join-Path $pluginRoot "skills/$s/SKILL.md"
+    Test-Item-Exists $skillPath "skill: $s" | Out-Null
+}
+# 실제 skills/ 에 SKILL.md가 있는데 expected 목록에 없으면 경고 (skill 추가 후 validate 갱신 누락 포착)
+$actualSkills = Get-ChildItem -Path (Join-Path $pluginRoot 'skills') -Directory -ErrorAction SilentlyContinue |
+    Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'SKILL.md') } |
+    Select-Object -ExpandProperty Name
+foreach ($a in $actualSkills) {
+    if ($skills -notcontains $a) {
+        Write-Host "         [WARN] validate 미등록 skill: $a (이 목록에 추가 필요)" -ForegroundColor DarkYellow
+        $script:warnings += "validate 미등록 skill: $a"
+    }
+}
+Write-Host ""
+
+# 3-1. 가이드 문서 (설치본에 실재하는가)
+#   스킬 문서(SKILL.md·references)가 가리키는 설계·예산 문서와 공통 참조다. 3번은 SKILL.md 만
+#   보므로 이 파일들이 설치본에서 빠져도 잡히지 않고, 그때 포인터는 존재하는데 대상이 없는 상태가 된다.
+$guides = @('DESIGN.md', 'AUTHORING.md', 'BUDGET.md', 'WIKI.md', 'AGENTS-BOUNDARY.md', 'WRITING.md', 'PERF-MEASUREMENT.md', 'REPO-CONVENTIONS.md')
+Write-Host "3-1. 가이드 문서 $($guides.Count)개" -ForegroundColor Yellow
+foreach ($g in $guides) {
+    Test-Item-Exists (Join-Path $pluginRoot "skills/$g") "guide: $g" | Out-Null
+}
+Write-Host ""
+
+# 4. Agents (expected 목록 존재 + 미등록 탐지)
+$agents = @('plan-reviewer', 'completion-reviewer', 'wiki-page-writer', 'pr-verifier')
+Write-Host "4. Agents $($agents.Count)개" -ForegroundColor Yellow
+foreach ($a in $agents) {
+    $agentPath = Join-Path $pluginRoot "agents/$a.md"
+    Test-Item-Exists $agentPath "agent: $a" | Out-Null
+}
+$actualAgents = Get-ChildItem -Path (Join-Path $pluginRoot 'agents') -Filter '*.md' -ErrorAction SilentlyContinue |
+    Select-Object -ExpandProperty BaseName
+foreach ($a in $actualAgents) {
+    if ($agents -notcontains $a) {
+        Write-Host "         [WARN] validate 미등록 agent: $a (이 목록에 추가 필요)" -ForegroundColor DarkYellow
+        $script:warnings += "validate 미등록 agent: $a"
+    }
+}
+Write-Host ""
+
+# 5. Hooks (expected 목록 존재 + BOM + 미등록 탐지)
+$hooks = @('block-destructive.ps1', 'guard-bash.ps1', 'guard-write.ps1', 'guard-harness.ps1', 'post-write-checks.ps1', 'suggest-agents-record.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1', 'loop-continue.ps1', 'record-work-start.ps1')
+# hook 아닌 스크립트(미등록 탐지 경고 제외) — dot-source 헬퍼 9종: secret-patterns(시크릿 패턴)·
+#   guard-commit-secrets·guard-stale-docs(커밋 시점 시크릿·문서 낡음 검사 — guard-bash 가 부른다)·write-gate-trivial(작은 변경 통과 판정)·write-gate-exempt(PLAN-EXEMPT 면제 판정 —
+#   guard-write 가 부른다)·session-wiki-signals·session-ledger-signal(세션 주입 신호 — session-context 가
+#   부른다)·session-end-cleanup-lib(고아 콘솔 프로세스 회수 — SessionStart·SessionEnd 가 부른다)·
+#   hook-event-log(이벤트 적재).
+$knownHelpers = @('secret-patterns.ps1', 'guard-commit-secrets.ps1', 'guard-stale-docs.ps1', 'hook-event-log.ps1', 'write-gate-trivial.ps1', 'write-gate-exempt.ps1', 'session-end-cleanup-lib.ps1', 'session-wiki-signals.ps1', 'session-ledger-signal.ps1')
+Write-Host "5. Hooks $($hooks.Count)개" -ForegroundColor Yellow
+foreach ($h in $hooks) {
+    $hookPath = Join-Path $pluginRoot "scripts/$h"
+    if (Test-Item-Exists $hookPath "hook: $h") {
+        if (-not (Test-Ps1-Bom $hookPath)) {
+            Write-Host "         [WARN] BOM 없음 — 한글 인코딩 문제 가능" -ForegroundColor DarkYellow
+            $script:warnings += "Hook $h 에 UTF-8 BOM 없음"
+        }
+    }
+}
+# scripts/ 에 hook도 known helper도 아닌 .ps1이 있으면 경고 (hook 추가 후 validate/hooks.json 갱신 누락 포착)
+$actualScripts = Get-ChildItem -Path (Join-Path $pluginRoot 'scripts') -Filter '*.ps1' -ErrorAction SilentlyContinue |
+    Select-Object -ExpandProperty Name
+foreach ($s in $actualScripts) {
+    if (($hooks -notcontains $s) -and ($knownHelpers -notcontains $s)) {
+        Write-Host "         [WARN] validate 미등록 스크립트: $s (hook이면 목록·hooks.json에 추가 필요)" -ForegroundColor DarkYellow
+        $script:warnings += "validate 미등록 스크립트: $s"
+    }
+}
+Write-Host ""
+
+# 6. Plugin Enabled 상태 검증 (Claude Code 인식 여부)
+Write-Host "6. Plugin Enabled 상태" -ForegroundColor Yellow
+$userSettings = Join-Path $homeBase ".claude/settings.json"
+$enableStatus = "unknown"
+if (Test-Path -LiteralPath $userSettings) {
+    try {
+        $settings = Get-Content -LiteralPath $userSettings -Raw | ConvertFrom-Json
+        if ($settings.enabledPlugins) {
+            $karinaKey = $settings.enabledPlugins.PSObject.Properties | Where-Object { $_.Name -match "^karina(@|$)" }
+            if ($karinaKey) {
+                if ($karinaKey.Value -eq $true) {
+                    $enableStatus = "enabled"
+                    Write-Host "  [OK]   settings.json에 karina enabled" -ForegroundColor Green
+                    $script:pass++
+                } elseif ($karinaKey.Value -eq $false) {
+                    $enableStatus = "disabled"
+                    Write-Host "  [FAIL] settings.json에 karina가 false로 설정됨" -ForegroundColor Red
+                    Write-Host "         해결: claude plugin enable karina@karina-harness" -ForegroundColor DarkGray
+                    Write-Host "         또는 settings.json에서 해당 항목 제거" -ForegroundColor DarkGray
+                    $script:fail++
+                }
+            }
+        }
+        if ($enableStatus -eq "unknown") {
+            Write-Host "  [OK]   settings.json에 명시 없음 (기본 enabled 동작)" -ForegroundColor Green
+            $script:pass++
+        }
+    } catch {
+        Write-Host "  [WARN] settings.json 파싱 실패: $($_.Exception.Message)" -ForegroundColor DarkYellow
+        $script:warnings += "settings.json 파싱 실패"
+    }
+} else {
+    Write-Host "  [OK]   settings.json 없음 (기본 enabled 동작)" -ForegroundColor Green
+    $script:pass++
+}
+Write-Host ""
+
+# 결과 요약
+Write-Host "=== 검증 결과 ===" -ForegroundColor Cyan
+Write-Host "  PASS: $pass" -ForegroundColor Green
+Write-Host "  FAIL: $fail" -ForegroundColor $(if ($fail -gt 0) { 'Red' } else { 'Green' })
+Write-Host "  WARN: $($warnings.Count)" -ForegroundColor $(if ($warnings.Count -gt 0) { 'Yellow' } else { 'Green' })
+
+if ($warnings.Count -gt 0) {
+    Write-Host ""
+    Write-Host "경고 사항:" -ForegroundColor Yellow
+    foreach ($w in $warnings) {
+        Write-Host "  - $w" -ForegroundColor DarkYellow
+    }
+}
+
+Write-Host ""
+if ($fail -eq 0) {
+    Write-Host "✅ plugin 설치 정상" -ForegroundColor Green
+    exit 0
+} else {
+    Write-Host "❌ plugin에 문제 있음. 위 FAIL 항목 확인 후 재설치 권장." -ForegroundColor Red
+    Write-Host "   재설치: claude plugin uninstall 후 claude plugin install (GitHub 마켓)" -ForegroundColor DarkGray
+    exit 1
+}

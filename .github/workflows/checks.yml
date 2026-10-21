@@ -1,0 +1,113 @@
+# 하니스 검사기 13종과 Hook 골든 경로 판정을 CI 에서 돌린다.
+#
+# **windows-latest 인 이유**: hook 스크립트가 PowerShell 이고 `run-hook-evals.ps1` 이
+#   pwsh 로 골든을 돌린다. 검증 환경은 Windows 이고(`AGENTS.md` 「OS/플랫폼」)
+#   macOS/Linux 는 실험적이라 CI 를 그쪽에 맞추면 재는 것과 쓰는 것이 갈린다.
+#
+# **검사기 명령은 `AGENTS.md` 「Build & Test」에서 그대로 옮긴다** — 문자열을 여기서 고쳐 쓰면
+#   정본이 둘이 되고 한쪽만 갱신된다. 경로 판정 두 단계의 명령은
+#   `docs/harness-conventions.md` 「검증 매핑」 의 `.github/**` 행이 정본이다.
+#
+# **Hook 골든은 PR 에서 입력 경로가 바뀌었을 때만 돈다** — job 시간의 85% 안팎(약 540초)이다.
+#   입력 경로와 판정 규칙의 정본은 `.github/scripts/hook_golden_needed.py` 다. main push 는
+#   늘 전부 돌아 PR 에서 놓친 회귀를 merge 직후 잡고, 판정하지 못하면 돌린다.
+#
+# **순서는 싼 것부터다** — 구문 검사·매니페스트가 먼저 깨지면 뒤 검사기는 볼 필요가 없다.
+#
+# **넣지 않는 둘**:
+#   - `skills/evals/trigger_eval.py` — 실제 Claude CLI 를 43회 띄운다. CI 가 매 push 마다
+#     모델 호출 비용을 무는 것은 이 레포가 그것을 「명시 호출 전용」으로 둔 이유와 어긋난다
+#     (`skills/evals/README.md`).
+#   - `validate.ps1` — 설치 캐시(`~/.claude/plugins/cache/`)를 보므로 CI 러너에는 잴 대상이
+#     없다. 재설치 후에만 유효하다(`AGENTS.md` 「통합 검증」).
+#
+# ⚠ **exit 2 는 통과가 아니다** — `check-harness-consistency.py` 는 앵커 파싱 실패,
+#   `run-evals.py` 는 `cases.json` 서식 위반·미추적 픽스처에서 2 를 낸다. Actions 는
+#   0 이 아닌 종료 코드를 실패로 잡으므로 별도 처리가 필요 없다.
+# **push 는 main 에만 건다** — PR 브랜치 push 는 `pull_request` 가 이미 돌려, 둘 다 열어 두면
+#   PR 브랜치 push 한 번에 같은 검사가 두 번 돈다. main 은 merge 결과를 다시 재려고 push 를 둔다.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # ── 인라인 pwsh 2종 ──────────────────────────────────────────────
+      - name: Build — 전 ps1 구문 검사
+        shell: pwsh
+        run: >
+          $f=0; Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object { $e=$null;
+          $null=[System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$null,[ref]$e);
+          if($e.Count){$f++; Write-Host ('PARSE FAIL ' + $_.Name + ': ' + $e.Count)} };
+          if($f){exit 1}; 'parse OK'
+
+      - name: Test — JSON 매니페스트 유효성
+        shell: pwsh
+        run: '@(''plugins/karina/.claude-plugin/plugin.json'',''plugins/karina/hooks/hooks.json'',''.claude-plugin/marketplace.json'') | ForEach-Object { $c = Get-Content -LiteralPath $_ -Raw -ErrorAction Stop; $null = $c | ConvertFrom-Json; Write-Host ($_ + '' OK'') }'
+
+      # ── python 검사기 10종 ───────────────────────────────────────────
+      - name: 하니스 정합 셀프체크
+        run: python plugins/karina/evals/check-harness-consistency.py
+
+      - name: evals 골든 회귀
+        run: python plugins/karina/evals/run-evals.py
+
+      - name: 삭제 자산 참조 검사
+        run: python plugins/karina/evals/check-stale-refs.py
+
+      - name: 잘린 주석 검사
+        run: python plugins/karina/evals/check-comment-truncation.py
+
+      - name: 차단 경로 커버리지
+        run: python plugins/karina/hooks/evals/check-block-coverage.py
+
+      - name: 위키 회로 검사
+        run: python plugins/karina/skills/evals/check_wiki_circuit.py
+
+      - name: 트리거 러너 종료 코드
+        run: python plugins/karina/skills/evals/test_exit_code.py
+
+      - name: llm-wiki 상수·배치 정합
+        run: python plugins/karina/skills/llm-wiki/evals/check_consistency.py
+
+      - name: llm-wiki lint 골든 회귀
+        run: python plugins/karina/skills/llm-wiki/evals/run_lint_evals.py
+
+      - name: AGENTS.md 이관 골든
+        run: python plugins/karina/skills/record-project-fact/evals/run_relocation_evals.py
+
+      # ── Hook 골든 경로 판정 ──────────────────────────────────────────
+      - name: CI 경로 판정 테스트
+        run: python .github/scripts/test_hook_golden_needed.py
+
+      - name: Hook 골든 경로 판정
+        id: paths
+        shell: pwsh
+        run: |
+          $out = python .github/scripts/hook_golden_needed.py --event ${{ github.event_name }}
+          if ($LASTEXITCODE -ne 0) { $out = @('hook_golden=true', 'reason=judge script failed') }
+          $out | ForEach-Object { Write-Host $_ }
+          $out | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      # ── pwsh 검사기 1종 ─────────────────────────────────────────────
+      - name: Hook 골든 회귀
+        if: steps.paths.outputs.hook_golden == 'true'
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File plugins/karina/hooks/evals/run-hook-evals.ps1
+
+      - name: Hook 골든 회귀 건너뜀
+        if: steps.paths.outputs.hook_golden != 'true'
+        shell: pwsh
+        run: Write-Host "Hook 골든 회귀 건너뜀 — ${{ steps.paths.outputs.reason }}"
