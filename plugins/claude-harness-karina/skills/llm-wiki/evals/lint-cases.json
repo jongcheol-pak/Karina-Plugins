@@ -2014,7 +2014,7 @@
       "expect_absent": [
         "'f0.txt'"
       ],
-      "rationale": "§7-39 ⓒ — 근거 커밋(러너의 첫 커밋) 이후 근거 파일이 바뀌면(f2.txt 는 셋째 커밋에 생겼다) INFO 다. f0.txt 는 첫 커밋 뒤 바뀌지 않아 신호가 없어야 한다 — (레포, 커밋)별 git diff --name-only 1회 대조(D7)"
+      "rationale": "§7-39 ⓒ — 근거 커밋(러너의 첫 커밋) 이후 근거 파일이 바뀌면(f2.txt 는 셋째 커밋에 생겼다) INFO 다. f0.txt 는 첫 커밋 뒤 바뀌지 않아 신호가 없어야 한다 — (레포, 커밋)별 git diff 1회 대조(D7)"
     },
     {
       "fixture": "facts-bad",
@@ -2084,12 +2084,12 @@
       "synced_mode": "first",
       "expect_keywords": [
         "facts 근거 낡음 가능",
-        "'../.github/ci.yml'"
+        "'../tools/ci.yml'"
       ],
       "expect_absent": [
         "facts 근거 경로 레포에 없음"
       ],
-      "rationale": "§7-39 하위 폴더 밖 — `../` 로 git 루트의 `.github/ci.yml` 을 가리킨 근거도 정규화해 대조한다(셋째 커밋이 바꿨다). 메시지는 페이지에 적힌 근거 경로를 그대로 낸다"
+      "rationale": "§7-39 하위 폴더 밖 — `../` 로 git 루트의 `tools/ci.yml` 을 가리킨 근거도 정규화해 대조한다(셋째 커밋이 바꿨다). 메시지는 페이지에 적힌 근거 경로를 그대로 낸다"
     },
     {
       "fixture": "facts-monorepo",
