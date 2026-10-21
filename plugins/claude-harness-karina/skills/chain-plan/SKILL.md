@@ -85,7 +85,7 @@ PR 모드: <꺼짐(끝에 PR 하나) — [P] 로 켠다(<기본>에서 새 체�
 - **모든 `<CLI>` 응답이 `ok: false` 면 `references/cli-errors.md`「오류 응답」 을 읽고 따른다** — 재전송·재실행으로 복구되는 코드가 있다.
 
 ```
-<CLI> orchestration run-create --json --objective "<계획 목록 한 줄> [체인 시작: <시각>] [미답 시한: <N>분] [체인 승인: <사용자 답 원문>]"
+<CLI> orchestration run-create --json --objective "<계획 목록 한 줄> [미지정: plan <N> <한 줄> · 문답 <k>건; …(있을 때만)] [체인 시작: <시각>] [미답 시한: <N>분] [체인 승인: <사용자 답 원문>]"
 <CLI> orchestration task-create --json --task-title "plan <N>/<총> — <한 줄>" --deps <앞 task id> --spec "$(cat <<'EOF'
 <spec 서식을 채운 것>
 EOF
