@@ -1625,6 +1625,7 @@ SKILL_DESC_TOTAL_MAX = 6000
 #  「축 ⑰ — frontmatter 하드 제약 2종」.
 SKILL_FM_RESERVED = ("anthropic", "claude")
 _RX_FM_XML = re.compile(r"<[A-Za-z/!]")
+_RX_FM_MANUAL = re.compile(r"(?m)^disable-model-invocation:\s*true\s*$")
 # Agent Skills 규격의 name 형식 — 근거는 rationale 「축 ⑰ — 스킬 이름·README 목록 대조」.
 _RX_SKILL_NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _RX_FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---", re.S)
@@ -1705,7 +1706,8 @@ def check_count_and_version(conv):
             n += 1
             # 여러 줄 값은 로드될 때 한 줄로 접히므로 공백을 정규화한 뒤 센다.
             val = " ".join(m.group(1).strip().strip("'\"").split())
-            if field == "description":
+            # 사용자 호출 전용 스킬은 스킬 목록에 실리지 않아 합계에서 뺀다(길이 게이트는 그대로).
+            if field == "description" and not _RX_FM_MANUAL.search(fm.group(1)):
                 desc_total += len(val)
             if len(val) > cap:
                 issues.append("frontmatter 길이: `%s` 의 %s 가 %d자로 상한 %d자를 넘었다 "
@@ -1728,9 +1730,9 @@ def check_count_and_version(conv):
                 issues.append("frontmatter XML 태그: `%s` 의 %s 가 `<` 로 시작하는 태그꼴을 "
                               "담았다 — 공식이 두 필드 모두에 금지한다" % (rel, field))
     if desc_total > SKILL_DESC_TOTAL_MAX:
-        notices.append("스킬 description 합계 %d자 — 통지선 %d자를 넘었다(스킬 목록 예산은 "
-                       "컨텍스트 비율이라 넘으면 목록이 잘린다). 통지 등급이라 exit 0 을 "
-                       "유지합니다" % (desc_total, SKILL_DESC_TOTAL_MAX))
+        notices.append("스킬 description 합계 %d자 — 통지선 %d자를 넘었다(사용자 호출 전용 제외 · "
+                       "karina 몫의 통지선이고 실제 목록 예산은 설치된 모든 플러그인이 나눠 쓴다). "
+                       "통지 등급이라 exit 0 을 유지합니다" % (desc_total, SKILL_DESC_TOTAL_MAX))
 
     # 버전 축도 같은 관용을 쓴다 — 픽스처에는 `plugin.json`·`README.md` 가 없다.
     if not (os.path.exists(PLUGIN_JSON) and os.path.exists(README_MD)):

@@ -40,7 +40,7 @@ karina 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**
   - **karina의 운용 기준은 1,024자**다 — 두 사양 중 낮은 쪽이고, 표준 호환을 잃지 않는다. 초과분은 잘리거나 무효가 될 수 있으므로 트리거 어휘·near-miss 경계는 유지한 채 산문 연결부를 압축해 맞춘다(v1.100.0에서 1,230자로 초과된 전례 — 개정 때마다 자수 재측정).
 - SKILL.md 본문: **500줄 미만 권장**(Agent Skills 표준). **근거가 두 문장을 넘으면 `references/`로 내린다**(`DESIGN.md`「1. 규약 문면 형식」). **초과했을 때 무엇을 하는가는 `BUDGET.md`「초과했을 때」가 정본이고 이 줄은 그것을 되풀이하지 않는다** — 5,000토큰 권장도 그 파일의 예산 표가 대체한다(SKILL.md 12,000자).
 - **`description` 도 XML 태그 금지**(하드 제약).
-- 측정: **사람이 재지 않는다** — `check-harness-consistency.py` 「계수·버전 정합」 축이 길이 2종·예약어·XML 태그를 대조하고(`SKILL_FM_MAX`), 전 스킬 description 합계가 6,000자를 넘으면 통지한다(`SKILL_DESC_TOTAL_MAX` — 목록 예산이 컨텍스트 비율이라 합계가 재는 단위다). ⚠ **그 축의 대상은 `skills/*/SKILL.md` 뿐이고 `agents/*.md` 는 밖이다** — 에이전트 정의는 Agent Skills 가 아니라 설계상 제외이며, 그쪽 값은 재어지지 않으므로 고칠 때 직접 센다. **단위는 바이트가 아니라 문자다**(한글에서 3배로 어긋난다).
+- 측정: **사람이 재지 않는다** — `check-harness-consistency.py` 「계수·버전 정합」 축이 길이 2종·예약어·XML 태그를 대조하고(`SKILL_FM_MAX`), 전 스킬 description 합계가 6,000자를 넘으면 통지한다(`SKILL_DESC_TOTAL_MAX` — `disable-model-invocation: true` 스킬은 빼고 센다 · karina 몫의 통지선이고 실제 목록 예산은 설치된 모든 플러그인이 나눠 쓴다 — 근거·실측 방법은 `evals/harness-consistency-rationale.md`「축 ⑰ — description 합계 통지선」). ⚠ **그 축의 대상은 `skills/*/SKILL.md` 뿐이고 `agents/*.md` 는 밖이다** — 에이전트 정의는 Agent Skills 가 아니라 설계상 제외이며, 그쪽 값은 재어지지 않으므로 고칠 때 직접 센다. **단위는 바이트가 아니라 문자다**(한글에서 3배로 어긋난다).
 
 ### 공식 권장 중 달리 정한 것
 
@@ -75,7 +75,7 @@ karina 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**
 | `agent` | 이 스킬을 특정 subagent로 실행 |
 | `background` | 백그라운드 실행. **내장 도구가 축소되고 `LSP`가 빠지므로** 검증 성격의 스킬에는 쓰지 않는다 |
 | `paths` | 특정 경로에서만 활성화 |
-| `disable-model-invocation` | `true` 면 사용자 `/플러그인:이름` 호출 전용 — 설명이 모델 컨텍스트에 실리지 않아 다른 스킬의 발동에 영향이 없다(`create-verification-skill`·`maintain-verification-skill`·`create-formal-verification-skill`·`maintain-formal-verification-skill`·`reflect`) |
+| `disable-model-invocation` | `true` 면 사용자 `/플러그인:이름` 호출 전용 — 설명은 물론 이름도 스킬 목록에 실리지 않아(2026-10-21 `skill_listing` 실측 — 위 근거 문서) 다른 스킬의 발동·목록 예산에 영향이 없다(`create-verification-skill`·`maintain-verification-skill`·`create-formal-verification-skill`·`maintain-formal-verification-skill`·`reflect`) |
 | `shell` | 본문의 `` !`cmd` `` 전처리에 쓸 셸 지정 |
 
 **본문 치환 변수**: `$ARGUMENTS`·`$ARGUMENTS[N]`·`$N`·`$name`·`${CLAUDE_SESSION_ID}`·`${CLAUDE_EFFORT}`·`${CLAUDE_SKILL_DIR}`·`${CLAUDE_PROJECT_DIR}`. **치환은 원본 파일 전체에 1회 적용되며 코드펜스 안이라고 예외가 아니다** — 변수명을 설명문에 그대로 적으면 그것까지 치환되므로, 설명할 때는 이름을 쪼개 쓴다.

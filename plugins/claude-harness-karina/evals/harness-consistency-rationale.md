@@ -225,9 +225,11 @@ AGENTS.md 목표선 — 상한(16,384B, `session-context.ps1`이 정본)과 **�
 
 ### 축 ⑰ — description 합계 통지선
 
-- **재는 단위가 스킬별이 아니라 합계다** — Claude Code 의 스킬 목록 예산은 컨텍스트 비율(`skillListingBudgetFraction`, 1% — `skills/AUTHORING.md`「description 작성」)이고, 1,024자는 스킬별 상한일 뿐이다.
-- **6,000 은 2026-10-04 합계 4,900자의 여유선이다.**
-- **넘어도 로드는 되고 목록이 잘릴 뿐이라 게이트가 아니라 통지다.**
+- **이 통지선은 karina 몫이 커지는 것만 본다 — 실제로 잘리는지는 이 값으로 예측하지 못한다** — Claude Code 의 스킬 목록 예산은 컨텍스트의 1%(`skillListingBudgetFraction` — `skills/AUTHORING.md`「description 작성」)를 **설치된 모든 플러그인의 스킬이 나눠 쓰고**, 넘으면 덜 쓰는 스킬의 description 부터 빼고 이름은 항상 싣는다(code.claude.com/docs/en/skills). 1,024자는 스킬별 상한일 뿐이다.
+- **`disable-model-invocation: true` 스킬은 합계에서 뺀다** — 목록에 이름조차 실리지 않는다. 2026-10-21 실측(Claude Code 2.1.306): 세션 전사의 `skill_listing` 첨부에 81개 · 28,523자가 실렸고 설명 없이 이름만 실린 것이 30개(karina 의 chain-plan·karina-systematic-debugging·record-project-fact 포함)였으며, 사용자 호출 전용 넷(create/maintain-verification·create/maintain-formal-verification)은 `names` 에 없었다. reflect 는 그때 미설치라 같은 frontmatter 판정으로 미루어 본 것이다(추정).
+- **실측 방법** — `~/.claude/projects/<폴더>/<세션 ID>.jsonl` 에서 `attachment.type == "skill_listing"` 레코드의 `names`(실린 스킬)와 `content` 의 각 `- <이름>` 줄에 `: 설명` 이 붙었는가(설명 유무)를 본다.
+- **6,000 은 사용자 호출 전용을 뺀 합계 5,740자(2026-10-21)의 여유선이다** — 첫 값은 2026-10-04 합계 4,900자의 여유선이었다.
+- **6,000 을 넘는다고 잘리는 것도, 아래라고 안 잘리는 것도 아니다 — 그래서 게이트가 아니라 통지다.**
 
 ### 축 ⑰ — 스킬 이름·README 목록 대조
 
