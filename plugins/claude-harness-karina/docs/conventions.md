@@ -285,6 +285,8 @@
 
 ### acceptance 설계
 
+- [2026-10-21] **`evals/run-evals.py --filter` 는 케이스 id 가 아니라 checker 이름(`harness`·`truncation`·`stale`)을 받는다 — 케이스 하나를 재는 acceptance 는 `--filter harness` 출력의 `[PASS] <id> ` 줄을 grep 한다** — id 를 넘기면 「케이스 없음」으로 exit 1 이다. description 합계 회차의 계획이 id 로 적어 계획 리뷰 BLOCKER 가 됐다(착수값을 돌려 보지 않은 탓). (실측)
+- [2026-10-21] **plan.md `## Deferred / Follow-up` 의 `[등재]` 마커는 대장에 실제로 넣은 뒤에 붙인다** — 정합 검사 「등재 마커 실재」 축이 plan.md 의 `[등재]` 를 대장과 대조해, 계획 단계에 미리 붙이면 첫 task 의 정합 검사가 `[MISMATCH] 등재 마커가 주장하는 항목이 대장에 없음` 으로 red 다. 계획에는 마커 없이 적고 완료 단계에서 등재와 함께 붙인다. (실측)
 - [2026-10-21] **새 스킬·에이전트를 더하는 task 는 README 「Skills」·「Subagents」 표 행을 그 파일과 같은 커밋에 넣는다 — 「등록·서술 갱신」 task 로 미루면 앞 task 의 정합 검사가 red 다** — `check-harness-consistency.py` 가 `skills/*/SKILL.md`·`agents/*.md` 를 README 두 표의 첫 칸과 대조해, 파일만 만든 커밋에서 `[MISMATCH] README 목록: 「Subagents」 표에 없는 에이전트` 를 낸다. reflect 회차가 에이전트(T2)와 스킬(T3)에서 두 번 걸려 README 행을 T4 에서 앞당겼다. (실측)
 - [2026-10-21] **새 스크립트를 subprocess 로 재는 골든의 「exit 2 + 파일 불변」 단언은 스크립트가 없어도 통과한다 — 오류 문구까지 단언한다** — python 은 없는 파일을 받으면 exit 2 로 끝나고 아무것도 쓰지 않아, 거절 갈래 케이스가 RED 단계에서 거짓 통과했다(reflect 회차 T1 ⑭·⑮). 스크립트가 stderr 에 내는 고유 문구(`그룹 없음`·`형식 위반` 등)를 함께 단언해야 RED 가 선다. (실측)
 - [2026-10-20] **위키 vault 를 고치는 task 의 acceptance 에 `lint.py` 전체 WARN 수를 걸지 않는다 — 대상 파일 경고 0 으로 건다** — vault 는 다른 세션이 계속 커밋하고(큐 append) 각주가 가리키는 다른 레포도 움직여, 계획 때 WARN 1 이던 기준선이 구현 시점에 7 이 됐다(pstack 회차 4 T7 — 7건 전부 다른 세션 커밋·karina-mobile 파일 이동). 전체 수로 걸면 이 회차와 무관한 이유로 실패하고, 판정을 바꿔 통과시키면 acceptance 가 사후에 조정된 것처럼 보인다. 대상 파일 경로로 lint 출력을 grep 한 0건이 이 회차가 만든 경고를 재는 값이다.
