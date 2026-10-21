@@ -82,3 +82,11 @@ INFO 고정에는 근거도 있다 — *"커밋 수 임계는 프로젝트 커�
   90일간 침묵한다. **회차 67 완료 리뷰가 그 형태를 실제로 잡았다** — `AGENTS.md` 만 고치고
   `README.md` 사본 둘을 두고 가서 같은 커밋이 두 값을 갖게 됐다. 표기를 새로 달거나
   갱신할 때는 **그 사실의 사본을 먼저 훑는다**(`grep -rn '권장 v2' README.md AGENTS.md`).
+
+## §8 하니스 루트 판정 (모노레포 이전 — 미탐 보완)
+
+하니스가 모노레포 `jongcheol-pak/Karina-Plugins` 의 `plugins/claude-harness-karina/` 로 옮겼다. 옛 판정은 git 루트에서 옛 플러그인 폴더의 매니페스트와 `.claude-plugin/marketplace.json` 을 찾아, 새 배치에서는 조용히 꺼진다. `guard-bash` 가 dot-source 하는 안전 hook 이라 이 변경은 AGENTS.md DO NOT 의 「미탐 보완」 이고 골든이 실증한다(`scenarios/guard-stale-docs.ps1` 의 「모노레포」 케이스 — 하니스 루트·하위 폴더 양성, 다른 플러그인 폴더 음성).
+
+- **하니스 루트는 `harness-root.ps1` 의 `Find-HarnessRoot` 가 cwd 에서 위로 찾는다** — 하위 폴더에서 커밋해도 옛 git 루트 기준처럼 판정이 돈다.
+- **스테이징 목록은 `--relative` 로 받는다** — git 루트 기준 경로면 축 표의 `^docs/`·`^AGENTS\.md$` 가 어긋난다. 하니스 밖 경로는 목록에서 빠진다.
+- **위키 격차는 `rev-list … -- .` 로 하니스 루트 안 커밋만 센다** — 다른 플러그인 커밋을 위키 뒤처짐으로 세지 않는다.

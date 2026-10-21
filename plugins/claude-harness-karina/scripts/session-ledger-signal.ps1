@@ -1,13 +1,16 @@
 ﻿# session-ledger-signal.ps1 — 세션 시작 주입의 Deferred 대장 최고령 신호 (dot-source 전용, hook 아님) — 근거는 `rules/ledger-signal-rationale.md` §1
 
+. (Join-Path $PSScriptRoot 'harness-root.ps1')
+
 function Get-LedgerSignal {
     param([string]$cwd)
     $ledgerLine = $null
             # ---- Deferred 대장 최고령 「마지막 판정일」 — 근거는 `rules/session-context-rationale-plan.md` §12
             try {
-                $ledgerPluginJson = Join-Path $cwd 'plugins/karina/.claude-plugin/plugin.json'
-                $ledgerPath = Join-Path $cwd 'docs/plans/deferred.md'
-                if ((Test-Path -LiteralPath $ledgerPluginJson -PathType Leaf) -and (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
+                # 하니스 루트(모노레포의 플러그인 폴더)를 위로 올라가며 찾는다 — `harness-root.ps1`
+                $ledgerRoot = Find-HarnessRoot -StartDir $cwd
+                $ledgerPath = if ($ledgerRoot) { Join-Path $ledgerRoot 'docs/plans/deferred.md' } else { $null }
+                if ($ledgerPath -and (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
                     $ledgerText = Get-Content -LiteralPath $ledgerPath -Raw -Encoding UTF8
                     # 종료 앵커 `^## `는 현재 대장에 `## 대기` 하나뿐이라 실질적으로 `\z`로 끝난다. — 근거는 `rules/session-context-rationale-plan.md` §13
                     $ledgerWait = [regex]::Match($ledgerText, '(?ms)^## 대기\s*?$(.*?)(?=^## |\z)')

@@ -2,7 +2,7 @@
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook)와 공유 변수($iso·$pluginRoot)를 그대로 쓴다.
 # 무엇을 재는가: 기록·주입 2이벤트(Skill 도구·슬래시 직접 입력) · 이름 두 형태 · chain-plan 의 plan 시각 동반 ·
 #   덮어쓰기 · hookEventName · sid 정규화 · 배선(hooks.json matcher) · 침묵 3경로. 판정 근거는
-#   `plugins/karina/scripts/rules/work-start-rationale.md` 다.
+#   `scripts/rules/work-start-rationale.md` 다.
 # 세션 id 를 케이스마다 다르게 쓴다 — 상태 파일이 세션 단위라 앞 케이스의 기록이 뒤 케이스를 오염시키지 않게 한다.
 if (Test-HookSelected @('record-work-start')) {
 

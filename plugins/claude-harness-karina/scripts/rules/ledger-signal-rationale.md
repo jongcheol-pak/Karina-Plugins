@@ -15,3 +15,7 @@
 # 근거는 `rules/session-context-rationale.md`의 대장 관련 절들.
 ```
 
+
+## §2 하니스 루트 판정 (모노레포 이전)
+
+대장은 하니스 루트의 `docs/plans/deferred.md` 다. 하니스가 모노레포의 플러그인 폴더로 옮겨, 옛 판정(cwd 아래 옛 플러그인 폴더의 매니페스트)으로는 신호가 꺼진다. 하니스 루트는 `harness-root.ps1` 의 `Find-HarnessRoot` 가 cwd 에서 위로 찾는다(판정 조건은 `warn-version-drift`·`guard-stale-docs` 와 같다). 골든은 `scenarios/session-context.ps1` 의 SC44mono 다.

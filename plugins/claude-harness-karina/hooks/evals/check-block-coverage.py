@@ -83,7 +83,8 @@ def golden_text():
 #   통과(델타 음성) 케이스도 진입점 이름으로 기록된다.
 HELPER_ENTRY = {'guard-commit-secrets': 'guard-bash', 'write-gate-trivial': 'guard-write',
                 'secret-patterns': 'guard-bash', 'session-end-cleanup-lib': 'session-end-cleanup',
-                'session-wiki-signals': 'session-context', 'session-ledger-signal': 'session-context'}
+                'session-wiki-signals': 'session-context', 'session-ledger-signal': 'session-context',
+                'harness-root': 'guard-bash'}
 
 
 def negative_by_hook(cases):

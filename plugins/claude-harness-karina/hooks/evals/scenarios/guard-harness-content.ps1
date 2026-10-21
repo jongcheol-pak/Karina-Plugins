@@ -1,7 +1,7 @@
 ﻿# scenarios/guard-harness-content.ps1 — guard-harness-content 시나리오 (AGENTS.md 내용 경계 게이트) (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook·New-WriteJson)와 공유 변수($work)를 그대로 쓴다.
 # 검사 대상: plan 진행 상태·세션 인계 서술(차단) · 디렉터리 트리 블록(차단) · 그 밖은 통과.
-# 내용 경계의 정본은 plugins/karina/skills/AGENTS-BOUNDARY.md 다.
+# 내용 경계의 정본은 skills/AGENTS-BOUNDARY.md 다.
 #
 # ⚠ 델타 음성이 이 시나리오의 핵심이다 — 차단 범위를 새로 만드는 hook이므로 AGENTS.md DO NOT이
 #   "오차단 0 실증"을 요구한다. 정상 AGENTS.md 편집 · plan.md의 같은 문구 · 본문 산문의 스침 ·
@@ -85,7 +85,7 @@ try {
 $r = Invoke-Hook 'guard-harness.ps1' (New-GacWrite $agents "# A`n`n## Build & Test`n- Build: x`n")
 Assert-Case -Name "guard-harness-content: 공존ⓐ guard-harness도 정상 AGENTS.md 통과" -R $r -ExpectExit 0 -ExpectSilent $true
 # ⓑ 설치본 hook 경로 Write — guard-harness가 차단하고, 신규 hook은 그 판정을 가리지 않는다(파일명 불일치로 통과).
-$installed = "$gacFwd/.claude/plugins/cache/karina-harness/karina/1.89.0/scripts/block-destructive.ps1"
+$installed = "$gacFwd/.claude/plugins/cache/karina-plugins/karina/1.89.0/scripts/block-destructive.ps1"
 $r = Invoke-Hook 'guard-harness.ps1' (New-GacWrite $installed "x")
 Assert-Case -Name "guard-harness-content: 공존ⓑ 설치본 hook 경로는 guard-harness가 차단" -R $r -ExpectExit 2
 # v1.225.0: 두 hook 이 guard-harness 하나로 합쳐져 「신규 hook 은 통과」는 성립하지 않는다 —

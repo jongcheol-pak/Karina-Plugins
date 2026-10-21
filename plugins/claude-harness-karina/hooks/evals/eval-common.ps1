@@ -21,7 +21,7 @@ $ErrorActionPreference = 'Continue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 $evalsDir   = $PSScriptRoot
-$pluginRoot = Split-Path (Split-Path $evalsDir -Parent) -Parent   # plugins/karina
+$pluginRoot = Split-Path (Split-Path $evalsDir -Parent) -Parent   # 하니스 루트(플러그인 루트)
 $scriptsDir = Join-Path $pluginRoot 'scripts'
 $casesPath  = Join-Path $evalsDir 'hook-cases.json'
 
@@ -97,7 +97,7 @@ function Test-HookSelected {
 # falsy가 되어 §7 impact·§9가 침묵 skip되는 사각이므로(plan-reviewer M1) top-level 고정.
 $gitOk = $null -ne (Get-Command git -ErrorAction SilentlyContinue)   # §4·§7·§9 게이트
 $pw = Join-Path $work 'pwproj'; New-Item -ItemType Directory $pw -Force | Out-Null   # §6·§7 후속·Pre.cs 픽스처
-$vdCache = Join-Path $iso '.claude/plugins/cache/karina-harness/karina/1.0.0/scripts'      # §10 개조 차단·§11(d) 경로
+$vdCache = Join-Path $iso '.claude/plugins/cache/karina-plugins/karina/1.0.0/scripts'      # §10 개조 차단·§11(d) 경로
 
 function New-WriteJson([string]$cwd, [string]$file, [string]$tool = 'Write', [hashtable]$extra = @{}, [hashtable]$top = @{}) {
     # §2 require-plan·§2b guard-harness·§6 post-write 등 다수 섹션 공용

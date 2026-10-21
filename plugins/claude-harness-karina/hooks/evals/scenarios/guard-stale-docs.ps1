@@ -11,12 +11,13 @@ if (-not $gitOk) {
 $sdRoot = Join-Path $work 'sd-repo'
 try {
     # ---- 하니스 레포로 위장한 git 저장소 ----
-    #  마커 2종이 동시에 있어야 이 검사가 발동한다(`warn-version-drift` 와 같은 판정).
-    New-Item -ItemType Directory (Join-Path $sdRoot 'plugins/karina/.claude-plugin') -Force | Out-Null
+    #  이름이 karina 인 플러그인 매니페스트와 하니스 규약 문서가 함께 있어야 발동한다(`harness-root.ps1`,
+    #  `warn-version-drift` 와 같은 판정). 이 샌드박스는 하니스 루트 = git 루트인 배치다.
+    New-Item -ItemType Directory (Join-Path $sdRoot '.claude-plugin') -Force | Out-Null
     New-Item -ItemType Directory (Join-Path $sdRoot '.claude-plugin') -Force | Out-Null
     New-Item -ItemType Directory (Join-Path $sdRoot 'docs') -Force | Out-Null
-    '{ "name": "karina", "version": "1.0.0" }' | Set-Content (Join-Path $sdRoot 'plugins/karina/.claude-plugin/plugin.json')
-    '{ "name": "karina-harness" }' | Set-Content (Join-Path $sdRoot '.claude-plugin/marketplace.json')
+    '{ "name": "karina", "version": "1.0.0" }' | Set-Content (Join-Path $sdRoot '.claude-plugin/plugin.json')
+    '{ "name": "karina-plugins" }' | Set-Content (Join-Path $sdRoot '.claude-plugin/marketplace.json')
     '# 규약' | Set-Content (Join-Path $sdRoot 'docs/harness-conventions.md')
     & git -C $sdRoot init -q 2>$null
     & git -C $sdRoot add -A 2>$null
@@ -47,17 +48,17 @@ try {
     #      대역을 두는 이유: 실물 검사기를 픽스처에 복사하면 레포 전체를 요구한다. 여기서
     #      재는 것은 **「층 1 출력을 실어 나르는가」**이지 검사기의 판정이 아니다.
     #      이 케이스가 없으면 층 1 코드를 통째로 지워도 이 시나리오가 green 이다.
-    New-Item -ItemType Directory (Join-Path $sdRoot 'plugins/karina/evals') -Force | Out-Null
+    New-Item -ItemType Directory (Join-Path $sdRoot 'evals') -Force | Out-Null
     @'
 print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
-'@ | Set-Content (Join-Path $sdRoot 'plugins/karina/evals/check-harness-consistency.py')
+'@ | Set-Content (Join-Path $sdRoot 'evals/check-harness-consistency.py')
     Push-Location $sdRoot
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
     Assert-Case -Name 'stale-docs: 층1 계수 불일치 고지' -R $r -ExpectExit 0 -ExpectContains 'baseline 1 -> 2'
 
     # 3-c) **층 2 양성(러너 총계 갈림)** — 러너 상수와 문서 기준선이 다르면 고지한다.
-    New-Item -ItemType Directory (Join-Path $sdRoot 'plugins/karina/hooks/evals') -Force | Out-Null
-    '$GoldenTotalBaseline = 111' | Set-Content (Join-Path $sdRoot 'plugins/karina/hooks/evals/run-hook-evals.ps1')
+    New-Item -ItemType Directory (Join-Path $sdRoot 'hooks/evals') -Force | Out-Null
+    '$GoldenTotalBaseline = 111' | Set-Content (Join-Path $sdRoot 'hooks/evals/run-hook-evals.ps1')
     '**기준선 222케이스**다' | Set-Content (Join-Path $sdRoot 'docs/harness-conventions.md')
     Push-Location $sdRoot
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
@@ -112,8 +113,8 @@ print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
     Assert-Case -Name 'stale-docs: 층2 감소 회차에서 침묵' -R $r -ExpectExit 0 -ExpectNotContains '골든 실측'
 
     # 층 1·2 대역을 걷어 나머지 케이스를 원래 조건으로 되돌린다.
-    Remove-Item (Join-Path $sdRoot 'plugins/karina/evals/check-harness-consistency.py') -Force
-    Remove-Item (Join-Path $sdRoot 'plugins/karina/hooks/evals/run-hook-evals.ps1') -Force
+    Remove-Item (Join-Path $sdRoot 'evals/check-harness-consistency.py') -Force
+    Remove-Item (Join-Path $sdRoot 'hooks/evals/run-hook-evals.ps1') -Force
 
     # 4) 비커밋 Bash 호출은 무출력 — 조사만 하는 턴에 발화하면 소음이 된다.
     $sdOther = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $sdRoot
@@ -192,12 +193,50 @@ print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
     # 7 뒤처리 — 언스테이징만 한다. 파일을 남겨도 다음 케이스는 스테이징 목록만 본다.
     & git -C $sdRoot reset -q 2>$null
 
-    # 6) 비하니스 레포는 무출력 — 마커 하나를 지우면 발동하지 않는다.
-    Remove-Item (Join-Path $sdRoot '.claude-plugin/marketplace.json') -Force
+    # 6) 비하니스 레포는 무출력 — 플러그인 매니페스트를 지우면 발동하지 않는다.
+    Remove-Item (Join-Path $sdRoot '.claude-plugin/plugin.json') -Force
     & git -C $sdRoot add -A 2>$null
     Push-Location $sdRoot
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
     Assert-Case -Name 'stale-docs: 비하니스 레포 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+
+    # 8) [모노레포 이전] 하니스가 git 루트 아래 플러그인 폴더(plugins/claude-harness-karina)에 있는 배치.
+    #    하니스 루트에서도 그 하위 폴더에서도 판정이 돌고, 스테이징 경로는 하니스 루트 기준으로 축 표와 대조한다.
+    #    음성 짝: 이름이 karina 가 아닌 다른 플러그인 폴더에서는 같은 문서를 스테이징해도 침묵한다.
+    $sdMono = Join-Path $work 'sd-mono'
+    $sdMonoH = Join-Path $sdMono 'plugins/claude-harness-karina'
+    $sdMonoO = Join-Path $sdMono 'plugins/other'
+    foreach ($d in @("$sdMonoH/.claude-plugin", "$sdMonoH/docs", "$sdMonoH/scripts", "$sdMonoO/.claude-plugin", "$sdMonoO/docs", "$sdMono/.claude-plugin")) {
+        New-Item -ItemType Directory $d -Force | Out-Null
+    }
+    '{ "name": "karina", "version": "1.0.0" }' | Set-Content (Join-Path $sdMonoH '.claude-plugin/plugin.json')
+    '# 규약' | Set-Content (Join-Path $sdMonoH 'docs/harness-conventions.md')
+    '{ "name": "other", "version": "1.0.0" }' | Set-Content (Join-Path $sdMonoO '.claude-plugin/plugin.json')
+    '# 규약' | Set-Content (Join-Path $sdMonoO 'docs/harness-conventions.md')
+    '{ "name": "karina-plugins" }' | Set-Content (Join-Path $sdMono '.claude-plugin/marketplace.json')
+    & git -C $sdMono init -q 2>$null
+    & git -C $sdMono add -A 2>$null
+    & git -C $sdMono -c user.email=t@t -c user.name=t commit -q -m 'init' 2>$null
+    '# 규약' + [Environment]::NewLine + '변경' | Set-Content (Join-Path $sdMonoH 'docs/harness-conventions.md')
+    & git -C $sdMono add -A 2>$null
+    foreach ($sdCase in @(@{ Cwd = $sdMonoH; Name = 'stale-docs: 모노레포 하니스 루트에서 산문 서술 축 고지' },
+                          @{ Cwd = (Join-Path $sdMonoH 'scripts'); Name = 'stale-docs: 모노레포 하니스 하위 폴더에서도 고지' })) {
+        $sdMonoJson = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $sdCase.Cwd
+                         tool_input = @{ command = 'git commit -m "x"' } } | ConvertTo-Json -Compress
+        Push-Location $sdCase.Cwd
+        try { $r = Invoke-Hook 'guard-bash.ps1' $sdMonoJson } finally { Pop-Location }
+        Assert-Case -Name $sdCase.Name -R $r -ExpectExit 0 -ExpectContains '산문 서술'
+    }
+    & git -C $sdMono reset -q 2>$null
+    '# 규약' + [Environment]::NewLine + '다른 변경' | Set-Content (Join-Path $sdMonoO 'docs/harness-conventions.md')
+    & git -C $sdMono add -A 2>$null
+    $sdMonoJson = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $sdMonoO
+                     tool_input = @{ command = 'git commit -m "x"' } } | ConvertTo-Json -Compress
+    Push-Location $sdMonoO
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdMonoJson } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 모노레포 다른 플러그인 폴더는 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+    Remove-Item $sdMono -Recurse -Force -ErrorAction SilentlyContinue
+
 } finally {
     if (Test-Path $sdRoot) { Remove-Item $sdRoot -Recurse -Force -ErrorAction SilentlyContinue }
 }

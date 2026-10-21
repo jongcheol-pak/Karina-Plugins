@@ -12,8 +12,8 @@
 # 왜: 하네스 레포에서 plugin.json 버전을 올려도 재설치 전까지 설치 캐시는 구버전으로 동작한다.
 #   이 드리프트를 사람이 notes.md로 수동 추적하던 것을(v1.101.0~1.104.0 반복 pain point),
 #   세션 시작 시점에 기계가 1줄 경고로 알린다 — "레포에는 고쳤는데 세션은 구 동작" 혼동 제거.
-# 어떻게: stdin(SessionStart JSON)의 cwd가 하네스 레포일 때만(마커 2종 동시 실재로 판정 —
-#   임의 레포 오탐 방지), 레포 plugin.json 버전과 자기 설치본 버전($env:CLAUDE_PLUGIN_ROOT의
+# 어떻게: stdin(SessionStart JSON)의 cwd가 하네스 레포일 때만(cwd 에서 위로 올라가며 하니스 루트를 찾는다 —
+#   이름 karina 매니페스트 + 하니스 규약 문서, `harness-root.ps1` · 임의 레포 오탐 방지), 레포 plugin.json 버전과 자기 설치본 버전($env:CLAUDE_PLUGIN_ROOT의
 #   plugin.json — 다중 버전 캐시·레거시 레이아웃과 무관하게 자기 자신이 곧 활성 설치본)을 비교한다.
 # 안전: 경고 hook이므로 모든 실패 경로는 조용히 exit 0 (fail-open — 세션 시작을 절대 막지 않는다).
 #   ⚠ v1.205.0부터 예외가 하나 있다 — **무응답 원격**은 조용한 exit 0이 아니라 hook timeout kill로 빠진다
@@ -85,6 +85,15 @@
 
 - **기준이 버전 커밋이 아니라 태그 커밋인 이유** — 릴리즈는 버전 커밋 뒤의 커밋에 붙을 수 있다(v1.386.0 의 대상은 버전 커밋 `47c3fb45` 가 아니라 그 뒤 `127a86a9`). 버전 커밋 기준이면 이미 배포된 변경을 미배포로 센다.
 - **sha 를 얻는 순서는 로컬 태그 → 캐시 → `ls-remote`** — 이 레포는 태그가 원격에만 생겨 로컬 태그가 대개 없다. 캐시를 원격 앞에 두어 세션마다 원격을 묻지 않는다. 캐시 파일 내용이 태그 커밋 sha 이고, **빈 파일은 종전 형식**이라 릴리즈 누락은 확인된 것으로 보되 미배포 판정만 원격을 한 번 더 물어 sha 를 채운다.
-- **주석 달린 태그는 `^{}` peel 행을 쓴다** — `ls-remote` 의 태그 행은 태그 객체 sha 다. 두 패턴(`v<버전>`·`v<버전>^{}`)을 함께 주고 peel 행이 있으면 그것을 쓴다(경량 태그는 태그 행 하나뿐이다 — 2026-10-17 실측).
+- **주석 달린 태그는 `^{}` peel 행을 쓴다** — `ls-remote` 의 태그 행은 태그 객체 sha 다. 두 패턴(`karina-v<버전>`·`karina-v<버전>^{}`)을 함께 주고 peel 행이 있으면 그것을 쓴다(경량 태그는 태그 행 하나뿐이다 — 2026-10-17 실측).
 - **sha 를 못 얻거나 그 커밋이 로컬에 없으면 건너뛴다(폴백 없음)** — `plugin.json` 마지막 커밋으로 폴백하면 오프라인일 때 위 버전 커밋 기준 오탐을 그대로 낸다. 조회 실패를 오판하지 않는 것이 §4 의 fail-open 과 같은 방향이다.
 - **origin/main 기준이다** — 미push 커밋은 작업 중이라 세지 않는다. 회차 끝의 발행 판정은 `docs/harness-conventions.md` 「판정 시점」 의 명령으로 한다.
+
+## 모노레포 이전 (2.0.0 — 미탐 보완)
+
+하니스가 `jongcheol-pak/Karina-Plugins` 의 `plugins/claude-harness-karina/` 로 옮겨 「git 루트 = 하니스 루트」 가정이 깨졌다. 옛 마커(cwd 아래 옛 플러그인 폴더의 매니페스트 + `<cwd>/.claude-plugin/marketplace.json`)로는 새 배치에서 판정이 조용히 꺼진다 — 그 미탐을 막는다.
+
+- **하니스 루트는 `harness-root.ps1` 이 찾는다** — cwd 에서 git 루트까지 올라가며 「이름이 karina 인 `.claude-plugin/plugin.json` + `docs/harness-conventions.md`」 폴더. 이름만 보면 같은 레포의 다른 플러그인이, 규약 문서만 보면 사용자 프로젝트가 걸린다. marketplace.json 은 git 루트에만 있어 마커에서 뺐다.
+- **origin/main 의 버전은 `git rev-parse --show-prefix` 로 얻은 하니스 위치에서 읽는다** — 하니스 루트 = git 루트인 배치에서는 접두가 빈 값이라 같은 코드가 돈다.
+- **태그는 `karina-v<버전>`** — 모노레포에서 `v<버전>` 은 플러그인끼리 겹친다. 캐시 파일은 `released-karina-v<버전>` 이고, 옛 `released-v*` 는 다음 기록 때 함께 지운다.
+- **미배포는 하니스 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`)의 커밋만 센다** — 옛 범위 `plugins/` 는 문서를 세지 않았다. 같은 뜻을 하니스 루트 안에서 지키고, 다른 플러그인 폴더의 커밋도 세지 않는다. 골든 `scenarios/warn-version-drift.ps1` 의 「모노레포」 케이스가 양성과 음성 짝을 잰다.

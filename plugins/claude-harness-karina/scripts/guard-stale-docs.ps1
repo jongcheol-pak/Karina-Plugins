@@ -10,6 +10,8 @@
 # ⚠ 이 표 자체가 「낡을 목록」이다(`check-stale-refs.py` 의 DEAD·`CRITICAL_POINTERS` 와 같은 계열).
 #   그래서 아래 BASELINE 으로 총량을 묶어 증감이 diff 에 드러나게 한다 — 안 묶으면 이 회차가
 #   그 결함을 고치면서 같은 결함을 하나 더 만든다.
+. (Join-Path $PSScriptRoot 'harness-root.ps1')
+
 $script:StaleAxisMap = @(
     @{ Pattern = '^docs/harness-conventions\.md$'
        Axis    = '산문 서술 — 경로·심볼 실존은 check-stale-refs.py 가 재고, 남는 것은 「동작이 이렇게 돈다」는 문장의 진위와 구분자 없는 순수 식별자다' }
@@ -21,7 +23,7 @@ $script:StaleAxisMap = @(
        #   표기를 안 다는 것이 축을 끄는 수단이 된다.
        TtlFile = 'AGENTS.md'
        TtlDays = 90 }
-    @{ Pattern = '^plugins/karina/skills/llm-wiki/'
+    @{ Pattern = '^skills/llm-wiki/'
        Axis    = '위키 feature 서술 ↔ 코드 — 각주 경로 실존은 lint 가 재지만 서술 내용은 표본 판정뿐이다' }
 )
 # 4 -> 3: `docs/golden-runner.md` 의 소요 실측 축이 **층 2 의 케이스 수 대조로 승격**돼
@@ -55,7 +57,8 @@ function Test-AxisVerifiedFresh {
 
 function Get-StagedPaths {
     param([string]$RepoRoot)
-    $out = @(& git -C $RepoRoot diff --cached --name-only 2>$null)
+    # `--relative` — 경로를 하니스 루트 기준으로 받는다(모노레포에서 git 루트 기준이면 축 표의 `^docs/` 가 어긋난다).
+    $out = @(& git -C $RepoRoot diff --cached --name-only --relative 2>$null)
     if ($LASTEXITCODE -ne 0) { return $null }   # 판정 불가와 「0건」을 가른다
     # ⚠ `,` 를 빼면 **빈 배열이 `$null` 로 무너져** 「스테이징 0건」이 「판정 불가」로 뒤집힌다 —
     #   PowerShell 이 반환값의 빈 컬렉션을 풀어 버리기 때문이고, 위 `$null` 판정과 충돌한다.
@@ -71,7 +74,7 @@ function Get-CountMismatchLines {
         파일 패턴에 묶이면 그 3종의 드리프트가 커밋까지 통과한다.
     #>
     param([string]$RepoRoot)
-    $checker = Join-Path $RepoRoot 'plugins/karina/evals/check-harness-consistency.py'
+    $checker = Join-Path $RepoRoot 'evals/check-harness-consistency.py'
     if (-not (Test-Path -LiteralPath $checker)) { return @() }
     $out = @(& python $checker --fix --dry-run 2>$null)
     if ($LASTEXITCODE -ne 0) { return @() }
@@ -128,7 +131,8 @@ function Get-WikiLag {
     $head = (Get-Content -LiteralPath $HubPath -TotalCount 40 -ErrorAction SilentlyContinue) -join "`n"
     if ($head -notmatch '(?m)^synced_commit:\s*["'']?([0-9a-f]{7,40})') { return $null }
     $sha = $Matches[1]
-    $n = & git -C $RepoRoot rev-list --count "$sha..HEAD" 2>$null
+    # 경로 제한 `-- .` — 모노레포에서 다른 플러그인 커밋을 격차로 세지 않는다(하니스 루트 기준).
+    $n = & git -C $RepoRoot rev-list --count "$sha..HEAD" -- . 2>$null
     if ($LASTEXITCODE -ne 0) { return $null }   # 그 sha 가 이 레포에 없으면 판정 불가
     return [int]$n
 }
@@ -152,11 +156,10 @@ function Invoke-WarnStaleDocs {
     $cwd = [string]$data.cwd
     if ([string]::IsNullOrWhiteSpace($cwd)) { $cwd = (Get-Location).Path }
     if (-not (Test-Path -LiteralPath $cwd)) { return New-HookResult }
-    $root = (& git -C $cwd rev-parse --show-toplevel 2>$null)
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($root)) { return New-HookResult }
-    # 하니스 레포에서만 돈다 — 마커 2종 동시 실재로 가른다(`warn-version-drift.ps1` 과 같은 판정).
-    if (-not (Test-Path -LiteralPath (Join-Path $root 'plugins/karina/.claude-plugin/plugin.json'))) { return New-HookResult }
-    if (-not (Test-Path -LiteralPath (Join-Path $root '.claude-plugin/marketplace.json'))) { return New-HookResult }
+    # 하니스 레포에서만 돈다 — 하니스 루트(모노레포의 플러그인 폴더)를 위로 올라가며 찾는다(`harness-root.ps1`,
+    #   `warn-version-drift.ps1` 과 같은 판정). 하위 폴더에서 커밋해도 지금처럼 판정이 돈다.
+    $root = Find-HarnessRoot -StartDir $cwd
+    if (-not $root) { return New-HookResult }
 
     $lines = New-Object System.Collections.Generic.List[string]
 
@@ -168,7 +171,7 @@ function Invoke-WarnStaleDocs {
     # --- 층 2: 러너 총계 기준선 ---
     # 러너 자신도 실행 끝에 이것을 대조하지만(T4), **러너를 돌리지 않은 회차**에는 그 경고가
     #   뜨지 않는다. 커밋 직전은 그 자리다 — 문서와 러너 상수가 갈린 채 커밋되는 것을 잡는다.
-    $runner = Join-Path $root 'plugins/karina/hooks/evals/run-hook-evals.ps1'
+    $runner = Join-Path $root 'hooks/evals/run-hook-evals.ps1'
     $conv = Join-Path $root 'docs/harness-conventions.md'
     # 러너 상수는 아래 두 대조(총계 갈림 · 골든 실측 낡음)가 함께 쓴다 — 한 번만 읽는다. 문서 존재 조건
     #   **밖**에서 읽는 이유는 실측 낡음 대조가 러너만 있으면 판정해 왔기 때문이다(그 문서가 없어도 돈다).

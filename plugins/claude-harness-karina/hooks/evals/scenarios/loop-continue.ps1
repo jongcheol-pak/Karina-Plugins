@@ -1,7 +1,7 @@
 ﻿# scenarios/loop-continue.ps1 — loop-continue 시나리오 (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook)와 공유 변수($work·$iso)를 그대로 쓴다.
 # 무엇을 재는가: 발동 마커 3경로 · 주입 1경로 · 침묵 7경로 · 집합 변경 재주입 · plan 탐색(상위·docs/plan.md·레포 경계 둘·불릿 집합). 판정 근거는
-#   `plugins/karina/scripts/rules/loop-continue-rationale.md` 의 §2·§6 이다.
+#   `scripts/rules/loop-continue-rationale.md` 의 §2·§6 이다.
 # 세션 id 를 케이스마다 다르게 쓴다 — 마커·카운터가 세션 단위라 앞 케이스의 상태가 뒤 케이스를 오염시키지 않게 한다.
 if (Test-HookSelected @('loop-continue')) {
 
@@ -83,7 +83,7 @@ $r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-c1' $lcProj2)
 Assert-Case -Name "loop-continue: 집합이 바뀌면 다시 주입" -R $r -ExpectExit 0 -ExpectContains 'T1-2'
 
 # ---- [회차 4 T2] plan 상위 탐색 · 레포 경계 · 불릿 집합 ----
-# session-context 와 같은 Find-PlanFileUpwards 사본으로 찾는다 — 근거는 `plugins/karina/scripts/rules/loop-continue-rationale.md` 의
+# session-context 와 같은 Find-PlanFileUpwards 사본으로 찾는다 — 근거는 `scripts/rules/loop-continue-rationale.md` 의
 #   「§4 미완 판정식과 plan 탐색」. 케이스마다 발동 마커를 먼저 세운다 — 마커가 없으면 탐색 전에 침묵해 경계 케이스가
 #   경계와 무관하게 통과한다. 부모 plan 의 미완 ID 는 그 케이스에만 있는 것(T9-9)이라 「잡았는가」가 ID 로 갈린다.
 $lcUp = Join-Path $work 'lc-up-repo'

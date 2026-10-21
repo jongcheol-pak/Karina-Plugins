@@ -109,7 +109,7 @@ $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; too
 Assert-Case -Name "post-write: 사설 IP 별도 라벨 (P1T2)" -R $r -ExpectExit 0 -ExpectContains 'IP 주소(사설)'
 
 # ---- [H2] 하니스 hook 스크립트 변경 감지 (비차단 경고) ----
-$hookPath = Join-Path $pw 'plugins/karina/scripts/block-destructive.ps1'
+$hookPath = Join-Path $pw 'plugins/claude-harness-karina/scripts/block-destructive.ps1'
 New-Item -ItemType Directory (Split-Path $hookPath) -Force | Out-Null
 [System.IO.File]::WriteAllText($hookPath, '# test', [System.Text.UTF8Encoding]::new($true))
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $hookPath } } | ConvertTo-Json -Compress)
@@ -118,16 +118,16 @@ Assert-Case -Name "post-write: 하니스 hook 스크립트 변경 감지 (H2)" -
 # ---- [T2] H2 이름 집합에 고아 프로세스 회수 계열 합류 (차단 쪽 guard-harness와 대칭) ----
 # 탐지·차단이 같은 술어를 공유하는 것이 규약이라 한쪽만 넓히면 대칭이 깨진다 — 두 이름을 각각 고정한다.
 # Test-WarnOnce가 세션·파일당 1회 억제라 두 케이스는 **서로 다른 파일 경로**를 써야 둘 다 발화한다.
-$orphanPath = Join-Path $pw 'plugins/karina/scripts/session-end-cleanup-lib.ps1'
+$orphanPath = Join-Path $pw 'plugins/claude-harness-karina/scripts/session-end-cleanup-lib.ps1'
 [System.IO.File]::WriteAllText($orphanPath, '# test', [System.Text.UTF8Encoding]::new($true))
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $orphanPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: session-end-cleanup-lib 변경 감지 (T2 H2 집합 합류)" -R $r -ExpectExit 0 -ExpectContains 'hook 스크립트 변경'
-$sessionEndPath = Join-Path $pw 'plugins/karina/scripts/session-end-cleanup.ps1'
+$sessionEndPath = Join-Path $pw 'plugins/claude-harness-karina/scripts/session-end-cleanup.ps1'
 [System.IO.File]::WriteAllText($sessionEndPath, '# test', [System.Text.UTF8Encoding]::new($true))
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $sessionEndPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: session-end-cleanup 변경 감지 (T2 H2 집합 합류)" -R $r -ExpectExit 0 -ExpectContains 'hook 스크립트 변경'
 # [회차 44 T2] write-gate-exempt 합류 — 차단 쪽(guard-harness)과 같은 이름 집합을 읽으므로 탐지도 함께 넓어져야 대칭이 산다.
-$exemptPath = Join-Path $pw 'plugins/karina/scripts/write-gate-exempt.ps1'
+$exemptPath = Join-Path $pw 'plugins/claude-harness-karina/scripts/write-gate-exempt.ps1'
 [System.IO.File]::WriteAllText($exemptPath, '# test', [System.Text.UTF8Encoding]::new($true))
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $exemptPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: write-gate-exempt 변경 감지 (회차 44 T2 H2 집합 합류)" -R $r -ExpectExit 0 -ExpectContains 'hook 스크립트 변경'
@@ -289,7 +289,7 @@ $eolCrlf = Join-Path $eolRepo 'crlf.md'
 # 판정은 추적 파일의 워킹트리 CRLF 비율(≥ 90% · 표본 ≥ 5)이다 — EOL1·EOL1b 가 양성이도록 CRLF 추적 파일을 채운다(CRLF 10 · LF 1).
 1..9 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolRepo "crlf$_.md"), "줄`r`n") }
 # 픽스처 제외 경로 — 실제 레포의 LF 18건이 전부 이 형태라 오탐하면 그 트리를 만질 때마다 발화한다.
-$eolFx = Join-Path $eolRepo 'plugins/karina/skills/llm-wiki/evals/fixtures/x'
+$eolFx = Join-Path $eolRepo 'plugins/claude-harness-karina/skills/llm-wiki/evals/fixtures/x'
 New-Item -ItemType Directory $eolFx -Force | Out-Null
 $eolFxFile = Join-Path $eolFx 'input.md'
 [System.IO.File]::WriteAllText($eolFxFile, "픽스처는 LF 가 테스트 입력이다`n")
@@ -393,7 +393,7 @@ $eolFxRepo = Join-Path $work 'eol-fx-repo'; New-Item -ItemType Directory $eolFxR
 Push-Location $eolFxRepo
 git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
 1..9 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolFxRepo "c$_.md"), "줄`r`n") }
-$eolFxDir = Join-Path $eolFxRepo 'plugins/karina/skills/llm-wiki/evals/fixtures/x'
+$eolFxDir = Join-Path $eolFxRepo 'plugins/claude-harness-karina/skills/llm-wiki/evals/fixtures/x'
 New-Item -ItemType Directory $eolFxDir -Force | Out-Null
 1..2 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolFxDir "f$_.md"), "줄`n") }
 git add -A 2>$null; git commit -qm init

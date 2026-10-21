@@ -5,8 +5,8 @@
 # =====================================================================
 # 10) warn-version-drift 시나리오 (SessionStart — 설치본↔레포 버전 비교)
 # =====================================================================
-# 설치본은 $env:CLAUDE_PLUGIN_ROOT 픽스처로, 레포는 마커 2종(plugins/karina/.claude-plugin/plugin.json +
-# .claude-plugin/marketplace.json) 픽스처로 위장한다. 실행 후 CLAUDE_PLUGIN_ROOT는 원복(다른 시나리오 오염 방지).
+# 설치본은 $env:CLAUDE_PLUGIN_ROOT 픽스처로, 레포는 하니스 루트 마커(이름 karina 인 .claude-plugin/plugin.json +
+# docs/harness-conventions.md — `harness-root.ps1`) 픽스처로 위장한다. 실행 후 CLAUDE_PLUGIN_ROOT는 원복(다른 시나리오 오염 방지).
 if (Test-HookSelected @('warn-version-drift')) {
 $vdRealRoot = $env:CLAUDE_PLUGIN_ROOT
 try {
@@ -18,10 +18,11 @@ try {
 
     # 가짜 하네스 레포 (v9.9.9 — 불일치)
     $vdRepo = Join-Path $work 'vd-repo'
-    New-Item -ItemType Directory (Join-Path $vdRepo 'plugins/karina/.claude-plugin') -Force | Out-Null
     New-Item -ItemType Directory (Join-Path $vdRepo '.claude-plugin') -Force | Out-Null
-    '{ "name": "karina", "version": "9.9.9" }' | Set-Content (Join-Path $vdRepo 'plugins/karina/.claude-plugin/plugin.json')
-    '{ "name": "karina-harness" }' | Set-Content (Join-Path $vdRepo '.claude-plugin/marketplace.json')
+    New-Item -ItemType Directory (Join-Path $vdRepo '.claude-plugin') -Force | Out-Null
+    '{ "name": "karina", "version": "9.9.9" }' | Set-Content (Join-Path $vdRepo '.claude-plugin/plugin.json')
+    New-Item -ItemType Directory (Join-Path $vdRepo 'docs') -Force | Out-Null
+    '# 규약' | Set-Content (Join-Path $vdRepo 'docs/harness-conventions.md')
 
     $vdJson = @{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $vdRepo } | ConvertTo-Json -Compress
     # 1) 불일치 → 드리프트 경고 (exit 0 — 비차단)
@@ -30,7 +31,7 @@ try {
     Assert-Case -Name "version-drift: 재설치 안내가 /plugin update 를 가리킨다" -R $r -ExpectExit 0 -ExpectContains '/plugin update'
 
     # 2) 일치 → 무출력
-    '{ "name": "karina", "version": "1.0.0" }' | Set-Content (Join-Path $vdRepo 'plugins/karina/.claude-plugin/plugin.json')
+    '{ "name": "karina", "version": "1.0.0" }' | Set-Content (Join-Path $vdRepo '.claude-plugin/plugin.json')
     $r = Invoke-Hook 'warn-version-drift.ps1' $vdJson
     Assert-Case -Name "version-drift: 버전 일치 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
 
@@ -43,7 +44,7 @@ try {
     #   안 한다"가 아니다. 릴리즈 누락 검사는 설치본 판정보다 앞에 있어 이 상태에서도 돈다 — 다만 $vdRepo가
     #   git 저장소가 아니라 조용히 통과해 결과적으로 무출력이다(아래 5~7이 그 검사를 직접 건다).
     $env:CLAUDE_PLUGIN_ROOT = $null
-    '{ "name": "karina", "version": "9.9.9" }' | Set-Content (Join-Path $vdRepo 'plugins/karina/.claude-plugin/plugin.json')
+    '{ "name": "karina", "version": "9.9.9" }' | Set-Content (Join-Path $vdRepo '.claude-plugin/plugin.json')
     $r = Invoke-Hook 'warn-version-drift.ps1' $vdJson
     Assert-Case -Name "version-drift: CLAUDE_PLUGIN_ROOT 부재 무출력(fail-open)" -R $r -ExpectExit 0 -ExpectSilent $true
 
@@ -52,10 +53,11 @@ try {
     # **origin/main에 올라간 plugin.json 버전**이라, 픽스처도 git 저장소 + origin/main ref로 만든다.
     if ($gitOk) {
         $vdGit = Join-Path $work 'vd-gitrepo'
-        New-Item -ItemType Directory (Join-Path $vdGit 'plugins/karina/.claude-plugin') -Force | Out-Null
         New-Item -ItemType Directory (Join-Path $vdGit '.claude-plugin') -Force | Out-Null
-        '{ "name": "karina", "version": "2.3.4" }' | Set-Content (Join-Path $vdGit 'plugins/karina/.claude-plugin/plugin.json')
-        '{ "name": "karina-harness" }' | Set-Content (Join-Path $vdGit '.claude-plugin/marketplace.json')
+        New-Item -ItemType Directory (Join-Path $vdGit '.claude-plugin') -Force | Out-Null
+        '{ "name": "karina", "version": "2.3.4" }' | Set-Content (Join-Path $vdGit '.claude-plugin/plugin.json')
+        New-Item -ItemType Directory (Join-Path $vdGit 'docs') -Force | Out-Null
+        '# 규약' | Set-Content (Join-Path $vdGit 'docs/harness-conventions.md')
         Push-Location -LiteralPath $vdGit
         try {
             & git init -q 2>$null
@@ -78,13 +80,13 @@ try {
 
         # 6) 태그를 만들면 → 무출력
         Push-Location -LiteralPath $vdGit
-        try { & git tag v2.3.4 2>$null } finally { Pop-Location }
+        try { & git tag karina-v2.3.4 2>$null } finally { Pop-Location }
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdGitJson
         Assert-Case -Name "version-drift: 태그 존재 시 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
 
         # 7) origin/main ref가 없으면(미push 레포) → 무출력 (fail-open — 개발 중 오탐 방지)
         Push-Location -LiteralPath $vdGit
-        try { & git update-ref -d refs/remotes/origin/main 2>$null; & git tag -d v2.3.4 2>$null } finally { Pop-Location }
+        try { & git update-ref -d refs/remotes/origin/main 2>$null; & git tag -d karina-v2.3.4 2>$null } finally { Pop-Location }
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdGitJson
         Assert-Case -Name "version-drift: origin/main 부재 무출력(fail-open)" -R $r -ExpectExit 0 -ExpectSilent $true
 
@@ -93,14 +95,14 @@ try {
         #      그 폴백은 오프라인에서 이미 배포된 변경을 미배포로 센다(계획 리뷰 2R).
         Push-Location -LiteralPath $vdGit
         try {
-            New-Item -ItemType Directory 'plugins/karina/skills' -Force | Out-Null
-            'x' | Set-Content 'plugins/karina/skills/a.md'
+            New-Item -ItemType Directory 'skills' -Force | Out-Null
+            'x' | Set-Content 'skills/a.md'
             & git add -A 2>$null; & git commit -q -m 'plugins 변경' 2>$null
             & git update-ref refs/remotes/origin/main HEAD 2>$null
         } finally { Pop-Location }
         $vdCacheDir = Join-Path $env:USERPROFILE '.claude/.state/version-drift'
         New-Item -ItemType Directory $vdCacheDir -Force | Out-Null
-        Set-Content -LiteralPath (Join-Path $vdCacheDir 'released-v2.3.4') -Value ''
+        Set-Content -LiteralPath (Join-Path $vdCacheDir 'released-karina-v2.3.4') -Value ''
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdGitJson
         Assert-Case -Name "version-drift: 미배포 — 태그 sha 를 못 얻으면 판정을 건너뛴다(오프라인·빈 캐시 무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
         Remove-Item -Recurse -Force $vdCacheDir -ErrorAction SilentlyContinue
@@ -114,10 +116,11 @@ try {
         $vdBare = Join-Path $work 'vd-bare-origin.git'
         $vdWork = Join-Path $work 'vd-remote-work'
         & git init -q --bare $vdBare 2>$null
-        New-Item -ItemType Directory (Join-Path $vdWork 'plugins/karina/.claude-plugin') -Force | Out-Null
         New-Item -ItemType Directory (Join-Path $vdWork '.claude-plugin') -Force | Out-Null
-        '{ "name": "karina", "version": "3.4.5" }' | Set-Content (Join-Path $vdWork 'plugins/karina/.claude-plugin/plugin.json')
-        '{ "name": "karina-harness" }' | Set-Content (Join-Path $vdWork '.claude-plugin/marketplace.json')
+        New-Item -ItemType Directory (Join-Path $vdWork '.claude-plugin') -Force | Out-Null
+        '{ "name": "karina", "version": "3.4.5" }' | Set-Content (Join-Path $vdWork '.claude-plugin/plugin.json')
+        New-Item -ItemType Directory (Join-Path $vdWork 'docs') -Force | Out-Null
+        '# 규약' | Set-Content (Join-Path $vdWork 'docs/harness-conventions.md')
         $vdRemoteReady = $false
         Push-Location -LiteralPath $vdWork
         try {
@@ -134,7 +137,7 @@ try {
             & git update-ref refs/remotes/origin/main HEAD 2>$null
             # 픽스처 사전 조건: origin/main ref가 있고 원격에 v3.4.5 태그가 **아직** 없어야 한다.
             $vdHasRef = -not [string]::IsNullOrWhiteSpace(((& git rev-parse --verify -q refs/remotes/origin/main 2>$null) -join ''))
-            $vdNoTag  = [string]::IsNullOrWhiteSpace(((& git ls-remote --tags origin 'v3.4.5' 2>$null) -join ''))
+            $vdNoTag  = [string]::IsNullOrWhiteSpace(((& git ls-remote --tags origin 'karina-v3.4.5' 2>$null) -join ''))
             $vdRemoteReady = ($vdHasRef -and $vdNoTag)
         } finally { Pop-Location }
         # 픽스처가 어긋나면 아래 세 케이스가 조용히 공허 통과하므로, 준비 자체를 케이스로 세운다.
@@ -162,7 +165,7 @@ try {
         #     않았다는 증거다. 캐시는 손으로 심고 확인 뒤 지운다 — ②·③ 이 캐시 없는 상태에서 돌아야 한다.
         $vdCacheDir = Join-Path $env:USERPROFILE '.claude/.state/version-drift'
         New-Item -ItemType Directory $vdCacheDir -Force | Out-Null
-        Set-Content -LiteralPath (Join-Path $vdCacheDir 'released-v3.4.5') -Value ''
+        Set-Content -LiteralPath (Join-Path $vdCacheDir 'released-karina-v3.4.5') -Value ''
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
         Assert-Case -Name "version-drift: 확인된 태그 캐시가 있으면 원격 조회 없이 무출력 (회차 3 T7)" -R $r -ExpectExit 0 -ExpectSilent $true
         Remove-Item -Recurse -Force $vdCacheDir -ErrorAction SilentlyContinue
@@ -171,7 +174,7 @@ try {
         #    **원격 상태를 「없음」으로 못박는 것이 이 케이스의 전부다** — 원격에도 같은 태그가 있으면
         #    「원격 전용」 구현으로 바꿔도 결과가 같아 로컬 우선 분기를 전혀 고정하지 못한다.
         Push-Location -LiteralPath $vdWork
-        try { & git tag v3.4.5 2>$null } finally { Pop-Location }
+        try { & git tag karina-v3.4.5 2>$null } finally { Pop-Location }
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
         Assert-Case -Name "version-drift: 로컬 태그 히트 시 원격 무시(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
 
@@ -179,12 +182,12 @@ try {
         #     `gh release create`는 태그를 원격에만 만들므로 로컬은 비어 있다. 폴백 이전 코드에서는
         #     이 케이스가 「릴리즈 누락」을 발화해 FAIL한다 — 변이 확인의 대상이다.
         Push-Location -LiteralPath $vdWork
-        try { & git push -q origin v3.4.5 2>$null; & git tag -d v3.4.5 2>$null } finally { Pop-Location }
+        try { & git push -q origin karina-v3.4.5 2>$null; & git tag -d karina-v3.4.5 2>$null } finally { Pop-Location }
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
         Assert-Case -Name "version-drift: 원격에만 태그 있음(로컬 부재) → 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
 
         # 10-1) [회차 3 T7] ③ 바로 뒤 — 원격에서 태그를 찾은 결과는 캐시로 남는다
-        $vdCacheHit = Test-Path -LiteralPath (Join-Path $env:USERPROFILE '.claude/.state/version-drift/released-v3.4.5')
+        $vdCacheHit = Test-Path -LiteralPath (Join-Path $env:USERPROFILE '.claude/.state/version-drift/released-karina-v3.4.5')
         Assert-Case -Name "version-drift: 원격에서 찾은 태그를 캐시로 남긴다 (회차 3 T7)" -R @{ code = ([int](-not $vdCacheHit)); out = "캐시 파일=$vdCacheHit" } -ExpectExit 0
         Remove-Item -Recurse -Force (Join-Path $env:USERPROFILE '.claude/.state/version-drift') -ErrorAction SilentlyContinue
 
@@ -201,7 +204,7 @@ try {
                 & git update-ref refs/remotes/origin/main HEAD 2>$null
             } finally { Pop-Location }
         }
-        $vdCacheFile = Join-Path $env:USERPROFILE '.claude/.state/version-drift/released-v3.4.5'
+        $vdCacheFile = Join-Path $env:USERPROFILE '.claude/.state/version-drift/released-karina-v3.4.5'
 
         # 11) 태그 뒤 docs/ 만 바뀐 커밋 → 무출력 (음성 짝)
         & $vdPushCommit 'docs/note.md' 'docs 변경'
@@ -209,14 +212,14 @@ try {
         Assert-Case -Name "version-drift: 미배포 — 태그 뒤 plugins 밖 변경만 있으면 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
 
         # 12) 이어서 plugins/ 커밋 → 미배포 발화
-        & $vdPushCommit 'plugins/karina/skills/b.md' 'plugins 변경'
+        & $vdPushCommit 'skills/b.md' 'plugins 변경'
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
         Assert-Case -Name "version-drift: 미배포 — 태그 뒤 plugins/ 커밋이 있으면 발화" -R $r -ExpectExit 0 -ExpectContains '미배포'
 
         # 13) 원격 태그를 HEAD 로 옮겨도(주석 달린 태그) 캐시에 옛 sha 가 있으면 캐시를 쓴다 → 발화
         #     원격을 다시 물었다면 HEAD 를 기준으로 삼아 조용했을 것이다 — 캐시를 썼다는 증거다.
         Push-Location -LiteralPath $vdWork
-        try { & git tag -a -m 'v3.4.5' v3.4.5 HEAD 2>$null; & git push -q -f origin v3.4.5 2>$null; & git tag -d v3.4.5 2>$null } finally { Pop-Location }
+        try { & git tag -a -m 'karina-v3.4.5' karina-v3.4.5 HEAD 2>$null; & git push -q -f origin karina-v3.4.5 2>$null; & git tag -d karina-v3.4.5 2>$null } finally { Pop-Location }
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
         Assert-Case -Name "version-drift: 미배포 — 캐시의 태그 sha 를 원격보다 먼저 쓴다" -R $r -ExpectExit 0 -ExpectContains '미배포'
 
@@ -234,6 +237,73 @@ try {
         $vdCacheSha = ((Get-Content -LiteralPath $vdCacheFile -Raw -ErrorAction SilentlyContinue) -join '').Trim()
         Assert-Case -Name "version-drift: 미배포 — 빈 캐시에 태그 커밋 sha 를 적는다" -R @{ code = $(if ($vdCacheSha -match '^[0-9a-f]{40}$') { 0 } else { 1 }); out = "캐시=$vdCacheSha" } -ExpectExit 0
         Remove-Item -Recurse -Force (Split-Path $vdCacheFile) -ErrorAction SilentlyContinue
+
+        # ---- [모노레포 이전] 하니스가 git 루트 아래 plugins/claude-harness-karina 에 있는 배치 ----
+        # 태그는 플러그인끼리 겹치지 않게 karina-v<버전> 이고, 미배포는 하니스 런타임 폴더의 커밋만 센다
+        # (다른 플러그인 폴더의 커밋은 음성 짝). 픽스처는 하나라 단조 전이 순서로 둔다.
+        $vdMonoBare = Join-Path $work 'vd-mono-origin.git'
+        $vdMono = Join-Path $work 'vd-mono'
+        $vdMonoH = Join-Path $vdMono 'plugins/claude-harness-karina'
+        & git init -q --bare $vdMonoBare 2>$null
+        foreach ($d in @("$vdMonoH/.claude-plugin", "$vdMonoH/docs", "$vdMono/plugins/other/.claude-plugin", "$vdMono/.claude-plugin")) {
+            New-Item -ItemType Directory $d -Force | Out-Null
+        }
+        '{ "name": "karina", "version": "5.6.7" }' | Set-Content (Join-Path $vdMonoH '.claude-plugin/plugin.json')
+        '# 규약' | Set-Content (Join-Path $vdMonoH 'docs/harness-conventions.md')
+        '{ "name": "other", "version": "0.1.0" }' | Set-Content (Join-Path $vdMono 'plugins/other/.claude-plugin/plugin.json')
+        '{ "name": "karina-plugins" }' | Set-Content (Join-Path $vdMono '.claude-plugin/marketplace.json')
+        Push-Location -LiteralPath $vdMono
+        try {
+            & git init -q 2>$null
+            & git config user.email eval@example.com 2>$null
+            & git config user.name eval 2>$null
+            & git add -A 2>$null
+            & git commit -q -m 'v5.6.7' 2>$null
+            & git remote add origin $vdMonoBare 2>$null
+            & git push -q origin HEAD:main 2>$null
+            & git update-ref refs/remotes/origin/main HEAD 2>$null
+        } finally { Pop-Location }
+        $vdMonoJson = @{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $vdMonoH } | ConvertTo-Json -Compress
+        Remove-Item -Recurse -Force (Join-Path $env:USERPROFILE '.claude/.state/version-drift') -ErrorAction SilentlyContinue
+
+        # 16) 태그가 로컬·원격 어디에도 없다 → 릴리즈 누락 발화, 태그 이름은 karina-v<버전>
+        $r = Invoke-Hook 'warn-version-drift.ps1' $vdMonoJson
+        Assert-Case -Name "version-drift: 모노레포 하니스 폴더에서 릴리즈 누락 발화" -R $r -ExpectExit 0 -ExpectContains '릴리즈 누락'
+        Assert-Case -Name "version-drift: 모노레포 릴리즈 태그 이름은 karina-v<버전>" -R $r -ExpectExit 0 -ExpectContains 'karina-v5.6.7'
+
+        # 17) 원격에 karina-v 태그를 올리면 무출력
+        Push-Location -LiteralPath $vdMono
+        try { & git tag karina-v5.6.7 2>$null; & git push -q origin karina-v5.6.7 2>$null; & git tag -d karina-v5.6.7 2>$null } finally { Pop-Location }
+        $r = Invoke-Hook 'warn-version-drift.ps1' $vdMonoJson
+        Assert-Case -Name "version-drift: 모노레포 원격 karina-v 태그가 있으면 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
+
+        # 18) 태그 뒤 다른 플러그인 폴더만 바뀌면 무출력 (음성 짝)
+        $vdMonoPush = {
+            param($path, $msg)
+            Push-Location -LiteralPath $vdMono
+            try {
+                New-Item -ItemType Directory (Split-Path $path) -Force | Out-Null
+                $msg | Set-Content $path
+                & git add -A 2>$null; & git commit -q -m $msg 2>$null
+                & git push -q origin HEAD:main 2>$null
+                & git update-ref refs/remotes/origin/main HEAD 2>$null
+            } finally { Pop-Location }
+        }
+        & $vdMonoPush 'plugins/other/skills/x.md' 'other 변경'
+        $r = Invoke-Hook 'warn-version-drift.ps1' $vdMonoJson
+        Assert-Case -Name "version-drift: 모노레포 다른 플러그인 커밋은 미배포로 세지 않는다" -R $r -ExpectExit 0 -ExpectSilent $true
+
+        # 19) 하니스 런타임 폴더 커밋 → 미배포 발화
+        & $vdMonoPush 'plugins/claude-harness-karina/skills/y.md' 'karina 변경'
+        $r = Invoke-Hook 'warn-version-drift.ps1' $vdMonoJson
+        Assert-Case -Name "version-drift: 모노레포 하니스 런타임 커밋은 미배포 발화" -R $r -ExpectExit 0 -ExpectContains '미배포'
+
+        # 20) 설치본 버전과 다르면 드리프트 경고 — 하니스 폴더의 plugin.json 을 읽는다
+        $env:CLAUDE_PLUGIN_ROOT = $vdInst
+        $r = Invoke-Hook 'warn-version-drift.ps1' $vdMonoJson
+        Assert-Case -Name "version-drift: 모노레포 하니스 폴더에서 설치본≠레포 경고" -R $r -ExpectExit 0 -ExpectContains '버전 드리프트'
+        $env:CLAUDE_PLUGIN_ROOT = $null
+        Remove-Item -Recurse -Force (Join-Path $env:USERPROFILE '.claude/.state/version-drift') -ErrorAction SilentlyContinue
     }
 } finally {
     $env:CLAUDE_PLUGIN_ROOT = $vdRealRoot

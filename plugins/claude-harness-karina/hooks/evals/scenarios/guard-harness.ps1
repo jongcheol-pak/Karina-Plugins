@@ -13,7 +13,7 @@
 # =====================================================================
 if (Test-HookSelected @('guard-harness', 'guard-write', 'post-write-checks')) {
 $ph = Join-Path $work 'ph'; New-Item -ItemType Directory $ph -Force | Out-Null
-$fakeInstall = Join-Path $ph '.claude/plugins/cache/karina-harness/karina/1.89.0'
+$fakeInstall = Join-Path $ph '.claude/plugins/cache/karina-plugins/karina/1.89.0'
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/block-destructive.ps1'))
 Assert-Case -Name "guard-harness: 설치본 hook 스크립트 Write 차단 (차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'hooks/hooks.json'))
@@ -27,7 +27,7 @@ Assert-Case -Name "guard-harness: 설치본 차단 패턴 데이터(rules/destru
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/rules/harness-hooks.json'))
 Assert-Case -Name "guard-harness: 설치본 자기보호 이름 집합(rules/harness-hooks.json) Write 차단" -R $r -ExpectExit 2
 # 델타 음성 ① 개발 repo 의 같은 파일 — `.claude` 가 경로에 없으므로 통과해야 한다
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/karina/scripts/rules/destructive.json'))
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/claude-harness-karina/scripts/rules/destructive.json'))
 Assert-Case -Name "guard-harness: 개발 repo 의 rules/*.json 은 통과 (델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 # 델타 음성 ② 설치본이라도 rules 밖 JSON 은 대상이 아니다
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/data/other.json'))
@@ -37,20 +37,20 @@ $r = Invoke-Hook 'guard-harness.ps1' $phEdit
 Assert-Case -Name "guard-harness: 자기 자신 Edit 차단 (self-protect)" -R $r -ExpectExit 2
 # 경로 표기 변형 우회 차단 (세그먼트 정규화 — B1): ./ · 이중슬래시 · ../ 삽입해도 설치본 hook 경로를 차단
 $phFwd = $ph -replace '\\', '/'
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/.claude/./plugins/cache/karina-harness/karina/1.89.0/scripts/block-destructive.ps1")
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/.claude/./plugins/cache/karina-plugins/karina/1.89.0/scripts/block-destructive.ps1")
 Assert-Case -Name "guard-harness: hook 경로 우회(./) 차단 (B1)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/.claude//plugins/cache/karina-harness/karina/1.89.0/scripts/block-destructive.ps1")
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/.claude//plugins/cache/karina-plugins/karina/1.89.0/scripts/block-destructive.ps1")
 Assert-Case -Name "guard-harness: hook 경로 우회(이중슬래시) 차단 (B1)" -R $r -ExpectExit 2
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/.claude/foo/../plugins/cache/karina-harness/karina/1.89.0/scripts/block-destructive.ps1")
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/.claude/foo/../plugins/cache/karina-plugins/karina/1.89.0/scripts/block-destructive.ps1")
 Assert-Case -Name "guard-harness: hook 경로 우회(../) 차단 (B1)" -R $r -ExpectExit 2
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph '.claude/settings.json'))
 Assert-Case -Name "guard-harness: .claude/settings.json 통과(무경고)" -R $r -ExpectExit 0 -ExpectSilent $true
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/karina/scripts/block-destructive.ps1'))
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/claude-harness-karina/scripts/block-destructive.ps1'))
 Assert-Case -Name "guard-harness: 개발 repo hook 스크립트(.claude 없음) 통과" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'src/app.ts'))
 Assert-Case -Name "guard-harness: 일반 소스 통과" -R $r -ExpectExit 0 -ExpectSilent $true
 # NotebookEdit — notebook_path 폴백으로 설치본 hook 경로 차단 (폴백 분기 검증)
-$phNb = @{ tool_name = 'NotebookEdit'; cwd = $ph; tool_input = @{ notebook_path = "$phFwd/.claude/plugins/cache/karina-harness/karina/1.89.0/scripts/guard-write.ps1"; new_source = 'x' } } | ConvertTo-Json -Compress
+$phNb = @{ tool_name = 'NotebookEdit'; cwd = $ph; tool_input = @{ notebook_path = "$phFwd/.claude/plugins/cache/karina-plugins/karina/1.89.0/scripts/guard-write.ps1"; new_source = 'x' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'guard-harness.ps1' $phNb
 Assert-Case -Name "guard-harness: NotebookEdit notebook_path 폴백 차단" -R $r -ExpectExit 2
 # [v1.90.2 H3] 8.3 단축명 마스킹 — 무관 8.3 세그먼트(RUNNER~1 등)는 hook명이 있어도 통과(개발 repo 무영향 보장).
@@ -58,21 +58,21 @@ $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph 'C:/Users/RUNNER~1/myrep
 Assert-Case -Name "guard-harness: 무관 8.3(RUNNER~1)+hook명 통과 (v1.90.2 H3 오탐 방지)" -R $r -ExpectExit 0 -ExpectSilent $true
 # [v1.90.3 F2] CLAUDE~1 충돌 오탐 수정 — 'Claude…' 폴더의 8.3명 CLAUDE~1(이 repo 자신 포함) 아래 개발 소스
 #   편집은 통과해야 한다(캐시 밖). 실제 마스킹된 설치본 hook 경로는 /plugins/cache/를 포함하므로 그때만 차단.
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/karina/scripts/block-destructive.ps1")
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/claude-harness-karina/scripts/block-destructive.ps1")
 Assert-Case -Name "guard-harness: 8.3 CLAUDE~1 개발 repo 소스(캐시 밖) 통과 (v1.90.3 F2 오탐 수정)" -R $r -ExpectExit 0 -ExpectSilent $true
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/karina-harness/karina/1.90.2/scripts/block-destructive.ps1")
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/karina-plugins/karina/1.90.2/scripts/block-destructive.ps1")
 Assert-Case -Name "guard-harness: 8.3 마스킹 설치본(캐시 컨텍스트) 차단 (v1.90.3 F2)" -R $r -ExpectExit 2 -ExpectContains '8.3'
 # [v1.308.x] 이름 집합(rules/harness-hooks.json)의 등재를 이름별로 잰다 — 설치본 경로 판정은 scripts/*.ps1 전체를 막아
 #   이름과 무관하지만, 8.3 짧은 경로(CLAUDE~1) 우회 판정은 이름으로만 선다. 그래서 그 경로로 잰다
 #   (guard-stale-docs 가 실제로 빠져 있었다). 미탐 보완이라 양성 2건이고, 델타 음성은 위 캐시 밖 CLAUDE~1 케이스다.
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/karina-harness/karina/1.90.2/scripts/loop-continue.ps1")
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/karina-plugins/karina/1.90.2/scripts/loop-continue.ps1")
 Assert-Case -Name "guard-harness: 8.3 경로 설치본 loop-continue.ps1 Write 차단 (이름 집합 등재)" -R $r -ExpectExit 2 -ExpectContains '8.3'
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/karina-harness/karina/1.90.2/scripts/guard-stale-docs.ps1")
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/karina-plugins/karina/1.90.2/scripts/guard-stale-docs.ps1")
 Assert-Case -Name "guard-harness: 8.3 경로 설치본 guard-stale-docs.ps1 Write 차단 (이름 집합 등재)" -R $r -ExpectExit 2 -ExpectContains '8.3'
-# 전수 — 이름 집합의 정본 조건은 「plugins/karina/scripts/*.ps1 전량」(harness-hooks.json _note)이다. 목록 자신이 아니라
+# 전수 — 이름 집합의 정본 조건은 「plugins/claude-harness-karina/scripts/*.ps1 전량」(harness-hooks.json _note)이다. 목록 자신이 아니라
 #   실제 스크립트 파일을 기준으로 8.3 경로를 하나씩 대 보므로, 스크립트를 더하고 목록을 빠뜨리면 여기서 red 가 난다.
 $ghMissing = @(Get-ChildItem -LiteralPath $scriptsDir -Filter *.ps1 | ForEach-Object {
-    $rr = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/karina-harness/karina/1.90.2/scripts/$($_.Name)")
+    $rr = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/karina-plugins/karina/1.90.2/scripts/$($_.Name)")
     if ($rr.code -ne 2) { $_.BaseName }
 })
 $ghMissingOut = if ($ghMissing.Count -eq 0) { 'missing=none' } else { 'missing=' + ($ghMissing -join ',') }
@@ -105,7 +105,7 @@ Assert-Case -Name "guard-harness: 설치본 write-gate-trivial 헬퍼 Write 차�
 # ⚠ 양성만으로는 부족하다 — 인코딩이 깨지면 「아무것도 매치하지 않아」 통과하므로, 같은 한글 경로의
 #   **캐시 밖 개발 소스가 통과하는지**(음성)까지 봐야 경로 문자열이 실제로 온전히 전달됐음이 드러난다.
 $phKo = Join-Path $work '한글경로 테스트'; New-Item -ItemType Directory $phKo -Force | Out-Null
-$fakeInstallKo = Join-Path $phKo '.claude/plugins/cache/karina-harness/karina/1.181.0'
+$fakeInstallKo = Join-Path $phKo '.claude/plugins/cache/karina-plugins/karina/1.181.0'
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $phKo (Join-Path $fakeInstallKo 'scripts/block-destructive.ps1'))
 Assert-Case -Name "guard-harness: 한글 경로 설치본 hook Write 차단 (v1.181.0 T7 — 미탐 보완 실증)" -R $r -ExpectExit 2
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $phKo (Join-Path $phKo '플러그인/scripts/block-destructive.ps1'))
@@ -126,10 +126,10 @@ Assert-Case -Name "guard-harness: 설치본 session-end-cleanup Write 차단 (T2
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/write-gate-exempt.ps1'))
 Assert-Case -Name "guard-harness: 설치본 write-gate-exempt 면제 헬퍼 Write 차단 (회차 44 T2 집합 합류)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
 # 새 이름은 $suspect83 분기에도 들어가므로 그 확대까지 양성으로 고정한다(캐시 컨텍스트가 게이트).
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/karina-harness/karina/1.187.0/scripts/session-end-cleanup.ps1")
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/cache/karina-plugins/karina/1.187.0/scripts/session-end-cleanup.ps1")
 Assert-Case -Name "guard-harness: 8.3 마스킹 설치본 session-end-cleanup 차단 (T2 — 8.3 분기 확대 실증)" -R $r -ExpectExit 2 -ExpectContains '8.3'
 # 델타 음성 ⓐ 개발 repo 소스(.claude 세그먼트 없음) — 이번 회차 자신이 편집한 경로와 같은 형태다.
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/karina/scripts/session-end-cleanup-lib.ps1'))
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph 'plugins/claude-harness-karina/scripts/session-end-cleanup-lib.ps1'))
 Assert-Case -Name "guard-harness: 개발 repo session-end-cleanup-lib 통과 (T2 — 오차단 0 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 # ⓑ 유사 이름 — 회차 53 이 기대값을 뒤집었다. **이름 축으로는 여전히 미매치**지만(알터네이션 그룹
 #   앞의 리터럴 '/'가 부분 매치를 막는다), 같은 회차가 더한 **경로 축**(`.claude/**/scripts/*.ps1`)이
@@ -145,7 +145,7 @@ Assert-Case -Name "guard-harness: scripts/ 밖이어도 정확한 hook 이름은
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'hooks/my-session-end-cleanup.ps1'))
 Assert-Case -Name "guard-harness: scripts/ 밖의 유사 이름은 미매치 통과 (회차 53 — 그룹 경계 음성 복원)" -R $r -ExpectExit 0 -ExpectNotContains '개조 시도 감지'
 # 델타 음성 ⓒ 캐시 밖 CLAUDE~1 — 이 repo 자신의 8.3명이라 오차단되면 하니스 자기 개발이 막힌다.
-$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/karina/scripts/session-end-cleanup.ps1")
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph "$phFwd/CLAUDE~1/plugins/claude-harness-karina/scripts/session-end-cleanup.ps1")
 Assert-Case -Name "guard-harness: 8.3 CLAUDE~1 개발 소스(캐시 밖) session-end-cleanup 통과 (T2 — 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 # ---- [회차 53] 규칙 json 부재 — 로드 실패 가시화 + 이름과 독립된 경로 축 ----
 #   세 hook 다 머리에서 $ErrorActionPreference = 'SilentlyContinue' 를 세우는데, 그 상태에서
@@ -172,7 +172,7 @@ $r = Invoke-NoJson 'post-write-checks.ps1' (& $rmWrite $realMd)
 Assert-Case -Name "rm-json: post-write-checks 로드 실패가 stderr 로 보인다 (RM3)" -R $r -ExpectExit 0 -ExpectContains '개조 탐지를 건너뜁니다'
 
 # RM4~5 (양성 — 이름 축이 죽은 상태에서도 경로만으로 막는다): 착수 시점엔 둘 다 rc=0 무출력이었다.
-$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/.claude/plugins/cache/karina-harness/karina/1.265.0/scripts/guard-bash.ps1")
+$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts/guard-bash.ps1")
 Assert-Case -Name "rm-json: 이름 목록 없이도 설치본 hook 스크립트 개조 차단 (RM4)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
 # ⚠ 소유를 가리지 않는 것이 의도다 — 가르려면 플러그인 이름 목록이 필요한데 그 목록이야말로
 #   로드 실패로 사라지는 바로 그것이라 자기순환이다(`rules/harness-guard-rationale.md` §7).
@@ -181,11 +181,11 @@ Assert-Case -Name "rm-json: 비-karina 설치본의 scripts/*.ps1 도 막는다 
 
 # RM6~8 (델타 음성 — 새 경계에서 **한 조각씩만** 어긋난 근접형): 무관 경로는 T2-1 이전에도
 #   통과했으므로 아무것도 재지 않는다. 세 케이스가 각각 `.claude` · 확장자 · `scripts/` 를 뺀다.
-$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/plugins/karina/scripts/guard-bash.ps1")
+$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/plugins/claude-harness-karina/scripts/guard-bash.ps1")
 Assert-Case -Name "rm-json: 개발 repo 경로(.claude 세그먼트 없음)는 통과 (RM6)" -R $r -ExpectExit 0 -ExpectNotContains '개조 시도 감지'
-$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/.claude/plugins/cache/karina-harness/karina/1.265.0/scripts/foo.txt")
+$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts/foo.txt")
 Assert-Case -Name "rm-json: scripts/ 아래여도 .ps1 이 아니면 통과 (RM7)" -R $r -ExpectExit 0 -ExpectNotContains '개조 시도 감지'
-$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/.claude/plugins/cache/karina-harness/karina/1.265.0/lib/foo.ps1")
+$r = Invoke-NoJson 'guard-harness.ps1' (& $rmWrite "$noJFwd/.claude/plugins/cache/karina-plugins/karina/1.265.0/lib/foo.ps1")
 Assert-Case -Name "rm-json: .claude 아래여도 scripts/ 하위가 아니면 통과 (RM8)" -R $r -ExpectExit 0 -ExpectNotContains '개조 시도 감지'
 
 }   # ---- §2b 게이트 끝 (guard-harness) ----

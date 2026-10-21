@@ -898,9 +898,10 @@ if (Test-HookSelected @('session-context')) {
     #   ⚠ 각 축은 **단독으로 무엇을 검출하는지**가 달라야 한다 — 한 픽스처가 두 규칙을 함께 태우면
     #     둘 중 하나만 살아도 통과해 어느 회귀도 못 잡는다(ⓒ 형식 한정 / ⓓ 미래 배제를 가른 이유).
     $scLed = Join-Path $work ("sc-ledger-" + $suffix)
-    New-Item -ItemType Directory -Path (Join-Path $scLed 'plugins/karina/.claude-plugin') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $scLed '.claude-plugin') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $scLed 'docs/plans') -Force | Out-Null
-    '{ "name": "karina" }' | Set-Content -Encoding UTF8 (Join-Path $scLed 'plugins/karina/.claude-plugin/plugin.json')
+    '{ "name": "karina" }' | Set-Content -Encoding UTF8 (Join-Path $scLed '.claude-plugin/plugin.json')
+    '# 규약' | Set-Content -Encoding UTF8 (Join-Path $scLed 'docs/harness-conventions.md')
     $scLedFile = Join-Path $scLed 'docs/plans/deferred.md'
     $scLedInvoke = { Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scLed } | ConvertTo-Json -Compress) }
 
@@ -909,6 +910,19 @@ if (Test-HookSelected @('session-context')) {
         Set-Content -Encoding UTF8 $scLedFile
     $r = & $scLedInvoke
     Assert-Case -Name "session-context: Deferred 대장 최고령 주입 (SC44)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 대장: 대기 3건'
+
+    # SC44mono [모노레포 이전]: 하니스가 git 루트 아래 플러그인 폴더에 있어도 그 폴더의 대장을 읽는다.
+    $scLedMono = Join-Path $work ("sc-ledger-mono-" + $suffix)
+    $scLedMonoH = Join-Path $scLedMono 'plugins/claude-harness-karina'
+    New-Item -ItemType Directory -Path (Join-Path $scLedMonoH '.claude-plugin') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $scLedMonoH 'docs/plans') -Force | Out-Null
+    '{ "name": "karina" }' | Set-Content -Encoding UTF8 (Join-Path $scLedMonoH '.claude-plugin/plugin.json')
+    '# 규약' | Set-Content -Encoding UTF8 (Join-Path $scLedMonoH 'docs/harness-conventions.md')
+    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A**', '- [2026-06-01] **B**') |
+        Set-Content -Encoding UTF8 (Join-Path $scLedMonoH 'docs/plans/deferred.md')
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scLedMonoH } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 모노레포 하니스 폴더의 Deferred 대장 주입 (SC44mono)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 대장: 대기 2건'
+    Remove-Item -Recurse -Force $scLedMono -ErrorAction SilentlyContinue
 
     # SC44b (값 정확성 — 항목별 **최신** 스탬프): 등록일보다 재확인 표기가 최신이면 그쪽을 취한다.
     #   첫 스탬프를 취하는 회귀(v1.219.0 오산의 형태)면 (2026-01-01)이 나와 FAIL한다.
@@ -1133,7 +1147,7 @@ if (Test-HookSelected @('session-context')) {
 
     # ---- [회차 4 T1] plan 상위 탐색 · 체크박스 불릿 집합 ----
     # guard-write 와 같은 후보(plan.md·PLAN.md·docs/plan.md)를 위로 찾되 `.git`(폴더·파일)에서 멈춘다 — 근거는
-    #   `plugins/karina/scripts/rules/session-context-rationale.md` 의 「§5 ---- plan 탐색: 상위 탐색과 레포 경계」. 부모 plan 에는
+    #   `scripts/rules/session-context-rationale.md` 의 「§5 ---- plan 탐색: 상위 탐색과 레포 경계」. 부모 plan 에는
     #   그 케이스에만 있는 task 수를 심어, 경계에서 멈췄는지가 아니라 「부모 plan 의 고유 수가 안 나오는가」로 잰다.
     #   USERPROFILE 은 위 30일 정리 블록과 같은 이유로 $iso 에 고정한다(vault 홈이면 출력이 vault 줄로 갈린다).
     $scUpSaved = $env:USERPROFILE
