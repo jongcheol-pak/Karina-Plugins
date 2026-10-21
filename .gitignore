@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 편집기
+.vs/
+.vscode/
+*.swp
+
+# 로컬 산출물 (plugin 동작과 무관)
+*.zip
+*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# CI 워크플로 — **전역 `~/.gitignore_global` 이 `.github/` 를 무시한다**(이 레포 것이 아니다).
+#   전역 설정은 건드리지 않고 이 레포에서만 되살린다. 디렉터리를 먼저 풀지 않으면
+#   그 안의 파일에 대한 예외가 git 에서 효력이 없다.
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
