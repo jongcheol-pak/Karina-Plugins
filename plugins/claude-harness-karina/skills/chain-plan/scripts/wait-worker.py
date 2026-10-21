@@ -45,12 +45,21 @@ CLI_TIMEOUT_SEC = 60         # worker-read·worker-list 처럼 기다리지 않�
 CLI_WAIT_MARGIN_SEC = 60     # check --wait 는 자기 --timeout-ms 에 이만큼 더한 뒤에야 응답 불능으로 본다
 GIT_TIMEOUT_SEC = 30         # lint.py·relocate-agents.py 의 git 시한과 같다
 SWEEP_AGE_SEC = 7 * 24 * 3600
-PR_PENDING_MAX = 6           # CI pending 인 같은 화면을 움직임으로 세는 연속 비교 상한(약 54분)
+BUSY_SAME_MAX = 6            # 바쁨(CI pending·백그라운드 셸)인 같은 화면을 움직임으로 세는 연속 비교 상한(약 54분)
 ANSWER_MAX_SEC = 2700        # --answer-by 상한 — 백그라운드 대기 생존 실측 45분
+
+
+BG_SHELL = re.compile(r'\b\d+ shells?\b')
 
 
 def screen_hash(lines):
     return hashlib.sha1('\n'.join(lines).encode('utf-8')).hexdigest()[:16]
+
+
+def background_shell(lines):
+    """입력창 아래(마지막 가로줄 뒤) 상태 줄에 「N shell(s)」 가 있는가 — 백그라운드 셸을 기다리며 turn 을 끝낸 워커다."""
+    rules = [i for i, l in enumerate(lines) if l.strip().startswith('─')]
+    return bool(rules) and any(BG_SHELL.search(l) for l in lines[rules[-1] + 1:])
 
 
 def _action(kind, dispatch, streak=0, on_place=False, parallel=False, answer_by=None):
@@ -134,7 +143,7 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
     last_hash = {d: None for d in ids}
     # 직전 화면 비교 때 본 그 워커 레포의 HEAD — progs[i] 가 ids[i] 의 레포다(같은 수·같은 순서).
     head_at_read = {d: None for d in ids}
-    pending_run = {d: 0 for d in ids}
+    busy_run = {d: 0 for d in ids}
     poll = poll_ms or timeout_ms
     remaining = timeout_ms
     for p in progs:
@@ -195,9 +204,9 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
             cur_head = progs[i].last_head if i < len(progs) else None
             moved = None not in (cur_head, head_at_read[d]) and cur_head != head_at_read[d]
             head_at_read[d] = cur_head
-            busy = i < len(progs) and progs[i].pr_busy
-            pending_run[d] = pending_run[d] + 1 if busy and h == last_hash[d] else 0
-            moved = moved or (busy and pending_run[d] <= PR_PENDING_MAX)
+            busy = (i < len(progs) and progs[i].pr_busy) or background_shell(lines)
+            busy_run[d] = busy_run[d] + 1 if busy and h == last_hash[d] else 0
+            moved = moved or (busy and busy_run[d] <= BUSY_SAME_MAX)
             streak[d] = streak[d] + 1 if h == last_hash[d] and not moved else 0
             last_hash[d] = h
             if streak[d] + 1 >= stall:
