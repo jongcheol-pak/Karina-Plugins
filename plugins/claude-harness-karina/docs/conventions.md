@@ -232,6 +232,8 @@
 
 ### 골든 러너 운용
 
+- [2026-10-21] **골든 러너가 만드는 임시 git 레포에 `.github/` 경로를 쓰지 않는다 — 전역 gitignore 가 `.github/` 를 무시하는 PC 에서는 `git add -A` 가 그 파일을 커밋하지 않는다.** 파일은 디스크에 있어 실존 검사는 통과하고 diff·이력에만 없어, 실패가 「키워드 미검출」로만 보여 구현 결함으로 오인한다. git 루트 밖·하위 폴더 밖을 재는 픽스처는 `tools/` 처럼 무시되지 않는 이름을 쓴다(lint §7-39 하위 폴더 골든 · 회차 「lint 근거 낡음 검사의 모노레포 하위 폴더 대응」). (실측)
+
 - [2026-10-08] **session-context 시나리오 끝부분에 케이스를 더할 때는 `USERPROFILE` 을 try/finally 로 격리 홈(`$iso`)에 고정한다** — 앞 케이스들이 그 변수를 vault 홈(`$isoV`)으로 바꿔 둔 채라, 고정하지 않으면 `$iso` 아래 심은 픽스처를 hook 이 못 보고 출력이 vault 줄로 갈린다. 첫 RED 가 이 때문에 무효였던 회차가 있다(2026-10-08 · 같은 회차군에서 두 번 이 형태로 케이스를 더했다). (실측)
 - [2026-10-06] **케이스 실패를 `except Exception` 으로만 받는 골든 러너는 케이스 안의 `SystemExit` 에 러너째 죽는다 — `main()` 을 부르는 케이스는 `SystemExit` 을 잡아 `AssertionError` 로 바꿔 낸다** — 대기 골든 `run_wait_evals.py` 에서 argparse 가 인자를 거절하며 낸 `SystemExit` 이 러너를 끝내 남은 케이스가 돌지 않았다(인자 거절 케이스의 RED 첫 실행). `SystemExit` 은 `Exception` 이 아니라 `BaseException` 이다. (실측)
 - [2026-10-04] **SKILL.md frontmatter `description` 의 따옴표 없는 값에 「: 」(콜론+공백)를 넣으면 YAML 파싱이 깨져 그 스킬이 오류 없이 로드에서 빠진다** — 트리거 eval 전량 run 에서 implement 양성 케이스가 전부 「발동 없음」 FAIL 로 나타났고, 러너의 로드 단언이 플러그인 로드만 보고 스킬 수를 보지 않아 막지 못했다. description 을 고친 뒤에는 로드된 스킬 수를 확인한다(러너의 스킬 로드 단언이 지금 그 자리다). (실측)

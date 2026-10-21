@@ -30,6 +30,7 @@ function Get-WikiSignals {
                                             $cwdUrl = ("$urlRaw".Trim().ToLowerInvariant() -replace '\.git$', '').TrimEnd('/')
                                         }
                                     } catch {}
+                                    $cwdPrefix = $null   # 모노레포 허브를 만났을 때만 1회 구한다(§38)
                                     # Depth 1 = `20_projects/<카테고리>/<프로젝트>.md` 까지. 그 아래 feature 파일
                                     #   (`.../<프로젝트>/feat-*.md`)은 허브가 아니라 대상에서 자연히 빠진다.
                                     foreach ($hubFile in (Get-ChildItem -LiteralPath $hubDir -Filter '*.md' -File -Recurse -Depth 1 -ErrorAction SilentlyContinue)) {
@@ -57,6 +58,20 @@ function Get-WikiSignals {
                                             if ((($pathMatch.Groups[1].Value -replace '\\', '/').TrimEnd('/')) -ine $cwdNorm) { continue }
                                         }
 
+                                        # 모노레포 하위 폴더 허브 — 근거는 `rules/session-context-rationale-wiki.md` §38
+                                        $hubPrefix = ''
+                                        $hubPathMatch = [regex]::Match($hubText, '(?m)^- \*\*경로\*\*:\s*`([^`]+)`')
+                                        if ($hubPathMatch.Success -and (Test-Path -LiteralPath $hubPathMatch.Groups[1].Value -PathType Container)) {
+                                            try { $hubPrefix = "$(& git -C $hubPathMatch.Groups[1].Value rev-parse --show-prefix 2>$null | Select-Object -First 1)".Trim() } catch {}
+                                        }
+                                        if ($hubPrefix) {
+                                            if ($null -eq $cwdPrefix) {
+                                                $cwdPrefix = ''
+                                                try { $cwdPrefix = "$(& git -C $cwd rev-parse --show-prefix 2>$null | Select-Object -First 1)".Trim() } catch {}
+                                            }
+                                            if (-not $cwdPrefix.StartsWith($hubPrefix, [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+                                        }
+
                                         # ---- 이 허브가 현재 레포다 ----
                                         $projName = ''
                                         $projMatch = [regex]::Match($hubText, '(?m)^project:\s*"?([^"\r\n]+?)"?\s*$')
@@ -70,7 +85,8 @@ function Get-WikiSignals {
                                             $syncedSha = $shaMatch.Groups[1].Value
                                             # $LASTEXITCODE 를 게이트로 쓰지 않는다 — 이 hook은 앞서 다른 외부 — 근거는 `rules/session-context-rationale-wiki.md` §29
                                             try {
-                                                $countRaw = (& git -C $cwd rev-list --count "$syncedSha..HEAD" 2>$null | Select-Object -First 1)
+                                                $countRaw = if ($hubPrefix) { (& git -C $cwd rev-list --count "$syncedSha..HEAD" -- ":/$hubPrefix" 2>$null | Select-Object -First 1) }
+                                                    else { (& git -C $cwd rev-list --count "$syncedSha..HEAD" 2>$null | Select-Object -First 1) }
                                                 if ("$countRaw" -match '^\d+$') { $behind = [int]$countRaw }
                                             } catch {}
                                         }

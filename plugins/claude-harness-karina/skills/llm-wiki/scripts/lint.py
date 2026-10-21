@@ -41,7 +41,7 @@
 규칙 진실원천은 references/wiki-schema.md 번들(§2 는 schema-types.md, §4·§7-2·§8 은 schema-budget.md, §7 은 schema-lint.md). 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
 (H-2 규약(references/procedures-ops.md): 예산 값은 예산표(references/wiki-ops-rules.md)와 이 파일 둘, 통제어휘는 wiki-schema §3 과 이 파일 둘을 동기화).
 """
-import os, re, sys, glob, shutil, datetime, subprocess, collections
+import os, re, sys, glob, shutil, datetime, subprocess, collections, posixpath
 
 # Windows 콘솔(cp949)에서도 한글이 깨지지 않도록 UTF-8 출력 강제
 try:
@@ -703,8 +703,9 @@ def feature_index_rows(text):
     return sum(1 for line in sec.splitlines() if is_feat_recipe_row(line))
 
 
-def git_commits_behind(repo_root, sha):
+def git_commits_behind(repo_root, sha, limit_to_root=False):
     """repo_root의 HEAD가 sha 이후로 몇 커밋 쌓였는지 반환(§7-26). 계산 불가면 None.
+    limit_to_root 면 repo_root 아래를 건드린 커밋만 센다(허브 경로가 git 루트의 하위 폴더일 때).
 
     fail-open이 이 함수의 계약이다 — git 미설치·비 git 레포·sha 소실(rebase·force push)·
     타임아웃·예외를 전부 None으로 흡수한다. lint은 읽기 전용 진단 도구라, 환경 차이로
@@ -712,7 +713,8 @@ def git_commits_behind(repo_root, sha):
     코드 내용은 읽지 않고 커밋 '수'만 센다(§7 결과 처리의 레포 접근 범위)."""
     try:
         proc = subprocess.run(
-            ["git", "-C", repo_root, "rev-list", "--count", f"{sha}..HEAD"],
+            ["git", "-C", repo_root, "rev-list", "--count", f"{sha}..HEAD"]
+            + (["--", "."] if limit_to_root else []),
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10,
             stdin=subprocess.DEVNULL,  # 자격증명·에디터 프롬프트로 매달리지 않게 입력을 닫는다
         )
@@ -1377,6 +1379,29 @@ def _git(repo_root, *args):
     except (OSError, subprocess.SubprocessError):
         return None
     return proc.stdout if proc.returncode == 0 else None
+
+
+def _git_changed_paths(repo_root, sha):
+    """`sha..HEAD` 에서 내용이 바뀐 경로 집합(git 루트 기준) — git 실패·이력에 없는 sha 면 None(§7-39).
+
+    내용 그대로의 이동(R100)은 빼고 그 밖의 rename 은 새 경로를 센다 — 이동 커밋 하나가 그 폴더를
+    근거로 단 사실 줄 전부를 낡음으로 만들지 않게 한다. `-z` 는 탭·따옴표·한글 경로를 이스케이프 없이
+    NUL 로 끊어 준다(quotepath 설정과 무관)."""
+    out = _git(repo_root, "diff", "-z", "-M", "--name-status", f"{sha}..HEAD")
+    if out is None:
+        return None
+    fields = out.split("\0")
+    changed, i = set(), 0
+    while i < len(fields) and fields[i]:
+        status = fields[i]
+        if status[0] in "RC":
+            if status != "R100":
+                changed.add(fields[i + 2])
+            i += 3
+        else:
+            changed.add(fields[i + 1])
+            i += 2
+    return changed
 
 
 # §4 7번 기록의 사유 — 처방 종류별로 다른 것만 둔다(없으면 분할·롤오버의 기본 사유).
@@ -3938,9 +3963,11 @@ def main():
     #  (wiki-schema §1 「facts 형식」 — 기존 페이지는 갱신될 때 바뀌므로 표지 없는 페이지는 대상 밖).
     #  (ⓐ 근거 꼬리 누락은 폐지 — 그 대상 절 `## 동작`·`## 구조` 가 §7-38 폐지 절이 됐다.)
     #  ⓑ 근거 경로가 레포 HEAD 에 없으면 WARN(§7-20 과 같은 실존 기준).
-    #  ⓒ 근거 커밋 이후 그 파일이 바뀌었으면 INFO — (레포, 커밋)마다 git diff --name-only 1회만 부른다.
+    #  ⓒ 근거 커밋 이후 그 파일이 바뀌었으면 INFO — (레포, 커밋)마다 git diff 1회만 부른다. 근거 경로는
+    #     허브 레포 경로 기준이고 diff 는 git 루트 기준이라 접두를 붙여 대조한다(`_git_changed_paths`).
     #  ⓓ 상대 참조 고정 표현은 WARN. 레포·커밋을 못 찾으면 fail-open(§7-26 과 같은 관례).
     facts_diff_cache = {}  # (root, 커밋) -> 바뀐 경로 집합 또는 None(이력에 없음·git 실패)
+    facts_prefix_cache = {}  # root -> git 루트에서 root 까지의 접두(`sub/` · 루트면 빈 문자열)
     for r, (fm, typ, text) in sorted(pages.items()):
         if typ not in ("project", "feature", "decision-log") or r.startswith("90_archive/"):
             continue
@@ -3977,13 +4004,16 @@ def main():
                 continue
             key = (root, sha)
             if key not in facts_diff_cache:
-                out = _git(root, "diff", "--name-only", f"{sha}..HEAD")
-                facts_diff_cache[key] = None if out is None else set(out.split())
-                if out is None:
+                changed_paths = _git_changed_paths(root, sha)
+                facts_diff_cache[key] = changed_paths
+                if changed_paths is None:
                     infos.append(f"facts 근거 커밋 확인 불가: {r} -> {sha[:7]} "
                                  f"(레포 이력에 없음 — rebase·다른 레포 가능, schema §7-39)")
+            if root not in facts_prefix_cache:
+                facts_prefix_cache[root] = (_git(root, "rev-parse", "--show-prefix") or "").strip()
+            git_path = posixpath.normpath(facts_prefix_cache[root] + p)
             changed = facts_diff_cache[key]
-            if changed is not None and p in changed:
+            if changed is not None and not git_path.startswith("..") and git_path in changed:
                 infos.append(f"facts 근거 낡음 가능: {r} -> '{p}' ({sha[:7]} 이후 변경 — 그 사실 줄을 코드와 대조, schema §7-39)")
 
     # 위키 뒤처짐 (schema-lint §7-26): 허브 synced_commit(§2.2) 이후 레포에 쌓인 커밋 수를 센다.
@@ -4000,9 +4030,10 @@ def main():
                          f"(다음 ingest에서 기록, schema §2.2·§7-26)")
             continue
         root = repo_root_for_hub(text)
-        if root is None or not os.path.isdir(os.path.join(root, ".git")):
+        prefix = _git(root, "rev-parse", "--show-prefix") if root is not None else None
+        if prefix is None:
             continue  # 레포 경로 부재·git 아님 → 조용히 skip (fail-open — 다른 PC·비 git 레포)
-        behind = git_commits_behind(root, synced)
+        behind = git_commits_behind(root, synced, limit_to_root=bool(prefix.strip()))
         if behind is None:
             infos.append(f"동기 기준점이 레포 이력에 없음: {r} -> '{synced[:7]}' "
                          f"(rebase·force push 가능 — 다음 ingest에서 재설정, schema §7-26)")
