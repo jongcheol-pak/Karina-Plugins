@@ -573,7 +573,7 @@
       "workspace": "no_plan",
       "query": "summarize()에 통화별 합계를 추가하는 기능 계획 세워줘",
       "route_to": "karina:plan",
-      "why": "계획이 **하나뿐** — karina:plan 영역(description 의 첫 near-miss) **route_to(2026-10-04)**: `karina:plan` 가 첫 발동이어야 PASS — why 가 지목한 인접 스킬로 실제로 가는지까지 잰다(오라우팅 판정)."
+      "why": "계획이 **하나뿐** — karina:plan 영역(plan description 의 긍정 트리거가 받는다 — chain-plan 쪽 부정 문장은 2026-10-22 감량으로 뺐다) **route_to(2026-10-04)**: `karina:plan` 가 첫 발동이어야 PASS — why 가 지목한 인접 스킬로 실제로 가는지까지 잰다(오라우팅 판정)."
     },
     {
       "id": "chain-neg-2",
