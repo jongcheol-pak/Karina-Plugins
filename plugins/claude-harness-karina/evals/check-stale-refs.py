@@ -99,13 +99,15 @@ DEAD = [
     # 모노레포 이전 2 (jongcheol-pak/Karina-Plugins) — 옛 마켓 이름과 옛 레포 이름.
     #  옛 플러그인 폴더 `plugins/karina` 는 넣지 않는다: 새 캐시 경로 `cache/karina-plugins/karina/` 가 그 글자를 품어 오탐된다.
     'karina-harness', 'claude-harness-pjc',
+    # 구 대장 1 (2026-10-22) — 소진 batch 회고. batch 절차가 스킬에 없어 읽는 곳이 그 파일만 재던 정합 축뿐이었다.
+    'deferred-history.md',
 ]
 
 # DEAD **총량**의 기준선(= 목록 길이). 늘거나 줄면 불일치다 — 이 목록이 곧 검사 대상이라
 #  항목이 조용히 빠지면 그 이름의 잔존이 **검출되지 않는 채 통과**한다(축이 좁아진 것과
 #  전건 통과가 구분되지 않는다). 정당한 증감이면 **이 값을 함께 갱신한다** — 그 diff 가
 #  목록 변경의 기록이다(`check-harness-consistency.py` 의 허용목록 기준선과 같은 형태).
-DEAD_BASELINE = 39
+DEAD_BASELINE = 40
 
 RX = re.compile('|'.join(re.escape(d) for d in DEAD))
 
@@ -114,7 +116,7 @@ SKIP_DIRS = {'.git', '__pycache__', 'notes-archive', '.agents-presplit', 'node_m
 # 예외 — 각 줄에 사유가 붙는다. 사유 없는 예외를 만들지 않는다.
 EXCEPTIONS = [
     (re.compile(r'^docs/plans/'),
-     '대장 3파일은 이력이다 — 등재 당시의 대상을 그 이름으로 적는 것이 기록의 정확성이다'),
+     '대장 2파일은 이력이다 — 등재 당시의 대상을 그 이름으로 적는 것이 기록의 정확성이다'),
     (re.compile(r'^docs/conventions\.md$'),
      '작업 함정 기록(docs/conventions.md)은 이력이다 — 날짜를 단 항목이 그때 겪은 대상을 그 이름으로 적는다'),
     (re.compile(r'^(plan|notes)\.md$'),

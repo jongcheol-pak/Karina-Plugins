@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 18개로 잰다.
+r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 17개로 잰다.
 
 사용법: python evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
        python evals/check-harness-consistency.py --fix [--dry-run]
 
-축: ① 포인터 도달성(+하위 통지 「줄이 지워진 절」) ② Deferred 집계 ③ 볼드 마커 짝 ④ 한 줄 문장 중복 ⑤ batch 차수 수열
+축: ① 포인터 도달성(+하위 통지 「줄이 지워진 절」) ② Deferred 집계 ③ 볼드 마커 짝 ④ 한 줄 문장 중복 ⑤ (폐지 — 소진 batch 회고 대장 삭제로 대상 소멸)
     ⑥ 추출 앵커 도달성 ⑦ 문서 예산 ⑧ 줄바꿈 정합 ⑨ 종결 사유 명시 ⑩ 핵심 포인터 실재
     ⑪ 등재 마커 실재 ⑭ 폐기 식별자 실재 ⑮ 등재 근거 실측 ⑯ 복제 사본 동기 ⑰ 계수·버전 정합 ⑱ 규칙 근거 보유
     ⑲ 영향 검토 3축 ⑳ (폐지 — 관련 파일 절 폐지로 대상 소멸) ㉑ 큐 태그 열거 정합(+하위 「수 표현」)
@@ -27,10 +27,9 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 
 CONV_MD = os.path.join(ROOT, "docs", "harness-conventions.md")
 LEDGER_MD = os.path.join(ROOT, "docs", "plans", "deferred.md")
-# 대장은 셋이다 — 대기(위)·종결·batch 회고.
-#   ⚠ 두 파일을 여기서 함께 읽지 않으면 계수 축과 차수 축이 **0항목으로 조용히 통과**한다.
+# 대장은 둘이다 — 대기(위)·종결.
+#   ⚠ 두 파일을 여기서 함께 읽지 않으면 계수 축이 **0항목으로 조용히 통과**한다.
 LEDGER_CLOSED_MD = os.path.join(ROOT, "docs", "plans", "deferred-closed.md")
-LEDGER_HISTORY_MD = os.path.join(ROOT, "docs", "plans", "deferred-history.md")
 AGENTS_MD = os.path.join(ROOT, "AGENTS.md")
 # 축 11이 읽는다. **레포 루트의 이 파일만 gitignore 대상이라 커밋되지 않는다** — 없는 것이
 #   정상이므로 부재는 조용히 통과한다(회차 시작 전·plan 없는 세션이 그 상태다).
@@ -484,45 +483,6 @@ def check_deferred_stats(ledger, closed):
                        % (len(over), LEDGER_ITEM_MAX,
                           " · ".join("%s… %d자" % (h, c) for h, c in over[:3])))
     return issues, wait + done, notices
-
-
-def check_batch_number_sequence(hist):
-    """batch 회고(`deferred-history.md`)의 blockquote 차수가 연속·유일한지 대조한다.
-
-    **읽는 파일이 v1.198.0에서 `deferred.md` → `deferred-history.md`로 바뀌었다.**
-    회고를 분리하면서 이 인자를 함께 옮기지 않으면 `nums`가 비고 아래 `if not nums`가
-    **exit 0으로 통과**시켜 축이 무증상으로 사라진다 — 실패가 아니라 0항목 통과라
-    러너의 종료 코드로는 잡히지 않는다. 그래서 axes 출력의 `N항목`을 함께 본다.
-
-    차수는 규약 ⓪의 순증분 보정이 「직전 batch의 정리 직후 값」을 인용할 때
-    **어느 블록을 직전으로 잡는지의 유일한 단서**라, 중복되면 계산이 갈린다.
-    실측: v1.195.0이 이미 있는 `10차 batch (v1.194.0 T9)` 위에 같은 이름의 블록을
-    얹었는데 이 대조기가 exit 0으로 통과시켰고, 잡아낸 것은 F-7 리뷰어였다.
-
-    ⚠ **줄 시작 `> **N차 …` 블록 헤더에서만 센다.** 본문에는 다른 회차를 가리키는
-    인용(`**9차 batch(v1.193.0…`·`**2차 batch`)이 실재해, 비앵커 정규식으로 뽑으면
-    현행 대장이 곧바로 중복·비연속 오탐을 낸다.
-
-    ⚠ **「1부터」가 아니라 「존재하는 최솟값부터」 연속을 본다** — 대장은 6차부터
-    담고 있다(그 이전 기록은 남아 있지 않다).
-
-    `N차 판정`(구간 batch 미실행)도 같은 수열을 쓰므로 함께 센다.
-    """
-    nums = [int(m.group(1)) for m in
-            re.finditer(r"^> \*\*(\d+)차 (?:batch|판정)", hist, re.M)]
-    if not nums:
-        return [], 0          # batch 기록이 없는 대장(다른 프로젝트)도 통과시킨다
-    issues = []
-    dup = sorted({n for n in nums if nums.count(n) > 1})
-    if dup:
-        issues.append("batch 차수 중복 — %s (블록 %d개)"
-                      % (", ".join("%d차" % n for n in dup), len(nums)))
-    uniq = sorted(set(nums))
-    gaps = [n for n in range(uniq[0], uniq[-1] + 1) if n not in uniq]
-    if gaps:
-        issues.append("batch 차수 비연속 — %s 누락 (%d차~%d차 구간)"
-                      % (", ".join("%d차" % n for n in gaps), uniq[0], uniq[-1]))
-    return issues, len(nums)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1294,12 +1254,11 @@ _DEPRECATED_ANCHOR = "**폐기 식별자(기계 대조)**:"
 #  (`.ps1`)·골든 케이스(`.json`)·검사기(`.py`) 주석에도 실재한다.
 _DEPRECATED_EXTS = (".md", ".ps1", ".py", ".json")
 
-# 근거는 `harness-consistency-rationale.md` 의 「축 ⑭ — 폐기 식별자 스캔이 대장 3파일을 제외하는 이유」.
+# 근거는 `harness-consistency-rationale.md` 의 「축 ⑭ — 폐기 식별자 스캔이 대장 2파일을 제외하는 이유」.
 _DEPRECATED_SKIP_RELS_EXTRA = {"evals/cases.json"}
 _DEPRECATED_SKIP_RELS = {
     "docs/plans/deferred.md",
     "docs/plans/deferred-closed.md",
-    "docs/plans/deferred-history.md",
 }
 
 # 허용목록 — `(레포 상대경로, 그 줄을 특정하는 조각)`. **줄 번호를 쓰지 않는다**(밀린다).
@@ -1321,7 +1280,7 @@ DEPRECATED_TOKENS_BASELINE = 7
 
 
 def _deprecated_targets():
-    """스캔 대상을 `(경로, 레포 상대경로)`로 낸다 — `_scan_scope()`의 제외 술어 + 대장 3파일."""
+    """스캔 대상을 `(경로, 레포 상대경로)`로 낸다 — `_scan_scope()`의 제외 술어 + 대장 2파일."""
     for base, dirs, names in os.walk(ROOT):
         dirs[:] = [d for d in dirs if d not in _SCAN_SKIP_DIRS]
         for n in names:
@@ -2117,7 +2076,6 @@ def main():
     conv = read(CONV_MD)
     ledger = read(LEDGER_MD)
     ledger_closed = read(LEDGER_CLOSED_MD)
-    ledger_hist = read(LEDGER_HISTORY_MD)
 
     # 라벨 목록을 한 곳에 두고 **배너와 결과 문구가 둘 다 여기서 파생**되게 한다 —
     #  종전에는 배너가 별도 리터럴이라 축을 늘려도 그대로 남았다(이 회차가 실제로 겪었다).
@@ -2132,7 +2090,6 @@ def main():
         ("Deferred 집계", (ledger_issues, ledger_n)),
         ("볼드 마커 짝", check_bold_pairing()),
         ("한 줄 문장 중복", check_line_dup()),
-        ("batch 차수 수열", check_batch_number_sequence(ledger_hist)),
         ("추출 앵커 도달성", check_compact_anchors()),
         ("문서 예산", (budget_issues, budget_n)),
         ("줄바꿈 정합", check_line_endings()),

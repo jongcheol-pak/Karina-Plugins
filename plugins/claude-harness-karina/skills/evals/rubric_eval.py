@@ -52,7 +52,7 @@ JUDGE_TIMEOUT_SEC = 300
 MAX_PLAN_CHARS = 30000
 
 # plan 아카이브 파일명 규약(YYYY-MM-DD-<slug>.md). deferred.md 계열 대장 문서(v1.198.0부터
-# deferred-closed.md·deferred-history.md 포함)를 plan으로 오인해 채점하지 않기 위한 필터다
+# deferred-closed.md 포함)를 plan으로 오인해 채점하지 않기 위한 필터다
 # — 판정이 파일명 규약이라 대장이 몇 개로 갈리든 동작은 같다.
 PLAN_NAME_RX = re.compile(r"^\d{4}-\d{2}-\d{2}-.+\.md$")
 RUBRIC_KEY_RX = re.compile(r"^### \d+\..*\(([a-z_]+)\)\s*$", re.MULTILINE)
@@ -304,7 +304,7 @@ def main():
         plans = [p for p in plans if args.filter in os.path.basename(p)]
     if not plans:
         print(f"[중단] 채점할 plan이 없습니다: {args.plans_dir}")
-        # 기본 경로(docs/plans)에는 대장 3파일만 있고 `YYYY-MM-DD-<slug>.md`가 없다 —
+        # 기본 경로(docs/plans)에는 대장 2파일만 있고 `YYYY-MM-DD-<slug>.md`가 없다 —
         # 이 레포는 plan.md 를 추적하지 않아 채점 대상 세트가 레포 안에 존재하지 않는다.
         if args.plans_dir == DEFAULT_PLANS_DIR:
             print("       이 레포는 plan.md 를 추적하지 않습니다(.gitignore) — "
