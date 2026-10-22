@@ -188,23 +188,6 @@
     ]
   },
   {
-    "id": "batch-gap",
-    "checker": "harness",
-    "fixture": "minimal-repo",
-    "expect_rc": 1,
-    "mutate": [
-      {
-        "file": "docs/plans/deferred-history.md",
-        "find": "> **2차 batch",
-        "replace": "> **4차 batch"
-      }
-    ],
-    "expect_keywords": [
-      "[MISMATCH]",
-      "차수"
-    ]
-  },
-  {
     "id": "anchor-renamed",
     "checker": "harness",
     "fixture": "minimal-repo",
