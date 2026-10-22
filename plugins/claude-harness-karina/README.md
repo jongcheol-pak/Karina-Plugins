@@ -159,6 +159,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | 디버깅 (`karina:karina-systematic-debugging`) | "버그", "에러", "안 됨" 등 | 근본 원인부터 찾고 회귀 테스트와 함께 고칩니다. 한 파일만 고치면 될 때는 「바로 수정 / 계획부터」를 한 번 묻습니다. GitHub 원격·`gh` 인증이 있으면 PR 을 엽니다 |
 | 위키 운영 (`karina:llm-wiki`) | "위키에 등록/업데이트" | 프로젝트 지식을 쌓고 다음 작업 때 참조 |
 | PR 운영 (`karina:pr`) | "PR 지켜봐" · "CI 초록 될 때까지" · "리뷰 코멘트에 답해" · "검증하고 머지해" | **babysit** — CI 실패 중 그 PR 의 코드 실패만 고치고 리뷰 코멘트에 답한 뒤 merge 가능한 상태에서 멈춥니다. **ship** — 코드를 쓰지 않은 검증 에이전트(`pr-verifier`)가 PASS 를 낸 뒤에만 squash merge 합니다. 화면이 바뀐 PR 은 사용자가 「PR <n> 화면 확인함」이라고 답해야 merge 합니다 |
+| worktree 정리 (`karina:worktree-cleanup`) | "머지된 worktree 정리해줘" · "worktree 가 디스크를 차지해" | 레포의 worktree 마다 병합 여부·미커밋 수정·PR·최근 세션을 표로 보여 주고, 한 번 승인받은 것만 지운다 — 지우기 전에 미추적·gitignore 파일(`plan.md` 등)을 임시 폴더에 백업하고, 미커밋 수정·열린 PR·미병합 체인 worktree 는 지우지 않으며 브랜치는 남긴다 |
 | 프로젝트 사실 기록 (`karina:record-project-fact`) | "AGENTS.md에 기록" · "AGENTS.md 새로 만들어줘" 또는 hook 제안 수락 | 빌드·DB·테스트 방식을 AGENTS.md에 축적(재확인 줄이기) · 파일이 없으면 최소 골격으로 생성 |
 | 검증 스킬 만들기 (`karina:create-verification-skill`) | `/karina:create-verification-skill` 직접 호출 | 앱을 사용자처럼 조작해 확인하는 검증 스킬(`.claude/skills/verify-앱이름/`)을 만들고, 실제로 한 번 돌려 성공하면 AGENTS.md 에 등록합니다 · 웹·CLI/TUI·HTTP 서비스·Windows 데스크톱 지원 |
 | 검증 스킬 유지 (`karina:maintain-verification-skill`) | `/karina:maintain-verification-skill` 직접 호출 | 앱이 바뀐 뒤 검증 스킬을 다시 맞추고, 실제로 돌려 확인된 수정만 PR 하나로 냅니다(고칠 것이 없으면 PR 없음) |
@@ -255,6 +256,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | "빌드 명령 기록해줘" | 프로젝트 사실 기록 |
 | "plan N부터" | 멈춘 계획 체인 재개 |
 | "PR 12 지켜봐" · "PR 12 검증하고 머지해" | PR 운영(`karina:pr` babysit · ship) |
+| "머지된 worktree 정리해줘" | worktree 정리 |
 | `/karina:create-verification-skill` | 검증 스킬 만들기 (직접 호출 전용) |
 | `/karina:maintain-verification-skill` | 검증 스킬 유지 (직접 호출 전용) |
 | `/karina:create-formal-verification-skill` | 형식 검증 스킬 만들기 (직접 호출 전용) |

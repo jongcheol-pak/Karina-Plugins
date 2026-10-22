@@ -647,6 +647,63 @@
       "workspace": "no_plan",
       "query": ".github/pull_request_template.md 에 체크리스트 한 줄 추가해줘",
       "why": "**PR 낱말이 든 단순 편집** — 파일 한 줄 수정이라 어느 스킬도 아니다"
+    },
+    {
+      "id": "wt-pos-1",
+      "skill": "karina:worktree-cleanup",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "머지 끝난 worktree들 정리해줘",
+      "why": "**1차 트리거 문구** — 병합된 worktree 정리"
+    },
+    {
+      "id": "wt-pos-2",
+      "skill": "karina:worktree-cleanup",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "병렬 작업하느라 만든 worktree 폴더들이 디스크를 너무 차지해. 병합된 것만 지워줘",
+      "why": "**서술형 문제 제기** — 디스크 차지 + 병합된 것만"
+    },
+    {
+      "id": "wt-pos-3",
+      "skill": "karina:worktree-cleanup",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "clean up the merged git worktrees in this repo",
+      "why": "**영어 트리거** — clean up merged worktrees"
+    },
+    {
+      "id": "wt-neg-1",
+      "skill": "karina:worktree-cleanup",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "새 worktree 하나 만들어서 거기서 로그인 버그 작업 시작해줘",
+      "why": "**worktree 생성은 이 스킬이 아니다** — 정리(삭제)만 맡는다"
+    },
+    {
+      "id": "wt-neg-2",
+      "skill": "karina:worktree-cleanup",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "머지된 로컬 브랜치들 삭제해줘",
+      "why": "**브랜치 삭제는 범위 밖** — 이 스킬은 worktree 폴더만 지우고 브랜치는 남긴다"
+    },
+    {
+      "id": "wt-neg-3",
+      "skill": "karina:worktree-cleanup",
+      "expect": "no-trigger",
+      "route_to": "karina:pr",
+      "workspace": "no_plan",
+      "query": "PR 12 독립 검증 돌려서 통과하면 머지까지 해줘",
+      "why": "**PR merge 는 karina:pr** — 머지 낱말이 있어도 worktree 정리가 아니다"
+    },
+    {
+      "id": "wt-neg-4",
+      "skill": "karina:worktree-cleanup",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "plan 1: 로그인 리팩토링, plan 2: 설정 화면 정리 — 각각 새 세션에서 차례로 돌려줘",
+      "why": "**계획 체인 실행은 이 스킬이 아니다** — chain-plan 이 worktree 를 만들어도 정리 요청이 아니다"
     }
   ]
 }

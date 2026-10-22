@@ -91,7 +91,7 @@
 ## 닫기
 
 - **병합 커밋(PR 모드면 주 레포 fast-forward)이 끝난 뒤 `release.md`「닫기」 로 닫고, 그 탭의 마지막 dispatch(재배정했으면 재배정 dispatch)로 닫는다** — 앞 dispatch 의 release 도 같은 탭을 닫는다.
-- **worktree 폴더와 브랜치는 지우지 않는다 — 경로·브랜치는 보고에 싣는다** — Karina 앱에 지우는 CLI 가 없고, 폴더 안 `plan.md` 는 gitignore 인 레포에서 복구 경로가 없다. 재개(`resume.md`)도 그 `plan.md` 로 완료를 판정한다.
+- **worktree 폴더와 브랜치는 지우지 않는다 — 경로·브랜치는 보고에 싣는다** — 폴더 안 `plan.md` 는 gitignore 인 레포에서 복구 경로가 없다. 지우는 것은 사용자가 부르는 `karina:worktree-cleanup` 이다 — 그 스킬이 미추적·ignore 파일을 백업한 뒤 지우고, 미병합 체인 worktree 는 거부한다. 재개(`resume.md`)도 그 `plan.md` 로 완료를 판정한다.
 
 ## 중단·이어받기·사후 완료
 
