@@ -1588,6 +1588,42 @@ _RX_FM_MANUAL = re.compile(r"(?m)^disable-model-invocation:\s*true\s*$")
 # Agent Skills 규격의 name 형식 — 근거는 rationale 「축 ⑰ — 스킬 이름·README 목록 대조」.
 _RX_SKILL_NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _RX_FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---", re.S)
+# frontmatter YAML 판정 — 근거는 rationale 「축 ⑰ — frontmatter YAML 깨짐」.
+_RX_FM_KEY = re.compile(r"^([A-Za-z_-]+):(?:[ \t](.*))?$")
+_FM_STRING_KEYS = ("name", "description")
+
+
+def _frontmatter_yaml_issues(rel, fm_text):
+    """따옴표·블록 없는 값이 YAML 을 깨거나 값을 바꾸는 형태면 문구를 낸다(이어진 줄은 한 값)."""
+    items, key, parts = [], None, []
+    for line in fm_text.splitlines():
+        km = _RX_FM_KEY.match(line)
+        if km:
+            if key:
+                items.append((key, " ".join(parts)))
+            key, parts = km.group(1), [km.group(2) or ""]
+        elif key:
+            parts.append(line.strip())
+    if key:
+        items.append((key, " ".join(parts)))
+    out = []
+    for key, val in items:
+        val = val.strip()
+        if not val or val[0] in "\"'>|":
+            continue
+        if ": " in val:
+            form = "따옴표 없이 「: 」 를 담았다 — 그 파일이 로드되지 않는다"
+        elif " #" in val or val[0] == "#":
+            form = "따옴표 없이 「#」 주석 시작을 담았다 — 그 뒤가 잘린다"
+        elif val[0] in "`@%*" or val[:2] in ("- ", "? "):
+            form = "YAML 지시자 `%s` 로 시작한다 — 파싱 오류다" % val[0]
+        elif key in _FM_STRING_KEYS and val[0] in "[{&!":
+            form = "`%s` 로 시작해 문자열이 아니게 읽힌다" % val[0]
+        else:
+            continue
+        out.append("frontmatter YAML: `%s` 의 %s 값이 %s — 따옴표로 감싸거나 블록(>)으로 "
+                   "바꿔라" % (rel, key, form))
+    return out
 
 
 def check_count_and_version(conv):
@@ -1657,6 +1693,7 @@ def check_count_and_version(conv):
             continue
         rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
         folder = os.path.basename(os.path.dirname(path))
+        issues.extend(_frontmatter_yaml_issues(rel, fm.group(1)))
         skill_ids.add(folder)
         for field, cap in sorted(SKILL_FM_MAX.items()):
             m = re.search(r"(?ms)^%s:\s*(.*?)(?=\r?\n[a-z-]+:|\Z)" % field, fm.group(1))
@@ -1688,6 +1725,13 @@ def check_count_and_version(conv):
             if _RX_FM_XML.search(val):
                 issues.append("frontmatter XML 태그: `%s` 의 %s 가 `<` 로 시작하는 태그꼴을 "
                               "담았다 — 공식이 두 필드 모두에 금지한다" % (rel, field))
+    # 에이전트 정의도 같은 YAML frontmatter 다 — 길이·예약어 축과 달리 YAML 판정만 agents 도 본다.
+    for path in sorted(glob.glob(os.path.join(ROOT, "agents", "*.md"))):
+        fm = _RX_FRONTMATTER.match(read(path))
+        if fm:
+            n += 1
+            issues.extend(_frontmatter_yaml_issues(
+                os.path.relpath(path, ROOT).replace(os.sep, "/"), fm.group(1)))
     if desc_total > SKILL_DESC_TOTAL_MAX:
         notices.append("스킬 description 합계 %d자 — 통지선 %d자를 넘었다(사용자 호출 전용 제외 · "
                        "karina 몫의 통지선이고 실제 목록 예산은 설치된 모든 플러그인이 나눠 쓴다). "

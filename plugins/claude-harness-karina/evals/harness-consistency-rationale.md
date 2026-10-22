@@ -220,7 +220,18 @@ AGENTS.md 목표선 — 상한(16,384B, `session-context.ps1`이 정본)과 **�
 - **예약어는 `name` 에만 건다.** `description` 은 스킬을 설명하는 산문이라 그 낱말이 정당하게 들어갈 수 있다 — 이 레포의 스킬 설명이 실제로 그렇다. 거기 걸면 전건이 red 가 된다.
 - **XML 태그는 두 필드에 같이 걸리므로 필드별로 나누지 않는다** — 축으로는 1종이다. **대신 골든은 필드마다 둔다**(`harness-fm-name-xml` · `harness-fm-desc-xml`): 한 필드만 특례로 빠지는 구현 오류는 축이 아니라 케이스가 가른다.
 - **넘으면 그 스킬이 로드되지 않으므로 통지가 아니라 게이트다** — 길이 상한과 같은 등급이다.
-- **사정거리는 `skills/*/SKILL.md` 다.** `agents/*.md` 는 이 루프 밖이고 기존 길이 축도 마찬가지다 — 에이전트 정의는 Agent Skills 가 아니라 **설계상 제외**다. 그 사실은 `skills/AUTHORING.md`「description 작성」에도 적혀 있다(안 적으면 다음 세션이 재어지는 줄 안다).
+- **사정거리는 `skills/*/SKILL.md` 다.** `agents/*.md` 는 이 루프 밖이고 기존 길이 축도 마찬가지다 — 에이전트 정의는 Agent Skills 가 아니라 **설계상 제외**다. 그 사실은 `skills/AUTHORING.md`「description 작성」에도 적혀 있다(안 적으면 다음 세션이 재어지는 줄 안다). **YAML 판정만은 예외다 — 에이전트도 본다**(아래 「축 ⑰ — frontmatter YAML 깨짐」).
+
+### 축 ⑰ — frontmatter YAML 깨짐
+
+**SKILL.md 와 에이전트 정의의 frontmatter 는 YAML 이라, 따옴표(`"`·`'`)·블록(`>`·`|`) 없이 쓴 값이 YAML 을 깨면 그 파일이 오류 없이 로드에서 빠진다.** 2026-10-04 와 2026-10-22 에 description 안의 「: 」 로 두 번 그렇게 됐고, 두 번 다 실제 모델을 부르는 `skills/evals/trigger_eval.py` 의 스킬 로드 단언만 잡았다 — 이 축은 길이·예약어만 재 exit 0 이었다.
+
+- **판정하는 형태와 근거** — 값 안의 「: 」 는 로드 실패다(실측). 값 안의 「 #」 와 첫 글자 `#` 는 그 뒤를 주석으로 잘라 description 이 조용히 짧아지거나 빈다(YAML 사양 — 추정). 첫 글자 `` ` ``·`@`·`%`·`*` 와 첫머리 `- `·`? ` 는 파싱 오류다(YAML 사양 — 추정).
+- **`[`·`{`·`&`·`!` 첫 글자는 `name`·`description` 에만 건다** — 문법은 정상인 flow 시퀀스·매핑·앵커·태그라 다른 키(`argument-hint: [message]`)에서는 정당하다. 문자열이어야 할 두 키에서만 값이 문자열이 아니게 읽힌다.
+- **게이트다** — 「: 」 는 로드 실패라 같은 축의 XML 태그·예약어와 같은 등급이고, 「 #」 는 로드는 되지만 트리거가 오류 없이 사라져 찾기가 더 어렵다.
+- **여러 줄로 이어진 값은 다음 키 직전까지 한 값으로 모아 본다** — 둘째 줄의 「: 」 도 같은 오류다. 콜론 뒤에 공백이 없으면(`` `> 승인:` 줄 ``·URL) 걸지 않는다.
+- **에이전트 정의(`agents/*.md`)도 본다** — 길이·예약어 축이 에이전트를 빼는 이유는 Agent Skills 규격이 다르기 때문인데, YAML 파싱은 그 규격과 무관하다. frontmatter 가 없는 파일은 스킬 루프와 같이 건너뛴다.
+- **정규식 판정이라 못 잡는 것이 있다** — 탭 들여쓰기·중복 키·닫히지 않은 따옴표는 여전히 `trigger_eval.py` 의 로드 단언만 잡는다. PyYAML 을 들이지 않은 것은 검사기가 표준 라이브러리만 쓰기 때문이다.
 
 ### 축 ⑰ — description 합계 통지선
 
@@ -236,7 +247,7 @@ AGENTS.md 목표선 — 상한(16,384B, `session-context.ps1`이 정본)과 **�
 
 - **형식 위반이면 폴더 불일치는 따로 내지 않는다** — 형식이 틀린 이름은 어떤 폴더와도 같을 수 없어, 둘을 함께 내면 한 결함이 두 줄로 보인다. 골든도 둘을 가른다(`harness-fm-name-format` · `harness-fm-name-folder-mismatch`).
 - **README 대조는 표 첫 칸만 본다** — 「Skills」 는 첫 칸의 `karina:<id>`, 「Subagents」 는 첫 칸 이름이다. 다른 칸은 설명문이라 다른 스킬 이름이 정당하게 들어간다(「PR 운영」 행 셋째 칸의 `karina:pr` 처럼).
-- **모집단은 frontmatter 가 있는 스킬 폴더와 `agents/*.md` 파일 이름이다 — frontmatter 없는 `SKILL.md` 는 frontmatter 축 전체(길이·예약어·XML·이름)가 스킵한다** — 픽스처의 `sample/SKILL.md` 가 그 형태이고 정상 케이스(`harness-ok`)의 픽스처라, 에러로 처리하면 그 케이스가 깨진다. 스킬이 아닌 마크다운이 그 경로에 놓일 수도 있어 관용이 안전측이다.
+- **모집단은 frontmatter 가 있는 스킬 폴더와 `agents/*.md` 파일 이름이다 — frontmatter 없는 `SKILL.md` 는 frontmatter 축 전체(길이·예약어·XML·이름·YAML)가 스킵한다** — 픽스처의 `sample/SKILL.md` 가 그 형태이고 정상 케이스(`harness-ok`)의 픽스처라, 에러로 처리하면 그 케이스가 깨진다. 스킬이 아닌 마크다운이 그 경로에 놓일 수도 있어 관용이 안전측이다.
 - **`plugin.json`·`README.md` 가 있는데 절이 없으면 통과가 아니라 issue 다** — 버전 축이 README 의 `**버전**:` 줄을 못 읽으면 issue 를 내는 것과 같다. 절 제목만 바뀌어도 검사가 조용히 꺼지는 길을 막는다(`harness-readme-*-section-missing`). 그래서 이 축을 도는 픽스처 셋(`minimal-repo`·`tagenum-ok`·`tagenum-count-bad`)의 README 는 정상 표를 담는다.
 - **에이전트 `name` 형식은 재지 않는다** — 근거 규격(Agent Skills)이 스킬만 다룬다. 위 「사정거리」 불릿과 같은 설계상 제외다.
 
