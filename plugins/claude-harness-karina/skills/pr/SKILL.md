@@ -1,6 +1,6 @@
 ---
 name: pr
-description: 이미 열린 GitHub PR 을 운영한다 — babysit(CI 가 초록이 될 때까지 지켜보며 그 PR 의 코드 실패만 고치고, 리뷰 코멘트에 답하고, merge 가능한 상태에서 멈춤)과 ship(코드를 쓰지 않은 pr-verifier 서브에이전트의 독립 검증 PASS 뒤 squash merge). 상태만 보는 한 번의 점검(check — PR 이 지금 초록인지·체크 상태·merge 가능한지)도 이 스킬이다. 한국어(PR 지켜봐/CI 초록 될 때까지/리뷰 코멘트에 답해/PR 초록이야?/PR 체크 상태·merge 가능한지 봐줘/머지 가능하게/검증하고 머지해/PR 머지까지/ship)와 영어(babysit this PR/get it green/address review comments/is it green/merge when ready/ship it/land it)에 발동한다. PR 번호·URL 이나 현재 브랜치의 PR 을 대상으로 한다. 발동하지 않는 것 — PR diff 의 코드 리뷰·버그 찾기, 릴리즈·태그 발행, PR 템플릿 같은 파일의 단순 편집, 승인된 plan.md 의 구현(회차 끝 PR 생성은 karina:implement 가 한다), 원인을 모르는 버그 보고(karina:karina-systematic-debugging).
+description: 이미 열린 GitHub PR 을 운영한다 — babysit(CI 가 초록이 될 때까지 그 PR 의 실패만 고치고 리뷰 코멘트에 답하며 merge 가능에서 멈춤) · ship(독립 검증 PASS 뒤 squash merge) · check(지금 초록인지·merge 가능한지 한 번 점검). 한국어(PR 지켜봐/CI 초록 될 때까지/리뷰 코멘트에 답해/PR 초록이야?/검증하고 머지해/ship)와 영어(babysit this PR/get it green/address review comments/merge when ready/ship it)에 발동한다. 발동하지 않는 것 — PR diff 의 코드 리뷰·버그 찾기, 릴리즈·태그 발행, PR 템플릿 같은 파일의 단순 편집.
 ---
 
 # PR
