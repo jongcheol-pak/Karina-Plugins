@@ -53,7 +53,7 @@
   git -C "<대상 레포 경로>" -c core.attributesFile="<skill>/scripts/chain-merge.gitattributes" -c merge.chaintheirs.driver='cp -f %B %A' merge --no-ff --no-commit <워커 브랜치>
   ```
 
-  - **속성 파일을 셸 리다이렉트로 새로 쓰지 않는다** — `guard-bash` 가 `plan.md` 문자열을 담은 셸 쓰기를 막아, 고정 파일을 쓴다.
+  - **속성 파일을 런타임에 새로 쓰지 않고 고정 파일을 쓴다** — 속성은 병합마다 같아 만들 것이 없고, 고정 파일이면 그 내용이 레포 이력으로 검토된다. `guard-bash` 는 이 쓰기를 막지 않는다 — 막는 것은 쓰기 대상이 `plan.md` 인 명령뿐이다.
   - **`warn-external-ops` 의 「git merge」 경고는 체인 승인 위임과 글로벌 예외가 덮는다 — 이 병합에서 멈추지 않는다.**
   - **충돌(exit ≠ 0)이면 `git merge --abort` 뒤 아래 「충돌·검증 실패」로 간다. untracked 파일이 덮인다는 거절은 ⓐ 와 같이 보고하고 멈춘다.**
 - **ⓓ 그 계획 spec 의 「근거로 정한 것」 ③ 검증을 주 레포에서 돌린다 — 실패하면 `git merge --abort` 뒤 「충돌·검증 실패」** — 계획마다 자기 worktree 에서 통과했어도 합친 결과는 아무도 재지 않았다. `reset --hard` 를 쓰지 않으려고 커밋 전에 잰다.
