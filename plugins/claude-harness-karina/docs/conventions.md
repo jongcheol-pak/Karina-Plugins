@@ -234,6 +234,7 @@
 
 ### 골든 러너 운용
 
+- [2026-10-22] **골든 픽스처의 `plan.md` 는 러너 python 코드 안에서 만든다 — Bash 도구로 `echo x>plan.md` 처럼 쓰면 경로가 스크래치 폴더여도 `guard-bash` 가 「plan.md 를 스크립트로 쓰려 합니다」로 막는다** — 그 차단은 파일 이름만 보고 위치를 가리지 않는다. 러너 파일 안의 `open(...).write` 는 명령 문자열이 아니라 검사 대상이 아니다 (실측)
 - [2026-10-21] **골든 러너가 만드는 임시 git 레포에 `.github/` 경로를 쓰지 않는다 — 전역 gitignore 가 `.github/` 를 무시하는 PC 에서는 `git add -A` 가 그 파일을 커밋하지 않는다.** 파일은 디스크에 있어 실존 검사는 통과하고 diff·이력에만 없어, 실패가 「키워드 미검출」로만 보여 구현 결함으로 오인한다. git 루트 밖·하위 폴더 밖을 재는 픽스처는 `tools/` 처럼 무시되지 않는 이름을 쓴다(lint §7-39 하위 폴더 골든 · 회차 「lint 근거 낡음 검사의 모노레포 하위 폴더 대응」). (실측)
 
 - [2026-10-08] **session-context 시나리오 끝부분에 케이스를 더할 때는 `USERPROFILE` 을 try/finally 로 격리 홈(`$iso`)에 고정한다** — 앞 케이스들이 그 변수를 vault 홈(`$isoV`)으로 바꿔 둔 채라, 고정하지 않으면 `$iso` 아래 심은 픽스처를 hook 이 못 보고 출력이 vault 줄로 갈린다. 첫 RED 가 이 때문에 무효였던 회차가 있다(2026-10-08 · 같은 회차군에서 두 번 이 형태로 케이스를 더했다). (실측)
@@ -287,6 +288,7 @@
 
 ### acceptance 설계
 
+- [2026-10-22] **스킬 트리거 eval(`skills/evals/trigger_eval.py`)은 레포 작업 트리를 `--plugin-dir` 로 싣는다 — 새 스킬을 만드는 회차는 다른 스킬의 회귀 착수값(`--filter <인접 스킬>`)을 새 `SKILL.md` 를 만들기 전에 재고, 새 스킬 발동 케이스의 RED 는 그 `SKILL.md` 를 레포 밖으로 잠시 옮긴 상태에서 잰다** — 만든 뒤 재면 착수값에 새 description 의 영향이 섞이고, 케이스가 스킬보다 늦게 생기면 「스킬 없음」 상태가 따로 없다. 옮겨 둔 동안 `check-harness-consistency.py` 는 README 「Skills」 목록 불일치를 내므로 정합 판정은 복원 뒤에 한다 (실측)
 - [2026-10-21] **`evals/run-evals.py --filter` 는 케이스 id 가 아니라 checker 이름(`harness`·`truncation`·`stale`)을 받는다 — 케이스 하나를 재는 acceptance 는 `--filter harness` 출력의 `[PASS] <id> ` 줄을 grep 한다** — id 를 넘기면 「케이스 없음」으로 exit 1 이다. description 합계 회차의 계획이 id 로 적어 계획 리뷰 BLOCKER 가 됐다(착수값을 돌려 보지 않은 탓). (실측)
 - [2026-10-21] **plan.md `## Deferred / Follow-up` 의 `[등재]` 마커는 대장에 실제로 넣은 뒤에 붙인다** — 정합 검사 「등재 마커 실재」 축이 plan.md 의 `[등재]` 를 대장과 대조해, 계획 단계에 미리 붙이면 첫 task 의 정합 검사가 `[MISMATCH] 등재 마커가 주장하는 항목이 대장에 없음` 으로 red 다. 계획에는 마커 없이 적고 완료 단계에서 등재와 함께 붙인다. (실측)
 - [2026-10-21] **새 스킬·에이전트를 더하는 task 는 README 「Skills」·「Subagents」 표 행을 그 파일과 같은 커밋에 넣는다 — 「등록·서술 갱신」 task 로 미루면 앞 task 의 정합 검사가 red 다** — `check-harness-consistency.py` 가 `skills/*/SKILL.md`·`agents/*.md` 를 README 두 표의 첫 칸과 대조해, 파일만 만든 커밋에서 `[MISMATCH] README 목록: 「Subagents」 표에 없는 에이전트` 를 낸다. reflect 회차가 에이전트(T2)와 스킬(T3)에서 두 번 걸려 README 행을 T4 에서 앞당겼다. (실측)
