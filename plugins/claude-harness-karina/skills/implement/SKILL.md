@@ -93,7 +93,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ### 실패 처리
 
-- **task 검증이 실패하거나 막히면 `references/loop-exceptions.md`「실패 처리」 를 Read 한다** — 1회차 실패 기록·원인 수정·디버깅 절차 경로가 거기 있다.
+- **task 검증이 실패하거나 막히거나 하니스(스킬·hook) 결함을 만나면 `references/loop-exceptions.md`「실패 처리」 를 Read 한다** — 1회차 실패 기록·원인 수정·디버깅 절차 경로가 거기 있다.
 
 ## 커밋
 
