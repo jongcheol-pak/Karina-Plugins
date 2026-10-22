@@ -1,6 +1,6 @@
 ---
 name: worktree-cleanup
-description: 병합이 끝난 git worktree 를 정리한다 — 레포의 worktree 마다 병합 여부·미커밋 수정·PR·최근 세션을 감사 표로 보이고, 사용자가 한 번 승인한 것만 미추적·gitignore 파일(plan.md 등)을 임시 폴더에 백업한 뒤 지운다. 미커밋 수정·열린 PR·미병합 체인 worktree 는 지우지 않고 브랜치는 남긴다. 한국어(worktree 정리/머지된 worktree 지워줘/worktree 가 디스크를 차지해)와 영어(clean up worktrees/prune merged worktrees)에 발동한다. 발동하지 않는 것 — worktree 만들기, 브랜치 삭제, PR merge(karina:pr), 계획 체인 실행(karina:chain-plan).
+description: 병합이 끝난 git worktree 를 정리한다 — worktree 마다 병합 여부·미커밋 수정·PR·최근 세션을 감사 표로 보이고, 승인한 것만 미추적 파일을 백업한 뒤 지운다(브랜치는 남긴다). 한국어(worktree 정리/머지된 worktree 지워줘/worktree 가 디스크를 차지해)와 영어(clean up worktrees/prune merged worktrees)에 발동한다. worktree 만들기·브랜치 삭제에는 발동하지 않는다.
 ---
 
 # Worktree 정리

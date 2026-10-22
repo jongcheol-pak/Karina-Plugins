@@ -369,6 +369,7 @@
 
 ### 스크립트로 파일을 고칠 때
 
+- [2026-10-22] **SKILL.md frontmatter `description` 을 따옴표 없는 한 줄 값으로 쓸 때 값 안에 「: 」(콜론+공백)가 있으면 YAML 이 깨져 그 스킬이 통째로 로드되지 않는다 — 「on request: \"…\"」 가 실제로 그랬다.** `python evals/check-harness-consistency.py` 는 이 상태에서도 exit 0 이고(길이·예약어만 잰다), 잡는 것은 `skills/evals/trigger_eval.py` 의 `[중단] karina 스킬 일부가 로드되지 않았습니다` 뿐이다. description 을 바꾸면 값에 「: 」·「 #」 가 없는지 먼저 본다 (실측)
 - [2026-10-15] **`guard-bash` 는 `plan.md` 문자열을 담은 셸 쓰기(`printf … > plan.md` 등)를 레포 밖 임시 저장소에서도 막는다 — 실험 저장소에서는 파일 이름을 바꾸고(예 `pl.md`), 스킬이 그 이름을 담은 파일을 써야 하면 런타임 셸 쓰기 대신 고정 파일로 둔다** — chain-plan 의 병렬 병합 속성 파일 `chain-merge.gitattributes` 가 선례다(`/plan.md` 줄을 담아 셸로 새로 쓰지 않고 스킬 폴더의 고정 파일을 `core.attributesFile` 로 건다). (실측 — 2026-10-15 scratchpad 병합 실험에서 BLOCKED)
 - [2026-10-12] **CRLF 파일에서 불릿 한 줄을 지우는 `Edit` 은 old_string 을 그 불릿 머리(`- `)부터 다음 줄 머리 직전까지로 잡는다 — 앞 줄 개행부터 잡아 지우면 다음 불릿이 앞 줄 끝에 붙는다** — chain-plan manual-resume.md 에서 「대기를 다시 띄우지 않는다」 불릿을 `- **…` 로 시작하는 old_string 으로 지웠더니 「`ok: false` 는 … 멈춘다」 불릿이 앞 불릿 이유 구 꼬리에 붙어 규칙이 사라진 것처럼 됐고, 같은 회차에 파일 끝 불릿을 지운 `user-relay.md` 는 끝 줄바꿈을 잃었다. **정합 검사는 볼드 짝이 맞아 통과했고 완료 리뷰가 diff 로 잡았다**(실측). 지운 뒤 `git diff` 에서 `-` 두 줄 · `+` 한 줄처럼 지운 것보다 붙은 줄이 보이면 이 사고다 — `git grep -nE "[^ |]- \*\*" -- '*.md'` 로 붙은 불릿을 찾는다.
 - [2026-10-07] **매치가 없는 `sed -i` 도 CRLF 파일을 LF 로 다시 쓴다** — intent 파일의 `Status:` 치환이 매치하지 않았는데 파일 전체가 LF 가 됐다(`git ls-files --eol` 로 발견 · python 바이너리 쓰기로 복구). 레포 `AGENTS.md` 「줄바꿈」의 `sed -i` 경고는 「매치가 없어도」까지 해당한다 — 치환은 python 바이너리 읽기·쓰기에 `count == 1` 단언을 붙여 한다. (실측)
@@ -401,6 +402,7 @@
 
 ### 문서·검사기 구조와 용어
 
+- [2026-10-22] **다른 레포의 스킬·심볼 이름도 산문에 백틱으로 적으면 `check-stale-refs.py` 가 이 레포 심볼로 읽어 `[FAIL] 산문이 가리키는 심볼이 없습니다` 를 낸다 — 아래 2026-10-21 경로 항목과 같은 원인의 두 번째다.** `skills/AUTHORING.md` 에 mattpocock 스킬 이름을 백틱으로 적어 걸렸다. 외부 이름은 백틱 없이 쓴다 (실측)
 - [2026-10-21] **다른 레포 안의 경로를 산문에 백틱으로 적으면 `check-stale-refs.py` 산문 경로 축이 이 레포 경로로 읽어 [FAIL] 로 잡는다 — 링크(URL)로 적는다.** 옛 레포 이전 안내의 `plugins/claude-harness-karina/` 가 그렇게 FAIL 났다. 같은 축에서 옛 폴더 이름을 DEAD 에 넣을 때는 **새 경로가 그 글자를 품는지 먼저 본다** — `plugins/karina` 는 새 캐시 경로 `cache/karina-plugins/karina/` 에 글자로 들어 있어 골든 표본 30여 줄이 오탐된다 (실측)
 - [2026-10-20] **스킬 문서 산문의 백틱 경로에 `../` 를 쓰면 `check-stale-refs.py` 의 산문 경로 실존 축이 [FAIL] 로 잡는다** — 그 축은 백틱 토큰을 `git ls-files` 목록에 **접미 매치**로 대조하므로 `../agents/pr-verifier.md` 의 `..` 조각이 어느 추적 경로에도 맞지 않는다. 대상이 실재해도 실패한다. 레포 루트 기준 경로(`agents/pr-verifier.md`)나 접미로 특정되는 경로(`agents/pr-verifier.md` 꼴 — 동명이인이 없을 때)로 쓴다. (실측)
 - [2026-10-05] **새 파일 이름이 `check-stale-refs.py` 의 DEAD 이름을 부분 문자열로 품으면 그 파일을 가리키는 살아 있는 자산 전부가 [FAIL] 로 잡힌다** — 검사가 경로가 아니라 문자열 부분 일치로 세기 때문이다: `plan/references/deletion-recovery.md` 가 DEAD 이름 `recovery.md` 를 품어 그 파일을 가리키는 포인터 5건이 [FAIL] 이었다. **처방: 새 파일 이름을 정하기 전에 그 검사기의 DEAD 목록과 부분 일치를 확인하고, 걸리면 커밋 전에 이름을 바꾼다**(`deletion-recoverability.md` 로 비켜 갔다). (실측)

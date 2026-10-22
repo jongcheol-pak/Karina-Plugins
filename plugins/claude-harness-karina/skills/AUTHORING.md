@@ -37,10 +37,11 @@ karina 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**
 - `description`: **두 사양이 함께 걸린다 — 낮은 쪽이 실효 한도다.**
   - **Agent Skills 표준: 1-1,024자** (하드 제약). 표준을 따르는 다른 도구에서도 쓰려면 이 값을 지켜야 한다.
   - **Claude Code: `description` + when_to_use 합산이 스킬 목록에서 1,536자로 절단**된다(목록 예산은 컨텍스트의 1% — `skillListingBudgetFraction`, 항목당 캡은 `skillListingMaxDescChars`. 출처: code.claude.com/docs/en/skills, 2026-07-29 확인). 즉 Claude Code만 놓고 보면 여유가 더 있으나, **when_to_use를 쓰면 그 몫만큼 `description` 가용분이 줄어든다.**
-  - **karina의 운용 기준은 1,024자**다 — 두 사양 중 낮은 쪽이고, 표준 호환을 잃지 않는다. 초과분은 잘리거나 무효가 될 수 있으므로 트리거 어휘·near-miss 경계는 유지한 채 산문 연결부를 압축해 맞춘다(v1.100.0에서 1,230자로 초과된 전례 — 개정 때마다 자수 재측정).
+  - **karina의 운용 기준은 1,024자**다 — 두 사양 중 낮은 쪽이고, 표준 호환을 잃지 않는다. 초과분은 잘리거나 무효가 될 수 있으므로 개정 때마다 자수를 다시 잰다(v1.100.0에서 1,230자로 초과된 전례).
+  - **description 에는 「언제 부르는가」만 둔다 — 줄일 때 넷을 이 순서로 가른다**(2026-10-22 감량 회차 · 근거 mattpocock/skills 의 writing-for-agents 스킬 「Context pointers」 *"One trigger per branch"* · 「Leading words」 Negation 단락 *"Prompt the positive"*). ① 본문에 있는 동작 서술(「어떻게 하는가」)은 뺀다. ② 같은 갈래를 다시 부르는 트리거 동의어는 대표 하나만 남긴다. ③ 「X 는 karina:Y 다」 같은 교차 라우팅은 Y 의 description 이 그 갈래를 긍정 트리거로 가지면 뺀다 — 두 스킬의 긍정 트리거가 같은 발화에 함께 걸려 우선순위를 정하는 문장은 남긴다. ④ 받는 스킬이 없는 부정 경계(단독어 near-miss · 일반 질문 제외)는 짧게 남긴다. 뺀 뒤에는 그 스킬과, 뺀 라우팅을 받는 스킬의 트리거 eval 을 함께 돌린다 — 받는 쪽 케이스가 깨져도 고친 스킬의 필터에는 안 보인다.
 - SKILL.md 본문: **500줄 미만 권장**(Agent Skills 표준). **근거가 두 문장을 넘으면 `references/`로 내린다**(`DESIGN.md`「1. 규약 문면 형식」). **초과했을 때 무엇을 하는가는 `BUDGET.md`「초과했을 때」가 정본이고 이 줄은 그것을 되풀이하지 않는다** — 5,000토큰 권장도 그 파일의 예산 표가 대체한다(SKILL.md 12,000자).
 - **`description` 도 XML 태그 금지**(하드 제약).
-- 측정: **사람이 재지 않는다** — `check-harness-consistency.py` 「계수·버전 정합」 축이 길이 2종·예약어·XML 태그를 대조하고(`SKILL_FM_MAX`), 전 스킬 description 합계가 6,000자를 넘으면 통지한다(`SKILL_DESC_TOTAL_MAX` — `disable-model-invocation: true` 스킬은 빼고 센다 · karina 몫의 통지선이고 실제 목록 예산은 설치된 모든 플러그인이 나눠 쓴다 — 근거·실측 방법은 `evals/harness-consistency-rationale.md`「축 ⑰ — description 합계 통지선」). ⚠ **그 축의 대상은 `skills/*/SKILL.md` 뿐이고 `agents/*.md` 는 밖이다** — 에이전트 정의는 Agent Skills 가 아니라 설계상 제외이며, 그쪽 값은 재어지지 않으므로 고칠 때 직접 센다. **단위는 바이트가 아니라 문자다**(한글에서 3배로 어긋난다).
+- 측정: **사람이 재지 않는다** — `check-harness-consistency.py` 「계수·버전 정합」 축이 길이 2종·예약어·XML 태그를 대조하고(`SKILL_FM_MAX`), 전 스킬 description 합계가 4,000자를 넘으면 통지한다(`SKILL_DESC_TOTAL_MAX` — `disable-model-invocation: true` 스킬은 빼고 센다 · karina 몫의 통지선이고 실제 목록 예산은 설치된 모든 플러그인이 나눠 쓴다 — 근거·실측 방법은 `evals/harness-consistency-rationale.md`「축 ⑰ — description 합계 통지선」). ⚠ **그 축의 대상은 `skills/*/SKILL.md` 뿐이고 `agents/*.md` 는 밖이다** — 에이전트 정의는 Agent Skills 가 아니라 설계상 제외이며, 그쪽 값은 재어지지 않으므로 고칠 때 직접 센다. **단위는 바이트가 아니라 문자다**(한글에서 3배로 어긋난다).
 
 ### 공식 권장 중 달리 정한 것
 

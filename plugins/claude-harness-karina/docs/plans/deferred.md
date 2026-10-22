@@ -51,13 +51,13 @@
 - [2026-10-19] **체인 실행 시점 승인·기존 것을 깨는 변경 대기의 재알림** — 사용자 몫 ①·④ 로 넘긴 질문은 상한 없이 기다리고 처음 한 번만 `PushNotification` 으로 알린다. 일정 시간(예: 30분)마다 다시 알리는 장치를 둔다(`chain-plan/references/user-relay.md`「사용자에게 넘기기」) (출처: 계획 체인 run_60c0ebe3 plan 6 후보 라운드 — 사용자 「보류」) (실해: 2026-10-19 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 첫 알림을 놓치면 ①·④ 질문이 열린 채 체인이 선다)
 - [2026-10-19] **Y 체인 끝 PR 의 merge 된 비 karina 기능 브랜치** — `Y` 체인을 이미 merge 된 `karina/` 아닌 기능 브랜치에서 시작하면 「Y 체인 끝 PR」 이 `pr-flow.md`「브랜치」 표의 「그 밖」 행으로 그 브랜치에서 PR 을 연다. merge 된 브랜치 판정을 비 `karina` 브랜치로 넓힐지 정한다(`chain-plan/references/pr-mode.md`「Y 체인 끝 PR」·`implement/references/pr-flow.md`「브랜치」) (출처: 계획 체인 run_60c0ebe3 plan 8 후보 라운드 — 사용자 「보류」) (실해: 2026-10-19 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 끝 PR 이 merge 된 옛 브랜치 위에서 열려 diff 에 merge 된 변경이 섞인다)
 - [2026-10-19] **record-project-fact 의 커밋·PR 단계** — `karina:record-project-fact` 가 AGENTS.md 를 고친 뒤 커밋·PR 단계가 없다(`record-project-fact/SKILL.md` 의 커밋 언급은 사본 폴더 주의 2줄뿐). 디버깅 직접 수정 경로처럼 `implement/references/pr-flow.md` 를 쓸지, 작업 중간 기록이라 PR 을 열지 않을지 정한다 (출처: 디버깅 커밋·PR 회차 후보 라운드 — 사용자 「보류」) (실해: 2026-10-19 사용자 보류 결정(deferred-rules 사용자 결정 예외) — AGENTS.md 기록이 커밋 없이 작업 트리에만 남는다)
-- [2026-10-21] **설명이 잘린 karina 스킬의 목록 예산 대응** — 스킬 목록 예산(컨텍스트 1%)을 설치된 모든 플러그인이 나눠 써, karina 의 chain-plan·karina-systematic-debugging·record-project-fact 가 설명 없이 이름만 실렸다(자동 발동 단서 소실). description 축약·다른 플러그인 정리·`skillListingBudgetFraction` 조정 중 무엇을 할지 사용자가 정한다 (출처: description 합계 통지 회차 후보 라운드 — 보류) (실해: 2026-10-21 세션 skill_listing 81개 중 30개 이름만 · karina 셋 포함)
 
 ### llm-wiki · vault
 
 
 ### eval · 측정
 
+- [2026-10-22] **정합 검사가 YAML 이 깨진 SKILL.md frontmatter 를 통과시킨다** — `check-harness-consistency.py` 「계수·버전 정합」 축이 description 길이·예약어만 재고, 따옴표 없는 한 줄 값 안의 「: 」 로 스킬이 로드되지 않는 상태를 exit 0 으로 넘긴다. 같은 축에 「따옴표 없는 단일 줄 값의 `: `·` #`」 판정과 골든 1건을 더한다 (출처: description 합계 감량 회차 T3) (실해: 2026-10-22 record-project-fact description 의 「on request: "…"」 로 trigger_eval 이 `[중단] karina 스킬 일부가 로드되지 않았습니다` 를 냈는데 정합 검사는 exit 0)
 
 ---
 
