@@ -420,8 +420,8 @@ claude plugin marketplace remove karina-plugins
 설치는 GitHub 마켓플레이스 경로 하나뿐입니다 — 로컬 폴더에서 직접 설치하지 않습니다. 개발은 jongcheol-pak/Karina-Plugins 의 plugins/claude-harness-karina/ 폴더에서 세션을 열고 합니다(레포 루트에서 열면 하니스 판정 hook 이 꺼집니다). 수정은 커밋 → push → 아래 흐름으로 배포한 뒤 사용 PC에서 업데이트합니다.
 
 ```powershell
-# 배포 (개발 PC에서 수정 후) — 회차 PR 이 merge 되면 karina:pr ship 이 버전 전용 PR 을 이어 merge 한다
-# 그 merge 커밋으로 릴리즈 발행(별도 승인): gh release create karina-v<버전> --target <merge 커밋 full-sha>
+# 배포 (개발 PC에서 수정 후) — 회차 PR 이 merge 되면 karina:pr ship 이 merge 뒤 버전 커밋을 main 에 바로 push 한다
+# 그 버전 커밋으로 릴리즈 발행(별도 승인): gh release create karina-v<버전> --target <버전 커밋 full-sha>
 # → 사용 PC에서 위의 "업데이트" 명령 실행
 ```
 

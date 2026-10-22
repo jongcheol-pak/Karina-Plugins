@@ -38,7 +38,7 @@
 **체인이 끝까지 성공하면(`report.md`「인계 파일 정리」 의 성공 조건 — 남은 일이 스택 대기 PR 뿐인 것 포함) 보고 대신 착지 보고를 먼저 낸다.**
 
 - **착지 보고는 스택을 아래부터 나열한다 — PR 마다 URL · 검증 결과 · `## 화면` 의 스크린샷 이름과 `코디네이터 판정 … · 기각 변형 …` 줄 — 끝에 「확인했으면 `스택 화면 확인함` 으로 답하면 아래부터 merge 한다」 를 싣는다** — `PushNotification`(`status: "proactive"`, 메시지 `스택 착지 확인 필요 — PR <수>개`) 뒤 사용자 답을 기다린다. 이 답이 나열한 PR 모두의 화면 확인이다(`../../pr/references/ship.md` 7번의 묶음 확인).
-- **사용자가 확인하면 아래 PR 부터 하나씩 `karina:pr` 을 「PR <URL> ship — 체인 PR 모드 · 스택 착지」 로 부른다** — 그 문구가 ship 8번의 `--merge`(merge commit)와 버전 전용 PR 잇기 건너뛰기를 고른다. squash 하면 위 PR 브랜치에 아래 PR 의 원 커밋이 남아 base 를 합칠 때 충돌한다.
+- **사용자가 확인하면 아래 PR 부터 하나씩 `karina:pr` 을 「PR <URL> ship — 체인 PR 모드 · 스택 착지」 로 부른다** — 그 문구가 ship 8번의 `--merge`(merge commit)와 merge 뒤 버전 커밋 건너뛰기를 고른다. squash 하면 위 PR 브랜치에 아래 PR 의 원 커밋이 남아 base 를 합칠 때 충돌한다.
 - **하나가 merge 되면 바로 위 PR 의 base 를 `gh pr edit <위 PR> --base <체인 브랜치>` 로 바꾼 뒤 그 PR 을 ship 한다** — merge commit 착지라 위 PR 브랜치는 이미 아래 PR 의 커밋을 조상으로 가져 diff 가 자기 커밋만 남는다.
 - **모두 merge 되면 체인 브랜치로 돌아와(`git switch <체인 브랜치>` → `git pull --ff-only`) `report.md`「인계 파일 정리」 → `pr-mode.md`「P 체인 끝 PR」 순서로 간다** — 인계 절이 PR 브랜치에만 있어 착지 전에는 체인 브랜치에 인계 파일이 없다.
 - **중간에 ship 이 멈추면(FAIL·충돌·사람 판단) 거기서 착지를 멈추고, merge 된 PR · 멈춘 PR 과 사유 · 남은 PR 을 보고한다** — 남은 PR 은 열린 채 두고, 다시 「스택 화면 확인함」 으로 부르면 멈춘 PR 부터 잇는다.

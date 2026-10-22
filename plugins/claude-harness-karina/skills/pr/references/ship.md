@@ -28,17 +28,22 @@
 9. **다시 읽어 확인한다** — `gh pr view <n> --json state,mergedAt,baseRefName,mergeCommit`. `state` 가 `MERGED` 이고 `baseRefName` 이 1번의 `baseRefName` 과 같아야 merge 다. 명령이 성공을 말해도 큐에 들어가기만 했거나 auto-merge 가 걸린 것은 merge 가 아니다.
 10. **로컬을 맞춘다** — 작업 트리가 깨끗하면(`git status --porcelain` 빈 출력) `git switch <1번의 baseRefName>` → `git pull --ff-only`. 깨끗하지 않거나 `switch`·`pull --ff-only` 가 실패하면 하지 않고 그 사실을 보고한다.
 
-## 버전 전용 PR 잇기
+## merge 뒤 버전 커밋
 
-**대상 레포 `AGENTS.md` 의 Release 줄이 「버전 전용 PR」 을 지목하고, 방금 merge 한 PR 이 그 레포가 정한 배포 대상을 바꿨으면 버전 PR 을 이어서 연다.** 이 하니스는 하니스 루트의 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`)가 배포 대상이고 버전 정본은 `.claude-plugin/plugin.json` 이다(`docs/harness-conventions.md` 「Release」). **체인 PR 모드 워커는 이 절을 건너뛴다 — 버전은 체인 끝 PR 의 ship 이 한 번 올린다(`../../chain-plan/references/pr-mode.md`「P 체인 끝 PR」)**(계획 PR 은 기본 브랜치가 아닌 체인 브랜치로 merge 돼, 여기서 올리면 체인 끝 PR 에 버전 커밋이 섞인다). 요청에 「체인 PR 모드」 가 있으면 체인 PR 모드 워커다 — 스택 착지(「체인 PR 모드 · 스택 착지」)도 같다.
+**대상 레포 `AGENTS.md` 의 Release 줄이 「merge 뒤 버전 커밋」 을 지목하고, 방금 merge 한 PR 이 그 레포가 정한 배포 대상을 바꿨으면 base 에 버전만 올린 커밋을 바로 push 한다.** 이 하니스는 하니스 루트의 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`)가 배포 대상이고 버전 정본은 `.claude-plugin/plugin.json` 이다(`docs/harness-conventions.md` 「Release」). 버전 PR 을 따로 열지 않는 이유는 그 PR 이 CI·`pr-verifier` 를 한 바퀴 더 돌기 때문이고, merge 직전에 PR 에 얹지 않는 이유는 PR 이 갈라진 뒤 다른 PR 이 버전을 올렸으면 같은 버전 줄이 squash 에서 충돌하기 때문이다. **체인 PR 모드 워커는 이 절을 건너뛴다 — 버전은 체인 끝 PR 의 ship 이 한 번 올린다(`../../chain-plan/references/pr-mode.md`「P 체인 끝 PR」)**(계획 PR 은 기본 브랜치가 아닌 체인 브랜치로 merge 돼, 여기서 올리면 체인 브랜치를 건너뛰고 base 에 버전이 먼저 들어간다). 요청에 「체인 PR 모드」 가 있으면 체인 PR 모드 워커다 — 스택 착지(「체인 PR 모드 · 스택 착지」)도 같다.
 
-1. 10번에서 1번의 `baseRefName` 으로 돌아온 뒤 `git switch -c karina/release-v<다음 버전>`. 다음 버전은 그 레포 규약이 정한다 — 정하지 않았으면 minor 를 1 올린다.
-2. 그 레포 규약이 지목한 버전 자리만 고친다(이 레포는 `plugin.json` 의 `version` 과 `README.md` 상단 `**버전**:` 줄). 다른 변경을 섞지 않는다 — squash 해도 기본 브랜치에 「버전만 올린 커밋」 하나가 남아야 그 위에 발행한 릴리즈 태그가 다음 판정(그 레포 규약의 태그·범위 — 이 하니스는 `git fetch -q origin tag karina-v<버전>` 뒤 `git log karina-v<버전>..HEAD -- .claude-plugin agents evals hooks scripts skills`)의 기준점이 된다.
-3. 커밋 `설정: v<버전> — <요약>` → `git push -u origin karina/release-v<버전>` → PR 생성(`../../implement/references/pr-flow.md`「PR 열기」 와 같은 방식) → 이 절차 1~10번으로 검증·merge.
-4. **릴리즈는 발행하지 않는다** — 태그·릴리즈는 외부·비가역이라 스킬 안에서도 별도 승인이다. 보고에 「승인 필요 — `gh release create <태그> --target <버전 PR merge 커밋 full SHA>`」 를 싣는다(태그 형식은 그 레포 규약 — 이 하니스는 `karina-v<버전>`). merge 커밋 SHA 는 9번 출력의 `mergeCommit.oid` 다.
+- **10번이 `switch`·`pull --ff-only` 까지 성공했을 때만 한다** — 아니면 「버전 커밋 건너뜀 — 로컬 맞추기 실패」 를 보고에 싣는다. 사용자 체크아웃이 깨끗한 base 여야 아래 실패 경로가 그 자리로 돌아갈 수 있다.
 
-- 버전 자리를 고치는 편집이 plan 게이트에 막히면 버전 PR 을 건너뛰고 그 사실을 보고한다.
+1. `git fetch origin <base>` → `git switch --detach origin/<base>`. 로컬 base 가 아니라 detached 위에서 만드는 이유는 push 가 거부됐을 때 `git switch <base>` 하나로 버려 되돌릴 것이 없게 하려는 것이다.
+2. 다음 버전을 `origin/<base>` 의 버전에서 그 레포 규약대로 정한다 — 정하지 않았으면 minor 를 1 올린다.
+3. 그 레포 규약이 지목한 버전 자리만 고친다(이 레포는 `plugin.json` 의 `version` 과 `README.md` 상단 `**버전**:` 줄). **`git diff --name-only` 가 그 파일 집합과 같은지 본다** — PR·`pr-verifier` 를 거치지 않는 커밋이라 다른 변경이 섞이지 않았는지 확인할 자리가 이것뿐이다. 다르면 `git restore -- <바뀐 파일 전부>` 뒤 `git switch <base>` 로 돌아가 멈추고 보고한다.
+4. `git commit -m "설정: v<버전> — <merge 한 PR 제목의 유형 뒤 요약>" -- <버전 파일>` → `git push origin HEAD:<base>`. base 에 「버전만 올린 커밋」 하나가 남아 그 위에 발행한 릴리즈 태그가 다음 판정(그 레포 규약의 태그·범위 — 이 하니스는 `git fetch -q origin tag karina-v<버전>` 뒤 `git log karina-v<버전>..HEAD -- .claude-plugin agents evals hooks scripts skills`)의 기준점이 된다.
+5. **거부 출력이 non-fast-forward(`fetch first`·`non-fast-forward`)면 `git switch <base>` → `git pull --ff-only` → 1번부터 한 번만 다시 한다** — 그 사이 다른 세션이 base 에 push 했다는 뜻이라 버전을 최신 base 에서 다시 정해야 한다. **그 밖의 거부(`protected branch` 등)이거나 두 번째 거부면 detached 커밋 SHA 와 오류 줄을 보고에 적고 `git switch <base>` 로 돌아가 멈춘다** — force push 하지 않는다. 커밋은 보고된 SHA 와 reflog 로 되찾는다.
+6. 성공하면 `git switch <base>` → `git pull --ff-only` 뒤 `git rev-parse HEAD` 가 push 한 커밋인지 본다. base 의 CI 는 기다리지 않는다 — 바뀐 것이 버전 문자열뿐이고 3번이 그것을 확인했다.
+7. **릴리즈는 발행하지 않는다** — 태그·릴리즈는 외부·비가역이라 스킬 안에서도 별도 승인이다. 보고에 「승인 필요 — `gh release create <태그> --target <버전 커밋 full SHA>`」 를 싣는다(태그 형식은 그 레포 규약 — 이 하니스는 `karina-v<버전>` · 발행 확인은 태그가 원격에만 생겨 `gh release list`).
+
+- 버전 자리를 고치는 편집이 plan 게이트에 막히면 `git switch <base>` 로 돌아가 버전 커밋을 건너뛰고 그 사실을 보고한다.
 
 ## 보고
 
-PR URL · 판정과 판정자(`pr-verifier`) · 판정이 덮은 head·base SHA · 돌린 검증 명령과 결과 요지 · 게이트 완화 줄 목록(pr-verifier NOTES 에 있으면) · base 이동 영향 판정(움직였으면 두 목록과 참/거짓) · 화면 게이트(`화면 확인 대기` — 스크린샷 이름과 절대경로 · 코디네이터 판정·기각 변형 줄(있으면) | 확인한 사용자 원문 인용 | 표지 없음) · merge 여부와 확인한 방법(9번 출력) · 로컬 정리 결과(6번 worktree 미삭제 줄 포함) · 버전 PR(열었으면 URL 과 merge 결과) · 승인 필요 항목(릴리즈).
+PR URL · 판정과 판정자(`pr-verifier`) · 판정이 덮은 head·base SHA · 돌린 검증 명령과 결과 요지 · 게이트 완화 줄 목록(pr-verifier NOTES 에 있으면) · base 이동 영향 판정(움직였으면 두 목록과 참/거짓) · 화면 게이트(`화면 확인 대기` — 스크린샷 이름과 절대경로 · 코디네이터 판정·기각 변형 줄(있으면) | 확인한 사용자 원문 인용 | 표지 없음) · merge 여부와 확인한 방법(9번 출력) · 로컬 정리 결과(6번 worktree 미삭제 줄 포함) · 버전 커밋(push 했으면 full SHA · 재시도 여부 · 건너뛰었으면 사유) · 승인 필요 항목(릴리즈).
