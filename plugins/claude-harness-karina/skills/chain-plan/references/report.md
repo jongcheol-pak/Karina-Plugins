@@ -29,7 +29,7 @@ HUMAN-VERIFY·미검증: <워커 --body 에서 받은 것 전부 · 코디네이
 결정 기록: <체인 결정 파일 경로 · <N>줄 — 지우지 않음(`chain-decisions.md`「결정 기록」) | 중간 유실 — plan <N> 이전 기록 없음 | 없음>
 환경 개선 후보: <마찰마다 「<무엇> — <횟수> · <출처: plan N 워커 | 코디네이터> — <행선지 | 올린 위치>」 — 없으면 「없음」>
 인계 파일: <경로 — 지움 <커밋 sha>(체인 끝 PR 이 건너뛰었거나 실패했으면 「로컬 커밋 — push 안 함」 을 덧붙인다) | 남김 — <사유> | 없음>
-병렬 병합: <그룹마다 plan · 병합 커밋 sha(PR 모드면 PR URL · merge 커밋) | 미병합 — <사유> · worktree 경로 · 브랜치 — 지우지 않음(`parallel.md`「닫기」) | 없음>
+병렬 병합: <그룹마다 plan · 병합 커밋 sha(PR 모드면 PR URL · merge 커밋) | 미병합 — <사유> · worktree 경로 · 브랜치 — 지우지 않음(`parallel.md`「닫기」 · 병합 뒤 정리는 「worktree 정리해줘」 = `karina:worktree-cleanup`) | 없음>
 PR: <PR 모드면 계획마다 「plan N: <워커 --body 의 PR>」(스택이면 아래부터 · 부모 브랜치와 착지 결과 — `stack-mode.md`「착지」) 에 이어 「체인 끝 PR: <URL> · <체인 브랜치> → <기본 브랜치> | 건너뜀 — <사유>」 — 꺼졌으면 대상 레포마다 「체인 끝 PR: <URL> · 브랜치 <karina/chain-…> | 건너뜀 — <사유>」>
 화면 확인 대기: <PR 모드면 워커 --body `PR:` 이 `· 화면 확인 대기` 인 plan 마다 「plan N — <URL>」 · 체인 끝 PR 본문에 `## 화면` 이 있으면 그 URL — 없으면 줄 생략>
 남은 탭: <체인이 끝나거나 멈출 때 `worker-list --run <Run id> --json` 의 이 Run 행 중 `terminalState` 가 `released` 가 아닌 것(dispatch·state·terminalState) · CLI 오류 응답(`worker_start_failed`·`duplicate_worker`·`task_not_startable`)이 이름 댄 다른 탭·dispatch — 없으면 줄 생략>
