@@ -1,16 +1,6 @@
 ---
 name: llm-wiki
-description: >
-  LLM WIKI(Obsidian vault) 운영·관리 스킬. 프로젝트를 위키에 추가/등록·정보 갱신(ingest)·삭제·상태 변경,
-  특정 기능/가이드/레시피를 위키에 추가, 위키 점검(lint)·조회(query — 위키에 적힌 구현 방법·결정 이력을 찾아 답하기)·복구(잘못 갱신된 페이지를 백업으로 되돌리기)·vault 경로 설정 시 사용한다.
-  "위키에 추가/등록", "{프로젝트} 위키에 등록", "위키 업데이트", "{프로젝트} 변경분 위키에 반영",
-  "위키 점검/lint", "{기능} 위키에 추가", "위키 되돌려줘/복구", "위키 큐 정리/pending 큐 정리"(경량 큐 소비),
-  "위키에서 {무엇} 찾아줘", "위키에서 어떻게 구현했는지/왜 안 만들기로 했는지 찾아줘", "위키 vault 경로/폴더 바꿔줘" 등의 요청에 발동.
-  English requests too — "add/register this project to the wiki", "update the wiki", "lint the wiki", "search the wiki for …", "restore the wiki page".
-  「변경분 반영」·「큐 정리」처럼 위키를 말하지 않는 단독 요청(코드 리뷰 반영·메시지 큐 코드)에는 발동하지 않는다.
-  코드 작업 세션이 스스로 하는 read-only 참조(절차 K)는 이 스킬을 발동하지 않고 `references/lookup-rules.md`를 Read한다(사용자가 위키를 명시해 찾아 달라고 하면 조회라 발동한다).
-  어느 디렉터리에서든(코드 프로젝트 폴더 포함) 호출 가능 — 위키 vault 밖에서도 동작한다.
-  단순 코드 수정·위키와 무관한 일반 지식 질문에는 발동하지 않는다(그건 `karina:plan`/`karina:implement` 영역).
+description: LLM WIKI(Obsidian vault) 운영 스킬 — 프로젝트 등록·갱신(ingest)·삭제·상태 변경, 기능/가이드/레시피 추가, 점검(lint), 조회(위키에 적힌 구현 방법·결정 이력 찾기), 백업 복구, vault 경로 설정. "{프로젝트} 위키에 등록", "위키 업데이트", "{프로젝트} 변경분 위키에 반영", "위키 점검/lint", "위키 되돌려줘", "위키 큐 정리/pending 큐 정리", "위키에서 {무엇} 찾아줘", "위키 vault 경로 바꿔줘", "add this project to the wiki", "search the wiki" 등에 발동하고, 코드 폴더에서도 호출된다. 위키를 말하지 않는 「변경분 반영」·「큐 정리」, 코드 세션의 read-only 참조(절차 K), 위키와 무관한 일반 지식 질문에는 발동하지 않는다(사용자가 위키를 명시해 찾으면 조회라 발동한다).
 ---
 
 # LLM WIKI 운영 스킬

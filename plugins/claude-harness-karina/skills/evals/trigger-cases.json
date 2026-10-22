@@ -227,7 +227,7 @@
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "이 프로젝트를 위키에 등록해줘",
-      "why": "description의 1차 트리거 — \"위키에 추가/등록\""
+      "why": "description의 1차 트리거 — \"{프로젝트} 위키에 등록\""
     },
     {
       "id": "wiki-pos-2",
@@ -299,7 +299,7 @@
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "이 스크롤 버벅임 해결한 방법을 recipe로 위키에 넣어줘",
-      "why": "특정 기능/함정 recipe 추가(절차 I) — \"{기능} 위키에 추가\" (구 llm-wiki 전용 케이스 #14 이관)"
+      "why": "특정 기능/함정 recipe 추가(절차 I) — description 의 「기능/가이드/레시피 추가」 (구 llm-wiki 전용 케이스 #14 이관)"
     },
     {
       "id": "wiki-neg-3",
@@ -364,7 +364,7 @@
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "Put this repository into my LLM wiki vault as a new project page.",
-      "why": "영어 위키 요청(W9) — description 의 영어 트리거 줄이 덮는 꼴이되 그 문구(add/register this project to the wiki)를 복창하지 않는다. 등록(절차 A)"
+      "why": "영어 위키 요청(W9) — description 의 영어 트리거 줄이 덮는 꼴이되 그 문구(add this project to the wiki)를 복창하지 않는다. 등록(절차 A)"
     },
     {
       "id": "wiki-neg-7",
