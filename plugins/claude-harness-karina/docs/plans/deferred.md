@@ -13,7 +13,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 9 / 종결 119
+**▶ 현행 잔량(기계 대조 대상)**: 대기 10 / 종결 119
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -57,6 +57,7 @@
 
 ### eval · 측정
 
+- [2026-10-22] **정합 검사가 YAML 이 깨진 SKILL.md frontmatter 를 통과시킨다** — `check-harness-consistency.py` 「계수·버전 정합」 축이 description 길이·예약어만 재고, 따옴표 없는 한 줄 값 안의 「: 」 로 스킬이 로드되지 않는 상태를 exit 0 으로 넘긴다. 같은 축에 「따옴표 없는 단일 줄 값의 `: `·` #`」 판정과 골든 1건을 더한다 (출처: description 합계 감량 회차 T3) (실해: 2026-10-22 record-project-fact description 의 「on request: "…"」 로 trigger_eval 이 `[중단] karina 스킬 일부가 로드되지 않았습니다` 를 냈는데 정합 검사는 exit 0)
 
 ---
 
