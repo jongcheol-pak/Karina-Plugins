@@ -55,7 +55,7 @@ try {
                             $line = if ($peel) { $peel } else { $plain }
                             if (-not $line) {
                                 if (-not $hasMark) {
-                                    Write-Output "[karina 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 karina-v${pushedVer}를 로컬·원격 어디에서도 찾지 못했습니다 — 이 레포 규약은 '버전 전용 PR merge(또는 버전 커밋 push) 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create karina-v$pushedVer --target <main 에 올라간 버전 커밋 — 버전 전용 PR 이면 그 merge 커밋 — 의 full-sha> (short sha는 거부됩니다)."
+                                    Write-Output "[karina 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 karina-v${pushedVer}를 로컬·원격 어디에서도 찾지 못했습니다 — 이 레포 규약은 'merge 뒤 버전 커밋 push 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create karina-v$pushedVer --target <main 에 올라간 버전 커밋의 full-sha> (short sha는 거부됩니다)."
                                 }
                             } else {
                                 $tagSha = ($line -split '\s+')[0]
@@ -75,7 +75,7 @@ try {
                         if ($LASTEXITCODE -eq 0) {
                             $undeployed = @(& git log --format=%h "$tagSha..origin/main" -- .claude-plugin agents evals hooks scripts skills 2>$null | Where-Object { $_ })
                             if ($LASTEXITCODE -eq 0 -and $undeployed.Count -gt 0) {
-                                Write-Output "[karina 미배포] 마지막 릴리즈 karina-v${pushedVer}(태그 커밋 $($tagSha.Substring(0,8))) 뒤 origin/main 에 하니스 런타임 폴더 커밋 $($undeployed.Count)건이 버전·릴리즈 없이 올라가 있습니다 — 설치본 사용자에게 가지 않은 변경입니다. 버전 전용 PR 로 버전을 올린 뒤 릴리즈를 발행하세요(docs/harness-conventions.md 「판정 시점」)."
+                                Write-Output "[karina 미배포] 마지막 릴리즈 karina-v${pushedVer}(태그 커밋 $($tagSha.Substring(0,8))) 뒤 origin/main 에 하니스 런타임 폴더 커밋 $($undeployed.Count)건이 버전·릴리즈 없이 올라가 있습니다 — 설치본 사용자에게 가지 않은 변경입니다. merge 뒤 버전 커밋으로 버전을 올린 뒤 릴리즈를 발행하세요(docs/harness-conventions.md 「판정 시점」)."
                             }
                         }
                     }
