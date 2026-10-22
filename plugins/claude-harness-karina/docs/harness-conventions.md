@@ -112,7 +112,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 | `skills/chain-plan/scripts/**`·`skills/chain-plan/evals/**` | `python skills/chain-plan/evals/run_wait_evals.py` — Karina 앱·모델을 부르지 않는다(가짜 CLI 를 주입한다). **출력 갈래·인자의 정본은 그 스크립트의 모듈 docstring, 판정 근거는 `skills/chain-plan/references/wait-worker-rationale.md` 다** — `chain-plan/SKILL.md` 는 호출법과, 출력 첫 줄의 지시를 따르라는 규칙만 갖는다. |
 | `skills/reflect/scripts/**`·`skills/reflect/evals/**` | `python skills/reflect/evals/run_digest_evals.py` — 모델·Claude Code 를 부르지 않는다(가짜 projects 폴더·가짜 대장을 임시 폴더에 만든다). **출력 형식·종료 코드의 정본은 두 스크립트의 모듈 docstring 이다** — `reflect/SKILL.md` 는 호출법과 종료 코드별 처리만 갖는다. |
 | `skills/worktree-cleanup/scripts/**`·`skills/worktree-cleanup/evals/**` | `python skills/worktree-cleanup/evals/run_cleanup_evals.py` — 모델·Karina 앱·gh 를 부르지 않는다(실제 git 레포와 가짜 projects·PR JSON·Karina CLI 를 임시 폴더에 만든다). **출력 열·버킷·종료 코드의 정본은 스크립트 모듈 docstring 이다** — `worktree-cleanup/SKILL.md` 는 사용자 게이트(감사 → dry-run 승인 → 삭제)만 갖는다. |
-| `evals/**` (하니스 정합 검사) · **이 문서의 「조건부 참조 문서 크기 임계」 절** · `agents/*.md` · **대장 3파일**(`docs/plans/deferred.md`·`deferred-closed.md`·`deferred-history.md` — 계수 축은 앞 둘을 합산하고 차수 축은 셋째를 읽는다) | `python evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다)  여기에 **`python evals/run-evals.py`**를 함께 돌린다 — 세 검사기의 판정을 재는 골든(**exit 2 는 `cases.json` 서식 위반 또는 미추적 픽스처** — 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다)이고, **검사기를 고쳤으면 이것이 필수**다(축을 지워도 그 축을 재는 케이스가 없으면 검사기 자신은 여전히 exit 0 이다). 이 정합 검사는 **그 회차 `plan.md` 의 영향 검토 3축 기재도 함께 잰다** — `plan.md` 는 gitignore 라 「변경 파일 패턴」이 될 수 없어 이 표에 자기 행을 갖지 못하지만, 축은 그 파일을 직접 읽으므로 **이 행이 실행되는 순간 함께 판정된다**(부재 시 fail-open). |
+| `evals/**` (하니스 정합 검사) · **이 문서의 「조건부 참조 문서 크기 임계」 절** · `agents/*.md` · **대장 2파일**(`docs/plans/deferred.md`·`deferred-closed.md` — 계수 축이 둘을 합산한다) | `python evals/check-harness-consistency.py` (exit 0 / 1 불일치 / **2 앵커 파싱 실패** — 2는 "검사할 것을 못 찾았다"이지 통과가 아니다)  여기에 **`python evals/run-evals.py`**를 함께 돌린다 — 세 검사기의 판정을 재는 골든(**exit 2 는 `cases.json` 서식 위반 또는 미추적 픽스처** — 케이스를 돌리기 전에 멈춘 것이지 통과가 아니다)이고, **검사기를 고쳤으면 이것이 필수**다(축을 지워도 그 축을 재는 케이스가 없으면 검사기 자신은 여전히 exit 0 이다). 이 정합 검사는 **그 회차 `plan.md` 의 영향 검토 3축 기재도 함께 잰다** — `plan.md` 는 gitignore 라 「변경 파일 패턴」이 될 수 없어 이 표에 자기 행을 갖지 못하지만, 축은 그 파일을 직접 읽으므로 **이 행이 실행되는 순간 함께 판정된다**(부재 시 fail-open). |
 | JSON 매니페스트 3종 (`plugin.json`·`hooks.json`·`marketplace.json`) | Test(JSON 유효성) — hooks.json은 Hook 골든도 |
 | **agent·skill·hook 신설** | 해당 행에 더해 **`validate.ps1` 의 화이트리스트 배열을 같은 task 에서 갱신한다** — 빠지면 재설치 후 통합 검증이 `[WARN] validate 미등록` 을 적재한 채로 남는다(v1.169.0 T1 이 신설한 agent 를 등재하지 않아 완료 리뷰가 BLOCKER 로 잡을 때까지 그 상태로 갔다). **워킹트리 검사기 어느 축도 이것을 잡지 못한다** — `validate.ps1` 이 보는 것은 설치 캐시다 |
 | `validate.ps1` | Build(전 ps1 parse) + **`python evals/check-stale-refs.py`** — 회차 24 가 스캔 범위에 레포 루트를 넣었고, 이 파일은 스킬·hook 이름을 배열로 담아 **이름이 죽으면 조용히 깨지는 자리**다 |
@@ -132,7 +132,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 53,726 | 137,000 |
+| `docs/harness-conventions.md` | 53,688 | 137,000 |
 | `docs/golden-runner.md` | 13,695 | 28,000 |
 | `skills/llm-wiki/references/lookup-rules.md` | 10,506 | 37,000 |
 

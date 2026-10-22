@@ -1392,12 +1392,12 @@
     "mutate": [
       {
         "file": "evals/check-stale-refs.py",
-        "find": "DEAD_BASELINE = 39",
-        "replace": "DEAD_BASELINE = 40"
+        "find": "DEAD_BASELINE = 40",
+        "replace": "DEAD_BASELINE = 41"
       }
     ],
     "expect_keywords": [
-      "[FAIL] DEAD 총량이 기준선과 다르다: 39 != 40",
+      "[FAIL] DEAD 총량이 기준선과 다르다: 40 != 41",
       "DEAD_BASELINE"
     ]
   },

@@ -35,7 +35,7 @@
 - **chain-plan 대기 스크립트 골든** (`chain-plan/scripts/wait-worker.py` 수정 시 필수): `python skills/chain-plan/evals/run_wait_evals.py`
 - **reflect 스크립트 골든** (`skills/reflect/scripts/**`·`skills/reflect/evals/**` 수정 시 필수): `python skills/reflect/evals/run_digest_evals.py`
 - **worktree-cleanup 스크립트 골든** (`skills/worktree-cleanup/scripts/**`·`skills/worktree-cleanup/evals/**` 수정 시 필수): `python skills/worktree-cleanup/evals/run_cleanup_evals.py`
-- **하니스 정합 셀프체크** (`evals/**`·**대장 3파일**·`agents/*.md`·`*.md` 수정 시 필수 · **골든 케이스 수를 바꿨으면 매니페스트 무관하게 필수** — **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
+- **하니스 정합 셀프체크** (`evals/**`·**대장 2파일**·`agents/*.md`·`*.md` 수정 시 필수 · **골든 케이스 수를 바꿨으면 매니페스트 무관하게 필수** — **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
   ```
   python evals/check-harness-consistency.py
   python evals/check-harness-consistency.py --fix [--dry-run]
@@ -108,7 +108,7 @@
 ## Plan Location
 
 - **plan은 루트 `plan.md` 하나**다(덮어쓰기). 선택지가 없어 `Plan Location:` 선언을 두지 않는다.
-- **`plan.md`·`notes.md`·notes-archive/는 `.gitignore`(옛 `intent/`는 추적)** — **영구 기록은 git 커밋**이고 미처리 Deferred 는 **대장 3파일**이 담는다(`docs/plans/deferred.md` 대기 · `deferred-closed.md` 종결 · `deferred-history.md` batch 회고 — 셋 다 `docs/plans/` · 연산 규칙은 그 머리말이 정본).
+- **`plan.md`·`notes.md`·notes-archive/는 `.gitignore`(옛 `intent/`는 추적)** — **영구 기록은 git 커밋**이고 미처리 Deferred 는 **대장 2파일**이 담는다(`docs/plans/deferred.md` 대기 · `deferred-closed.md` 종결 — 둘 다 `docs/plans/` · 연산 규칙은 그 머리말이 정본).
 - **PRD는 쓰지 않는다** — 요구는 `plan.md`, 결정은 위키 `decisions.md`, 미착수는 대장이 담는다.
 
 ## OS/플랫폼

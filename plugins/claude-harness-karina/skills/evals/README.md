@@ -111,7 +111,7 @@ python rubric_eval.py --filter harness     # plan 파일명 부분 일치 필터
 python rubric_eval.py --repeats 3         # 편차를 더 넓게
 ```
 
-`rubric.md`의 8개 항목을 judge에게 그대로 실어 보내 각 plan을 채점한다. **기본 경로(`docs/plans`)에는 채점 대상이 없다** — 이 레포는 `plan.md`를 추적하지 않아(.gitignore) `YYYY-MM-DD-<slug>.md`가 거기 존재하지 않는다. 보관해 둔 plan 세트를 `--plans-dir`로 지목하고, 0건이면 러너가 `exit 2`로 멈춘다(조용한 성공을 만들지 않는다).  채점 대상은 파일명이 `YYYY-MM-DD-<slug>.md`인 것만이다 — `deferred.md`·`deferred-closed.md`·`deferred-history.md` 같은 대장 문서를 plan으로 오인해 채점하지 않기 위한 필터다(파일명 규약 기준이라 대장이 셋으로 갈려도 동작은 같다).
+`rubric.md`의 8개 항목을 judge에게 그대로 실어 보내 각 plan을 채점한다. **기본 경로(`docs/plans`)에는 채점 대상이 없다** — 이 레포는 `plan.md`를 추적하지 않아(.gitignore) `YYYY-MM-DD-<slug>.md`가 거기 존재하지 않는다. 보관해 둔 plan 세트를 `--plans-dir`로 지목하고, 0건이면 러너가 `exit 2`로 멈춘다(조용한 성공을 만들지 않는다).  채점 대상은 파일명이 `YYYY-MM-DD-<slug>.md`인 것만이다 — `deferred.md`·`deferred-closed.md` 같은 대장 문서를 plan으로 오인해 채점하지 않기 위한 필터다(파일명 규약 기준이라 대장이 둘로 갈려도 동작은 같다).
 
 ### 이 러너가 반드시 지키는 것
 
