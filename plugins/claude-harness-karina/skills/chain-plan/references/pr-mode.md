@@ -15,7 +15,7 @@
   - `git -C "<대상 레포 경로>" fetch -q origin` 뒤 지금 브랜치에 기본 브랜치에 없는 커밋이 0 이다 — 지금 브랜치가 `karina/*` 이고 `gh pr view <브랜치> --json state,headRefOid` 가 MERGED 면 `git rev-list --count <headRefOid>..HEAD`, 그 밖이면 `git rev-list --count origin/<기본>..HEAD` 다. squash merge 된 옛 `karina/*` 는 커밋이 기본 브랜치 조상이 아니어서 둘째 식이 늘 0 이 아니다(`pr-flow.md`「merge 된 브랜치에서 시작할 때」 의 headRefOid 선례). push 안 된 커밋도, push 됐지만 merge 안 된 기능 브랜치의 커밋도 여기서 걸린다. 재개가 옛 체인 브랜치를 다시 쓰고 지금 브랜치가 그 브랜치면 이 줄은 재지 않는다(`resume.md`「재개」).
 - **체인 브랜치는 `Y` 면 체인 시작 때 대상 레포의 `git branch --show-current` 이고, `P` 면 위에서 만든 `karina/chain-<Run id 의 run_ 뒤 앞 8자>` 다** — `P` 의 PR 들이 이미 merge 된 옛 브랜치로 들어가지 않게 한다(2026-10-19 체인 승인 화면의 체인 브랜치가 merge 된 `karina/release-v1.392.0` 이었다).
 - **승인 화면의 줄은 `PR 모드: 꺼짐(끝에 PR 하나) — [P] 로 켠다(<기본>에서 새 체인 브랜치)` 이고, 셋 중 하나라도 거짓이면 `PR 모드: 불가 — <거짓인 조건과 수치>` 이며 선택지 줄에서 `[P]` 를 뺀다** — 꺼짐이어도 체인이 끝까지 성공하면 코디네이터가 「Y 체인 끝 PR」 로 PR 하나를 연다. 끝 PR 이 없는 대상(아래 「Y 체인 끝 PR」 의 조건이 거짓)이면 괄호를 `(끝 PR 없음 — <거짓인 조건>)` 으로 바꾼다.
-- **`Y`·`P` 둘 다 버전 커밋을 막는 경우가 하나 있다 — 대상 레포가 끝 PR 대상이고 그 `AGENTS.md` Release 가 「버전 전용 PR」 을 지목하면 spec 재진술 `제약조건` 끝에 「버전 올리기 task 를 만들지 않는다(체인 끝 PR — merge 를 맡는 `karina:pr` ship 이 버전 전용 PR 을 잇는다)」 를 더한다(`spec-format.md`「spec 서식」)** — 버전 커밋이 끝 PR 에 squash 되면 기능 변경과 섞이고, ship 의 「버전 전용 PR 잇기」(`../../pr/references/ship.md`)가 버전을 한 번 더 올린다. `P` 의 계획 PR 도 기본 브랜치가 아닌 체인 브랜치로 merge 되므로 같다. Release 가 다른 형식인 레포는 지금처럼 체인 안에서 버전 커밋을 만들고 그 커밋이 끝 PR 에 실린다.
+- **`Y`·`P` 둘 다 버전 커밋을 막는 경우가 하나 있다 — 대상 레포가 끝 PR 대상이고 그 `AGENTS.md` Release 가 「merge 뒤 버전 커밋」 을 지목하면 spec 재진술 `제약조건` 끝에 「버전 올리기 task 를 만들지 않는다(체인 끝 PR — merge 를 맡는 `karina:pr` ship 이 merge 뒤 버전 커밋을 올린다)」 를 더한다(`spec-format.md`「spec 서식」)** — 버전 커밋이 끝 PR 에 squash 되면 기능 변경과 섞이고, ship 의 「merge 뒤 버전 커밋」(`../../pr/references/ship.md`)이 버전을 한 번 더 올린다. `P` 의 계획 PR 도 기본 브랜치가 아닌 체인 브랜치로 merge 되므로 같다. Release 가 다른 형식인 레포는 지금처럼 체인 안에서 버전 커밋을 만들고 그 커밋이 끝 PR 에 실린다.
 - **`P` 는 `Y` 와 같은 위임에 PR 모드를 더한 답이다** — objective 의 `[체인 승인: <답 원문>]` 이 `P` 를 담아 압축 뒤에도 모드를 되찾는다(`compaction.md`「압축 뒤 복원」).
 - **`P` 면 run-create 뒤 task-create 전에 체인 브랜치를 만든다 — 이름은 Run id 로 정해져 run-create 앞에 둘 수 없다** — 순서는 넷이다. 재개가 옛 체인 브랜치를 다시 쓰면 넷 대신 `resume.md`「재개」 의 전환이다.
   1. 위 미커밋 줄을 다시 잰다 — 승인 화면 뒤에 생긴 tracked 변경은 `switch -c` 가 새 브랜치로 끌고 가 다음 커밋에 섞인다.
@@ -43,7 +43,7 @@
   - **충돌은 재진술을 기준으로 양쪽 의도를 살려 풀고, spec 「근거로 정한 것」 ③ 검증을 돌려 통과하면 커밋·push 한 뒤 babysit 부터 다시 한다** — `parallel.md`「충돌·검증 실패」 의 병합 준비와 같은 기준이다. 풀 수 없으면 아래 정지다.
   - **한 PR 에서 세 번째 합치기가 필요하면 합치지 않고 정지한다** — base 가 계속 움직이면 검증이 끝나지 않는다(*"If trunk would force a third rebase past merge prep, hold and report"*).
 - **PR 을 연 뒤 `karina:pr` 을 Skill 도구로 「PR <URL> 을 babysit 뒤 ship — 체인 PR 모드」 로 부른다** — 요청이 babysit 과 merge 를 함께 말해 `../../pr/SKILL.md`「모드 고르기」 대로 merge-ready 뒤 ship 으로 잇는다. 이 요청이 `pr-flow.md`「PR 을 연 뒤」 의 「babysit 을 시작하지 않는다」 의 예외다.
-  - **ship 은 「버전 전용 PR 잇기」 를 건너뛴다 — 요청의 「체인 PR 모드」 가 표지다(`../../pr/references/ship.md`)** — 계획 PR 은 체인 브랜치로 merge 되고, 버전은 「P 체인 끝 PR」 을 merge 하는 ship 이 한 번 올린다.
+  - **ship 은 「merge 뒤 버전 커밋」 을 건너뛴다 — 요청의 「체인 PR 모드」 가 표지다(`../../pr/references/ship.md`)** — 계획 PR 은 체인 브랜치로 merge 되고, 버전은 「P 체인 끝 PR」 을 merge 하는 ship 이 한 번 올린다.
 - **babysit·ship 이 멈춘 자리마다 아래로 간다:**
 
   | 멈춘 자리 | 워커가 할 일 |
@@ -69,15 +69,15 @@
 ## 병렬
 
 - **그룹을 띄우기 전에 `git -C "<대상 레포 경로>" fetch origin <체인 브랜치>` 뒤 `git -C "<대상 레포 경로>" rev-list --count origin/<체인 브랜치>..<체인 브랜치>` 가 0 이 아니면 그 그룹을 묶지 않고 직렬로 돌린다** — worktree 는 로컬 체인 브랜치에서 갈라져(`parallel.md`「띄우기」) 원격보다 앞선 커밋이 그룹원 PR 마다 함께 실린다. 직렬 워커의 `pr-flow.md`「브랜치」 는 그 커밋을 첫 PR 하나로 옮긴다. 화면 직렬 워커가 base 에 남긴 미push 인계 커밋(「워커」 의 화면 줄 task 직렬 예외) 때문에 뒤 그룹이 직렬로 도는 것도 이 정상 경로다.
-- **병렬 워커는 ship 의 10번(로컬 맞추기)도 건너뛴다(「버전 전용 PR 잇기」 는 「워커」 대로 모든 워커가 건너뛴다)** — 체인 브랜치가 주 레포에 체크아웃돼 있어 worktree 에서 `git switch <체인 브랜치>` 가 거부된다. spec `병렬:` 줄이 그 워커를 가린다.
+- **병렬 워커는 ship 의 10번(로컬 맞추기)도 건너뛴다(「merge 뒤 버전 커밋」 은 「워커」 대로 모든 워커가 건너뛴다)** — 체인 브랜치가 주 레포에 체크아웃돼 있어 worktree 에서 `git switch <체인 브랜치>` 가 거부된다. spec `병렬:` 줄이 그 워커를 가린다.
 - **`worker_done`(succeeded)을 받으면 `parallel.md`「병합」 ⓐ~ⓔ 대신 주 레포를 맞춘다 — ⓐ 와 같이 주 레포가 깨끗하고 체인 브랜치일 때만 `git -C "<대상 레포 경로>" fetch origin <체인 브랜치>` → `git -C "<대상 레포 경로>" merge --ff-only origin/<체인 브랜치>` 이고, 아니거나 실패하면 보고하고 멈춘다** — 워커가 이미 base 를 합쳐 검증한 head 를 merge 했으므로 코디네이터가 다시 병합·검증할 것이 없다. 이 fast-forward 는 `../SKILL.md`「하지 않는 것」 「파일 수정」의 예외다.
 - **그룹원이 화면 확인 대기로 succeeded 하면 merge 되지 않았으므로 fast-forward 할 것이 없고, 아래 그룹 버전 PR 의 「병합된 그룹원」 으로 세지 않는다** — `병렬 병합:` 칸에 `미병합 — 화면 확인 대기 · <PR URL>` 로 싣고 worktree·브랜치는 남긴다. 그 PR 에 인계 절이 실려 있어 뒤 계획이 그 절을 base 에서 읽지 못하므로, 코디네이터는 그룹 뒤 계획 앞에서 멈춘다.
 - **충돌·검증 실패의 병합 준비 재배정은 없다** — 워커가 「워커」 의 base 합치기로 직접 푼다.
-- **그룹 버전 PR — 대상 레포 `AGENTS.md` 에 버전 규약이 있고 그 Release 가 「버전 전용 PR」 이 아닐 때만, 그룹의 마지막 succeeded 워커를 fast-forward 한 뒤 그 탭에 「버전 PR」 task 를 `--terminal` 로 재배정한다(병합된 그룹원이 없으면 하지 않는다)** — `parallel.md`「버전」 의 마지막 워커 재배정과 같은 형태이고, PR 모드 워커는 `worker_done` 전에 ship 을 끝내므로 재배정은 그 뒤 별도 task 다. 「버전 전용 PR」 레포는 「P 체인 끝 PR」 을 merge 하는 ship 이 체인 전체의 버전을 한 번 올리므로 재배정하지 않는다. task 서식은 `parallel.md`「충돌·검증 실패」 의 병합 준비 task 와 같고 표식·`할 일:` 만 바꾼다:
+- **그룹 버전 PR — 대상 레포 `AGENTS.md` 에 버전 규약이 있고 그 Release 가 「merge 뒤 버전 커밋」 이 아닐 때만, 그룹의 마지막 succeeded 워커를 fast-forward 한 뒤 그 탭에 「버전 PR」 task 를 `--terminal` 로 재배정한다(병합된 그룹원이 없으면 하지 않는다)** — `parallel.md`「버전」 의 마지막 워커 재배정과 같은 형태이고, PR 모드 워커는 `worker_done` 전에 ship 을 끝내므로 재배정은 그 뒤 별도 task 다. 「merge 뒤 버전 커밋」 레포는 「P 체인 끝 PR」 을 merge 하는 ship 이 체인 전체의 버전을 한 번 올리므로 재배정하지 않는다. task 서식은 `parallel.md`「충돌·검증 실패」 의 병합 준비 task 와 같고 표식·`할 일:` 만 바꾼다:
 
   ```
   [chain-plan 버전 PR] 그룹 <g> (plan <목록>)
-  할 일: 이 worktree 에서 git fetch origin <체인 브랜치> 뒤 git switch -c karina/release-v<다음 버전> origin/<체인 브랜치> 로 갈라, karina:pr 의 ship.md「버전 전용 PR 잇기」 2~3 대로 버전 PR 을 열고 merge 까지 간다(10번 로컬 맞추기는 건너뛴다). 릴리즈는 발행하지 않는다.
+  할 일: 이 worktree 에서 git fetch origin <체인 브랜치> 뒤 git switch -c karina/release-v<다음 버전> origin/<체인 브랜치> 로 갈라, 대상 레포 AGENTS.md 가 지목한 버전 자리만 고쳐 「설정: v<버전> — <그룹 요약>」 으로 커밋하고 git push -u origin karina/release-v<다음 버전> 뒤 pr-flow.md「PR 열기」 로 체인 브랜치를 base 로 PR 을 열어 karina:pr ship 1~9번으로 merge 까지 간다(10번 로컬 맞추기는 건너뛴다). 릴리즈는 발행하지 않는다.
   ```
 
   - **succeeded 면 위와 같이 주 레포를 fast-forward 한다.**
@@ -105,5 +105,5 @@
 - **`../../implement/references/pr-flow.md`「PR 열기」 1~4 를 체인 브랜치에 그대로 적용한다 — 1번 push 가 정리 커밋과 쌓인 미push 인계 커밋(「워커」 의 화면 줄 task 직렬 예외)을 원격 체인 브랜치로 올린다** — 체인 브랜치는 이미 `karina/` 브랜치라 「브랜치」 표는 건너뛰고, 3번의 `--base` 는 기본 브랜치·`--head` 는 체인 브랜치다.
   - **제목·`## 범위`·`## 화면` 은 「Y 체인 끝 PR」 의 하위 불릿 셋을 따른다(슬러그 불릿은 빼고)** — 같은 체인 끝 PR 이라 규칙을 두 곳에 두지 않는다.
 - **화면 확인 대기 PR 이 남아 있어도 연다 — 보고의 `화면 확인 대기:` 줄 아래에 「그 PR 들을 먼저 merge 한 뒤 체인 끝 PR 을 merge」 를 싣는다** — 이 PR 의 head 가 체인 브랜치라, 화면 대기 PR 이 나중에 체인 브랜치로 merge 되면 그 변경이 이 PR 에 함께 실린다.
-- **babysit·merge 는 하지 않고 URL 을 보고하고 끝낸다 — 버전은 사용자가 이 PR 을 `karina:pr` ship 으로 merge 할 때 「버전 전용 PR 잇기」 가 한 번 올린다** — 계획 PR 의 ship 은 그 절을 건너뛰었다(「워커」).
+- **babysit·merge 는 하지 않고 URL 을 보고하고 끝낸다 — 버전은 사용자가 이 PR 을 `karina:pr` ship 으로 merge 할 때 「merge 뒤 버전 커밋」 이 한 번 올린다** — 계획 PR 의 ship 은 그 절을 건너뛰었다(「워커」).
 - **실패하면 오류 원문을 `PR:` 줄의 `체인 끝 PR:` 칸에 싣고 멈추지 않는다** — 계획 PR 들은 이미 원격 체인 브랜치에 merge 돼 있어 잃는 것은 정리 커밋 하나다.
