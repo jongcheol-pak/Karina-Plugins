@@ -1579,7 +1579,7 @@ def _json_case_count(rel):
 #  넘으면 스킬이 로드되지 않으므로 통지가 아니라 게이트다.
 SKILL_FM_MAX = {"name": 64, "description": 1024}
 # 스킬 description **합계** 통지선 — 근거는 `harness-consistency-rationale.md` 「축 ⑰ — description 합계 통지선」.
-SKILL_DESC_TOTAL_MAX = 6000
+SKILL_DESC_TOTAL_MAX = 4000
 # 같은 출처의 **하드 제약 2종** — 근거는 `harness-consistency-rationale.md` 의
 #  「축 ⑰ — frontmatter 하드 제약 2종」.
 SKILL_FM_RESERVED = ("anthropic", "claude")
