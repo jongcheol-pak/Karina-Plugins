@@ -20,7 +20,7 @@ disable-model-invocation: true
    - **없으면 diff 다** — base 는 `git symbolic-ref --short refs/remotes/origin/HEAD` 에서 `origin/` 을 뗀 로컬 브랜치, 실패하면 `main` 이다. 기준점은 `git merge-base <base> HEAD` 이고, 범위는 `git diff <merge-base>`(작업 트리 포함)의 hunk 에 `git ls-files --others --exclude-standard` 가 내는 새 파일 전체를 더한 것이다. base 끝과 비교하지 않는다 — 분기 뒤 base 에 쌓인 남의 커밋이 역방향 hunk 로 섞인다.
    - diff 는 스크래치 파일에 저장해 리뷰어에게 경로로 넘긴다. **범위가 비면 「정리할 범위 없음」을 보고하고 끝낸다.**
 2. **기준선을 남긴다** — 그 레포 `AGENTS.md` 의 빌드·테스트를 편집 전에 한 번 돌려 실패 목록을 적어 둔다. 명령이 없으면 8번이 「미검증」이다. 기준선 없이 편집하면 원래 있던 실패가 이 스킬 탓으로 잡혀 맞는 편집까지 되돌리게 된다.
-3. **`comment-reviewer` 를 이름으로 1회 부른다** — 입력은 범위 종류 · 파일 목록 또는 diff 파일 경로 · 레포 루트 · `code-style.md` 의 절대 경로(이 SKILL.md 폴더 기준 `../implement/references/code-style.md`)다.
+3. **`comment-reviewer` 를 이름으로 1회 부른다 — 호출 전후 작업 트리 확인은 `../READONLY-SUBAGENTS.md`「호출 전후 확인」 대로다** — 입력은 범위 종류 · 파일 목록 또는 diff 파일 경로 · 레포 루트 · `code-style.md` 의 절대 경로(이 SKILL.md 폴더 기준 `../implement/references/code-style.md`)다.
 4. **판정을 검수한다** — 리뷰어 표를 그대로 믿지 않는다.
    - **거부한다**: 범위 밖 행 · 예외(`code-style.md`「주석」)에 드는데 `삭제` 로 판정한 행 · 근거가 사실과 다른 `MUST KILL` · 의도적으로 남긴 코드를 결함으로 지목한 행.
    - **`유지` 는 바꿀 수 없는 외부 제약이라는 근거가 있을 때만 받는다** — 「IMPORTANT」「do not remove」류 유지·삭제 판정이 근거가 얇으면 그 심볼을 직접 읽고 `git log -S` 로 확인한다. 확인 뒤에도 유지 근거가 애매하면 삭제한다.
