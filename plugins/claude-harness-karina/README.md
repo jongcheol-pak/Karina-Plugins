@@ -166,6 +166,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | 형식 검증 스킬 만들기 (`karina:create-formal-verification-skill`) | `/karina:create-formal-verification-skill` 직접 호출 | 테스트로 잡기 어려운 핵심 속성 하나(동시성·재시도·상태 기계·파서)를 TLA+ 같은 도구로 형식 검증하는 스킬을 만들어 등록합니다. 이후 그 코드를 건드리면 검사를 다시 돌립니다 · 도구 설치는 승인 후에만 |
 | 형식 검증 스킬 유지 (`karina:maintain-formal-verification-skill`) | `/karina:maintain-formal-verification-skill` 직접 호출 | 코드가 바뀐 뒤 형식 검증을 코드에 다시 맞추고, 검증 쪽 어긋남과 실제 코드 버그를 구분해 보고합니다. 확인된 수정만 PR 하나로 냅니다(도구가 없으면 설치하지 않고 중단) |
 | 세션 회고 (`karina:reflect`) | `/karina:reflect` 직접 호출 | 현재 세션 대화를 돌아보고 karina 스킬·hook 개선 후보를 표로 보여 준 뒤, 사용자가 고른 것만 Deferred 대장에 기록합니다(스킬 파일은 고치지 않음) |
+| 주석 정리 (`karina:no-comments`) | `/karina:no-comments [경로…]` 직접 호출 | 지정한 파일 전체(없으면 base 브랜치 대비 diff)의 코드 주석을 별도 리뷰어가 판정하고, 남길 근거가 없는 주석을 지웁니다. 주석이 감추던 결함 중 죽은 경로·안 쓰는 파라미터·우회 코드는 바로 고치고, 나머지는 설계를 보여 승인받은 뒤 고칩니다. 지운 주석의 이유는 커밋 본문용 문단으로 보고합니다(커밋은 하지 않음) |
 
 **계획 체인 자세히**
 
@@ -190,6 +191,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | completion-reviewer | Opus | 모든 task 완료 후 1회(경량 계획은 변경이 3파일 이상일 때만) | 계획과 최종 결과의 대조 — 요구가 반영됐는지, 완료 표시가 사실인지(검증 명령을 표본으로 다시 돌림), 성공 기준이 실제로 참인지 |
 | pr-verifier | Opus | `karina:pr` ship 이 merge 하기 전 PR 마다 1회 | PR head 를 받은 worktree 에서 빌드·테스트·검증 스킬을 돌리고, 화면 시나리오는 PR 전 코드와 비교합니다. 체크를 끄는 변경은 FAIL. 결과는 PASS / PASS+NOTES / FAIL — 코드를 쓰지 않은 쪽의 판정만 merge 근거가 됩니다 |
 | reflect-reviewer | Opus | 사용자가 `/karina:reflect` 를 부를 때 1회 | 세션 전사를 읽고 karina 스킬·hook 의 개선 후보 표를 냅니다(파일은 고치지 않음) |
+| comment-reviewer | Opus | 사용자가 `/karina:no-comments` 를 부를 때 1회(판정을 거부하면 1회 더) | 지정 범위의 코드 주석을 지울 것·남길 것·코드로 고칠 대상·제약 주석으로 판정한 표를 냅니다(파일은 고치지 않음) |
 
 **검토자는 정해진 자리에서만 부릅니다** — task마다 부르지 않습니다. Claude Opus 5는 지시 없이도 자기 작업을 검증하므로, 그 위에 검토 단계를 얹으면 비용과 시간만 늘고 품질은 오르지 않습니다([Anthropic 프롬프팅 가이드](https://platform.claude.com/docs/ko/build-with-claude/prompt-engineering/prompting-claude-opus-5)의 권고).
 
@@ -262,6 +264,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | `/karina:create-formal-verification-skill` | 형식 검증 스킬 만들기 (직접 호출 전용) |
 | `/karina:maintain-formal-verification-skill` | 형식 검증 스킬 유지 (직접 호출 전용) |
 | `/karina:reflect` | 세션 회고 — 개선 후보를 대장에 등재 (직접 호출 전용) |
+| `/karina:no-comments [경로…]` | 주석 정리 — 별도 리뷰어 판정으로 주석을 지우고 감춘 결함을 고침 (직접 호출 전용) |
 
 ---
 
