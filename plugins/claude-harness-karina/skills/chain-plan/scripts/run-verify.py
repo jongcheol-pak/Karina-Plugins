@@ -304,11 +304,19 @@ class RealProc:
         except OSError:
             return []
 
-    def discard(self):
-        try:
-            os.remove(self.log_path)
-        except OSError:
-            pass
+    def discard(self, wait_sec=5):
+        # Job 을 비운 직후에는 끝난 자손이 로그 핸들을 아직 놓지 않아 Windows 가 삭제를 거부한다 — 그동안 다시 시도한다.
+        deadline = time.monotonic() + wait_sec
+        while True:
+            try:
+                os.remove(self.log_path)
+                return
+            except FileNotFoundError:
+                return
+            except OSError:
+                if time.monotonic() >= deadline:
+                    return
+                time.sleep(0.1)
 
 
 def main(argv):

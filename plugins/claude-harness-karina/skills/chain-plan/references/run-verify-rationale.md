@@ -23,6 +23,7 @@
 
 - **자식을 `CREATE_SUSPENDED` 로 띄워 Job 에 넣은 뒤 `NtResumeProcess` 로 재개한다** — 재개 전에는 자손이 생기지 않아 전부 Job 에 든다. `subprocess.Popen` 은 스레드 핸들을 닫고 tid 를 남기지 않아(`Lib/subprocess.py` 의 `_winapi.CloseHandle(ht)`) `ResumeThread` 를 부를 수 없고, `NtResumeProcess` 는 프로세스 핸들 하나로 끝난다.
 - **어느 갈래로 끝나든 `TerminateJobObject` 로 Job 을 비운다** — `taskkill /T` 는 부모 사슬로만 자손을 찾아, 중간 부모가 먼저 끝난 고아(테스트 바이너리·debug 앱)를 놓친다. 그 고아가 다음 빌드를 `os error 5` 로 막는다(karina-ea 관측). `pass`·`fail` 뒤에도 메인보다 오래 사는 자손(빌드 서버·테스트 호스트)이 남으므로 정상 종료도 대상이다.
+- **시도 로그는 삭제가 거부되면 최대 5초 동안 다시 지운다** — Job 을 비운 직후에는 Job 회계의 활성 프로세스 수가 이미 0 인데도 메인보다 오래 산 손자가 상속받은 로그 핸들을 아직 놓지 않아 `PermissionError` 가 난다. 한 번만 시도하면 시도 로그가 임시 폴더에 쌓인다(2026-10-24 손자 정리 골든에서 실행마다 1개씩 남았고, 2초 뒤에는 지워졌다 — 활성 프로세스 수를 기다리는 방식은 그 수가 바로 0 이 돼 효과가 없었다).
 - **Job 에 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` 를 건다** — 래퍼가 끊겨도(메모리 부족 때 쉬는 세션의 백그라운드 셸이 끊긴다 — `docs/conventions.md` 의 백그라운드 생존 실측) 핸들이 닫히며 자손이 함께 끝난다.
 - **래퍼 자신은 Job 에 넣지 않는다** — 넣으면 래퍼의 폴링 CPU 가 진행으로 섞이고, Job 을 비울 때 래퍼도 끝난다.
 - **실행 파일은 `shutil.which` 로 PATH 순서대로 찾는다** — Windows `CreateProcess` 는 PATH 보다 System32 를 먼저 찾아, `bash` 가 Git Bash 가 아니라 WSL 의 `bash.exe` 로 풀릴 수 있다.

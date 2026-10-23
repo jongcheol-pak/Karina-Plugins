@@ -441,6 +441,7 @@ def real_leftover_grandchild_cleaned():
     d = tempfile.mkdtemp()
     pid_file = os.path.join(d, 'gc.pid')
     try:
+        before = _verify_logs()
         code = ('import subprocess, sys; '
                 'g = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"]); '
                 'open(%r, "w").write(str(g.pid))' % pid_file)
@@ -456,6 +457,8 @@ def real_leftover_grandchild_cleaned():
         if alive:
             os.kill(gpid, 9)
         assert not alive, '메인이 끝난 뒤 남은 손자가 래퍼 종료 뒤에도 살아 있다'
+        left = _verify_logs() - before
+        assert not left, '손자가 쥔 시도 로그가 임시 폴더에 남았다: %s' % sorted(left)
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
