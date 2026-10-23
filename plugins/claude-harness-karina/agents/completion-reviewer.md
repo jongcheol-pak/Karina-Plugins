@@ -14,6 +14,7 @@ tools: Read, Grep, Glob, Bash
 호출자가 준다: `plan.md` 경로 · BASE SHA(회차 시작) · HEAD SHA · `AGENTS.md` 경로(Deferred 대장 위치는 그 `## Plan Location`) · 증거 대조 출력(`check-plan.ps1 -Base` — 또는 「증거 대조 미실행」 줄).
 
 - **`plan.md` 가 gitignore 인 레포에서는 diff 에 안 나오고 추적하는 레포에서도 마무리 커밋 전에는 diff 에 없으므로 파일을 직접 Read 한다** — acceptance 가 *"…를 Progress Log 에 기록한다"* 형태면 산출물이 커밋 diff 에 없어, 빈 diff 를 미완료로 읽으면 판정이 어긋난다.
+- **재호출 때 `기각 — <요지> — <반증 출력>` 줄이 오면 그 반증을 직접 다시 대조한다 — 맞으면 같은 지적을 다시 내지 않고, 틀리면 반증이 틀린 이유와 함께 원래 등급으로 다시 낸다** — 호출자가 앞 라운드 지적을 오탐으로 기각한 것이다(`skills/implement/references/final-review.md`「절차」).
 
 ## 검사 항목
 
