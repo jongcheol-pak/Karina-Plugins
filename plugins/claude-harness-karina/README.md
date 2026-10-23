@@ -264,6 +264,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | `/karina:create-formal-verification-skill` | 형식 검증 스킬 만들기 (직접 호출 전용) |
 | `/karina:maintain-formal-verification-skill` | 형식 검증 스킬 유지 (직접 호출 전용) |
 | `/karina:reflect` | 세션 회고 — 개선 후보를 대장에 등재 (직접 호출 전용) |
+| `/karina:no-comments [경로…]` | 주석 정리 — 별도 리뷰어 판정으로 주석을 지우고 감춘 결함을 고침 (직접 호출 전용) |
 
 ---
 
