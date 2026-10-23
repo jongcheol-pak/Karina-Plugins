@@ -48,6 +48,7 @@ tools: Read, Grep, Glob, Bash
 ### 함정 기록
 
 - **같은 원인 2회 이상의 기록이 `plan.md`에 있는데 레포 `docs/conventions.md` 에 대응 항목이 없으면 지적한다** — 「같은 원인」은 증상이 아니라 원인으로 세고, 빠지면 다음 회차가 2회차를 1회차로 본다(`skills/REPO-CONVENTIONS.md`「쓰기」). 하니스 레포도 같은 경로다.
+- **이미 적혀 있는 함정의 재발 기록(Progress Log 의 `판정: 재발` 줄)이 있는데 강제 수단 커밋도 그 사유를 단 Deferred 항목도 없으면 지적한다** — 재발을 기록만 하고 넘기면 같은 함정이 날짜만 늘린 채 돌아온다(`skills/implement/references/loop-exceptions.md`「실패 처리」).
 
 ## 보고 형식
 
