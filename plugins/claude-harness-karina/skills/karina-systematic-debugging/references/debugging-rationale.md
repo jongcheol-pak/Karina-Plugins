@@ -78,3 +78,9 @@ pstack `bug-fix.md` 는 6단계 *"Run **Opening a PR**."* 로 끝나고, `openin
 - **회귀 테스트를 수정보다 먼저 커밋한다** — pstack 5단계 *"Stage the commits so the failing repro lands before the fix in git history."* 다. 테스트만 담은 커밋은 BASE 위에서 실패하므로, 리뷰어가 PR 의 커밋 순서로 그 수정이 그 실패를 없앴는지 본다. 4-D 뒤에 한 번에 순서대로 커밋하는 것은 Halt·Phase 4.5 로 끝날 때 빨간 커밋만 브랜치에 남지 않게 하려는 것이다.
 - **squash merge 라 main 이력에는 순서가 남지 않는다** — pstack `shipping.md` 4단계도 `gh pr merge <pr> --squash` 다. 순서는 리뷰하는 동안 PR 안에서 쓰이고, 그것으로 목적을 이룬다(2026-10-19 사용자 결정 — rebase merge 를 쓰지 않는다).
 - **4-D 가 `미검증` 이어도 PR 을 연다** — pstack 은 *"'Inconclusive' or wrong-surface is not a pass. Flag it."* 하고 6단계로 간다. 본문 `## 검증` 에 `미검증 — <사유>` 를 적으면 merge 전에 `pr-verifier` 와 사용자가 그 줄을 본다. PR 을 열지 않으면 수정이 로컬에 남아 그 판단을 할 자리가 없다.
+
+## §12 얕은 seam 의 회귀 테스트를 쓰지 않는 이유
+
+- **버그 패턴을 재지 않는 자리의 테스트는 통과해도 재발을 막지 못한다** — 여러 호출자나 호출 연쇄가 있어야 나는 버그를 단일 호출자 테스트로 재면, 그 테스트는 수정 전에도 통과하거나 다른 이유로 실패한다. 그 GREEN 이 재발 차단으로 보고되면 거짓 안심이 된다.
+- **seam 이 없다는 것 자체가 발견이다** — 구조가 버그를 테스트로 고정하지 못하게 막고 있다는 뜻이라, 4-D 의 「값싼 상시 신호」 제안이나 Phase 4.5 아키텍처 의심이 이어받을 재료가 된다. 그동안 RED·GREEN 판정은 1-B 원래 재현이 맡는다.
+- 출처: mattpocock/skills diagnosing-bugs Phase 5 `https://github.com/mattpocock/skills/blob/5beb35b040e3de97e54fa9e386d7e42d15c295c2/skills/engineering/diagnosing-bugs/SKILL.md` — *"If the only available seam is too shallow … a regression test there gives false confidence."* · *"If no correct seam exists, that itself is the finding."*
