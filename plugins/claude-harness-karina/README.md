@@ -190,6 +190,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | completion-reviewer | Opus | 모든 task 완료 후 1회(경량 계획은 변경이 3파일 이상일 때만) | 계획과 최종 결과의 대조 — 요구가 반영됐는지, 완료 표시가 사실인지(검증 명령을 표본으로 다시 돌림), 성공 기준이 실제로 참인지 |
 | pr-verifier | Opus | `karina:pr` ship 이 merge 하기 전 PR 마다 1회 | PR head 를 받은 worktree 에서 빌드·테스트·검증 스킬을 돌리고, 화면 시나리오는 PR 전 코드와 비교합니다. 체크를 끄는 변경은 FAIL. 결과는 PASS / PASS+NOTES / FAIL — 코드를 쓰지 않은 쪽의 판정만 merge 근거가 됩니다 |
 | reflect-reviewer | Opus | 사용자가 `/karina:reflect` 를 부를 때 1회 | 세션 전사를 읽고 karina 스킬·hook 의 개선 후보 표를 냅니다(파일은 고치지 않음) |
+| comment-reviewer | Opus | 사용자가 `/karina:no-comments` 를 부를 때 1회(판정을 거부하면 1회 더) | 지정 범위의 코드 주석을 지울 것·남길 것·코드로 고칠 대상·제약 주석으로 판정한 표를 냅니다(파일은 고치지 않음) |
 
 **검토자는 정해진 자리에서만 부릅니다** — task마다 부르지 않습니다. Claude Opus 5는 지시 없이도 자기 작업을 검증하므로, 그 위에 검토 단계를 얹으면 비용과 시간만 늘고 품질은 오르지 않습니다([Anthropic 프롬프팅 가이드](https://platform.claude.com/docs/ko/build-with-claude/prompt-engineering/prompting-claude-opus-5)의 권고).
 
