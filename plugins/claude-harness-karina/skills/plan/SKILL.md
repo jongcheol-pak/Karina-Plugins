@@ -8,6 +8,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 승인 가능한 `plan.md` 하나를 만든다. 이 스킬은 **코드를 고치지 않는다** — 산출물은 `plan.md` 와, Step 1이 없을 때 만드는 `AGENTS.md`뿐이다.
 
 - **Skill args 첫 줄 또는 이 세션 첫 프롬프트의 `할 일:` 다음 줄이 `[chain-plan 중계]` 이면 Step 1 전에 `references/relay-mode.md`「중계 모드」를 Read 한다** — `karina:chain-plan` 워커의 예외(인계 파일 Read·실측 요지 재측정·`ask`)가 Step 1 부터 걸린다.
+- **Skill args 첫 줄이 `[plan-draft 초안]` 또는 `[plan-draft 진행]` 이면 Step 1 전에 `references/draft-mode.md` 를 Read 한다** — `karina:plan-draft` 가 넘긴 것이고, 초안 모드는 `plan.md` 대신 초안 파일을 쓰며 진행 모드는 승인 직후 초안을 지운다.
 
 ## 이 스킬을 건너뛰는 경우
 
@@ -89,7 +90,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 - **`plan.md`를 쓴 뒤 화면에 요약을 내고 승인을 받는다** — 서식은 `references/interview.md`의 「승인 제시」. 중계 모드면 화면 대신 `ask` 로 보낸다(`references/relay-mode.md`「중계 모드」).
   - **승인 답이 `G`(따지기)면 승인 표지를 채우지 않고 `karina:implement` 도 부르지 않는다 — `references/grill.md` 를 따른 뒤 승인 제시를 다시 낸다** — 모델이 묻지 않고 정한 결정과 가정을 사용자가 끝까지 따지는 단계라 승인이 아니다.
 - **승인 직후 `plan.md` `## Goal` 의 `> BASE:`(그때의 HEAD)와 `> 승인:` 줄을 채운다 — 중계 모드면 코디네이터의 승인 답을 받은 뒤다(서식 정본 `references/plan-template.md` 「Goal」)** — `karina:implement` 가 `> 승인:` 줄 없는 `plan.md` 를 승인 전 초안으로 보고 확인을 묻는다.
-- **두 줄을 채우면 같은 turn에서 `karina:implement` 를 Skill 도구로 부른다** — 승인이 곧 실행 요청이라 「구현」을 다시 받지 않는다. 부르지 않고 그냥 이어 구현하면 `loop-continue` 의 발동 마커가 서지 않아, 루프가 중간에 멈췄을 때 계속을 주입하는 안전망이 꺼진다. 실행 중 멈추는 자리는 `karina:implement`의 「멈추는 넷 — 그리고 목록 밖의 넷」이 가른다.
+- **두 줄을 채우면 같은 turn에서 `karina:implement` 를 Skill 도구로 부른다(진행 모드면 그 전에 초안을 지운다 — `references/draft-mode.md`)** — 승인이 곧 실행 요청이라 「구현」을 다시 받지 않는다. 부르지 않고 그냥 이어 구현하면 `loop-continue` 의 발동 마커가 서지 않아, 루프가 중간에 멈췄을 때 계속을 주입하는 안전망이 꺼진다. 실행 중 멈추는 자리는 `karina:implement`의 「멈추는 넷 — 그리고 목록 밖의 넷」이 가른다.
   - **승인 답이 `S`(승인·새 세션에서 구현)면 부르지 않고 `references/interview.md`「승인 제시」의 새 세션 한 줄을 내고 끝낸다** — 계획 단계의 컨텍스트를 구현에 끌고 가지 않으려는 선택이라, 같은 turn 에서 부르면 그 선택이 무효가 된다.
 
 ## See also
