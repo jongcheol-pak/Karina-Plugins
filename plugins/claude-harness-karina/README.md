@@ -166,6 +166,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | 형식 검증 스킬 만들기 (`karina:create-formal-verification-skill`) | `/karina:create-formal-verification-skill` 직접 호출 | 테스트로 잡기 어려운 핵심 속성 하나(동시성·재시도·상태 기계·파서)를 TLA+ 같은 도구로 형식 검증하는 스킬을 만들어 등록합니다. 이후 그 코드를 건드리면 검사를 다시 돌립니다 · 도구 설치는 승인 후에만 |
 | 형식 검증 스킬 유지 (`karina:maintain-formal-verification-skill`) | `/karina:maintain-formal-verification-skill` 직접 호출 | 코드가 바뀐 뒤 형식 검증을 코드에 다시 맞추고, 검증 쪽 어긋남과 실제 코드 버그를 구분해 보고합니다. 확인된 수정만 PR 하나로 냅니다(도구가 없으면 설치하지 않고 중단) |
 | 세션 회고 (`karina:reflect`) | `/karina:reflect` 직접 호출 | 현재 세션 대화를 돌아보고 karina 스킬·hook 개선 후보를 표로 보여 준 뒤, 사용자가 고른 것만 Deferred 대장에 기록합니다(스킬 파일은 고치지 않음) |
+| 주석 정리 (`karina:no-comments`) | `/karina:no-comments [경로…]` 직접 호출 | 지정한 파일 전체(없으면 base 브랜치 대비 diff)의 코드 주석을 별도 리뷰어가 판정하고, 남길 근거가 없는 주석을 지웁니다. 주석이 감추던 결함 중 죽은 경로·안 쓰는 파라미터·우회 코드는 바로 고치고, 나머지는 설계를 보여 승인받은 뒤 고칩니다. 지운 주석의 이유는 커밋 본문용 문단으로 보고합니다(커밋은 하지 않음) |
 
 **계획 체인 자세히**
 
