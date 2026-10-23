@@ -11,10 +11,10 @@
   ```
   git rev-parse HEAD
   git status --porcelain=v1 -z --untracked-files=all
-  git status --porcelain=v1 -z --untracked-files=all | tr '\0' '\n' | cut -c4- | grep -v '^$' | git hash-object --stdin-paths
+  git ls-files -z -m -o --exclude-standard | tr '\0' '\n' | while IFS= read -r p; do [ -f "$p" ] && printf '%s\n' "$p"; done | git hash-object --stdin-paths
   ```
 
-  HEAD 가 다르거나, 상태 줄이 다르거나, 해시가 다르면 그 차이가 바뀐 경로다. 상태 줄만 비교하면 이미 미커밋인 파일을 더 고친 경우가 같은 줄로 남아 놓치고, 상태 코드를 빼면 인덱스만 바뀐 경우를, HEAD 를 빼면 깨끗한 트리에서 커밋·체크아웃한 경우를 놓친다. `--untracked-files=all` 이 없으면 untracked 폴더가 한 줄로 접혀 그 안의 새 파일을 놓친다. rename 은 상태 줄로 잡고 원래 경로는 해시하지 않는다.
+  HEAD 가 다르거나, 상태 줄이 다르거나, 해시가 다르면 그 차이가 바뀐 경로다. 상태 줄만 비교하면 이미 미커밋인 파일을 더 고친 경우가 같은 줄로 남아 놓치고, 상태 코드를 빼면 인덱스만 바뀐 경우를, HEAD 를 빼면 깨끗한 트리에서 커밋·체크아웃한 경우를 놓친다. `--untracked-files=all` 이 없으면 untracked 폴더가 한 줄로 접혀 그 안의 새 파일을 놓친다. 해시는 워킹트리에서 바뀐 파일과 untracked 파일 가운데 실재하는 것만 낸다 — 삭제·rename 은 상태 줄로 잡고, 없는 경로를 해시 입력에 넣으면 `hash-object` 가 `fatal: could not open` 으로 끝나 그 뒤 경로의 해시가 빠진다.
 - **git 이 무시하는 경로(예: `plan.md`)는 이 스냅샷에 나오지 않는다** — 그 경로의 변경은 이 확인으로 잡지 못한다는 한계를 안고 쓴다.
 
 ## 바뀐 경로가 있으면
