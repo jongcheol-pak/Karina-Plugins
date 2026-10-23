@@ -14,6 +14,7 @@ tools: Read, Grep, Glob, Bash
 호출자가 준다: `plan.md` 경로 · BASE SHA(회차 시작) · HEAD SHA · `AGENTS.md` 경로(Deferred 대장 위치는 그 `## Plan Location`) · 증거 대조 출력(`check-plan.ps1 -Base` — 또는 「증거 대조 미실행」 줄).
 
 - **`plan.md` 가 gitignore 인 레포에서는 diff 에 안 나오고 추적하는 레포에서도 마무리 커밋 전에는 diff 에 없으므로 파일을 직접 Read 한다** — acceptance 가 *"…를 Progress Log 에 기록한다"* 형태면 산출물이 커밋 diff 에 없어, 빈 diff 를 미완료로 읽으면 판정이 어긋난다.
+- **재호출 때 `기각 — <요지> — <반증 출력>` 줄이 오면 그 반증을 직접 다시 대조한다 — 맞으면 같은 지적을 다시 내지 않고, 틀리면 반증이 틀린 이유와 함께 원래 등급으로 다시 낸다** — 호출자가 앞 라운드 지적을 오탐으로 기각한 것이다(`skills/implement/references/final-review.md`「절차」).
 
 ## 검사 항목
 
@@ -48,6 +49,7 @@ tools: Read, Grep, Glob, Bash
 ### 함정 기록
 
 - **같은 원인 2회 이상의 기록이 `plan.md`에 있는데 레포 `docs/conventions.md` 에 대응 항목이 없으면 지적한다** — 「같은 원인」은 증상이 아니라 원인으로 세고, 빠지면 다음 회차가 2회차를 1회차로 본다(`skills/REPO-CONVENTIONS.md`「쓰기」). 하니스 레포도 같은 경로다.
+- **이미 적혀 있는 함정의 재발 기록(Progress Log 의 `판정: 재발` 줄)이 있는데 강제 수단 커밋도 그 사유를 단 Deferred 항목도 없으면 지적한다** — 재발을 기록만 하고 넘기면 같은 함정이 날짜만 늘린 채 돌아온다(`skills/implement/references/loop-exceptions.md`「실패 처리」).
 
 ## 보고 형식
 
