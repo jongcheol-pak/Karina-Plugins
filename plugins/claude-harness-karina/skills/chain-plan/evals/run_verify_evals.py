@@ -43,6 +43,7 @@ class FakeProc:
         self.steps = list(steps)
         self.i = 0
         self.terminated = 0
+        self.discarded = 0
         self.tail_lines = list(tail_lines)
         self.log_path = 'fake.log'
 
@@ -68,7 +69,7 @@ class FakeProc:
         return self.tail_lines[-n:]
 
     def discard(self):
-        pass
+        self.discarded += 1
 
 
 class Launcher:
@@ -331,6 +332,45 @@ def real_short_command_passes():
 
 def _verify_logs():
     return {f for f in os.listdir(tempfile.gettempdir()) if f.startswith('karina-chain-verify-') and f.endswith('.log')}
+
+
+@case
+def watch_error_still_discards_log():
+    class Broken(FakeProc):
+        def poll(self):
+            raise KeyboardInterrupt
+
+    p = Broken(idle(1))
+    try:
+        run([p])
+        raise AssertionError('watch 예외가 삼켜졌다')
+    except KeyboardInterrupt:
+        pass
+    assert p.terminated == 1 and p.discarded == 1, (p.terminated, p.discarded)
+
+
+@case
+def real_launch_failure_removes_log():
+    d = tempfile.mkdtemp()
+    orig = rv.subprocess.Popen
+
+    def fail(*a, **k):
+        raise OSError(5, '가짜 Popen 실패')
+
+    try:
+        before = _verify_logs()
+        rv.subprocess.Popen = fail
+        try:
+            rv.RealProc([sys.executable, '-c', 'pass'], d)
+            raise AssertionError('Popen 실패가 전파되지 않았다')
+        except OSError:
+            pass
+        finally:
+            rv.subprocess.Popen = orig
+        left = _verify_logs() - before
+        assert not left, '띄우기 실패 뒤 시도 로그가 임시 폴더에 남았다: %s' % sorted(left)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 @case

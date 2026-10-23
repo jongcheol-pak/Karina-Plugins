@@ -111,11 +111,13 @@ def run(opts, launch, clock, sleep, lock, emit):
         except OSError as e:
             return _result('unrunnable', '명령을 띄우지 못했다(%s) — 미검증으로 적는다' % e)
         try:
-            outcome = watch(proc, opts, clock, sleep, lock)
+            try:
+                outcome = watch(proc, opts, clock, sleep, lock)
+            finally:
+                proc.terminate()
+            tail = proc.tail(TAIL_LINES)
         finally:
-            proc.terminate()
-        tail = proc.tail(TAIL_LINES)
-        proc.discard()
+            proc.discard()
         if outcome[0] == 'exit':
             code = outcome[1]
             if code == 0:
@@ -255,6 +257,7 @@ class RealProc:
                                              stderr=subprocess.STDOUT, start_new_session=True)
         except OSError:
             self.log.close()
+            self.discard()
             if self.job:
                 self.job.close()
             raise
