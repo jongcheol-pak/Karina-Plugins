@@ -115,6 +115,7 @@ def run(opts, launch, clock, sleep, lock, emit):
         finally:
             proc.terminate()
         tail = proc.tail(TAIL_LINES)
+        proc.discard()
         if outcome[0] == 'exit':
             code = outcome[1]
             if code == 0:
@@ -299,6 +300,12 @@ class RealProc:
                 return [l.rstrip('\r\n') for l in f.readlines()[-n:]]
         except OSError:
             return []
+
+    def discard(self):
+        try:
+            os.remove(self.log_path)
+        except OSError:
+            pass
 
 
 def main(argv):

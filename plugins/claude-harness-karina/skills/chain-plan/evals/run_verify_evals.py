@@ -67,6 +67,9 @@ class FakeProc:
     def tail(self, n):
         return self.tail_lines[-n:]
 
+    def discard(self):
+        pass
+
 
 class Launcher:
     """시도마다 procs 에서 하나씩 꺼낸다. 예외 객체면 띄우기 실패다."""
@@ -322,6 +325,26 @@ def real_short_command_passes():
         text = p.stdout.decode('utf-8', errors='replace')
         assert p.returncode == 0, p.stderr[-300:]
         assert 'RESULT: pass — ' in text and '안녕 ok' in text, text[-500:]
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def _verify_logs():
+    return {f for f in os.listdir(tempfile.gettempdir()) if f.startswith('karina-chain-verify-') and f.endswith('.log')}
+
+
+@case
+def real_non_utf8_tail_and_log_removed():
+    d = tempfile.mkdtemp()
+    try:
+        before = _verify_logs()
+        code = 'import sys; sys.stdout.buffer.write(b"\\xff\\xfe tail-ok\\n")'
+        p = _wrap(['--', sys.executable, '-c', code], d)
+        text = p.stdout.decode('utf-8', errors='strict')
+        assert p.returncode == 0, p.stderr[-300:]
+        assert 'RESULT: pass — ' in text and 'tail-ok' in text, text[-500:]
+        left = _verify_logs() - before
+        assert not left, '시도 로그가 임시 폴더에 남았다: %s' % sorted(left)
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
