@@ -1004,10 +1004,16 @@ CRITICAL_LITERALS = [
     ("skills/implement/SKILL.md",
      "K 5-2",
      "구현 종료 시점의 `[DECISION]`(보류·기각) 일괄 큐잉 호출 — 규약이 지목하는 유일한 배치 시점이라, 부르는 자리가 없으면 결정이 대화에만 남는다"),
+    ("skills/plan/SKILL.md",
+     "쓰기 전에 회차 체인 질문을 한 번 낸다",
+     "회차를 나눈 계획의 체인 질문 — 참조 문서에만 두면 그 Read 를 건너뛴 회차가 묻지 않고 `[다음 회차]` 로 간다"),
+    ("skills/plan/references/interview.md",
+     "[C] 계획 체인으로 넘기기",
+     "승인 화면의 체인 선택지 — 체인 질문에 아니오로 답한 뒤 다 쓴 계획을 보고 체인으로 돌아갈 유일한 자리다"),
 ]
 
 # 리터럴 총량 기준선(= 목록 길이) — 근거는 `harness-consistency-rationale.md` §9
-CRITICAL_LITERALS_BASELINE = 3
+CRITICAL_LITERALS_BASELINE = 5
 
 
 # 축 11이 대장 실재로 인정하는 파일. 종결된 항목은 `deferred-closed.md` 로 옮겨지므로
@@ -1147,7 +1153,7 @@ def check_critical_pointers():
         src_p = os.path.join(ROOT, *src_rel.split("/"))
         if not os.path.exists(src_p):
             # 포인터 루프와 같은 fail-open — 출처가 없는 레포는 이 축의 관심사가 아니다
-            #   (골든 픽스처 `minimal-repo` 에는 네 자리 중 하나만 있다).
+            #   (골든 픽스처 `minimal-repo` 에는 여섯 자리 중 둘만 있다).
             n -= 1
             continue
         if lit not in read(src_p):
