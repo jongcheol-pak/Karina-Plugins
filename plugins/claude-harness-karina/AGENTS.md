@@ -37,12 +37,12 @@
 - **reflect 스크립트 골든** (`skills/reflect/scripts/**`·`skills/reflect/evals/**` 수정 시 필수): `python skills/reflect/evals/run_digest_evals.py`
 - **worktree-cleanup 스크립트 골든** (`skills/worktree-cleanup/scripts/**`·`skills/worktree-cleanup/evals/**` 수정 시 필수): `python skills/worktree-cleanup/evals/run_cleanup_evals.py`
 - **temp-cleanup 스크립트 골든** (`skills/temp-cleanup/scripts/**`·`skills/temp-cleanup/evals/**` 수정 시 필수): `python skills/temp-cleanup/evals/run_temp_cleanup_evals.py`
-- **하니스 정합 셀프체크** (`evals/**`·**대장 2파일**·`agents/*.md`·`*.md` 수정 시 필수 · **골든 케이스 수를 바꿨으면 매니페스트 무관하게 필수** — **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
+- **하니스 정합 셀프체크** (`evals/**`·**대장 2파일**·`agents/*.md`·`*.md` 수정 시 필수 · **골든 케이스 수를 바꿨으면 매니페스트 무관하게 필수**):
   ```
   python evals/check-harness-consistency.py
   python evals/check-harness-consistency.py --fix [--dry-run]
   ```
-- **evals 골든 회귀** (`evals/**` 수정 시 필수 — **exit 2는 `cases.json` 서식 위반 또는 미추적 픽스처**이지 통과가 아니다):
+- **evals 골든 회귀** (`evals/**` 수정 시 필수):
   ```
   python evals/run-evals.py
   ```
@@ -64,13 +64,22 @@
   python skills/evals/check_wiki_circuit.py
   ```
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 보므로 재설치 후에만 반영된다.
-- **Release**: 버전 정본은 `plugin.json` 하나, `README.md` 상단 `**버전**:` 줄은 함께 올리는 파생. **merge 뒤 버전 커밋**(ship 이 PR merge 직후 최신 main 위에 버전만 올린 커밋을 main 에 직접 push · PR 모드 밖은 회차 끝 버전만 올린 커밋) → **곧바로 릴리즈 발행**. ⚠ 태그는 원격에만 생겨 확인은 `gh release list`. 정본은 `docs/harness-conventions.md` 「Release (배포·릴리즈 발행)」이고 **릴리즈 발행은 별도 승인**이다(버전 커밋 push 는 승인된 plan·스킬 안이면 무승인).
+- **Release**: 버전 정본은 `plugin.json` 하나, `README.md` 상단 `**버전**:` 줄은 함께 올리는 파생. **merge 뒤 버전 커밋** → **곧바로 릴리즈 발행**. ⚠ 태그는 원격에만 생겨 확인은 `gh release list`. 정본은 `docs/harness-conventions.md` 「Release (배포·릴리즈 발행)」이고 **릴리즈 발행은 별도 승인**이다(버전 커밋 push 는 승인된 plan·스킬 안이면 무승인).
   - **⚠ 발행 여부는 버전 상승이 아니라 「마지막 `karina-v<버전>` 태그 이후 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`)에 변경이 있는가」로 판정한다** — 명령과 판정 시점은 정본의 「판정 시점」.
 - **⚠ 검증 배치에 `Remove-Item` 인라인 금지** — 도구 경로 보호가 오차단한다(회피법은 정본).
 
 ### 검증 매핑 (task 검증 선택)
 
 **표 정본은 `docs/harness-conventions.md`의 「검증 매핑 (task 검증 선택)」이다** — 변경 파일 패턴 → 필수 검증(합집합). **「줄바꿈 정합」 축만은 모든 task가 대상**이다. 같은 문서의 **「골든 부분 실행의 판정 자격」**·**「조건부 참조 문서 크기 임계」**·**`[면제 ⑤]` 대상**도 함께 읽는다.
+
+## 데이터 접근
+
+- 없음 (DB·외부 스토어를 쓰지 않는다).
+
+## 산출물·파일 관리
+
+- 캐시 __pycache__/·`.state` 는 커밋 금지.
+- 설치본: `~/.claude/plugins/cache/karina-plugins/` (`validate.ps1` 이 검사하는 대상) — **규약 조회는 레포의 하니스 루트를 읽는다**(설치본은 낡는다 · 근거 `docs/harness-conventions.md` 「검증 명령 상세 (무엇을 대조하는가 · 함정)」)
 
 ## Conventions
 
@@ -87,15 +96,6 @@
 - **위키 연동**: `skills/WIKI.md` 가 정본.
 - **README.md 갱신 규약**: changelog 기재 **금지**(현재 기능 설명만) · 버전 표기는 상단 1곳. 정본은 `docs/harness-conventions.md` 「README.md 갱신 규약」.
 - **규약 개정**: hook·스킬·규약 수정 전 `docs/harness-conventions.md` 「개정·개선 전 영향 검토 (3축)」·「규약 개정 요청의 취급」을 따른다.
-
-## 데이터 접근
-
-- 없음 (DB·외부 스토어를 쓰지 않는다).
-
-## 산출물·파일 관리
-
-- 캐시 __pycache__/·`.state` 는 커밋 금지.
-- 설치본: `~/.claude/plugins/cache/karina-plugins/` (`validate.ps1` 이 검사하는 대상) — **규약 조회는 레포의 하니스 루트를 읽는다**(설치본은 낡는다 · 근거 `docs/harness-conventions.md` 「검증 명령 상세 (무엇을 대조하는가 · 함정)」)
 
 ## DO NOT
 

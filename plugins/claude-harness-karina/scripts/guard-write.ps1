@@ -103,7 +103,7 @@ if ($env:CLAUDE_HARNESS_QUICK -ne '1') {
         if (-not $planSkillLaunched) {
             [Console]::Error.WriteLine("[HARNESS] BLOCKED: plan 작성은 karina:plan 스킬로만 합니다.")
             [Console]::Error.WriteLine("")
-            [Console]::Error.WriteLine("직접 작성은 적대적 plan-reviewer 검토·영향 범위 전수 조사·Type 분류·사전 승인 항목을 통째로 우회합니다.")
+            [Console]::Error.WriteLine("직접 작성은 plan-reviewer 검토·영향 범위 실측·승인 필요 항목 판정을 통째로 우회합니다.")
             [Console]::Error.WriteLine("")
             [Console]::Error.WriteLine("해결 방법:")
             [Console]::Error.WriteLine("  1) Skill 도구로 karina:plan 호출 → 조사·검토·사용자 승인 후 plan 작성")

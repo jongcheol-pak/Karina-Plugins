@@ -109,12 +109,12 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
 - **대상 레포 경로는 대상 레포에서 `git rev-parse --show-toplevel` 로 얻는다** — `current` 는 Karina 앱 화면의 활성 워크트리 그룹이라 사용자가 다른 그룹을 보고 있으면 다른 레포에 뜬다.
 - **`worker-start` 응답은 `references/cli-errors.md`「오류 응답」(`ok: false`)·「시작 이상 응답」 에 걸리지 않을 때만 대기로 간다** — 성공 경로만 두면 권한 프롬프트에 걸리거나 배정문을 못 받은 워커를 끝없이 기다린다.
 - **대기는 둘째 줄(`<skill>` 은 이 SKILL.md 의 폴더)을 Bash 도구 `run_in_background: true` 로 띄우고(샌드박스를 풀었으면 같은 플래그로) 무엇을 기다리는지(plan N/총 · dispatch) 한 줄 알린 뒤 turn 을 끝낸다 — 완료 알림이 오면 출력 파일을 Read 해 첫 줄 `RESULT: <갈래> — <지시>` 의 지시를 따른다. RESULT 줄이 없으면 `references/wait-exit.md`「RESULT 없음」 을 따른다** — 이 세션이 주기적으로 깨어나 큰 컨텍스트를 다시 읽지 않도록 반복 확인과 멈춤 판정을 스크립트가 맡는다.
-- **대기는 한 번에 하나이고 새 대기가 앞 대기를 물린다 — 띄우는 자리는 `worker-start` 직후 · 배치를 처리한 뒤 · 사용자 답을 `reply` 한 직후 · 압축 복원 뒤 · 사용자 입력 turn 에서 대기가 도는지 모를 때다(자리 대기 중이면 `--place` 대기 — `references/cli-errors.md`「오류 응답」). 사용자에게 넘긴 질문이 열려 있는 동안은 ②·③·⑤ 면 미답 시한 대기(`--answer-by` — `references/user-relay.md`「미답 기본값」)만 띄우고 ①·④ 면 띄우지 않는다** — 평소 대기는 답을 기다리는 워커 화면이 그대로라 멈춤으로 오판한다.
+- **대기는 한 번에 하나이고 새 대기가 앞 대기를 물린다 — 띄우는 자리는 `worker-start` 직후 · 배치를 처리한 뒤 · 사용자 답을 `reply` 한 직후 · 압축 복원 뒤 · 사용자 입력 turn 에서 대기가 도는지 모를 때다(자리 대기 중이면 `--place` 대기 — `references/cli-errors.md`「오류 응답」). 사용자에게 넘긴 질문이 열려 있는 동안의 대기는 `references/user-relay.md`「미답 기본값」 을 따른다** — 평소 대기는 답을 기다리는 워커 화면이 그대로라 멈춤으로 오판한다.
 - **`question` 이 오면 질문 원문을 메시지의 `subject` 에서 읽고(`body` 는 비어 있어 키째 빠진다) 아래 「답하는 기준」으로 답하고 `reply --id <메시지 id> --body "$(cat <<'EOF' …)"` 로 보낸 뒤 `check --ack <deliveryId>` 한다** — 메시지 id 는 각 메시지의 `id`, `deliveryId` 는 배치의 id 다. 배치를 다 처리하기 전에 ack 하면 남은 메시지를 잃는다.
 - **`worker_done` 의 `succeeded` 면 `--body` 를 보고의 정본으로 받고, 곧바로 `references/release.md`「닫기」 로 탭을 닫고 다음 계획으로 간다**.
   - **PR 모드 꺼짐 또는 스택 · 병렬 밖이면 닫은 뒤 `references/continuation.md`「코디네이터 검증」 부터 한다** — `--body` 의 검증은 작성자의 주장이다.
   - **`남은 일` 이 「없음」이 아니면 다음 계획 전에 `references/continuation.md`「남은 일 판정」 을 따른다** — `succeeded` 라도 계획이 미완일 수 있다.
-- **`failed` 면 `worker-retain --dispatch <id>` 로 탭을 남기고 체인을 멈춘다 — 다음 계획은 띄우지 않는다** — 계획이 순서 의존이라 N 이 미완인 채로 N+1 을 시작할 수 없고, 남긴 탭은 사용자가 들여다본다. **사유에 「코디네이터 무응답」 이 있으면 멈추지 않고 `references/manual-resume.md`「무응답 실패 뒤 늦은 답」 을 따른다.**
+- **`failed` 면 `worker-retain --dispatch <id>` 로 탭을 남기고 체인을 멈춘다 — 다음 계획은 띄우지 않는다** — 계획이 순서 의존이라 N 이 미완인 채로 N+1 을 시작할 수 없고, 남긴 탭은 사용자가 들여다본다.
 - **`status` 의 제목이 `사후 완료 — ` 로 시작하면 `references/manual-resume.md`「사후 완료」 를 따른다.**
 - **그 밖의 메시지 유형은 요지를 한 줄 알리고 ack 한 뒤 대기를 다시 띄운다.**
 
@@ -139,4 +139,4 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
 ## 하지 않는 것
 
 - **파일 수정** — 산출물은 워커가 만든다. 이 세션이 고치면 워커의 `plan.md` 가 모르는 변경이 생긴다. 예외는 체인이 끝난 뒤의 인계 파일 삭제(`references/report.md`「인계 파일 정리」)와 병렬 병합 커밋(`references/parallel.md`「병합」)·PR 모드의 체인 브랜치 생성·push(`references/pr-mode.md`「켜기」)·fast-forward(같은 파일 「병렬」)·체인 끝 PR(「Y 체인 끝 PR」·「P 체인 끝 PR」)·스택 착지(`references/stack-mode.md`「착지」)다.
-- **멈춘 워커의 자동 재개** — 재개는 사용자가 「plan N부터」로 부른다. 중단·무관한 요청은 `references/interrupt.md`「사용자 중단」·「무관한 요청」 을 따른다. 사용자가 stall·`failed` 로 멈춘 워커를 탭에서 직접 이어 가게 했다고 알리면 `references/manual-resume.md`「직접 재개」 를 따른다. 예외는 `references/manual-resume.md`「무응답 실패 뒤 늦은 답」 하나다 — 사용자가 워커 탭에 입력해야 이어진다. **멈춘 계획에 새 워커를 띄우는 선택지도 내지 않는다** — 새 워커는 계획을 처음부터 다시 실측해 앞 워커의 진척을 버린다. 새 워커는 사용자가 「plan N부터」로 부를 때만이다.
+- **멈춘 워커의 자동 재개** — 재개는 사용자가 「plan N부터」로 부른다. 중단·무관한 요청은 `references/interrupt.md`「사용자 중단」·「무관한 요청」 을 따른다. 사용자가 stall·`failed` 로 멈춘 워커를 탭에서 직접 이어 가게 했다고 알리면 `references/manual-resume.md`「직접 재개」 를 따른다. **멈춘 계획에 새 워커를 띄우는 선택지도 내지 않는다** — 새 워커는 계획을 처음부터 다시 실측해 앞 워커의 진척을 버린다. 새 워커는 사용자가 「plan N부터」로 부를 때만이다.
