@@ -74,7 +74,7 @@
 
 **vault 에 작업 함정을 쓰지 않는다 — 판정·형식·위치는 `REPO-CONVENTIONS.md` 「쓰기」 가 정본이다.** 함정은 레포 `docs/conventions.md` 에 그 회차 커밋과 함께 남는다.
 
-- **`[DECISION]`·`[SYMPTOM]` 큐 기록은 그대로다** — 규약은 `llm-wiki/references/queue-rules.md` K 5-2·K 5-5 다.
+- **`[DECISION]`·`[SYMPTOM]` 큐 기록 규약은 `llm-wiki/references/queue-rules.md` K 5-2·K 5-5 다.**
 
 ## 4. 이 문서가 다루지 않는 것
 
