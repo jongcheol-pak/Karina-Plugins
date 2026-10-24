@@ -51,11 +51,11 @@
   | merge-ready | ship 으로 간다 |
   | 충돌 · 낡은 base(`../../pr/references/babysit.md`「1. 충돌」·「3. CI」) | 위 base 합치기 뒤 babysit 부터 다시 |
   | ship 「base 합치기 필요」(`../../pr/references/ship.md` 7번 영향 판정 참) | 위 base 합치기 뒤 babysit 부터 다시 |
-  | `pr-verifier` FAIL | 지적한 결함을 고쳐 커밋·push 한 뒤 babysit 부터 다시 — 지적은 하나의 수정으로 모은다(*"Send every proven finding … to the owner in one fix-forward"*) |
+  | `pr-verifier` FAIL · 게이트 완화 서명 거부 | 지적한 결함을 고쳐 커밋·push 한 뒤 babysit 부터 다시 — 지적은 하나의 수정으로 모은다(*"Send every proven finding … to the owner in one fix-forward"*) |
   | head 가 바뀌어 merge 거부(`--match-head-commit`) | ship 1번부터 다시 |
-  | 화면 확인 대기(`../../pr/references/ship.md` 7번 화면 게이트) | PR 을 열어 둔 채 작업 트리가 깨끗하면 `git switch <base>`(병렬 워커는 건너뛴다) 뒤 `--outcome succeeded` 로 보고한다 — `PR:` 필드는 `열림 — <URL> · 화면 확인 대기`, `남은 일` 에 `PR <URL> 화면 확인 대기 — 사용자가 스크린샷을 보고 「화면 확인함」 으로 karina:pr ship 을 요청`. 질문이 아니라 보고다 — 사용자 몫으로 넘기지 않는다 |
+  | 화면 확인 대기(`../../pr/references/ship.md` 7번 화면 게이트) | PR 을 열어 둔 채 작업 트리가 깨끗하면 `git switch <base>`(병렬 워커는 건너뛴다) 뒤 `--outcome succeeded` 로 보고한다 — `PR:` 필드는 `열림 — <URL> · 화면 확인 대기`, `남은 일` 에 `PR <URL> 화면 확인 대기 — 사용자가 스크린샷을 보고 「화면 확인함」(게이트 완화가 있었으면 「PR <n> 게이트 완화 확인함」 도) 으로 karina:pr ship 을 요청`. 질문이 아니라 보고다 — 사용자 몫으로 넘기지 않는다 |
   | 사람 판단 대기(`CHANGES_REQUESTED`·`REVIEW_REQUIRED`·보고만 한 스레드) · 브랜치 보호 등 그 밖의 merge 거부 | 곧바로 정지 — 사람이 정할 자리이고 체인은 그것을 대신 정하지 못한다 |
-  | CI 실패가 같은 원인으로 3회 · `pr-verifier` FAIL 3회 · 세 번째 합치기 | 정지 — `../../implement/SKILL.md`「멈추는 넷」 의 동일 원인 3회와 같은 수다 |
+  | CI 실패가 같은 원인으로 3회 · `pr-verifier` FAIL·서명 거부 3회 · 세 번째 합치기 | 정지 — `../../implement/SKILL.md`「멈추는 넷」 의 동일 원인 3회와 같은 수다 |
 
 - **정지는 PR 을 열어 둔 채 `--outcome failed` 로 보고하고, `--body` 의 `PR:` 필드에 `열림 — <URL> · <멈춘 자리>` 를 싣는다** — 코디네이터는 failed 면 체인을 멈추고(`../SKILL.md`「워커 루프」), 사용자는 그 PR 을 보고 정한다. PR 을 닫거나 브랜치를 지우지 않는다.
 - **merge 되면 `PR:` 필드는 `<URL> · merged <merge 커밋 7자리>` 다** — merge 커밋은 ship 9번의 `mergeCommit` 이다.
@@ -94,7 +94,7 @@
   - **제목은 `<유형>: <계획 제목들을 · 로 이은 한 줄>` 이다** — 유형은 `git log --format=%s origin/<기본 브랜치>..HEAD` 의 유형 접두 중 가장 많은 것이고 같으면 `기능` 이다. 길면 앞 계획부터 줄인다.
   - **본문 `## 범위` 에 plan 번호와 제목 목록을 싣는다** — 나머지 절은 「PR 열기」 의 본문 규칙 그대로다.
   - **`git log --format=%B origin/<기본 브랜치>..HEAD` 에 `화면: ` 으로 시작하는 줄(미촬영 줄 포함 — `../../implement/references/report-format.md`「화면 시나리오 실행」)이 있으면 본문에 `## 화면` 절을 싣는다** — 그 줄을 옮기고, 스크린샷 위치는 검증 스킬의 Evidence 위치를 환경변수 표기로 적는다. 이 세션은 워커의 `plan.md` 를 읽지 않아 커밋 본문이 화면 task 를 찾는 유일한 자리이고, 이 절이 있어야 사용자가 나중에 부르는 ship 의 화면 게이트가 걸린다.
-- **babysit·merge 는 하지 않는다 — URL 을 보고하고 끝낸다** — merge 는 사용자가 `karina:pr` 로 요청할 때다(*"Opening a PR does not start a babysit."*).
+- **babysit·merge 는 하지 않는다 — URL 을 보고하고 끝낸다** — merge 는 사용자가 `karina:pr` 로 요청할 때다(*"Opening a PR does not start a babysit."*). 그 ship 은 직접 경로라 게이트 완화가 있으면 「PR <n> 게이트 완화 확인함」 이 필요하다(「P 체인 끝 PR」 도 같다) — 계획 PR 에서 한 코디네이터 서명은 `chain-decisions.md` 에 있다(`gate-countersign.md`「기록」).
 - **어느 단계든 실패하면 오류 원문을 보고의 `PR:` 줄에 싣고 멈추지 않는다** — 체인은 이미 끝났고, 커밋은 로컬 체인 브랜치에 그대로 있다.
 
 ## P 체인 끝 PR
@@ -105,5 +105,5 @@
 - **`../../implement/references/pr-flow.md`「PR 열기」 1~4 를 체인 브랜치에 그대로 적용한다 — 1번 push 가 정리 커밋과 쌓인 미push 인계 커밋(「워커」 의 화면 줄 task 직렬 예외)을 원격 체인 브랜치로 올린다** — 체인 브랜치는 이미 `karina/` 브랜치라 「브랜치」 표는 건너뛰고, 3번의 `--base` 는 기본 브랜치·`--head` 는 체인 브랜치다.
   - **제목·`## 범위`·`## 화면` 은 「Y 체인 끝 PR」 의 하위 불릿 셋을 따른다(슬러그 불릿은 빼고)** — 같은 체인 끝 PR 이라 규칙을 두 곳에 두지 않는다.
 - **화면 확인 대기 PR 이 남아 있어도 연다 — 보고의 `화면 확인 대기:` 줄 아래에 「그 PR 들을 먼저 merge 한 뒤 체인 끝 PR 을 merge」 를 싣는다** — 이 PR 의 head 가 체인 브랜치라, 화면 대기 PR 이 나중에 체인 브랜치로 merge 되면 그 변경이 이 PR 에 함께 실린다.
-- **babysit·merge 는 하지 않고 URL 을 보고하고 끝낸다 — 버전은 사용자가 이 PR 을 `karina:pr` ship 으로 merge 할 때 「merge 뒤 버전 커밋」 이 한 번 올린다** — 계획 PR 의 ship 은 그 절을 건너뛰었다(「워커」).
+- **babysit·merge 는 하지 않고 URL 을 보고하고 끝낸다(게이트 완화 확인은 「Y 체인 끝 PR」 과 같다) — 버전은 사용자가 이 PR 을 `karina:pr` ship 으로 merge 할 때 「merge 뒤 버전 커밋」 이 한 번 올린다** — 계획 PR 의 ship 은 그 절을 건너뛰었다(「워커」).
 - **실패하면 오류 원문을 `PR:` 줄의 `체인 끝 PR:` 칸에 싣고 멈추지 않는다** — 계획 PR 들은 이미 원격 체인 브랜치에 merge 돼 있어 잃는 것은 정리 커밋 하나다.
