@@ -18,6 +18,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, '..', 'scripts', 'wait-worker.py')
+CHAIN_DIR = os.path.join(tempfile.gettempdir(), 'karina-plugin', 'chain')
 
 spec = importlib.util.spec_from_file_location('wait_worker', SCRIPT)
 ww = importlib.util.module_from_spec(spec)
@@ -1087,7 +1088,7 @@ def multi_overlapping_set_supersedes():
         old.release()
         for k in ('-a', '-b', '-c'):
             try:
-                os.remove(os.path.join(tempfile.gettempdir(), 'karina-chain-wait-%s%s.lock' % (tag, k)))
+                os.remove(os.path.join(CHAIN_DIR, 'karina-chain-wait-%s%s.lock' % (tag, k)))
             except OSError:
                 pass
 
@@ -1388,7 +1389,7 @@ def orphaned_when_middle_parent_killed():
         return
     d = tempfile.mkdtemp(prefix='karina-orphan-')
     dispatch = 'disp_orph_%d' % os.getpid()
-    lock_path = os.path.join(tempfile.gettempdir(), 'karina-chain-wait-%s.lock' % dispatch)
+    lock_path = os.path.join(CHAIN_DIR, 'karina-chain-wait-%s.lock' % dispatch)
     cli = os.path.join(d, 'fake.cmd')
     with open(cli, 'w', encoding='ascii') as f:
         f.write('@ping -n 2 localhost >nul\r\n@echo {"ok":true,"count":0,"messages":[]}\r\n')

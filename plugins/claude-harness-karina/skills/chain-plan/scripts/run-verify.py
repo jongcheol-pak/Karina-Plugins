@@ -33,6 +33,7 @@ DEFAULT_CPU_SEC = 30
 DEFAULT_POLL_SEC = 15
 DEFAULT_MAX_SEC = 3 * 3600
 UNRUNNABLE_EXITS = (126, 127)
+SWEEP_AGE_SEC = 7 * 24 * 3600
 
 
 class Parser(argparse.ArgumentParser):
@@ -138,12 +139,37 @@ def run(opts, launch, clock, sleep, lock, emit):
                    % (attempts - 1), tail)
 
 
+def chain_dir():
+    """임시 폴더의 `karina-plugin/chain` — 없으면 만든다. 폴더 배치는 `../../TEMP-FILES.md`."""
+    d = os.path.join(tempfile.gettempdir(), 'karina-plugin', 'chain')
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def sweep_stale(folder, now):
+    """`folder` 의 `karina-chain-verify-*`(잠금·시도 로그) 중 수정 시각이 SWEEP_AGE_SEC 지난 것을 지운다.
+    비정상 종료한 래퍼가 남긴 것이다. 정리는 부가 기능이라 실패는 삼킨다."""
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return
+    for name in names:
+        if not name.startswith(LOCK_PREFIX):
+            continue
+        path = os.path.join(folder, name)
+        try:
+            if now - os.path.getmtime(path) > SWEEP_AGE_SEC:
+                os.remove(path)
+        except OSError:
+            pass
+
+
 class FileLock:
-    """--cwd 마다 시스템 임시 폴더에 둔 파일 하나. 같은 레포의 새 래퍼가 자기 표식을 덮어쓰면 앞 래퍼는 물러난다."""
+    """--cwd 마다 chain 폴더에 둔 파일 하나. 같은 레포의 새 래퍼가 자기 표식을 덮어쓰면 앞 래퍼는 물러난다."""
 
     def __init__(self, cwd):
         key = hashlib.sha1(os.path.normcase(os.path.abspath(cwd)).encode('utf-8')).hexdigest()[:16]
-        self.path = os.path.join(tempfile.gettempdir(), '%s%s.lock' % (LOCK_PREFIX, key))
+        self.path = os.path.join(chain_dir(), '%s%s.lock' % (LOCK_PREFIX, key))
         self.token = '%d-%d' % (os.getpid(), time.time_ns())
         with open(self.path, 'w', encoding='utf-8') as f:
             f.write(self.token)
@@ -239,7 +265,7 @@ class RealProc:
         exe = shutil.which(cmd[0])
         if exe is None:
             raise FileNotFoundError(2, '실행 파일을 PATH 에서 찾지 못했다', cmd[0])
-        fd, self.log_path = tempfile.mkstemp(prefix=LOCK_PREFIX, suffix='.log')
+        fd, self.log_path = tempfile.mkstemp(prefix=LOCK_PREFIX, suffix='.log', dir=chain_dir())
         self.log = os.fdopen(fd, 'wb')
         self.job = None
         argv = [exe] + list(cmd[1:])
@@ -326,6 +352,7 @@ def main(argv):
     def emit(line):
         print(line, flush=True)
 
+    sweep_stale(chain_dir(), time.time())
     lock = FileLock(opts.cwd)
     try:
         lines = run(opts, RealProc, time.monotonic, lambda proc, sec: proc.pause(sec), lock, emit)
