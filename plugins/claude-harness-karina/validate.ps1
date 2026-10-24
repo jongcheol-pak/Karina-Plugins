@@ -9,7 +9,7 @@
 #   3. skill 10개 모두 등록
 #   3-1. 가이드 문서 9개 존재 (DESIGN/AUTHORING/BUDGET/WIKI/AGENTS-BOUNDARY/WRITING/PERF-MEASUREMENT/REPO-CONVENTIONS/READONLY-SUBAGENTS)
 #   4. agent 전부 등록
-#   5. hook 11개 모두 등록 + BOM 확인
+#   5. hook 목록 전부 등록 + BOM 확인
 #   6. 모든 ps1 파일에 UTF-8 BOM
 #   7. JSON 파일 파싱 가능
 
