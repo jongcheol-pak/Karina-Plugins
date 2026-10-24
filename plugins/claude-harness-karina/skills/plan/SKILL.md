@@ -75,7 +75,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 
 템플릿·작성 규칙은 `references/plan-template.md`다. 루트 `plan.md` 하나에 쓰고(덮어쓰기), 요구는 그 `> 요구:` 줄(원문 인용)과 `## Goal`(재진술)이 담는다 — 요구를 다른 파일에 따로 쓰지 않는다.
 
-- **task가 많아 한 회차에 담기 어려우면 파일을 쪼개지 말고 회차를 나눈다** — 나머지는 `## Deferred / Follow-up`에 `[다음 회차]` 마커로 적는다(마커 규약은 `references/deferred-rules.md`). **회차를 나누기로 했으면 `references/round-split.md`「회차 분할」 을 Read 한다.**
+- **task가 많아 한 회차에 담기 어려우면 파일을 쪼개지 말고 회차를 나눈다** — 나머지는 `## Deferred / Follow-up`에 `[다음 회차]` 마커로 적는다(마커 규약은 `references/deferred-rules.md`). **회차를 나누기로 했으면 `references/round-split.md`「회차 분할」 을 Read 한다. Karina 앱 탭(`KARINA_TAB_UUID`)이고 중계 모드가 아니면 그 절대로 `plan.md` 를 쓰기 전에 회차 체인 질문을 한 번 낸다** — 질문을 참조 문서에만 두면 그 Read 를 건너뛴 회차가 묻지 않고 `[다음 회차]` 로 간다.
 - **`plan.md`는 `Write`(전체 교체)·`Edit`(부분 수정) 도구로만 고친다** — `sed`·`cp`·python 쓰기는 `guard-bash` 가 `exit 2` 로 막고 근거는 그 차단 메시지가 낸다.
 - **쓰기가 실패하면 오류 원문을 그대로 내고 멈춘다** — 삼키면 **승인받은 계획이 디스크에 없다.**
 
@@ -91,6 +91,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 - **승인 직후 `plan.md` `## Goal` 의 `> BASE:`(그때의 HEAD)와 `> 승인:` 줄을 채운다 — 중계 모드면 코디네이터의 승인 답을 받은 뒤다(서식 정본 `references/plan-template.md` 「Goal」)** — `karina:implement` 가 `> 승인:` 줄 없는 `plan.md` 를 승인 전 초안으로 보고 확인을 묻는다.
 - **두 줄을 채우면 같은 turn에서 `karina:implement` 를 Skill 도구로 부른다(진행 모드면 그 전에 초안을 지운다 — `references/draft-mode.md`)** — 승인이 곧 실행 요청이라 「구현」을 다시 받지 않는다. 부르지 않고 그냥 이어 구현하면 `loop-continue` 의 발동 마커가 서지 않아, 루프가 중간에 멈췄을 때 계속을 주입하는 안전망이 꺼진다. 실행 중 멈추는 자리는 `karina:implement`의 「멈추는 넷 — 그리고 목록 밖의 넷」이 가른다.
   - **승인 답이 `S`(승인·새 세션에서 구현)면 부르지 않고 `references/interview.md`「승인 제시」의 새 세션 한 줄을 내고 끝낸다** — 계획 단계의 컨텍스트를 구현에 끌고 가지 않으려는 선택이라, 같은 turn 에서 부르면 그 선택이 무효가 된다.
+  - **승인 답이 `C`(계획 체인으로 넘기기)면 승인 표지를 채우지 않고 `references/round-split.md`「회차 분할」 의 `[C]` 경로를 따른다** — 체인 워커가 회차마다 다시 계획하므로 이 세션의 `plan.md` 는 실행되지 않는다.
 
 ## See also
 
