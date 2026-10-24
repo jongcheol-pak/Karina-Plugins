@@ -27,7 +27,7 @@ remove [--dry-run] <경로>... — 경로마다 audit 과 같은 판정을 다�
   REMOVED | REFUSED | FAILED | PLAN 줄, 백업 항목마다 BACKUP | SKIP 줄.
 
 변동값 주입: --now <epoch 초> · --projects-dir · --pr-json <[{"head","state"}] 파일 — 없으면 `gh pr list` 를 부르고
-실패하면 PR 열은 -> · --backup-root(기본 시스템 임시 폴더/karina-worktree-backup) · --karina-cli <경로>(.py 면
+실패하면 PR 열은 -> · --backup-root(기본 시스템 임시 폴더/karina-plugin/worktree-backup — TEMP-FILES.md) · --karina-cli <경로>(.py 면
 python 으로 실행 · 없으면 KARINA_CLI_COMMAND → PATH 의 karina-cli) · --no-karina.
 
 종료 코드: 0 정상 · 1 거부·실패가 하나 이상(remove) · 2 레포·base 오류.
@@ -418,7 +418,7 @@ def main(argv=None):
     sub.choices['audit'].add_argument('--json', action='store_true')
     rm = sub.choices['remove']
     rm.add_argument('--dry-run', action='store_true')
-    rm.add_argument('--backup-root', default=os.path.join(tempfile.gettempdir(), 'karina-worktree-backup'))
+    rm.add_argument('--backup-root', default=os.path.join(tempfile.gettempdir(), 'karina-plugin', 'worktree-backup'))
     rm.add_argument('--ignored-dir-cap-mb', type=float, default=50)
     rm.add_argument('--karina-cli')
     rm.add_argument('--no-karina', action='store_true')

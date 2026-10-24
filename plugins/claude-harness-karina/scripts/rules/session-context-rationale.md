@@ -215,3 +215,15 @@
 **sid 는 `[^A-Za-z0-9._-]` 를 `_` 로 바꿔 파일명으로 쓴다** — `record-work-start.ps1` 이 같은 식으로 쓴다. 갈리면 이 줄이 출력 없이 빠져 아무도 모르므로 골든이 특수문자 sid 로 잰다.
 
 **compact 에만 싣는다.** startup·resume 은 새 세션이거나 그 세션 컨텍스트가 그대로라 다시 실을 이유가 없다. 파일이 없거나 읽지 못하면 줄을 내지 않는다 — 시각이 없으면 문서 쪽이 `work-clock.ps1` 로 폴백한다.
+
+## §40 [임시 폴더 정리] karina-plugin 하위 폴더의 기한 지난 항목을 걷는다
+
+**대상과 기한의 정본은 `session-context.ps1` 의 `$sweepTable` 이다** — `plan-variants`(14일) · `verify\<app>\<실행 id>`(깊이 2, 14일) · `scratch`(7일) · `chain` 의 `karina-chain-*-decisions.md`(30일). 폴더 배치는 `skills/TEMP-FILES.md` 가 정한다. 화면 변형·증거는 PR merge 전 화면 게이트와 체인 보고가 경로를 다시 보여 쓴 직후에 지우지 않고, 14일은 사용자 답이다(2026-10-24). 결정 파일 30일은 「plan N부터」 재개를 덮는 기간이다.
+
+**걷지 않는 것.** `backup\`·`worktree-backup\` 은 원본이 사라진 뒤의 유일한 사본일 수 있어 자동으로 지우지 않는다 — 사용자가 `/karina:temp-cleanup` 으로 고른다. `chain\` 의 `karina-chain-wait-*`·`karina-chain-verify-*` 는 `wait-worker.py`·`run-verify.py` 가 시작할 때 자기 접두만 걷는다 — 실행 중인 래퍼의 잠금을 지우면 그 래퍼가 물러나므로 그 판정은 잠금을 쓰는 쪽에 둔다.
+
+**왜 세션 시작이고 왜 출력 뒤인가.** 세션당 한 번이면 충분한 이유는 §38 과 같다. 이 hook 의 시한은 10초(`hooks/hooks.json`)이고 2026-10-24 실측 소요가 약 0.8초(pwsh 기동 포함)라, 삭제가 컨텍스트 계산을 늦추지 않게 출력 뒤에 둔다. 시한 초과 때 Claude Code 가 이미 낸 stdout 을 쓰는지는 재지 않아 근거로 쓰지 않는다 — 대신 시간 상한을 둔다.
+
+**시간 상한 2초 · 항목 하나를 지우기 전마다 확인한다.** 열거는 표의 깊이까지만 하고 나이는 그 항목 자신의 `LastWriteTime` 이다. 상한에 닿으면 남은 것은 다음 세션이 걷는다. `KARINA_TEMP_SWEEP_BUDGET_MS` 로 상한을 넣을 수 있게 한 것은 골든이 「상한 0 이면 아무것도 지우지 않음」을 재기 위해서다.
+
+**루트는 `TMPDIR`→`TEMP`→`TMP` 중 있는 폴더다.** `[IO.Path]::GetTempPath()` 는 Windows 에서 `TMP` 를 먼저 읽고 Python `tempfile.gettempdir()` 는 `TEMP` 를 먼저 읽는다(2026-10-24 실측). 두 값이 다른 환경에서 스크립트가 쓰는 폴더와 이 정리가 보는 폴더가 갈리지 않게 Python 순서를 따른다. 골든은 `TEMP`·`TMP` 를 함께 `$work` 아래로 돌려 실제 사용자 임시 폴더를 건드리지 않는다.

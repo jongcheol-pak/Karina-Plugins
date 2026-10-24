@@ -256,11 +256,18 @@ def place_loop(call, lock, place, poll_ms, alive=None):
             return _result('freed', place, [_compact(rows)[:RAW_LIMIT]])
 
 
+def chain_dir():
+    """임시 폴더의 `karina-plugin/chain` — 없으면 만든다. 폴더 배치는 `../../TEMP-FILES.md`."""
+    d = os.path.join(tempfile.gettempdir(), 'karina-plugin', 'chain')
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
 class FileLock:
-    """dispatch 마다 시스템 임시 폴더에 둔 파일 하나. 새 대기가 자기 표식을 덮어쓰면 앞 대기는 물러난다."""
+    """dispatch 마다 chain 폴더에 둔 파일 하나. 새 대기가 자기 표식을 덮어쓰면 앞 대기는 물러난다."""
 
     def __init__(self, dispatch):
-        self.path = os.path.join(tempfile.gettempdir(), 'karina-chain-wait-%s.lock' % dispatch)
+        self.path = os.path.join(chain_dir(), 'karina-chain-wait-%s.lock' % dispatch)
         self.token = '%d-%d' % (os.getpid(), time.time_ns())
         with open(self.path, 'w', encoding='utf-8') as f:
             f.write(self.token)
@@ -497,7 +504,7 @@ class FileStore:
     알 수 없으므로 끝에 지우지 않고, 7일 지나면 다음 대기의 시작 정리(sweep_stale)가 지운다."""
 
     def __init__(self, dispatch):
-        self.path = os.path.join(tempfile.gettempdir(), 'karina-chain-wait-%s.seen' % dispatch)
+        self.path = os.path.join(chain_dir(), 'karina-chain-wait-%s.seen' % dispatch)
 
     def load(self):
         """부재면 None, 읽지 못하면 {} — 읽지 못함을 부재로 보면 start() 가 남은 상태를 HEAD 로 덮어쓴다."""
@@ -599,7 +606,7 @@ def main(argv=None):
         lock.release()
         print('\n'.join(out), flush=True)
         return 0
-    sweep_stale(tempfile.gettempdir(), time.time())
+    sweep_stale(chain_dir(), time.time())
     ids = a.dispatch
     labels = a.label or [''] * len(ids)
     progress = None

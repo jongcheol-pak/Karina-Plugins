@@ -7,7 +7,7 @@
 ## 기본 전제
 
 - Notes 를 일회용 데이터 폴더로 `http://127.0.0.1:4173` 에 띄운다.
-- 동시 실행이 상태를 나눠 쓰지 않게 `NOTES_DATA_DIR=/tmp/notes-verify-$RUN_ID` 를 둔다.
+- 동시 실행이 상태를 나눠 쓰지 않게 `NOTES_DATA_DIR=/tmp/karina-plugin/verify/notes/$RUN_ID/data` 를 둔다.
 - `Quarterly plan`·`Grocery list` 제목의 노트를 시드한다.
 - `control-notes` 와 `notes` CLI 를 `PATH` 에 둔다.
 - `control-notes doctor` 를 돌려 기대 URL·데이터 폴더·빌드 리비전을 확인한다.

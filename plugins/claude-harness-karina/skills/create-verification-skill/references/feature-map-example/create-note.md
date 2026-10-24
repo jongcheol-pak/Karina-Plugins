@@ -31,7 +31,7 @@ Preconditions:
 - **저장 유지 확인.** 노트 목록으로 돌아가 노트를 다시 연다. `control-notes browser click --role link --name "All notes"` 와 `control-notes browser click --role link --name "Release checklist"` 를 실행한다. 편집기에 저장한 두 값이 보인다.
 - **초안 취소.** 새 노트를 열고 `Discard me` 를 쓴 뒤 `Cancel` 을 고른다. `control-notes browser click --role button --name "New note"`, `control-notes browser fill --role textbox --name "Title" --value "Discard me"`, `control-notes browser click --role button --name "Cancel"` 을 실행한다. 노트 목록으로 돌아오고 `Discard me` 링크가 없다.
 - **CLI 진입.** 두 번째 노트를 만든다. `control-notes cli -- notes create --title "CLI note" --body "Created from terminal" --format json` 을 실행한다. 종료 코드 `0` 이고 표준 출력에 새 노트 ID 와 제목이 있다.
-- **증명.** `All notes` 에서 저장한 두 노트를 다시 연다. `control-notes browser snapshot --aria --path %TEMP%/verify-notes/<실행 id>/create-note/list.aria.txt` 와 `control-notes browser screenshot --path %TEMP%/verify-notes/<실행 id>/create-note/list.png` 를 실행한다. 두 증거에 `Release checklist` 와 `CLI note` 가 보인다.
+- **증명.** `All notes` 에서 저장한 두 노트를 다시 연다. `control-notes browser snapshot --aria --path %TEMP%/karina-plugin/verify/notes/<실행 id>/create-note/list.aria.txt` 와 `control-notes browser screenshot --path %TEMP%/karina-plugin/verify/notes/<실행 id>/create-note/list.png` 를 실행한다. 두 증거에 `Release checklist` 와 `CLI note` 가 보인다.
 
 ## Gotchas
 

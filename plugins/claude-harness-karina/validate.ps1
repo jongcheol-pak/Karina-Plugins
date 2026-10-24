@@ -107,7 +107,7 @@ Test-Json-Valid (Join-Path $pluginRoot "hooks/hooks.json") "hooks.json 파싱" |
 Write-Host ""
 
 # 3. Skills (expected 목록 존재 + 미등록 탐지 — 카운트는 목록에서 산출)
-$skills = @('plan', 'implement', 'karina-systematic-debugging', 'llm-wiki', 'record-project-fact', 'chain-plan', 'pr', 'create-verification-skill', 'maintain-verification-skill', 'create-formal-verification-skill', 'maintain-formal-verification-skill', 'reflect', 'worktree-cleanup', 'no-comments', 'plan-draft')
+$skills = @('plan', 'implement', 'karina-systematic-debugging', 'llm-wiki', 'record-project-fact', 'chain-plan', 'pr', 'create-verification-skill', 'maintain-verification-skill', 'create-formal-verification-skill', 'maintain-formal-verification-skill', 'reflect', 'worktree-cleanup', 'no-comments', 'plan-draft', 'temp-cleanup')
 Write-Host "3. Skills $($skills.Count)개" -ForegroundColor Yellow
 foreach ($s in $skills) {
     $skillPath = Join-Path $pluginRoot "skills/$s/SKILL.md"
@@ -128,7 +128,7 @@ Write-Host ""
 # 3-1. 가이드 문서 (설치본에 실재하는가)
 #   스킬 문서(SKILL.md·references)가 가리키는 설계·예산 문서와 공통 참조다. 3번은 SKILL.md 만
 #   보므로 이 파일들이 설치본에서 빠져도 잡히지 않고, 그때 포인터는 존재하는데 대상이 없는 상태가 된다.
-$guides = @('DESIGN.md', 'AUTHORING.md', 'BUDGET.md', 'WIKI.md', 'AGENTS-BOUNDARY.md', 'WRITING.md', 'PERF-MEASUREMENT.md', 'REPO-CONVENTIONS.md', 'READONLY-SUBAGENTS.md')
+$guides = @('DESIGN.md', 'AUTHORING.md', 'BUDGET.md', 'WIKI.md', 'AGENTS-BOUNDARY.md', 'WRITING.md', 'PERF-MEASUREMENT.md', 'REPO-CONVENTIONS.md', 'READONLY-SUBAGENTS.md', 'TEMP-FILES.md')
 Write-Host "3-1. 가이드 문서 $($guides.Count)개" -ForegroundColor Yellow
 foreach ($g in $guides) {
     Test-Item-Exists (Join-Path $pluginRoot "skills/$g") "guide: $g" | Out-Null

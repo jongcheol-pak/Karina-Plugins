@@ -36,6 +36,7 @@
 - **chain-plan 검증 래퍼 골든** (`chain-plan/scripts/run-verify.py` 수정 시 필수): `python skills/chain-plan/evals/run_verify_evals.py`
 - **reflect 스크립트 골든** (`skills/reflect/scripts/**`·`skills/reflect/evals/**` 수정 시 필수): `python skills/reflect/evals/run_digest_evals.py`
 - **worktree-cleanup 스크립트 골든** (`skills/worktree-cleanup/scripts/**`·`skills/worktree-cleanup/evals/**` 수정 시 필수): `python skills/worktree-cleanup/evals/run_cleanup_evals.py`
+- **temp-cleanup 스크립트 골든** (`skills/temp-cleanup/scripts/**`·`skills/temp-cleanup/evals/**` 수정 시 필수): `python skills/temp-cleanup/evals/run_temp_cleanup_evals.py`
 - **하니스 정합 셀프체크** (`evals/**`·**대장 2파일**·`agents/*.md`·`*.md` 수정 시 필수 · **골든 케이스 수를 바꿨으면 매니페스트 무관하게 필수** — **exit 2는 앵커 파싱 실패이지 통과가 아니다**):
   ```
   python evals/check-harness-consistency.py

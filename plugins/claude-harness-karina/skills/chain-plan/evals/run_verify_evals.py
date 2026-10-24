@@ -14,6 +14,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, '..', 'scripts', 'run-verify.py')
+CHAIN_DIR = os.path.join(tempfile.gettempdir(), 'karina-plugin', 'chain')
 
 spec = importlib.util.spec_from_file_location('run_verify', SCRIPT)
 rv = importlib.util.module_from_spec(spec)
@@ -308,9 +309,29 @@ def file_lock_releases_only_own():
         assert not os.path.exists(b.path)
         c = rv.FileLock(os.path.join(d, 'other'))
         assert c.path != b.path, '레포가 다르면 잠금이 갈린다'
+        assert os.path.dirname(c.path) == CHAIN_DIR, c.path
         c.release()
     finally:
         shutil.rmtree(d, ignore_errors=True)
+
+
+@case
+def sweep_removes_week_old_verify_files():
+    # 7일 지난 karina-chain-verify-* 만 지운다 — 7일 이내 파일과 다른 접두 파일은 남긴다.
+    d = tempfile.mkdtemp(prefix='karina-verify-eval-')
+    now = 1_000_000_000.0
+    files = {'karina-chain-verify-a.lock': 8, 'karina-chain-verify-b.log': 8, 'karina-chain-verify-c.lock': 1,
+             'karina-chain-run_x-decisions.md': 8}
+    try:
+        for name, days in files.items():
+            p = os.path.join(d, name)
+            with open(p, 'w', encoding='utf-8') as f:
+                f.write('x')
+            os.utime(p, (now - days * 86400, now - days * 86400))
+        rv.sweep_stale(d, now)
+        assert sorted(os.listdir(d)) == ['karina-chain-run_x-decisions.md', 'karina-chain-verify-c.lock'], os.listdir(d)
+    finally:
+        shutil.rmtree(d)
 
 
 def _wrap(args, cwd, env=None, timeout=90):
@@ -331,7 +352,9 @@ def real_short_command_passes():
 
 
 def _verify_logs():
-    return {f for f in os.listdir(tempfile.gettempdir()) if f.startswith('karina-chain-verify-') and f.endswith('.log')}
+    if not os.path.isdir(CHAIN_DIR):
+        return set()
+    return {f for f in os.listdir(CHAIN_DIR) if f.startswith('karina-chain-verify-') and f.endswith('.log')}
 
 
 @case

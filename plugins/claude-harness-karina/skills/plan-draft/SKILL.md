@@ -43,7 +43,7 @@ disable-model-invocation: true
 
        무시 규칙은 `.git/info/exclude` 라 linked worktree 에도 걸린다.
      - `L`: 아무것도 바꾸지 않고 끝낸다.
-     - `O`: `plan.md` 를 시스템 임시 폴더에 백업하고 그 경로를 보인 뒤 아래로 간다. 진행 중인 다른 세션의 plan 이라 되돌릴 수단을 남긴다.
+     - `O`: `plan.md` 를 `../TEMP-FILES.md` 의 `backup\` 에 그 이름 규칙으로 백업하고 그 경로를 보인 뒤 아래로 간다. 진행 중인 다른 세션의 plan 이라 되돌릴 수단을 남긴다.
    - **사용 중이 아니면(없음·완료) 프롬프트를 만들어 `karina:plan` 을 부른다.**
      - 작성 이후 바뀐 파일: 초안 task `- **Files**:` 줄의 백틱 경로와 `git diff --name-only <작성 HEAD>..HEAD` 의 교집합이다. 작성 HEAD 가 없으면 「작성 HEAD 를 찾을 수 없음 — 전부 다시 잰다」로 적는다.
      - args 형식은 아래와 같고, 그 뒤는 `karina:plan` 이 다시 실측·리뷰해 승인을 받는다. 승인되면 초안을 지우고, 중단하면 초안이 남는다.
