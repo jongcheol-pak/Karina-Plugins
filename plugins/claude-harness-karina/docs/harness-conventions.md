@@ -63,7 +63,7 @@
 
 **reflect 스크립트 골든** — `python skills/reflect/evals/run_digest_evals.py` 는 **18케이스(기계 미대조)**다(수 초). 임시 폴더에 가짜 `~/.claude/projects`(세션 전사 JSONL)와 가짜 대장을 바이트로 만들고 두 스크립트를 실제 프로세스로 띄운다 — 픽스처를 레포에 두지 않는 것은 대장의 CRLF·BOM 을 git 체크아웃 정규화에 맡기지 않으려는 것이다. 요약(`digest_transcript.py`)은 U·A·T·ERR·H 다섯 줄 머리 · thinking·성공 결과·메타 레코드 제외 · 서브에이전트 전사 붙이기 · 같은 폴더 남의 세션과 다른 프로젝트 미열람 · 세션 ID 환경변수 · 세션 판정 실패 exit 2(ID 없음·0개·2개 이상) · 인식 레코드 0 exit 3 · 깨진 JSON 줄 건너뜀 · 갈래별 자르기 상한 · `--out` 과 총 줄 수를 재고, 대장 쓰기(`append_deferred.py`)는 CRLF·BOM 보존 · 지정 그룹에만 넣기 · 잔량 줄 증가 · 그룹·잔량 줄 없음과 형식 위반의 exit 2·파일 불변(오류 문구까지 단언 — 스크립트가 없을 때의 python exit 2 와 갈라야 한다) · 마지막 그룹의 `---` 꼬리 앞 · 빈 그룹 · 그룹 끝 빈 줄 보존을 잰다.
 
-**temp-cleanup 스크립트 골든** — `python skills/temp-cleanup/evals/run_temp_cleanup_evals.py` 는 **10케이스(기계 미대조)**다(약 2초). 케이스마다 임시 디렉터리 아래 가짜 `karina-plugin` 루트를 만들어 `--root`·`--now` 로 넘긴다 — 목록(하위 폴더별 항목·루트 없음 exit 0) · dry-run 무변경 · 루트 안 파일·폴더·하위 폴더째 삭제 · 루트 자체·루트 밖·`..` 탈출 거부 · read-only 삭제 · 7일 이내 체인 잠금 거부와 목록 표시를 잰다.
+**temp-cleanup 스크립트 골든** — `python skills/temp-cleanup/evals/run_temp_cleanup_evals.py` 는 **11케이스(기계 미대조)**다(약 2초). 케이스마다 임시 디렉터리 아래 가짜 `karina-plugin` 루트를 만들어 `--root`·`--now` 로 넘긴다 — 목록(하위 폴더별 항목·루트 없음 exit 0) · dry-run 무변경 · 루트 안 파일·폴더·하위 폴더째 삭제 · 루트 자체·루트 밖·`..` 탈출 거부 · read-only 삭제 · 7일 이내 체인 잠금 거부와 목록 표시 · 그 잠금을 담은 폴더(chain·루트)째 삭제 거부를 잰다.
 
 **worktree-cleanup 스크립트 골든** — `python skills/worktree-cleanup/evals/run_cleanup_evals.py` 는 **35케이스(기계 미대조)**다(약 40초 — 케이스마다 실제 git 레포와 worktree 를 만든다). 임시 폴더에 레포와 레포 바깥 worktree 들을 만들고 가짜 projects 폴더(세션 전사 mtime)·PR 상태 JSON·가짜 Karina CLI(python 스크립트)를 주입해 스크립트를 실제 프로세스로 띄운다 — 전역 git 설정은 빈 파일로 격리한다(전역 gitignore 가 픽스처를 삼키면 작성자 PC 에서만 결과가 갈린다). audit 은 버킷 갈래마다(safe·review·hold-wip·hold-open-pr·hold-chain·hold-recent·hold-locked·current·detached·비 ASCII 경로)와 index mtime 불변을, remove 는 백업 내용·manifest·브랜치 보존·hold 거부·상한 초과 건너뜀·dry-run 무변경·부분 실패·Karina CLI 세 갈래(관리 → rm · selector_not_found → git · 앱 꺼짐 → 실패)를 잰다. 출력 열·버킷·종료 코드의 정본은 그 스크립트의 모듈 docstring 이다.
 
@@ -137,7 +137,7 @@ task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 55,485 | 137,000 |
+| `docs/harness-conventions.md` | 55,516 | 137,000 |
 | `docs/golden-runner.md` | 13,695 | 28,000 |
 | `skills/llm-wiki/references/lookup-rules.md` | 10,506 | 37,000 |
 

@@ -10,7 +10,8 @@ list — 첫 줄 `RESULT: list · N items · <합계 크기>`, 이어서 항목�
   루트가 없으면 `RESULT: list · 0 items · 0 B` 와 exit 0.
 remove — 첫 줄 `RESULT: removed N · refused N · failed N`(--dry-run 이면 `RESULT: dry-run · would remove N · refused N`),
   이어서 경로마다 `REMOVED`·`WOULD-REMOVE`·`REFUSED <경로> — <사유>`·`FAILED <경로> — <사유>`.
-  거부: 루트 자체 · 루트 밖(`..` 로 빠지는 경로 포함) · 없는 경로 · `chain` 의 7일 이내 `karina-chain-*.lock`(실행 중일 수 있음).
+  거부: 루트 자체 · 루트 밖(`..` 로 빠지는 경로 포함) · 없는 경로 · `chain` 의 7일 이내 `karina-chain-*.lock`(실행 중일 수 있음)
+  · 그런 잠금을 안에 담은 폴더.
   read-only 파일은 권한을 풀고 지운다.
 종료 코드: 0 전부 처리 · 1 거부·실패가 하나라도 있음 · 2 인자 오류.
 """
@@ -108,8 +109,13 @@ def refusal(root, path, now):
         return 'karina-plugin 루트 밖'
     if not os.path.lexists(path):
         return '없는 경로'
-    if maybe_in_use(root, os.path.realpath(path), now):
+    real_path = os.path.realpath(path)
+    if maybe_in_use(root, real_path, now):
         return '7일 이내 체인 잠금 — 실행 중일 수 있음'
+    if os.path.isdir(real_path):
+        for dp, _, fs in os.walk(real_path):
+            if any(maybe_in_use(root, os.path.join(dp, f), now) for f in fs):
+                return '안에 7일 이내 체인 잠금이 있다 — 실행 중일 수 있음'
     return None
 
 

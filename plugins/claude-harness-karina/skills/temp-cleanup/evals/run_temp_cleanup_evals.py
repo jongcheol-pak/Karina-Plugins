@@ -174,6 +174,22 @@ def refuse_young_chain_lock():
     with_fixture(body)
 
 
+@case
+def refuse_folder_holding_young_chain_lock():
+    # 폴더째 넘겨도 그 아래 7일 이내 체인 잠금이 있으면 거부한다 — 파일 단위 판정을 폴더로 우회하지 못하게.
+    def body(fx):
+        young = fx.put('chain/karina-chain-verify-abc.lock', 1)
+        chain = os.path.join(fx.root, 'chain')
+        for target in (chain, fx.root):
+            rc, out, _ = fx.run('remove', target)
+            assert rc == 1 and 'REFUSED' in out and os.path.exists(young), (target, out)
+        shutil.rmtree(chain)
+        fx.put('chain/karina-chain-verify-old.lock', 8)
+        rc, out, _ = fx.run('remove', chain)
+        assert rc == 0 and not os.path.exists(chain), out
+    with_fixture(body)
+
+
 def main():
     ok = 0
     for fn in CASES:
