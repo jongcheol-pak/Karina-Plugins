@@ -36,7 +36,7 @@ Preconditions:
 - **질의 지우기.** `Clear search` 를 고른다. `control-notes browser click --role button --name "Clear search"` 를 실행한다. searchbox 가 비고 `Recent notes` 영역이 결과 목록을 대신한다.
 - **CLI 매치.** 터미널에서 검색한다. `control-notes cli -- notes search "quarterly" --format json` 을 실행한다. 종료 코드 `0` 이고 표준 출력에 제목이 `Quarterly plan` 인 객체 하나가 있다.
 - **CLI 매치 없음.** 없는 값을 검색한다. `control-notes cli -- notes search "volcano" --format json` 을 실행한다. 종료 코드 `0` 이고 표준 출력은 `[]` 다.
-- **증명.** 결과가 채워진 상태를 남긴다. `control-notes browser snapshot --aria --path %TEMP%/verify-notes/<실행 id>/search/results.aria.txt` 와 `control-notes browser screenshot --path %TEMP%/verify-notes/<실행 id>/search/results.png` 를 실행한다. 두 증거에 Notes·질의·`Quarterly plan` 이 보인다.
+- **증명.** 결과가 채워진 상태를 남긴다. `control-notes browser snapshot --aria --path %TEMP%/karina-plugin/verify/notes/<실행 id>/search/results.aria.txt` 와 `control-notes browser screenshot --path %TEMP%/karina-plugin/verify/notes/<실행 id>/search/results.png` 를 실행한다. 두 증거에 Notes·질의·`Quarterly plan` 이 보인다.
 
 ## Gotchas
 
