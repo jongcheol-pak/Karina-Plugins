@@ -1142,6 +1142,63 @@ if (Test-HookSelected @('session-context')) {
     }
     Remove-Item -Recurse -Force $scMkProj -ErrorAction SilentlyContinue
 
+    # ---- 세션 시작 karina-plugin 임시 폴더 기한 정리 ----
+    # 실제 사용자 임시 폴더를 건드리지 않게 TEMP·TMP 를 함께 $work 아래로 돌린다 — Windows GetTempPath 는 TMP 를,
+    #   Python 은 TEMP 를 먼저 읽어 하나만 바꾸면 hook 이 실제 임시 폴더를 본다. 항목마다 따로 단언해 어느 폴더가 빠졌는지 갈리게 한다.
+    $scTsProj = Join-Path $work 'sc-tempsweep-proj'
+    New-Item -ItemType Directory $scTsProj -Force | Out-Null
+    @('# Plan: test', '## Tasks', '- [ ] **T1-1** todo') | Set-Content -Encoding UTF8 (Join-Path $scTsProj 'plan.md')
+    $scTsTmp = Join-Path $work 'sc-tempsweep-tmp'
+    $scTsRoot = Join-Path $scTsTmp 'karina-plugin'
+    function New-ScTsItem {
+        param([string]$Rel, [int]$DaysAgo, [switch]$Dir)
+        $p = Join-Path $scTsRoot $Rel
+        if ($Rel -eq '..\stray.txt') { $p = Join-Path $scTsTmp 'stray.txt' }
+        New-Item -ItemType Directory (Split-Path -Parent $p) -Force | Out-Null
+        if ($Dir) { New-Item -ItemType Directory $p -Force | Out-Null; Set-Content -LiteralPath (Join-Path $p 'a.txt') -Value '' }
+        else { Set-Content -LiteralPath $p -Value '' }
+        (Get-Item -LiteralPath $p).LastWriteTime = (Get-Date).AddDays(-$DaysAgo)
+        return $p
+    }
+    $scTsCases = @(
+        @{ Rel = 'plan-variants\20260901-1000'; Days = 15; Dir = $true; Gone = $true }
+        @{ Rel = 'plan-variants\20261020-1000'; Days = 3; Dir = $true; Gone = $false }
+        @{ Rel = 'verify\notes\run-old'; Days = 15; Dir = $true; Gone = $true }
+        @{ Rel = 'verify\notes\run-new'; Days = 3; Dir = $true; Gone = $false }
+        @{ Rel = 'scratch\old.ps1'; Days = 8; Dir = $false; Gone = $true }
+        @{ Rel = 'scratch\new.ps1'; Days = 1; Dir = $false; Gone = $false }
+        @{ Rel = 'chain\karina-chain-run_old-decisions.md'; Days = 31; Dir = $false; Gone = $true }
+        @{ Rel = 'chain\karina-chain-run_new-decisions.md'; Days = 3; Dir = $false; Gone = $false }
+        @{ Rel = 'chain\karina-chain-wait-x.lock'; Days = 31; Dir = $false; Gone = $false }
+        @{ Rel = 'chain\karina-chain-verify-x.log'; Days = 31; Dir = $false; Gone = $false }
+        @{ Rel = 'backup\plan-old.md'; Days = 60; Dir = $false; Gone = $false }
+        @{ Rel = 'worktree-backup\repo\wt-old'; Days = 60; Dir = $true; Gone = $false }
+        @{ Rel = '..\stray.txt'; Days = 60; Dir = $false; Gone = $false }
+    )
+    foreach ($c in $scTsCases) { $c.Path = New-ScTsItem -Rel $c.Rel -DaysAgo $c.Days -Dir:$c.Dir }
+    # 하위 폴더를 만든 뒤 앱 폴더의 시각이 갱신되므로 verify\notes 자체는 오래된 것으로 되돌려도 깊이 2 만 재는지 본다.
+    (Get-Item -LiteralPath (Join-Path $scTsRoot 'verify\notes')).LastWriteTime = (Get-Date).AddDays(-60)
+    $scTsSaved = @{ TEMP = $env:TEMP; TMP = $env:TMP; TMPDIR = $env:TMPDIR; P = $env:USERPROFILE; B = $env:KARINA_TEMP_SWEEP_BUDGET_MS }
+    try {
+        $env:TEMP = $scTsTmp; $env:TMP = $scTsTmp; $env:TMPDIR = $null; $env:USERPROFILE = $iso; $env:KARINA_TEMP_SWEEP_BUDGET_MS = $null
+        $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scTsProj } | ConvertTo-Json -Compress)
+        Assert-Case -Name "session-context: 임시 폴더 정리가 있어도 컨텍스트 출력은 그대로" -R $r -ExpectExit 0 -ExpectContains '미완료 1'
+        foreach ($c in $scTsCases) {
+            $exists = Test-Path -LiteralPath $c.Path
+            $ok = if ($c.Gone) { -not $exists } else { $exists }
+            $want = if ($c.Gone) { '지움' } else { '남김' }
+            Assert-Case -Name "session-context: karina-plugin 임시 정리 — $($c.Rel) $($c.Days)일 → $want" -R @{ code = ([int](-not $ok)); out = "exists=$exists" } -ExpectExit 0
+        }
+        Assert-Case -Name "session-context: karina-plugin 임시 정리 — verify 앱 폴더 자체는 깊이 밖이라 남김" -R @{ code = ([int](-not (Test-Path -LiteralPath (Join-Path $scTsRoot 'verify\notes')))); out = '' } -ExpectExit 0
+        $scTsBudget = New-ScTsItem -Rel 'scratch\budget-old.ps1' -DaysAgo 30
+        $env:KARINA_TEMP_SWEEP_BUDGET_MS = '0'
+        $null = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scTsProj } | ConvertTo-Json -Compress)
+        Assert-Case -Name "session-context: karina-plugin 임시 정리 — 시간 상한 0 이면 아무것도 지우지 않음" -R @{ code = ([int](-not (Test-Path -LiteralPath $scTsBudget))); out = '' } -ExpectExit 0
+    } finally {
+        $env:TEMP = $scTsSaved.TEMP; $env:TMP = $scTsSaved.TMP; $env:TMPDIR = $scTsSaved.TMPDIR; $env:USERPROFILE = $scTsSaved.P; $env:KARINA_TEMP_SWEEP_BUDGET_MS = $scTsSaved.B
+    }
+    Remove-Item -Recurse -Force $scTsProj, $scTsTmp -ErrorAction SilentlyContinue
+
     # ---- compact 직후 작업 시작 시각 재주입 (record-work-start 의 상태 파일) ----
     # 상태 파일은 record-work-start 가 sid 를 [^A-Za-z0-9._-] → _ 로 바꿔 쓴다 — 같은 식으로 찾는지
     #   특수문자 sid 로 잰다. 위 블록과 같은 이유로 USERPROFILE 을 $iso 로 되돌린다.

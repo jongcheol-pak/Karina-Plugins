@@ -20,6 +20,35 @@ foreach ($d in $staleMarkerDirs) {
     } catch {}
 }
 
+# [임시 폴더 정리] karina-plugin 하위 폴더의 기한 지난 항목을 시간 상한 안에서 걷는다 — 근거는 `rules/session-context-rationale.md` §40
+function Invoke-KarinaTempSweep {
+    $tempBase = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
+    if (-not $tempBase) { $tempBase = [System.IO.Path]::GetTempPath() }
+    $root = Join-Path $tempBase 'karina-plugin'
+    if (-not (Test-Path -LiteralPath $root -PathType Container)) { return }
+    $budgetMs = 2000
+    if ($env:KARINA_TEMP_SWEEP_BUDGET_MS -match '^\d+$') { $budgetMs = [int]$env:KARINA_TEMP_SWEEP_BUDGET_MS }
+    # (하위 폴더, 깊이, 이름 필터, 기한 일수) — backup·worktree-backup 과 chain 의 잠금·로그는 대상이 아니다
+    $sweepTable = @(
+        @('plan-variants', 1, '*', 14),
+        @('verify', 2, '*', 14),
+        @('scratch', 1, '*', 7),
+        @('chain', 1, 'karina-chain-*-decisions.md', 30)
+    )
+    $watch = [System.Diagnostics.Stopwatch]::StartNew()
+    foreach ($entry in $sweepTable) {
+        $dir = Join-Path $root $entry[0]
+        if (-not (Test-Path -LiteralPath $dir -PathType Container)) { continue }
+        $items = Get-ChildItem -LiteralPath $dir -Filter $entry[2] -Force -ErrorAction SilentlyContinue
+        if ($entry[1] -eq 2) { $items = $items | Where-Object PSIsContainer | ForEach-Object { Get-ChildItem -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue } }
+        $cutoff = (Get-Date).AddDays(-$entry[3])
+        foreach ($item in $items) {
+            if ($watch.ElapsedMilliseconds -ge $budgetMs) { return }
+            if ($item.LastWriteTime -lt $cutoff) { Remove-Item -LiteralPath $item.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    }
+}
+
 # [절 추출] 스킬 문서에서 지정 헤딩 사이를 잘라 낸다 — compact 직후 루프 제어 규칙 주입용. — 근거는 `rules/session-context-rationale.md` §3
 $sectionMaxBytes = 20000   # 추출 결과 상한 — 대상 절이 예상 밖으로 커졌을 때 주입이 세션을 잠식하는 것을 막는다
 function Get-SkillSection {
@@ -355,6 +384,7 @@ try {
         # stdout → 세션 컨텍스트 주입 (SessionStart exit 0 규약 — warn-version-drift와 동일)
         Write-Output ($lines -join "`n")
     }
+    try { Invoke-KarinaTempSweep } catch {}
     exit 0
 } catch {
     exit 0
