@@ -420,6 +420,22 @@ def remove_dry_run_changes_nothing():
 
 
 @case
+def remove_default_backup_root_is_karina_plugin():
+    # --backup-root 를 주지 않으면 임시 폴더의 karina-plugin/worktree-backup 에 백업한다(TEMP-FILES.md)
+    def body(fx):
+        p = fx.add('defroot', commit=True, merge=True)
+        fx.write('defroot', 'plan.md', '# plan\n')
+        fake_tmp = os.path.join(fx.root, 'tmp')
+        os.makedirs(fake_tmp)
+        fx.env.update({'TMPDIR': fake_tmp, 'TEMP': fake_tmp, 'TMP': fake_tmp})
+        rc, out, err = fx.run('remove', '--no-karina', p)
+        want = os.path.join(fake_tmp, 'karina-plugin', 'worktree-backup')
+        assert rc == 0 and want.replace('\\', '/') in out.replace('\\', '/'), (want, out, err)
+        assert os.path.isdir(want) and os.listdir(want), want
+    with_fixture(body)
+
+
+@case
 def remove_continues_after_failure():
     # ㉔ 한 경로가 실패해도 나머지는 지우고 exit 1
     def body(fx):
