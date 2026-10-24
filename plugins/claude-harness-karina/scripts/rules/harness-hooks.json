@@ -9,6 +9,7 @@
     "guard-write",
     "harness-root",
     "hook-event-log",
+    "inject-reply-language",
     "loop-continue",
     "post-write-checks",
     "record-work-start",
