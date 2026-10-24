@@ -11,7 +11,7 @@ description: 병합이 끝난 git worktree 를 정리한다 — worktree 마다 
 
 1. **감사** — 대상 레포 루트에서 `python "<이 SKILL.md 의 폴더>/scripts/worktree_cleanup.py" audit --repo <레포>` 를 돌린다. 전사 폴더가 커서 느리면 `run_in_background` 로 돌린다. base 를 원격 최신으로 보려면 먼저 `git fetch origin` 한다 — 스크립트는 fetch 하지 않는다.
 2. **표를 보인다** — 버킷별로 묶어 낸다. `safe` 를 기본 후보로 제시하고, `review`·`hold-recent` 는 사용자가 경로나 이름으로 지목하면 넣을 수 있다고 알린다. `current`·`hold-*`(recent 제외)는 스크립트가 거부하므로 후보에 넣지 않는다 — 각 버킷이 왜 막히는지 한 구씩 붙인다(`hold-chain` 은 chain-plan 재개가 그 안의 `plan.md` 를 읽는다).
-3. **삭제 계획을 보이고 한 번 승인받는다** — 고른 경로로 `remove --dry-run <경로>...` 를 돌려 `BACKUP`·`SKIP` 줄을 그대로 보인다. `SKIP`(상한을 넘어 백업하지 않는 ignore 폴더)은 지운 뒤 되살릴 수 없으니 항목마다 이름과 크기를 보인다. 승인 없이 4번으로 가지 않는다 — 미추적·ignore 파일은 git 이력에 없어 백업 밖의 것은 복구 경로가 없다.
+3. **삭제 계획을 보이고 한 번 승인받는다** — 고른 경로로 `remove --dry-run <경로>...` 를 돌려 `BACKUP`·`SKIP` 줄을 그대로 보인다. `SKIP`(백업하지 않는 ignore 폴더 — `bin`·`obj`·`node_modules` 같은 빌드·캐시 폴더이거나 상한을 넘은 것)은 지운 뒤 되살릴 수 없으니 항목마다 이름과 크기를 보인다. 승인 없이 4번으로 가지 않는다 — 미추적·ignore 파일은 git 이력에 없어 백업 밖의 것은 복구 경로가 없다.
 4. **삭제** — 승인받은 경로 그대로 `remove <경로>...` 를 돌린다. 경로를 바꾸거나 늘리려면 3번으로 돌아간다.
 5. **보고** — `RESULT` 줄, 지운 경로와 백업 위치, `REFUSED`·`FAILED` 경로와 사유, 건너뛴 ignore 폴더. 백업은 `%TEMP%\karina-plugin\worktree-backup\`(`../TEMP-FILES.md`)에 남고 자동으로 지우지 않는다 — 지우려면 `/karina:temp-cleanup` 이고, OS 의 임시 폴더 정리에는 지워질 수 있다고 한 줄 붙인다.
 

@@ -16,8 +16,9 @@ audit — 읽기 전용. git 호출은 모두 `--no-optional-locks` 라 index �
 
 remove [--dry-run] <경로>... — 경로마다 audit 과 같은 판정을 다시 해 hold·current 버킷과 주 worktree 는 거부한다.
   지우기 전에 미추적(`??`)·ignore(`!!`) 항목을 `<backup-root>/<레포 이름>/<worktree 이름>-<시각>/` 에 복사하고
-  manifest.txt(원래 경로·브랜치·HEAD·백업한 것·건너뛴 것)를 쓴다. ignore 폴더 항목은 합계가 --ignored-dir-cap-mb
-  를 넘으면 건너뛴다. 미추적 폴더는 상한 없이 복사한다.
+  manifest.txt(원래 경로·브랜치·HEAD·백업한 것·건너뛴 것과 사유)를 쓴다. ignore 폴더 항목은 이름이 ARTIFACT_DIRS
+  (빌드·캐시 폴더)이면 크기와 무관하게, 그 밖은 합계가 --ignored-dir-cap-mb 를 넘으면 건너뛴다. 미추적 폴더는 상한
+  없이 복사하되 그 안의 ignore 항목은 빼고 자기 규칙으로 따로 처리한다.
   삭제: Karina CLI 가 그 경로를 아는 worktree(`worktree show --worktree path:<경로>` 가 ok)는
   `worktree rm --worktree path:<경로> --force --json`, `selector_not_found` 면 `git worktree remove --force`,
   그 밖의 오류(앱이 꺼짐 등)면 그 경로를 실패로 두고 지우지 않는다. 남은 폴더는 읽기 전용을 풀고 지운다.
@@ -47,6 +48,8 @@ DAY = 86400
 HOLD = ('current', 'hold-locked', 'hold-wip', 'hold-open-pr', 'hold-chain')
 CHAIN_RX = re.compile(r'chain-[0-9A-Za-z]{8}-p\d+$')
 PR_RANK = {'OPEN': 3, 'MERGED': 2, 'CLOSED': 1}
+ARTIFACT_DIRS = frozenset(('bin', 'obj', 'node_modules', 'dist', 'build', 'out', 'target', '__pycache__', '.vs', '.venv',
+                           'venv', '.gradle', '.next', '.pytest_cache', '.mypy_cache', '.tox'))
 
 
 class Fatal(Exception):
@@ -286,7 +289,7 @@ def cmd_audit(args):
 
 
 def backup_plan(path, entries, cap_bytes):
-    """(백업할 상대 경로 목록, [(건너뛸 상대 경로, 크기)])."""
+    """(백업할 상대 경로 목록, [(건너뛸 상대 경로, 크기, 사유)])."""
     take, skip = [], []
     for xy, rel in entries:
         if xy == '??':
@@ -294,14 +297,23 @@ def backup_plan(path, entries, cap_bytes):
         elif xy == '!!':
             if rel.endswith('/'):
                 size = tree_size(os.path.join(path, rel))
+                if os.path.basename(rel.rstrip('/')).lower() in ARTIFACT_DIRS:
+                    skip.append((rel, size, '빌드·캐시 폴더'))
+                    continue
                 if size > cap_bytes:
-                    skip.append((rel, size))
+                    skip.append((rel, size, '상한 초과'))
                     continue
             take.append(rel)
     return take, skip
 
 
-def do_backup(root, repo, wt, take, skip, now):
+def ignored_filter(wt_path, entries):
+    """copytree ignore 콜백 — git 이 `!!` 로 보고한 경로는 미추적 폴더 복사에서 빼고 자기 규칙으로 따로 처리한다."""
+    ignored = {os.path.normcase(os.path.join(wt_path, rel.rstrip('/'))) for xy, rel in entries if xy == '!!'}
+    return lambda d, names: [n for n in names if os.path.normcase(os.path.join(d, n)) in ignored]
+
+
+def do_backup(root, repo, wt, take, skip, now, entries):
     stamp = time.strftime('%Y%m%d-%H%M%S', time.localtime(now))
     first = os.path.join(root, os.path.basename(repo.rstrip('/\\')), '%s-%s' % (os.path.basename(wt['path'].rstrip('/\\')), stamp))
     dest, n = first, 2
@@ -309,16 +321,17 @@ def do_backup(root, repo, wt, take, skip, now):
         dest = '%s-%d' % (first, n)
         n += 1
     os.makedirs(dest)
+    skip_ignored = ignored_filter(wt['path'], entries)
     for rel in take:
         src = os.path.join(wt['path'], rel.rstrip('/'))
         dst = os.path.join(dest, rel.rstrip('/'))
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         if os.path.isdir(src):
-            shutil.copytree(src, dst, symlinks=True)
+            shutil.copytree(src, dst, symlinks=True, ignore=skip_ignored, dirs_exist_ok=True)
         else:
             shutil.copy2(src, dst)
     lines = ['worktree: %s' % wt['path'], 'branch: %s' % (wt['branch'] or '-'), 'head: %s' % wt['head']]
-    lines += ['backup: %s' % r for r in take] + ['skipped: %s (%d B)' % (r, s) for r, s in skip]
+    lines += ['backup: %s' % r for r in take] + ['skipped: %s (%d B · %s)' % (r, s, why) for r, s, why in skip]
     with open(os.path.join(dest, 'manifest.txt'), 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines) + '\n')
     return dest
@@ -372,14 +385,14 @@ def cmd_remove(args):
             continue
         take, skip = backup_plan(wt['path'], r['_entries'], cap)
         items = ['BACKUP %s :: %s' % (wt['path'], t) for t in take] + \
-                ['SKIP %s :: %s (%d B — 상한 초과, 백업 안 함)' % (wt['path'], s, n) for s, n in skip]
+                ['SKIP %s :: %s (%d B — %s, 백업 안 함)' % (wt['path'], s, n, why) for s, n, why in skip]
         if args.dry_run:
             planned += 1
             out.append('PLAN %s — %s · 백업 %d · 건너뜀 %d' % (wt['path'], r['bucket'], len(take), len(skip)))
             out += items
             continue
         try:
-            dest = do_backup(args.backup_root, repo, wt, take, skip, now)
+            dest = do_backup(args.backup_root, repo, wt, take, skip, now, r['_entries'])
         except OSError as e:
             failed += 1
             out.append('FAILED %s — 백업 실패, 지우지 않음 (%s)' % (wt['path'], e))

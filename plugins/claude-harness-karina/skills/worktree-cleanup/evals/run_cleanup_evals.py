@@ -495,6 +495,77 @@ def remove_backs_up_untracked_dir():
     with_fixture(body)
 
 
+@case
+def remove_skips_artifact_dir():
+    # ㉟ 빌드·캐시 이름의 ignore 폴더는 상한 이하여도 백업하지 않고 SKIP·manifest 에 싣는다
+    def body(fx):
+        p = fx.add('art', commit=True, merge=True)
+        fx.write('art', 'node_modules/x.js', 'x\n')
+        rc, out, err = fx.remove('--no-karina', p)
+        assert rc == 0 and out.startswith('RESULT: removed 1'), (out, err)
+        assert any(l.startswith('SKIP') and 'node_modules' in l for l in out.splitlines()), out
+        assert 'node_modules' in fx.manifest() and not any(f.endswith('x.js') for f in fx.backup_files())
+        assert not fx.is_listed(p)
+    with_fixture(body)
+
+
+@case
+def remove_untracked_dir_excludes_nested_artifact():
+    # ㊱ 미추적 폴더 안의 빌드·캐시 폴더는 빼고 나머지를 백업한 뒤 지운다
+    def body(fx):
+        p = fx.add('una', commit=True, merge=True)
+        fx.write('una', 'newdir/a.txt', 'a\n')
+        fx.write('una', 'newdir/node_modules/x.js', 'x\n')
+        rc, out, err = fx.remove('--no-karina', p)
+        assert rc == 0 and out.startswith('RESULT: removed 1'), (out, err)
+        files = fx.backup_files()
+        assert any(f.endswith('newdir/a.txt') for f in files) and not any(f.endswith('x.js') for f in files), files
+    with_fixture(body)
+
+
+@case
+def remove_untracked_dir_keeps_nested_ignored_file():
+    # ㊲ 미추적 폴더 안의 ignore 파일(plan.md)도 백업한다
+    def body(fx):
+        p = fx.add('unf', commit=True, merge=True)
+        fx.write('unf', 'newdir/a.txt', 'a\n')
+        fx.write('unf', 'newdir/plan.md', '# plan\n')
+        rc, out, err = fx.remove('--no-karina', p)
+        assert rc == 0 and out.startswith('RESULT: removed 1'), (out, err)
+        files = fx.backup_files()
+        assert any(f.endswith('newdir/a.txt') for f in files) and any(f.endswith('newdir/plan.md') for f in files), files
+    with_fixture(body)
+
+
+@case
+def remove_untracked_dir_with_nested_ignored_dir():
+    # ㊳ 미추적 폴더 안의 (목록 밖) ignore 폴더는 상한 이하면 함께 백업된다
+    def body(fx):
+        p = fx.add('und', commit=True, merge=True)
+        fx.write('und', 'newdir/a.txt', 'a\n')
+        fx.write('und', 'newdir/bigdir/b.txt', 'b\n')
+        rc, out, err = fx.remove('--no-karina', p)
+        assert rc == 0 and out.startswith('RESULT: removed 1'), (out, err)
+        files = fx.backup_files()
+        assert any(f.endswith('newdir/a.txt') for f in files) and any(f.endswith('newdir/bigdir/b.txt') for f in files), files
+    with_fixture(body)
+
+
+@case
+def remove_untracked_dir_caps_nested_ignored_dir():
+    # ㊴ 미추적 폴더 안의 ignore 폴더에도 상한이 걸린다 — 부모 폴더 복사에 섞여 상한을 비켜 가지 않는다
+    def body(fx):
+        p = fx.add('unc', commit=True, merge=True)
+        fx.write('unc', 'newdir/a.txt', 'a\n')
+        fx.write('unc', 'newdir/bigdir/b.txt', 'b' * 4096)
+        rc, out, err = fx.remove('--no-karina', '--ignored-dir-cap-mb', '0.001', p)
+        assert rc == 0 and out.startswith('RESULT: removed 1'), (out, err)
+        assert any(l.startswith('SKIP') and 'bigdir' in l for l in out.splitlines()), out
+        files = fx.backup_files()
+        assert any(f.endswith('newdir/a.txt') for f in files) and not any(f.endswith('b.txt') for f in files), files
+    with_fixture(body)
+
+
 # ---- Karina CLI: 가짜 CLI 가 받은 인자를 로그에 남기고, 설정대로 응답한다 ----
 
 FAKE_KARINA = r'''
