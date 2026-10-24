@@ -158,7 +158,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | 계획 체인 (`karina:chain-plan`) | "plan 1: …, plan 2: …" 처럼 계획 여러 개를 차례로 · "plan N부터" 재개 | 계획 여러 개를 한 번에 승인받고, Karina 앱 워커 탭(새 세션)에서 하나씩 계획→구현까지 진행합니다 — 아래 「계획 체인 자세히」 참고 |
 | 디버깅 (`karina:karina-systematic-debugging`) | "버그", "에러", "안 됨" 등 | 근본 원인부터 찾고 회귀 테스트와 함께 고칩니다. 한 파일만 고치면 될 때는 「바로 수정 / 계획부터」를 한 번 묻습니다. GitHub 원격·`gh` 인증이 있으면 PR 을 엽니다 |
 | 위키 운영 (`karina:llm-wiki`) | "위키에 등록/업데이트" | 프로젝트 지식을 쌓고 다음 작업 때 참조 |
-| PR 운영 (`karina:pr`) | "PR 지켜봐" · "CI 초록 될 때까지" · "리뷰 코멘트에 답해" · "검증하고 머지해" | **babysit** — CI 실패 중 그 PR 의 코드 실패만 고치고 리뷰 코멘트에 답한 뒤 merge 가능한 상태에서 멈춥니다. **ship** — 코드를 쓰지 않은 검증 에이전트(`pr-verifier`)가 PASS 를 낸 뒤에만 squash merge 합니다. 화면이 바뀐 PR 은 사용자가 「PR <n> 화면 확인함」이라고 답해야 merge 합니다 |
+| PR 운영 (`karina:pr`) | "PR 지켜봐" · "CI 초록 될 때까지" · "리뷰 코멘트에 답해" · "검증하고 머지해" | **babysit** — CI 실패 중 그 PR 의 코드 실패만 고치고 리뷰 코멘트에 답한 뒤 merge 가능한 상태에서 멈춥니다. **ship** — 코드를 쓰지 않은 검증 에이전트(`pr-verifier`)가 PASS 를 낸 뒤에만 squash merge 합니다. 화면이 바뀐 PR 은 사용자가 「PR <n> 화면 확인함」이라고 답해야 merge 합니다. 상한 인상·면제 추가 같은 게이트 완화가 있으면 작성자가 아닌 쪽의 서명 뒤에만 merge 합니다 — 체인의 계획 PR 은 코디네이터가, 그 밖(체인 끝 PR 포함)은 사용자가 「PR <n> 게이트 완화 확인함」으로 서명합니다 |
 | worktree 정리 (`karina:worktree-cleanup`) | "머지된 worktree 정리해줘" · "worktree 가 디스크를 차지해" | 레포의 worktree 마다 병합 여부·미커밋 수정·PR·최근 세션을 표로 보여 주고, 한 번 승인받은 것만 지운다 — 지우기 전에 미추적·gitignore 파일(`plan.md` 등)을 임시 폴더에 백업하고, 미커밋 수정·열린 PR·미병합 체인 worktree 는 지우지 않으며 브랜치는 남긴다 |
 | 프로젝트 사실 기록 (`karina:record-project-fact`) | "AGENTS.md에 기록" · "AGENTS.md 새로 만들어줘" 또는 hook 제안 수락 | 빌드·DB·테스트 방식을 AGENTS.md에 축적(재확인 줄이기) · 파일이 없으면 최소 골격으로 생성 |
 | 검증 스킬 만들기 (`karina:create-verification-skill`) | `/karina:create-verification-skill` 직접 호출 | 앱을 사용자처럼 조작해 확인하는 검증 스킬(`.claude/skills/verify-앱이름/`)을 만들고, 실제로 한 번 돌려 성공하면 AGENTS.md 에 등록합니다 · 웹·CLI/TUI·HTTP 서비스·Windows 데스크톱 지원 |
@@ -191,7 +191,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 |---|---|---|---|
 | plan-reviewer | Opus | 계획 완성 후(최대 3라운드 · 경량 계획에서는 생략) · 따지기로 task 나 완료 조건이 바뀌면 1회 더 | 계획이 **실측 위에 서 있는지** — 적힌 명령이 주장을 뒷받침하는지, 바꿀 심볼의 호출자가 빠지지 않았는지, 승인 항목을 피할 다른 설계가 있는지, 검증 명령이 `AGENTS.md` 에 있는지 |
 | completion-reviewer | Opus | 모든 task 완료 후 1회(경량 계획은 변경이 3파일 이상일 때만) | 계획과 최종 결과의 대조 — 요구가 반영됐는지, 완료 표시가 사실인지(검증 명령을 표본으로 다시 돌림), 성공 기준이 실제로 참인지 |
-| pr-verifier | Opus | `karina:pr` ship 이 merge 하기 전 PR 마다 1회 | PR head 를 받은 worktree 에서 빌드·테스트·검증 스킬을 돌리고, 화면 시나리오는 PR 전 코드와 비교합니다. 체크를 끄는 변경은 FAIL. 결과는 PASS / PASS+NOTES / FAIL — 코드를 쓰지 않은 쪽의 판정만 merge 근거가 됩니다 |
+| pr-verifier | Opus | `karina:pr` ship 이 merge 하기 전 PR 마다 1회 | PR head 를 받은 worktree 에서 빌드·테스트·검증 스킬을 돌리고, 화면 시나리오는 PR 전 코드와 비교합니다. 체크를 끄는 변경은 FAIL, 상한 인상·면제 추가는 게이트 완화 줄로 따로 냅니다. 한 명령이 실패해도 끝까지 돌려 실패를 전부 나열합니다. 결과는 PASS / PASS+NOTES / FAIL — 코드를 쓰지 않은 쪽의 판정만 merge 근거가 됩니다 |
 | reflect-reviewer | Opus | 사용자가 `/karina:reflect` 를 부를 때 1회 | 세션 전사를 읽고 karina 스킬·hook 의 개선 후보 표를 냅니다(파일은 고치지 않음) |
 | comment-reviewer | Opus | 사용자가 `/karina:no-comments` 를 부를 때 1회(판정을 거부하면 1회 더) | 지정 범위의 코드 주석을 지울 것·남길 것·코드로 고칠 대상·제약 주석으로 판정한 표를 냅니다(파일은 고치지 않음) |
 
