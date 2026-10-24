@@ -12,7 +12,7 @@
 - **Step 5 는 초안 파일에 Write 한다** — 새 초안은 `plans/drafts/<YYYY-MM-DD>-<영문 kebab-case slug>.md`(같은 이름이 있으면 `-2`·`-3`), 수정은 둘째 줄의 그 파일이다. 서식은 `plan-template.md` 그대로이고 두 가지만 다르다.
   - **Goal 머리 넷 위에 `> 초안 작성: <YYYY-MM-DD> · HEAD <git rev-parse --short HEAD>` 한 줄을 둔다** — `karina:plan-draft` 가 목록의 「작성 이후 커밋 수」와 진행 때 바뀐 파일을 이 HEAD 로 잰다.
   - **`> BASE:`·`> 승인:` 은 자리표시 그대로 둔다** — 초안은 승인본이 아니다. `karina:implement` 는 `^> 승인: [0-9]{4}-` 로 승인본을 가른다.
-- **수정이면 Write 전에 기존 초안을 시스템 임시 폴더에 백업하고 그 경로를 기억해 둔다** — 초안은 git 밖이라 덮어쓰면 복구 경로가 없다. 아래 끝 제시에서 `N` 이면 이 백업으로 되돌린다.
+- **수정이면 Write 전에 기존 초안을 `../../TEMP-FILES.md` 의 `backup\` 에 그 이름 규칙으로 백업하고 그 경로를 기억해 둔다** — 초안은 git 밖이라 덮어쓰면 복구 경로가 없다. 아래 끝 제시에서 `N` 이면 이 백업으로 되돌린다.
 - **새 초안을 처음 쓰기 전에 git 무시 규칙을 확인한다 — `$(git rev-parse --git-common-dir)/info/exclude` 에 `plans/drafts/` 줄이 없으면 Edit 로 한 줄 더하고, 파일이 없으면 그 한 줄로 Write 한다** — `.gitignore` 를 고치면 병행 세션이 쓰는 워킹트리에 미커밋 변경이 남아 그 세션의 커밋에 섞인다. `info/exclude` 는 추적되지 않고 같은 레포의 linked worktree 와 공유된다(2026-10-23 실측 — linked worktree 에서 `!! plans/`).
 - **Step 6 의 `check-plan`·`plan-reviewer` 는 초안 경로로 돌린다** — 리뷰 라운드 규칙은 일반 경로 그대로다.
 - **승인 제시 대신 같은 요약 서식(`interview.md`「승인 제시」) 끝줄을 `초안 저장: <경로>` 와 아래 선택지로 바꿔 낸다 — 승인 표지를 채우지 않고 `karina:implement` 를 부르지 않는다**
