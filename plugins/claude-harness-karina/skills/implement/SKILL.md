@@ -58,7 +58,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 - **눈으로 봐야 하는 것은 `HUMAN-VERIFY`로 표기하고 계속 간다 — `AGENTS.md` 의 `Verify (앱 조작)` 줄이 검증 스킬을 가리키면 task 의 `**화면**` 줄(없으면 그 SKILL.md 「변경 검증」 절)대로 먼저 조작하고(절차·`(BASE 대조)` 판정은 `references/report-format.md`「화면 시나리오 실행」), 그래도 사람 눈이 필요한 것만 표기한다** — GUI 조작감·시각 확인은 최종 보고에서 사용자가 한 번에 확인한다. 이 표기는 정직한 보고 수단이지 정지 신호가 아니다.
 - **컨텍스트가 차 가도 멈추지 않는다** — 현재 task를 끝내고 `plan.md`에 상태를 쓴 뒤 계속 진행한다. 압축이 일어나면 첫 행동은 이 SKILL.md와 `plan.md`를 다시 읽는 것이다 — **`AGENTS.md`는 컨텍스트에 전문이 없을 때만 읽는다.** CLAUDE.md 가 없으면 Claude Code(v2.1.277+)가, 있으면 SessionStart 가(16KB 이하일 때만) 전문을 싣고, `compact` 뒤에도 다시 싣는다.
 
-단 **plan 승인이 덮지 않는 변경**(되돌릴 수 없는 것 — 환경변수/시크릿·DB 데이터·외부 호출·새 패키지 소스·외부 공개 API 삭제나 호환을 깨는 변경)이나 plan 에 없던 다른 변경이 필요해지면 **`references/loop-exceptions.md`「plan 밖 변경」 을 Read 한다** — 멈출지 진행할지가 거기서 갈린다.
+단 **plan 승인이 덮지 않는 변경**(되돌릴 수 없는 것 — 환경변수/시크릿·DB 데이터·외부 호출·새 패키지 소스·외부 공개 API 삭제나 호환을 깨는 변경 · 안내 경로로 풀리지 않는 hook 차단)이나 plan 에 없던 다른 변경이 필요해지면 **`references/loop-exceptions.md`「plan 밖 변경」 을 Read 한다** — 멈출지 진행할지가 거기서 갈린다.
 
 ## 검증
 
@@ -94,7 +94,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ### 실패 처리
 
-- **task 검증이 실패하거나 막히거나 하니스(스킬·hook) 결함을 만나면 `references/loop-exceptions.md`「실패 처리」 를 Read 한다** — 1회차 실패 기록·원인 수정·디버깅 절차 경로가 거기 있다.
+- **task 검증이 실패하거나 막히거나 hook 이 막거나 하니스(스킬·hook) 결함을 만나면 `references/loop-exceptions.md`「실패 처리」 를 Read 한다** — 1회차 실패 기록·원인 수정·디버깅 절차 경로가 거기 있다.
 
 ## 커밋
 
