@@ -77,7 +77,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 템플릿·작성 규칙은 `references/plan-template.md`다. 루트 `plan.md` 하나에 쓰고(덮어쓰기), 요구는 그 `> 요구:` 줄(원문 인용)과 `## Goal`(재진술)이 담는다 — 요구를 다른 파일에 따로 쓰지 않는다.
 
 - **task가 많아 한 회차에 담기 어려우면 파일을 쪼개지 말고 회차를 나눈다** — 나머지는 `## Deferred / Follow-up`에 `[다음 회차]` 마커로 적는다(마커 규약은 `references/deferred-rules.md`). **회차를 나누기로 했으면 `references/round-split.md`「회차 분할」 을 Read 한다. Karina 앱 탭(`KARINA_TAB_UUID`)이고 중계 모드가 아니면 그 절대로 `plan.md` 를 쓰기 전에 회차 체인 질문을 한 번 낸다** — 질문을 참조 문서에만 두면 그 Read 를 건너뛴 회차가 묻지 않고 `[다음 회차]` 로 간다.
-- **`plan.md`는 `Write`(전체 교체)·`Edit`(부분 수정) 도구로만 고친다** — `sed`·`cp`·python 쓰기는 `guard-bash` 가 `exit 2` 로 막고 근거는 그 차단 메시지가 낸다.
+- **`plan.md`는 `Write`(전체 교체)·`Edit`(부분 수정) 도구로만 고친다** — `sed`·`cp`·python 쓰기는 `guard-bash` 가 `exit 2` 로 막고 근거는 그 차단 메시지가 낸다. hook 이 막으면 그 메시지가 안내하는 경로만 쓴다 — 다른 수단으로 같은 효과를 내지 않는다(정본 `../implement/references/loop-exceptions.md`「실패 처리」).
 - **쓰기가 실패하면 오류 원문을 그대로 내고 멈춘다** — 삼키면 **승인받은 계획이 디스크에 없다.**
 
 ## Step 6. 리뷰와 승인
