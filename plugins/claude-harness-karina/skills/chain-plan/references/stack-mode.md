@@ -10,7 +10,7 @@
 **`P` 와 같은 자리에서 1회 판정한다 — `T` 는 `P` 의 위임·체인 브랜치·켜기 조건·「P 체인 끝 PR」 을 그대로 쓰고, 계획 PR 을 merge 하지 않고 쌓는 것만 다르다.**
 
 - **조건은 `pr-mode.md`「켜기」 의 셋에 하나를 더한다 — 병렬 그룹이 없다** — 대기 스크립트의 `--pr` base 가 dispatch 하나에 하나라 병렬 워커마다 다른 부모를 줄 수 없다. 병렬 그룹이 있으면 선택지에서 `[T]` 를 빼고 `PR 모드:` 줄에 그 사유를 적는다.
-- **화면을 바꾸는 계획이 있고 뒤 계획이 그 계획의 산출물에 의존하면(인터뷰 「근거로 정한 것」 ①) 선택지 `[T]` 뒤에 `(권장 — plan <N> 화면 대기에서 서지 않는다)` 를 붙인다** — `P` 에서는 화면 확인 대기 PR 이 merge 되지 않아 뒤 계획이 그 변경을 base 에서 보지 못하고 체인이 멈춘다(`continuation.md`「남은 일 판정」).
+- **선택지의 권장 표기는 `Y` 하나다(`../SKILL.md`「체인 승인」) — T 는 pstack 의 선택 기준대로 착지 전에 계획마다 리뷰하려 하거나, 계획이 차례로 얽혀 있거나, merge 권한을 보류할 때 사용자가 고른다** — *"the operator wants review before landing, the work is sequenced or coupled, or merge authority is withheld"*(autopilot-stack 「Choosing between the autopilots」). 그 밖이면 Y 가 끝 PR 검증 한 번으로 끝나 계획마다 PR 검증·착지를 치르지 않는다. 화면을 바꾸는 계획에 뒤 계획이 의존하면(인터뷰 「근거로 정한 것」 ①) `P` 는 화면 확인 대기 PR 이 merge 되지 않아 멈추므로(`continuation.md`「남은 일 판정」) 그 사실을 `PR 모드:` 줄에 한 구로 싣는다.
 - **체인 브랜치는 `pr-mode.md`「켜기」 의 `P` 순서 넷으로 만들고, objective `[체인 승인: …]` 이 `T` 를 담는다** — 압축 뒤에도 모드를 되찾는다.
 - **spec 줄은 plan 1 이 `PR 모드: 켬 — base <체인 브랜치> · 스택` 이다. plan N(N>1)은 task 를 만들 때 부모가 아직 없어 `PR 모드: 켬 — base 인계 · 스택` 으로 싣는다 — 워커가 인계 파일에서 부모를 읽는다(아래 「워커」)** — spec 은 만든 뒤 고칠 수 없다. `PR 모드: 켬` 머리를 지켜 워커의 `../../implement/references/pr-flow.md`「적용 판정」 이 그대로 브랜치를 바꾸고 PR 을 연다.
 

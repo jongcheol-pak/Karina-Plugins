@@ -66,9 +66,9 @@ plan 2: …
 미답 시한: 30분 — 넘긴 답 뒤집기·범위 변경·전제 화면 질문은 이 시간 뒤 보수 기본값(`E: 미답 시한 <N>분` · 45분 이하 — `references/user-relay.md`「미답 기본값」)
 대기 보호: <켜짐 | 꺼짐 — `references/wait-exit.md`「대기 보호」>
 병렬: <그룹 · 동시 상한 · 체인 브랜치 | 없음 — `references/parallel.md`「병렬 그룹」>
-PR 모드: <꺼짐(끝에 PR 하나) — [P] 로 켠다(<기본>에서 새 체인 브랜치) · T 는 스택 | 불가 — <사유> — `references/pr-mode.md`「켜기」·`references/stack-mode.md`「켜기」>
+PR 모드: <꺼짐(끝에 PR 하나) — [P] 로 켠다(<기본>에서 새 체인 브랜치) · T 는 스택 — 계획마다 PR 리뷰·merge 권한 보류 때 | 불가 — <사유> — `references/pr-mode.md`「켜기」·`references/stack-mode.md`「켜기」>
 
-[Y] 승인 / [P] PR 모드로 승인 / [T] 스택 모드로 승인 / [E] 수정 요청 / [N] 중단
+[Y] 승인 (권장) / [P] PR 모드로 승인 / [T] 스택 모드로 승인 / [E] 수정 요청 / [N] 중단
 ```
 
 - **`바뀌는 영역`·`승인 필요 항목` 은 실측(`회차 실측:` 또는 `references/measure.md` 결과)에서만 채우고, 그 계획의 실측이 실패했을 때만 「워커 실측 후 확정」이다** — 실측 밖의 값은 추측이다.
