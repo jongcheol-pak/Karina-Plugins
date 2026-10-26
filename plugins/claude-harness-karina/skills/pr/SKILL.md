@@ -32,4 +32,4 @@ description: 이미 열린 GitHub PR 을 운영한다 — babysit(CI 가 초록�
 ## See also
 
 - `karina:implement` — 회차 끝에 PR 을 연다(`../implement/references/pr-flow.md`)
-- `pr-verifier` — ship 이 부르는 독립 검증 서브에이전트(`../../agents/pr-verifier.md`)
+- `pr-verifier` — ship 이 부르는 독립 검증 서브에이전트(`../../agents/pr-verifier.md`) · 스택 체인의 계획별 검증도 `references/ship.md` 3~6번으로 부른다
