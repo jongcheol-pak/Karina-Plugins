@@ -38,7 +38,7 @@ description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순�
 - **아래 셋은 묻지 않고 근거로 정해 `(근거: <파일:줄 | 실측 | Q/A>)` 와 함께 spec·체인 승인에 싣고(②는 `DB 변경` 줄), 근거가 없을 때만 묻는다** — 워커 질문을 이 세션이 기록으로 답하는 재료다. 「원문:」에는 사용자가 답한 것만 둔다.
   - ① 계획 간 의존 — 실측의 앞 계획 산출물을 쓰는 자리(`references/continuation.md`「남은 일 판정」이 쓴다)
   - ② DB 변경 — 기본 `금지`. 요청이나 실측에 DB 쓰기가 보일 때만 대상 DB·테이블·연산·조건을 묻는다 — `금지` 가 틀려도 워커는 목록 밖 변경을 실행하지 않고 멈춘다. spec 의 `DB 변경` 줄이 된다
-  - ③ 검증 — `AGENTS.md` 의 빌드·테스트 명령과 완료 판정
+  - ③ 검증 — `AGENTS.md` 의 빌드·테스트 명령과 완료 판정(「늘지 않는 것」 감사는 `references/continuation.md`「코디네이터 검증」)
 - **근거가 붙지 않은 값은 빈 것이다** — 짐작을 찬 것으로 보면 사용자가 답한 적 없는 DB 변경이 확정 요구로 워커에 간다. 사용자가 「앞 계획 결과에 따른다」고 답한 원문은 찬 것이다 — 실제 값은 실행 중 워커의 `ask` 가 메운다.
 - **계획마다 `판정 원칙:` 을 묻지 않고 요청 원문·`AGENTS.md`·위키 규약에서 근거로 정해 체인 승인과 spec 에 싣는다 — 워커 갈림길에서 고를 기준이다(예: 원본 이식 규약이면 「원본과 다르면 원본 동작」). 근거가 없으면 「없음」이다** — 기준이 화면에 없으면 판정이 재진술 문구에 묶여 사용자에게 넘어간다.
 
@@ -66,16 +66,16 @@ plan 2: …
 미답 시한: 30분 — 넘긴 답 뒤집기·범위 변경·전제 화면 질문은 이 시간 뒤 보수 기본값(`E: 미답 시한 <N>분` · 45분 이하 — `references/user-relay.md`「미답 기본값」)
 대기 보호: <켜짐 | 꺼짐 — `references/wait-exit.md`「대기 보호」>
 병렬: <그룹 · 동시 상한 · 체인 브랜치 | 없음 — `references/parallel.md`「병렬 그룹」>
-PR 모드: <꺼짐(끝에 PR 하나) — [P] 로 켠다(<기본>에서 새 체인 브랜치) · T 는 스택 | 불가 — <사유> — `references/pr-mode.md`「켜기」·`references/stack-mode.md`「켜기」>
+PR 모드: <꺼짐(끝에 PR 하나) — [P] 로 켠다(<기본>에서 새 체인 브랜치) · T 는 스택 — 계획마다 PR 리뷰·merge 권한 보류 때 | 불가 — <사유> — `references/pr-mode.md`「켜기」·`references/stack-mode.md`「켜기」>
 
-[Y] 승인 / [P] PR 모드로 승인 / [T] 스택 모드로 승인 / [E] 수정 요청 / [N] 중단
+[Y] 승인 (권장) / [P] PR 모드로 승인 / [T] 스택 모드로 승인 / [E] 수정 요청 / [N] 중단
 ```
 
 - **`바뀌는 영역`·`승인 필요 항목` 은 실측(`회차 실측:` 또는 `references/measure.md` 결과)에서만 채우고, 그 계획의 실측이 실패했을 때만 「워커 실측 후 확정」이다** — 실측 밖의 값은 추측이다.
 
 - **위임되지 않는 것이 있다 — `../plan/references/plan-template.md` 「승인 필요 항목」의 「실행 시점에 별도 승인」 목록이다** — 체인 승인에 적혀 있어도 그 실행은 그때 사용자에게 간다. 목록 안의 DB 변경이라도 파괴적 형태는 여기에 든다. 단 병렬 그룹의 worktree 로컬 병합은 `references/parallel.md`「병렬 그룹」 대로 `Y` 가 위임한다.
 - **`Y` 는 `판정 범위:` 줄에 대한 동의이기도 하다 — 글로벌 「외부 공개 API 삭제·호환을 깨는 변경은 승인」 밖의 API·설정 변경을 이 줄이 채운다** — 외부 공개 API 를 깨는 변경은 사용자 몫 ④ 로 남는다.
-- **`P` 는 `Y` 에 PR 모드를 더한다 — 새 체인 브랜치를 만들고 끝에 기본 브랜치 PR 을 연다(`references/pr-mode.md`「켜기」·「P 체인 끝 PR」).** **`T` 는 `P` 와 같되 계획 PR 을 merge 하지 않고 앞 PR 위에 쌓아 끝에 착지한다 — 그 체인은 `references/stack-mode.md` 를 따른다.**
+- **`P` 는 `Y` 에 PR 모드를 더한다 — 새 체인 브랜치를 만들고 끝에 기본 브랜치 PR 을 연다(`references/pr-mode.md`「켜기」·「P 체인 끝 PR」).** **`T` 는 체인 브랜치·끝 PR 없이 기본 브랜치에서 계획 PR 을 앞 PR 위에 쌓아 끝에 아래부터 착지한다 — 그 체인은 `references/stack-mode.md` 를 따른다.**
 - **`E` 면 그 계획의 재진술·체크리스트·판정 원칙을 고쳐 다시 내고, `N` 이면 Run 을 만들지 않고 보고한 뒤 끝낸다.**
 
 ## Run·Task
@@ -106,13 +106,14 @@ EOF
 python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --repo "<대상 레포 경로>" --label "Plan <N>/<총>"
 ```
 
+- **PR 모드 꺼짐이면 계획의 첫 `worker-start` 직전 HEAD 를 결정 기록에 남긴다(`references/chain-decisions.md`「결정 기록」 — 이어받기는 다시 재지 않는다).**
 - **대상 레포 경로는 대상 레포에서 `git rev-parse --show-toplevel` 로 얻는다** — `current` 는 Karina 앱 화면의 활성 워크트리 그룹이라 사용자가 다른 그룹을 보고 있으면 다른 레포에 뜬다.
 - **`worker-start` 응답은 `references/cli-errors.md`「오류 응답」(`ok: false`)·「시작 이상 응답」 에 걸리지 않을 때만 대기로 간다** — 성공 경로만 두면 권한 프롬프트에 걸리거나 배정문을 못 받은 워커를 끝없이 기다린다.
 - **대기는 둘째 줄(`<skill>` 은 이 SKILL.md 의 폴더)을 Bash 도구 `run_in_background: true` 로 띄우고(샌드박스를 풀었으면 같은 플래그로) 무엇을 기다리는지(plan N/총 · dispatch) 한 줄 알린 뒤 turn 을 끝낸다 — 완료 알림이 오면 출력 파일을 Read 해 첫 줄 `RESULT: <갈래> — <지시>` 의 지시를 따른다. RESULT 줄이 없으면 `references/wait-exit.md`「RESULT 없음」 을 따른다** — 이 세션이 주기적으로 깨어나 큰 컨텍스트를 다시 읽지 않도록 반복 확인과 멈춤 판정을 스크립트가 맡는다.
 - **대기는 한 번에 하나이고 새 대기가 앞 대기를 물린다 — 띄우는 자리는 `worker-start` 직후 · 배치를 처리한 뒤 · 사용자 답을 `reply` 한 직후 · 압축 복원 뒤 · 사용자 입력 turn 에서 대기가 도는지 모를 때다(자리 대기 중이면 `--place` 대기 — `references/cli-errors.md`「오류 응답」). 사용자에게 넘긴 질문이 열려 있는 동안의 대기는 `references/user-relay.md`「미답 기본값」 을 따른다** — 평소 대기는 답을 기다리는 워커 화면이 그대로라 멈춤으로 오판한다.
 - **`question` 이 오면 질문 원문을 메시지의 `subject` 에서 읽고(`body` 는 비어 있어 키째 빠진다) 아래 「답하는 기준」으로 답하고 `reply --id <메시지 id> --body "$(cat <<'EOF' …)"` 로 보낸 뒤 `check --ack <deliveryId>` 한다** — 메시지 id 는 각 메시지의 `id`, `deliveryId` 는 배치의 id 다. 배치를 다 처리하기 전에 ack 하면 남은 메시지를 잃는다.
 - **`worker_done` 의 `succeeded` 면 `--body` 를 보고의 정본으로 받고, 곧바로 `references/release.md`「닫기」 로 탭을 닫고 다음 계획으로 간다**.
-  - **PR 모드 꺼짐 또는 스택 · 병렬 밖이면 닫은 뒤 `references/continuation.md`「코디네이터 검증」 부터 한다** — `--body` 의 검증은 작성자의 주장이다.
+  - **PR 모드 꺼짐·병렬 밖이면 닫은 뒤 `references/continuation.md`「코디네이터 검증」, 스택이면 `references/stack-mode.md`「코디네이터」 부터 한다** — `--body` 의 검증은 작성자의 주장이다.
   - **`남은 일` 이 「없음」이 아니면 다음 계획 전에 `references/continuation.md`「남은 일 판정」 을 따른다** — `succeeded` 라도 계획이 미완일 수 있다.
 - **`failed` 면 `worker-retain --dispatch <id>` 로 탭을 남기고 체인을 멈춘다 — 다음 계획은 띄우지 않는다** — 계획이 순서 의존이라 N 이 미완인 채로 N+1 을 시작할 수 없고, 남긴 탭은 사용자가 들여다본다.
 - **`status` 의 제목이 `사후 완료 — ` 로 시작하면 `references/manual-resume.md`「사후 완료」 를 따른다.**
@@ -139,5 +140,5 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
 
 ## 하지 않는 것
 
-- **파일 수정** — 산출물은 워커가 만든다. 이 세션이 고치면 워커의 `plan.md` 가 모르는 변경이 생긴다. 예외는 체인이 끝난 뒤의 인계 파일 삭제(`references/report.md`「인계 파일 정리」)와 병렬 병합 커밋(`references/parallel.md`「병합」)·PR 모드의 체인 브랜치 생성·push(`references/pr-mode.md`「켜기」)·fast-forward(같은 파일 「병렬」)·체인 끝 PR(「Y 체인 끝 PR」·「P 체인 끝 PR」)·스택 착지(`references/stack-mode.md`「착지」)다.
+- **파일 수정** — 산출물은 워커가 만든다. 이 세션이 고치면 워커의 `plan.md` 가 모르는 변경이 생긴다. 예외는 체인이 끝난 뒤의 인계 파일 삭제(`references/report.md`「인계 파일 정리」)와 병렬 병합 커밋(`references/parallel.md`「병합」)·PR 모드의 체인 브랜치 생성·push(`references/pr-mode.md`「켜기」)·fast-forward(같은 파일 「병렬」)·체인 끝 PR(「Y 체인 끝 PR」·「P 체인 끝 PR」)·스택 착지와 검증용 worktree(만들고 지움 — `references/stack-mode.md`)다.
 - **멈춘 워커의 자동 재개** — 재개는 사용자가 「plan N부터」로 부른다. 중단·무관한 요청은 `references/interrupt.md`「사용자 중단」·「무관한 요청」 을 따른다. 사용자가 stall·`failed` 로 멈춘 워커를 탭에서 직접 이어 가게 했다고 알리면 `references/manual-resume.md`「직접 재개」 를 따른다. **멈춘 계획에 새 워커를 띄우는 선택지도 내지 않는다** — 새 워커는 계획을 처음부터 다시 실측해 앞 워커의 진척을 버린다. 새 워커는 사용자가 「plan N부터」로 부를 때만이다.

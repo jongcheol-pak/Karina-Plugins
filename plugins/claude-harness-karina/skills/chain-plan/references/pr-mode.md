@@ -1,7 +1,7 @@
 # PR 모드 (`karina:chain-plan` — 계획마다 PR 을 merge 까지)
 
-> `../SKILL.md` 「체인 승인」이 승인 화면의 `PR 모드:` 줄을 채울 때(「켜기」), 체인이 `P` 로 승인돼 워커가 spec 의 `PR 모드: 켬` 줄을 받았을 때(「워커」), 코디네이터가 PR 모드 체인의 계획을 잇거나 병렬 그룹을 다룰 때(「직렬」·「병렬」) 이 파일을 연다. `Y` 로 승인한 체인은 계획 사이를 로컬 병합으로 잇고, 체인이 끝나면 「Y 체인 끝 PR」 하나만 쓴다(`report.md`「인계 파일 정리」 뒤). `P` 체인이 끝나면 「P 체인 끝 PR」 이 체인 브랜치를 기본 브랜치로 올린다.
-> 출처는 Cursor pstack 의 autopilot-full 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 계획마다 한 주인이 빌드에서 merge 까지 PR 을 맡는다(*"One owner carries each PR from build to merge"*). 스택 PR 은 `stack-mode.md` 에서만 쓰고 Graphite·rebase 는 들이지 않았다 — 앞선 base 는 merge 로 합친다(rebase 는 history rewrite 라 karina 에서 별도 승인이다).
+> `../SKILL.md` 「체인 승인」이 승인 화면의 `PR 모드:` 줄을 채울 때(「켜기」), 체인이 `P` 로 승인돼 워커가 spec 의 `PR 모드: 켬` 줄을 받았을 때(「워커」), 코디네이터가 PR 모드 체인의 계획을 잇거나 병렬 그룹을 다룰 때(「직렬」·「병렬」) 이 파일을 연다. `Y` 로 승인한 체인은 계획 사이를 로컬 병합으로 잇고, 체인이 끝나면 「Y 체인 끝 PR」 하나만 쓴다(`report.md`「인계 파일 정리」 뒤). `P` 체인이 끝나면 「P 체인 끝 PR」 이 체인 브랜치를 기본 브랜치로 올린다. `T` 는 체인 브랜치·끝 PR 없이 `stack-mode.md` 를 따른다.
+> 출처는 Cursor pstack 의 autopilot-full 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 계획마다 한 주인이 빌드에서 merge 까지 PR 을 맡는다(*"One owner carries each PR from build to merge"*). 스택 PR 은 `stack-mode.md` 에서만 쓰고 Graphite 는 들이지 않았다 — 앞선 base 는 merge 로 합친다(rebase 는 history rewrite 라 karina 에서 별도 승인이고, 스택 착지는 `stack-mode.md`「착지」 의 자기 `karina/` 브랜치 rebase 만 예외다).
 >
 > 목차: 켜기(출발 브랜치 · 체인 브랜치 만들기) · 워커(마무리 순서 · 화면 줄 task 직렬 예외 · base 합치기 · 멈춘 자리 표) · 직렬 · 병렬 · Y 체인 끝 PR · P 체인 끝 PR
 

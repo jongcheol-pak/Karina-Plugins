@@ -2,6 +2,8 @@
 
 > `karina:implement` 가 **루프 진입 전 1회**(「브랜치」)와 **회차 끝 1회**(「PR 열기」) 읽는다. 시작과 끝에만 쓰이는 절차라 `../SKILL.md` 본문에 두지 않는다. `karina:karina-systematic-debugging` 의 직접 수정 경로는 첫 편집 전과 4-D 뒤에 「디버깅 단독 경로」 로 읽는다.
 > 출처는 Cursor pstack 의 opening-a-pr 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/opening-a-pr.md`. 다른 playbook 이 끝날 때마다 PR 을 연다(*"Invoked at the end of every other playbook."*)는 규칙을 karina 의 회차 끝으로 옮겼다.
+>
+> 목차: 적용 판정 · 브랜치(merge 된 브랜치에서 시작할 때) · PR 열기 · PR 을 연 뒤 · 디버깅 단독 경로(갈래 · 커밋 · PR · 돌아가기)
 
 ## 적용 판정
 
@@ -9,7 +11,7 @@
 
 - **원격이 GitHub 다** — `git remote get-url origin` 이 성공하고 `github.com` 을 담는다. 원격이 없거나 다른 포지면 PR 을 열 곳이 없다.
 - **`gh` 가 인증돼 있다** — `gh auth status` 가 exit 0 이다. 인증정보를 새로 받는 것은 이 루프 밖이다(`../SKILL.md`「멈추는 넷」 3번).
-- **중계 모드면 spec 에 `PR 모드: 켬` 줄이 있다** — `karina:chain-plan` 워커는 체인이 로컬 병합으로 회차를 잇는다. 그 줄이 없는 spec 에서 브랜치를 바꾸면 코디네이터의 병합이 엉뚱한 브랜치를 본다. 중계 모드가 아니면 이 조건은 참으로 친다. **그 줄의 `base <브랜치>` 가 아래 「브랜치」·「PR 열기」 의 기본 브랜치 자리를 대신한다** — 체인 브랜치가 기본 브랜치가 아닐 수 있고, PR 은 체인이 병합해 온 그 브랜치로 들어가야 한다. 줄 끝이 `· 스택` 이면 base 는 앞 계획 PR 브랜치이고 그 값과 마무리는 `../../chain-plan/references/stack-mode.md`「워커」 가 정한다.
+- **중계 모드면 spec 에 `PR 모드: 켬` 줄이 있다** — `karina:chain-plan` 워커는 체인이 로컬 병합으로 회차를 잇는다. 그 줄이 없는 spec 에서 브랜치를 바꾸면 코디네이터의 병합이 엉뚱한 브랜치를 본다. 중계 모드가 아니면 이 조건은 참으로 친다. **그 줄의 `base <브랜치>` 가 아래 「브랜치」·「PR 열기」 의 기본 브랜치 자리를 대신한다** — 체인 브랜치가 기본 브랜치가 아닐 수 있고, PR 은 체인이 병합해 온 그 브랜치로 들어가야 한다. 줄 끝이 `· 스택` 이면 base 는 plan 1 이 기본 브랜치, 그 뒤 계획이 앞 계획 PR 브랜치이고 그 값과 마무리는 `../../chain-plan/references/stack-mode.md`「워커」 가 정한다.
 
 ## 브랜치
 
