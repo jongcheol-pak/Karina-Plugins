@@ -37,7 +37,7 @@
 
 **체인이 끝까지 성공하면(`report.md`「인계 파일 정리」 의 성공 조건 — 남은 일이 스택 대기 PR 뿐인 것 포함) 보고 대신 착지 보고를 먼저 낸다. 체인 끝 PR 은 없다 — 계획 PR 을 아래부터 하나씩 기본 브랜치에 squash merge 하고, 위 PR 은 기본 브랜치 위로 옮긴다.** 출처는 pstack shipping 2~4단계다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/shipping.md`.
 
-- **착지 보고는 스택을 아래부터 나열한다 — PR 마다 URL · 검증 결과 · `## 화면` 의 스크린샷 이름과 `코디네이터 판정 … · 기각 변형 …` 줄 — 끝에 「확인했으면 `스택 화면 확인함` 으로 답하면 아래부터 merge 한다」 를 싣는다** — `PushNotification`(`status: "proactive"`, 메시지 `스택 착지 확인 필요 — PR <수>개`) 뒤 사용자 답을 기다린다. 이 답이 나열한 PR 모두의 화면 확인이다(`../../pr/references/ship.md` 7번의 묶음 확인).
+- **착지 보고는 스택을 아래부터 나열한다 — PR 마다 URL · 검증 결과 · `## 화면` 의 스크린샷 이름과 `코디네이터 판정 … · 기각 변형 …` 줄 · `확인할 파일: 스크린샷: <절대경로, …>`(결정 기록 판정 줄의 `스크린샷 <이름 — 경로>` 를 실재 확인 뒤 옮긴다 — 서식 `../../implement/references/report-format.md`「보고 형식」) — 끝에 「확인했으면 `스택 화면 확인함` 으로 답하면 아래부터 merge 한다」 를 싣는다** — `PushNotification`(`status: "proactive"`, 메시지 `스택 착지 확인 필요 — PR <수>개`) 뒤 사용자 답을 기다린다. 이 답이 나열한 PR 모두의 화면 확인이다(`../../pr/references/ship.md` 7번의 묶음 확인).
 - **사용자가 확인하면 첫 merge 전에 모든 계획 PR 의 지금 head 를 결정 기록에 PR 마다 한 줄 `- 착지 시작 · plan <N> · PR <URL> · head <full SHA>` 로 남긴다 — 이 줄이 없으면 착지를 시작하지 않고 이 단계부터 다시 한다. 멈춘 착지를 다시 부를 때는 앞 줄을 그대로 쓴다** — 위 PR 브랜치가 품은 것은 아래 PR 의 rebase 전 커밋이라, 아래 PR 을 옮긴 뒤의 head 를 `--onto` 기준으로 쓰면 옛 커밋이 위 PR 에 다시 얹힌다.
 - **아래 PR 부터 하나씩 `karina:pr` 을 「PR <URL> ship — 체인 PR 모드 · 스택 착지」 로 부른다** — 그 문구가 ship 4번의 판정 재사용(아래 patch-id 판정)·7번의 착지 영향 판정·8번 squash 와 merge 뒤 버전 커밋 건너뛰기를 고른다.
 - **하나가 merge 되면 바로 위 PR 하나를 옮긴 뒤 그 PR 을 ship 한다 — 순서는 다섯이다:**

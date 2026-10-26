@@ -19,7 +19,7 @@
 
 - **되돌리지 않고 그 경로를 보고에 싣는다** — 병행 세션이 같은 작업 트리에 쓴 변경도 차이로 잡히는데, 서브에이전트가 바꾼 것인지 가를 수 없어 자동으로 되돌리면 남의 작업을 지울 수 있다.
 - **싣는 자리는 호출부마다 정해져 있다**
-  - `karina:implement`(completion-reviewer) — `## Progress Log` 에 `판정: 서브에이전트 호출 뒤 작업 트리 변경 — <경로> — 되돌리지 않음 — 틀리면 그 변경이 다음 커밋에 섞인다` 줄. 최종 보고 「판정」 이 이 줄을 그대로 옮긴다.
+  - `karina:implement`(completion-reviewer) — `## Progress Log` 에 `판정: 서브에이전트 호출 뒤 작업 트리 변경 — <경로> — 되돌리지 않음 — 근거: 없음 — 틀리면: 그 변경이 다음 커밋에 섞인다` 줄. 최종 보고 「판정」 이 이 줄을 그대로 옮긴다.
   - `karina:plan`(measure-delegation, 또는 Step 5 가 띄운 chain-plan measure) — Investigation Log 에 `서브에이전트 작업 트리 변경` 행.
   - `karina:chain-plan` 코디네이터(measure) — 체인 승인 제시에 `작업 트리 변경 — <경로>` 한 줄.
   - `karina:no-comments`·`karina:pr` ship·`karina:maintain-verification-skill` — 그 스킬의 「보고」 에 `작업 트리 변경 — <경로>` 한 줄.
