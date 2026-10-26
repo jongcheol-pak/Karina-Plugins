@@ -22,13 +22,13 @@
 - **브랜치는 `pr-flow.md`「브랜치」 의 「기본 브랜치」 행 그대로 `<부모>` 에서 가른다 — 같은 체크아웃의 HEAD 가 직전 워커가 남은 `<부모>` 이고, `pr-flow.md`「적용 판정」 이 base 를 기본 브랜치 자리로 쓴다.** 그 행의 `git branch -f <기본> origin/<기본>` 은 `<부모>` 에 그대로 적용된다.
 - **base 합치기는 `pr-mode.md`「워커」 의 규칙을 `<부모>` 로 적용한다 — `git merge origin/<부모>`, rebase 금지, 세 번째 합치기면 정지.**
 - **babysit 은 「PR <URL> 을 babysit — 체인 스택 모드」 로 부르고 merge-ready 에서 멈춘다 — 이 호출이 `../../implement/references/pr-flow.md`「PR 을 연 뒤」 의 「babysit 을 시작하지 않는다」 의 예외다(`pr-mode.md`「워커」 의 ship 호출과 같은 자리). 멈춘 자리가 merge-ready·화면 확인 대기면 `--outcome succeeded` 에 `PR: 열림 — <URL> · 스택 대기` 로 보고한다** — 화면 게이트는 착지 때 사용자가 한꺼번에 본다. 그 밖의 멈춘 자리(충돌을 못 풂·CI 같은 원인 3회·사람 판단 대기)는 `pr-mode.md`「워커」 표 그대로 `failed` 다.
-- **`worker_done` 까지 PR 브랜치에 남고 `git switch` 하지 않는다** — 다음 워커는 지금 HEAD 를 부모로 가르고, 코디네이터 검증과 대기 스크립트(`scripts/pr_stage.py` 는 HEAD 가 base 와 다를 때 그 브랜치의 PR 을 잡는다)도 HEAD 가 그 브랜치라는 것을 전제한다.
+- **`worker_done` 까지 PR 브랜치에 남고 `git switch` 하지 않는다** — 다음 워커는 지금 HEAD 를 부모로 가르고, 대기 스크립트(`scripts/pr_stage.py` 는 HEAD 가 base 와 다를 때 그 브랜치의 PR 을 잡는다)도 HEAD 가 그 브랜치라는 것을 전제한다.
 - **PR 본문 끝 줄의 체인 표지는 `pr-mode.md`「워커」 그대로이고, 그 앞 줄에 `스택: plan <N>/<총> · 부모 <부모>` 를 싣는다** — 재개가 PR 들의 위아래 순서를 이 줄과 base 로 되찾는다.
 - **이어받기 워커도 같은 PR 브랜치에 커밋을 더하고 merge 하지 않는다** — `pr-flow.md`「브랜치」 의 「그 밖」 행이 그 브랜치를 그대로 쓴다.
 
 ## 코디네이터
 
-- **`스택 대기` 로 `succeeded` 를 받으면 `release.md`「닫기」 뒤 `continuation.md`「코디네이터 검증」 을 그 PR 브랜치(지금 HEAD)에서 돌린다** — 워커 ship 의 `pr-verifier` 가 없어, 다음 계획이 검증 안 된 브랜치 위에서 시작하지 않게 한다. 실패면 그 절의 이어받기다.
+- **`스택 대기` 로 `succeeded` 를 받으면 `release.md`「닫기」 뒤 그 PR 을 독립 검증한다 — `../../pr/references/ship.md` 3~6번(worktree 둘 · `pr-verifier` · 판정 코멘트 · 정리)을 이 세션이 그대로 돌리고 merge(7번 이후)는 하지 않는다. 판정은 `chain-decisions.md`「결정 기록」 의 판정 줄(head·부모·patch-id)로 남기고 `continuation.md`「코디네이터 검증」 은 돌리지 않는다** — 워커 ship 의 `pr-verifier` 가 없어 다음 계획이 검증 안 된 브랜치 위에서 시작하지 않게 하고, 계획마다 독립 검증이 한 번이어야 착지가 patch-id 로 그 판정을 다시 쓴다(pstack autopilot-full *"You own the verdicts"* · shipping *"A verdict covers a patch"*). 워커 검증과 같은 커밋을 코디네이터 검증이 다시 재고 착지가 또 재면 같은 커밋이 세 번 검증된다(2026-10-26 run_c891dfde). `FAIL` 이거나 판정이 없으면 `continuation.md`「이어받기」 로 가고 실패 사유를 이어받을 항목에 싣는다. `PASS`·`PASS+NOTES` 면 `continuation.md`「남은 일 판정」 이다.
 - **다음 계획을 띄우기 전에 `git -C "<대상 레포 경로>" branch --show-current` 가 직전 워커 PR 의 head 브랜치(`gh pr view <URL> --json headRefName -q .headRefName`)와 같은지 보고, 대기 명령에 `--pr <그 브랜치>` 를 준다 — 다르면 띄우지 않고 멈춰 보고한다** — 워커는 지금 HEAD 와 인계 파일로 부모를 정하므로, 어긋난 채 띄우면 엉뚱한 브랜치 위에 쌓인다. 브랜치·base 를 고치는 것은 코디네이터의 착지뿐이다(*"Give the topology one writer."*).
 - **화면 확인 대기는 정지 사유가 아니다 — 뒤 계획이 의존해도 그 PR 브랜치 위에서 시작하므로 변경을 본다** — `continuation.md`「남은 일 판정」 의 화면 대기 항목 판정을 건너뛴다.
 - **보고의 `PR:` 줄에는 계획마다 `plan N: <URL> · 부모 <브랜치> · 스택 대기` 를 아래부터 싣는다(`report.md`「보고 서식」).**
