@@ -7,12 +7,12 @@
 
 ## 켜기
 
-**`P` 와 같은 자리에서 1회 판정한다 — `T` 는 `P` 의 위임·체인 브랜치·켜기 조건·「P 체인 끝 PR」 을 그대로 쓰고, 계획 PR 을 merge 하지 않고 쌓는 것만 다르다.**
+**`P` 와 같은 자리에서 1회 판정한다 — `T` 는 `P` 의 위임과 켜기 조건을 쓰고, 기본 브랜치에서 시작해 계획 PR 을 앞 PR 위에 쌓은 뒤 착지가 아래부터 기본 브랜치로 merge 한다. `P` 의 중간 브랜치와 끝 PR 은 없다.**
 
 - **조건은 `pr-mode.md`「켜기」 의 셋에 하나를 더한다 — 병렬 그룹이 없다** — 대기 스크립트의 `--pr` base 가 dispatch 하나에 하나라 병렬 워커마다 다른 부모를 줄 수 없다. 병렬 그룹이 있으면 선택지에서 `[T]` 를 빼고 `PR 모드:` 줄에 그 사유를 적는다.
 - **선택지의 권장 표기는 `Y` 하나다(`../SKILL.md`「체인 승인」) — T 는 pstack 의 선택 기준대로 착지 전에 계획마다 리뷰하려 하거나, 계획이 차례로 얽혀 있거나, merge 권한을 보류할 때 사용자가 고른다** — *"the operator wants review before landing, the work is sequenced or coupled, or merge authority is withheld"*(autopilot-stack 「Choosing between the autopilots」). 그 밖이면 Y 가 끝 PR 검증 한 번으로 끝나 계획마다 PR 검증·착지를 치르지 않는다. 화면을 바꾸는 계획에 뒤 계획이 의존하면(인터뷰 「근거로 정한 것」 ①) `P` 는 화면 확인 대기 PR 이 merge 되지 않아 멈추므로(`continuation.md`「남은 일 판정」) 그 사실을 `PR 모드:` 줄에 한 구로 싣는다.
-- **체인 브랜치는 `pr-mode.md`「켜기」 의 `P` 순서 넷으로 만들고, objective `[체인 승인: …]` 이 `T` 를 담는다** — 압축 뒤에도 모드를 되찾는다.
-- **spec 줄은 plan 1 이 `PR 모드: 켬 — base <체인 브랜치> · 스택` 이다. plan N(N>1)은 task 를 만들 때 부모가 아직 없어 `PR 모드: 켬 — base 인계 · 스택` 으로 싣는다 — 워커가 인계 파일에서 부모를 읽는다(아래 「워커」)** — spec 은 만든 뒤 고칠 수 없다. `PR 모드: 켬` 머리를 지켜 워커의 `../../implement/references/pr-flow.md`「적용 판정」 이 그대로 브랜치를 바꾸고 PR 을 연다.
+- **run-create 뒤 task-create 전에 기본 브랜치로 옮긴다 — `pr-mode.md`「켜기」 의 미커밋 줄을 다시 잰 뒤 `git -C "<대상 레포 경로>" switch <기본>` → `git -C "<대상 레포 경로>" pull --ff-only` 다. 실패 처리는 `P` 순서 넷과 같고, objective `[체인 승인: …]` 이 `T` 를 담는다** — 이 단계가 없으면 plan 1 이 지금 체크아웃 브랜치에서 갈라진다(`../../implement/references/pr-flow.md`「브랜치」 의 「그 밖」 행). 압축 뒤에도 objective 로 모드를 되찾는다.
+- **spec 줄은 plan 1 이 `PR 모드: 켬 — base <기본> · 스택` 이고 plan 1 의 대기 명령은 `--pr <기본>` 이다. plan N(N>1)은 task 를 만들 때 부모가 아직 없어 `PR 모드: 켬 — base 인계 · 스택` 으로 싣는다 — 워커가 인계 파일에서 부모를 읽는다(아래 「워커」)** — spec 은 만든 뒤 고칠 수 없다. `PR 모드: 켬` 머리를 지켜 워커의 `../../implement/references/pr-flow.md`「적용 판정」 이 그대로 브랜치를 바꾸고 PR 을 연다.
 
 ## 워커
 
@@ -57,5 +57,5 @@
 
 ## 재개·압축
 
-- **압축 뒤 모드는 objective `[체인 승인: …]` 의 `T` 로, 체인 브랜치는 plan 1 spec 의 `base` 로 되찾는다(`compaction.md`「압축 뒤 복원」)** — plan N(N>1)의 spec 에는 실제 부모 이름이 없다.
+- **압축 뒤 모드는 objective `[체인 승인: …]` 의 `T` 로, 기본 브랜치는 plan 1 spec 의 `base` 로 되찾는다(`compaction.md`「압축 뒤 복원」)** — plan N(N>1)의 spec 에는 실제 부모 이름이 없다.
 - **재개(`resume.md`「열린 PR」)에서 본문에 `스택:` 줄이 있는 열린 PR 은 base 사슬(`baseRefName` → 다른 PR 의 `headRefName`)로 위아래를 세워 `열린 스택: plan <M>…<K> — 맨 위 <브랜치>` 한 줄로 싣는다** — 재개를 `T` 로 승인하면 plan K+1 의 부모는 맨 위 브랜치다. 사슬이 끊기면 `열린 스택: 확인 불가 — <끊긴 자리>` 로 싣고 사용자가 `E` 로 정한다.
