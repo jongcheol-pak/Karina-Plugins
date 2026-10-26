@@ -1,6 +1,8 @@
 # ship — 독립 검증 PASS 뒤 merge
 
 > `../SKILL.md` 가 ship 요청일 때 읽는다. 출처는 Cursor pstack 의 shipping 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/shipping.md`. 7번의 base 이동 영향 판정과 게이트 완화 게이트는 pstack autopilot-full 5·6단계가 출처다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 스택 PR 은 체인 스택 착지(`../../chain-plan/references/stack-mode.md`「착지」 — 한 번에 PR 하나씩 아래부터)로만 받고, 클라우드 검증 에이전트·auto-merge·merge queue 는 들이지 않았다 — 대상은 PR 하나이고 검증자는 `pr-verifier` 서브에이전트다.
+>
+> 목차: 절차(1~10번 — 4번 스택 착지 판정 재사용 · 7번 영향 판정·게이트 완화·화면 게이트) · merge 뒤 버전 커밋 · 보고
 
 **코드를 쓰지 않은 검증자의 판정만 센다** — 작성자는 자기가 만들려던 것을 확인한다. CI 녹색과 봇 리뷰 승인은 판정이 아니다(*"Green CI and an approving bot review are not verdicts"*).
 
