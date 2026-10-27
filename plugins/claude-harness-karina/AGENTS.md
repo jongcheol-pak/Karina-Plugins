@@ -21,6 +21,7 @@
   ```
   pwsh -NoProfile -Command "@('.claude-plugin/plugin.json','hooks/hooks.json','../../.claude-plugin/marketplace.json') | ForEach-Object { $c = Get-Content -LiteralPath $_ -Raw -ErrorAction Stop; $null = $c | ConvertFrom-Json; Write-Host ($_ + ' OK') }"
   ```
+- **Plan check**: `python evals/check-harness-consistency.py --plan` — 계획 단계 검사(`karina:plan` Step 6 의 `check-plan` 이 승인 전에 돌린다)
 - **Hook 골든 회귀** (hook 스크립트·골든 케이스 수정 시 필수):
   ```
   pwsh -NoProfile -ExecutionPolicy Bypass -File hooks/evals/run-hook-evals.ps1

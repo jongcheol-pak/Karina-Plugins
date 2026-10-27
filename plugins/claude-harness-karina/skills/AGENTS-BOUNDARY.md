@@ -43,6 +43,7 @@
 - **Release**: `<버전을 올린 뒤 무엇을 하는가 — 태그·발행·배포 명령. 없으면 "없음">`
 - **Verify (앱 조작)**: `<앱을 사용자처럼 조작해 기능을 증명하는 검증 스킬 경로 — /karina:create-verification-skill 이 만들고 실행 증명을 통과한 .claude/skills/verify-앱이름/ · 없으면 사용자가 /karina:create-verification-skill 을 돌려 만든다 — 그 전에는 "없음">`
 - **Verify (형식 검증)**: `<코드의 속성을 형식 검증하는 스킬 경로 — /karina:create-formal-verification-skill 이 만들고 실행 증명을 통과한 .claude/skills/formal-영역/ · 여럿이면 " · " 로 잇는다 · 없으면 "없음">`
+- **Plan check**: `<계획 단계에서 plan 을 재는 읽기 전용 검사 명령 — check-plan 이 승인 전에 Build·Test 처럼 실행하고 실패를 plan-check 위반으로 낸다(plan 경로는 KARINA_PLAN_PATH) · 없으면 이 줄을 두지 않는다>`
 > ⚠️ Build/Test가 비면 `karina:implement`의 검증이 무의미해진다.
 
 <검증 매핑 표 — 변경 파일 패턴 → 필수 검증. 축이 둘 이상일 때만 만든다>
