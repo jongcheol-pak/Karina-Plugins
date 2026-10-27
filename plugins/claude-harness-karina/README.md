@@ -168,7 +168,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | 검증 스킬 유지 (`karina:maintain-verification-skill`) | `/karina:maintain-verification-skill` 직접 호출 | 앱이 바뀐 뒤 검증 스킬을 다시 맞추고, 실제로 돌려 확인된 수정만 PR 하나로 냅니다(고칠 것이 없으면 PR 없음) |
 | 형식 검증 스킬 만들기 (`karina:create-formal-verification-skill`) | `/karina:create-formal-verification-skill` 직접 호출 | 테스트로 잡기 어려운 핵심 속성 하나(동시성·재시도·상태 기계·파서)를 TLA+ 같은 도구로 형식 검증하는 스킬을 만들어 등록합니다. 이후 그 코드를 건드리면 검사를 다시 돌립니다 · 도구 설치는 승인 후에만 |
 | 형식 검증 스킬 유지 (`karina:maintain-formal-verification-skill`) | `/karina:maintain-formal-verification-skill` 직접 호출 | 코드가 바뀐 뒤 형식 검증을 코드에 다시 맞추고, 검증 쪽 어긋남과 실제 코드 버그를 구분해 보고합니다. 확인된 수정만 PR 하나로 냅니다(도구가 없으면 설치하지 않고 중단) |
-| 세션 회고 (`karina:reflect`) | `/karina:reflect` 직접 호출 | 현재 세션 대화를 돌아보고 karina 스킬·hook 개선 후보를 표로 보여 준 뒤, 사용자가 고른 것만 Deferred 대장에 기록합니다(스킬 파일은 고치지 않음) |
+| 세션 회고 (`karina:reflect`) | `/karina:reflect` 직접 호출 | 현재 세션 대화를 돌아보고 karina 스킬·hook 과 작업 레포 환경(탐색·검사·AGENTS.md·도구 비용 등)·글로벌 지침의 개선 후보를 표로 보여 준 뒤, 사용자가 고른 것만 그 대상의 Deferred 대장에 기록합니다(글로벌은 보고만 · 스킬·레포 파일은 고치지 않음) |
 | 계획 초안 (`karina:plan-draft`) | `/karina:plan-draft [요청]` 직접 호출 | 다른 세션이 plan.md 로 작업 중일 때 쓰는 별도 계획입니다. 요청을 주면 `karina:plan` 과 같은 인터뷰·실측·리뷰를 거친 계획을 plan.md 대신 레포 루트 plans/drafts 폴더에 초안으로 저장합니다(git 에는 올라가지 않음). 요청 없이 부르면 초안 목록(작성일·작성 이후 커밋 수)에서 골라 진행·수정·삭제합니다. 진행하면 plan.md 가 사용 중인지 먼저 확인하고, 비어 있으면 `karina:plan` 으로 다시 검토·승인받아 plan.md 로 올린 뒤 초안을 지웁니다 |
 | 주석 정리 (`karina:no-comments`) | `/karina:no-comments [경로…]` 직접 호출 · `karina:implement` 회차 끝 자동 | 지정한 파일 전체(없으면 base 브랜치 대비 diff)의 코드 주석을 별도 리뷰어가 판정하고, 남길 근거가 없는 주석을 지웁니다. 주석이 감추던 결함은 범위 안이면 바로 고치고, 제약을 코드로 옮길 때만 승인받습니다. 지운 주석의 이유는 커밋 본문용 문단으로 보고합니다(직접 호출은 커밋하지 않음). implement 회차 끝에는 그 계획의 커밋만 범위로 한 번 돌고 별도 커밋을 남깁니다 |
 | 다시 설명 (`karina:wait-what`) | `/karina:wait-what [못 알아들은 부분]` 직접 호출 | 직전 답을 못 알아들었을 때 부릅니다. 작업을 멈추고 지금 어디까지 왔는지, 방금 답의 요지, 사용자가 정할 것을 프로젝트에 이미 있는 용어로 다시 설명합니다. 인자를 주면 그 부분부터 설명합니다. 이 답에서는 파일·작업 상태를 바꾸지 않습니다 |
@@ -196,7 +196,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | plan-reviewer | Opus | 계획 완성 후(최대 3라운드 · 경량 계획에서는 생략) · 따지기로 task 나 완료 조건이 바뀌면 1회 더 | 계획이 **실측 위에 서 있는지** — 적힌 명령이 주장을 뒷받침하는지, 바꿀 심볼의 호출자가 빠지지 않았는지, 승인 항목을 피할 다른 설계가 있는지, 검증 명령이 `AGENTS.md` 에 있는지 |
 | completion-reviewer | Opus | 모든 task 완료 후 1회(경량 계획은 변경이 3파일 이상일 때만) | 계획과 최종 결과의 대조 — 요구가 반영됐는지, 완료 표시가 사실인지(검증 명령을 표본으로 다시 돌림), 성공 기준이 실제로 참인지 |
 | pr-verifier | Opus | `karina:pr` ship 이 merge 하기 전 PR 마다 1회 · 스택 체인의 계획별 검증 | PR head 를 받은 worktree 에서 빌드·테스트·검증 스킬을 돌리고, 화면 시나리오는 PR 전 코드와 비교합니다. 체크를 끄는 변경은 FAIL, 상한 인상·면제 추가는 게이트 완화 줄로 따로 냅니다. 한 명령이 실패해도 끝까지 돌려 실패를 전부 나열합니다. 결과는 PASS / PASS+NOTES / FAIL — 코드를 쓰지 않은 쪽의 판정만 merge 근거가 됩니다 |
-| reflect-reviewer | Opus | 사용자가 `/karina:reflect` 를 부를 때 1회 | 세션 전사를 읽고 karina 스킬·hook 의 개선 후보 표를 냅니다(파일은 고치지 않음) |
+| reflect-reviewer | Opus | 사용자가 `/karina:reflect` 를 부를 때 1회 | 세션 전사를 읽고 karina 스킬·hook 과 작업 레포 환경·글로벌 지침의 개선 후보 표를 냅니다(파일은 고치지 않음) |
 | comment-reviewer | Opus | 사용자가 `/karina:no-comments` 를 부를 때와 implement 회차 끝(경량 계획이면서 변경 3파일 미만은 제외)에 1회(판정을 거부하면 1회 더) | 지정 범위의 코드 주석을 지울 것·남길 것·코드로 고칠 대상·제약 주석으로 판정한 표를 냅니다(파일은 고치지 않음) |
 
 **검토자는 정해진 자리에서만 부릅니다** — task마다 부르지 않습니다. Claude Opus 5는 지시 없이도 자기 작업을 검증하므로, 그 위에 검토 단계를 얹으면 비용과 시간만 늘고 품질은 오르지 않습니다([Anthropic 프롬프팅 가이드](https://platform.claude.com/docs/ko/build-with-claude/prompt-engineering/prompting-claude-opus-5)의 권고).
