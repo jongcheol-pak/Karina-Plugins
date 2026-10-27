@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 17개로 잰다.
+r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 18개로 잰다.
 
 사용법: python evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
        python evals/check-harness-consistency.py --fix [--dry-run]
+       python evals/check-harness-consistency.py --plan [<plan 경로>]   (축 ⑲·㉒ 만 — 계획 시점)
 
 축: ① 포인터 도달성(+하위 통지 「줄이 지워진 절」) ② Deferred 집계 ③ 볼드 마커 짝 ④ 한 줄 문장 중복 ⑤ (폐지 — 소진 batch 회고 대장 삭제로 대상 소멸)
     ⑥ 추출 앵커 도달성 ⑦ 문서 예산 ⑧ 줄바꿈 정합 ⑨ 종결 사유 명시 ⑩ 핵심 포인터 실재
     ⑪ 등재 마커 실재 ⑭ 폐기 식별자 실재 ⑮ 등재 근거 실측 ⑯ 복제 사본 동기 ⑰ 계수·버전 정합 ⑱ 규칙 근거 보유
-    ⑲ 영향 검토 3축 ⑳ (폐지 — 관련 파일 절 폐지로 대상 소멸) ㉑ 큐 태그 열거 정합(+하위 「수 표현」)
+    ⑲ 영향 검토 3축 ⑳ (폐지 — 관련 파일 절 폐지로 대상 소멸) ㉑ 큐 태그 열거 정합(+하위 「수 표현」) ㉒ README 행 동반
     (**⑫⑬ 은 결번이다** — v1.224.0 이 지운 옛 축 둘을 대장 대기 항목이 아직 그 번호로
      가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.)
 
@@ -1209,7 +1210,7 @@ def _impact_labels_present(section):
     return {lab for lab in IMPACT_AXIS_LABELS if any(lab in ln for ln in rows)}
 
 
-def check_impact_axes():
+def check_impact_axes(plan_path=PLAN_MD):
     """영향 검토 3축 기재 — 대상 회차의 `plan.md` 가 세 축을 전부 실었는가.
 
     요구 조건은 **둘의 OR** 이다. ⓐ 게이트 — Files 에 `IMPACT_GATE_PREFIXES` 가 걸린다
@@ -1221,7 +1222,7 @@ def check_impact_axes():
     골든 픽스처의 추적본(`.gitignore` 의 `!…/fixtures/**/plan.md` 예외)이 대신 잰다.
     """
     try:
-        plan = open(PLAN_MD, encoding="utf-8").read()
+        plan = open(plan_path, encoding="utf-8").read()
     except OSError:
         return [], 0
 
@@ -1246,6 +1247,44 @@ def check_impact_axes():
             " 재지 않았으면 「없음」이 아니라 **「미측정」**으로 적는다"
             " (`docs/harness-conventions.md` 「개정·개선 전 영향 검토 (3축)」)" % (lab, why))
     return issues, len(IMPACT_AXIS_LABELS)
+
+
+# ─────────────────────────────────────────────────────────────
+# ㉒ README 행 동반 — 새 스킬·에이전트를 만드는 task 가 README 표 행을 같은 task 에 두는가
+#   README 「Skills」·「Subagents」 표 대조(축 ⑰)는 파일이 생긴 커밋에서야 red 를 낸다.
+#   왜 계획 시점에 재는가는 `harness-consistency-rationale.md` 의 「축 ㉒ — README 행 동반」.
+# ─────────────────────────────────────────────────────────────
+README_COMPANION_NEW_RX = re.compile(r"`((?:skills/[^/`]+/SKILL\.md)|(?:agents/[^/`]+\.md))`")
+
+
+def check_readme_companion(plan_path=PLAN_MD):
+    """README 행 동반 — Files 줄이 신규 SKILL.md·agent 를 담으면 같은 줄에 `README.md` 가 있는가.
+
+    Files 줄은 task 마다 하나라 「같은 줄」이 곧 「같은 task」다. 신규는 하니스 루트에 아직
+    없는 경로다 — 이미 있는 스킬을 고치는 task 는 README 표 행이 이미 있어 대상이 아니다.
+    fail-open: plan 이 없으면 `([], 0)`.
+    """
+    try:
+        plan = open(plan_path, encoding="utf-8").read()
+    except OSError:
+        return [], 0
+    issues, n = [], 0
+    for line in plan.splitlines():
+        m = IMPACT_FILES_RX.match(line)
+        if not m:
+            continue
+        new = [p for p in README_COMPANION_NEW_RX.findall(m.group(1))
+               if not os.path.exists(os.path.join(ROOT, p))]
+        if not new:
+            continue
+        n += 1
+        if "`README.md`" in m.group(1):
+            continue
+        issues.append(
+            "README 행 동반: Files 줄이 새 파일 %s 을 담는데 같은 줄에 `README.md` 가 없다 — "
+            "README 「Skills」·「Subagents」 표 행을 그 파일과 같은 task 에 넣는다"
+            " (`harness-consistency-rationale.md` 「축 ㉒ — README 행 동반」)" % " · ".join(new))
+    return issues, n
 
 
 # ─────────────────────────────────────────────────────────────
@@ -2123,6 +2162,15 @@ def main():
     if "--fix" in sys.argv:
         sys.exit(run_fix("--dry-run" in sys.argv))
 
+    if "--plan" in sys.argv:
+        i = sys.argv.index("--plan")
+        arg = sys.argv[i + 1] if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith("--") else ""
+        plan_path = os.path.abspath(arg or os.environ.get("KARINA_PLAN_PATH") or PLAN_MD)
+        sys.exit(report([
+            ("영향 검토 3축", check_impact_axes(plan_path)),
+            ("README 행 동반", check_readme_companion(plan_path)),
+        ], []))
+
     conv = read(CONV_MD)
     ledger = read(LEDGER_MD)
     ledger_closed = read(LEDGER_CLOSED_MD)
@@ -2152,27 +2200,31 @@ def main():
         ("계수·버전 정합", (count_issues, count_n)),
         ("규칙 근거 보유", (rule_issues, rule_n)),
         ("영향 검토 3축", check_impact_axes()),
+        ("README 행 동반", check_readme_companion()),
         ("큐 태그 열거 정합", (tagenum_issues, tagenum_n)),
         ("큐 태그 수 표현", check_queue_tag_count_words()),
     ]
+    sys.exit(report(axes, check_agents_target() + check_deleted_section_pointers() + budget_notices
+                    + close_notices + ledger_notices + rule_notices + tagenum_notices + count_notices))
+
+
+def report(axes, notices):
     all_issues, parts = [], []
     for label, (issues, n) in axes:
         all_issues.extend(issues)
         parts.append("%s %d항목" % (label, n))
 
     print("== 하니스 정합 셀프체크 (%s) ==" % " · ".join(label for label, _ in axes))
-    # 통지는 exit 코드에 반영하지 않는다 — 경고선이지 게이트가 아니다(위 함수 docstring).
-    for m in (check_agents_target() + check_deleted_section_pointers() + budget_notices
-              + close_notices + ledger_notices + rule_notices + tagenum_notices + count_notices):
+    for m in notices:
         print("[NOTICE] %s" % m)
     if all_issues:
         for m in all_issues:
             print("[MISMATCH] %s" % m)
         print("\n결과: 불일치 %d건 — 해당 파일을 고친 task가 기준선·앵커를 함께 갱신해야 합니다"
               "(`docs/harness-conventions.md` 「조건부 참조 문서 크기 임계」 참조)." % len(all_issues))
-        sys.exit(1)
+        return 1
     print("결과: 대조 전부 일치 (%s)" % " + ".join(parts))
-    sys.exit(0)
+    return 0
 
 
 if __name__ == "__main__":

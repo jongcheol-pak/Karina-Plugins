@@ -3,9 +3,10 @@
 #
 # 사용: check-plan.ps1 <plan.md 경로>                 서식 검사(계획 시점)
 #       check-plan.ps1 <plan.md 경로> -Base <sha>     증거 대조만(회차 끝) — 서식 검사는 돌리지 않는다
-# 출력은 ASCII 만이고 줄 종류는 넷이다:
+# 출력은 ASCII 만이고 줄 종류는 다섯이다:
 #   check-plan <줄>: <코드> <세부>        위반 하나
 #   check-plan: skip <검사> <사유>        건너뛴 검사 하나(위반 아님)
+#   check-plan: ran plan-check exit 0 log <파일>   AGENTS.md 의 Plan check 가 돌아 통과함(위반 아님)
 #   check-plan: <N> problems              마지막 줄 — 위반 수
 #   check-plan: ERROR <사유>              입력 오류(exit 2)
 # 종료 코드: 0 위반 없음 · 1 위반 있음 · 2 입력 오류(경로 없음·파일 없음·읽기 실패 · -Base 모드의 git 밖·없는 BASE).
@@ -28,6 +29,10 @@
 #   task-line T<N> <줄>          task 에 files·acceptance·verify 줄 없음
 #   screen-line T<N> <요소>      「- **화면**:」 줄에 scenario(시나리오)·screenshot(스크린샷)·predicate(통과 조건) 조각이 없거나 값이 빔
 #                                (화면 줄이 없는 task 는 재지 않는다 — 있어야 할 task 인지는 plan-reviewer 가 본다)
+#   plan-check exit <n> log <파일>  plan 폴더에서 git 최상위까지 올라가며 찾은 AGENTS.md 의 「- **Plan check**: `<명령>`」 이
+#                                exit 0 이 아님 — <줄> 은 AGENTS.md 의 줄 · 출력은 임시 폴더 karina-plugin\scratch\<파일>
+#   plan-check timeout <s> log <파일>  그 명령이 상한(KARINA_PLAN_CHECK_TIMEOUT_SEC, 기본 120초)을 넘음
+#                                (줄이 없으면 아무것도 내지 않는다 · -Base 모드는 돌리지 않는다)
 # -Base 모드의 코드 — 대상은 하위 항목이 전부 [x]·[X] 인 task 이고, 전부 「(불요」 인 task 는 뺀다:
 #   no-task-commit T<N>          BASE..HEAD 에 제목이 「{유형}: T<N> —」(또는 「T<N>:」)인 커밋이 없음
 #   no-commit-evidence T<N>      그 커밋은 있으나 어느 본문에도 「검증 결과」·「검증:」·HUMAN-VERIFY 가 없음
@@ -296,6 +301,73 @@ if (Find-Section $tasksTitle) {
             }
         }
     }
+}
+
+function Find-PlanCheck([string]$PlanFile) {
+    $dir = Split-Path -Parent $PlanFile
+    $top = $null
+    try { $top = (& git -C $dir rev-parse --show-toplevel 2>$null) } catch { $top = $null }
+    if ($LASTEXITCODE -ne 0 -or -not $top) { $top = $dir }
+    $top = [System.IO.Path]::GetFullPath($top).TrimEnd('\', '/')
+    while ($dir) {
+        $agents = Join-Path $dir 'AGENTS.md'
+        if (Test-Path -LiteralPath $agents -PathType Leaf) {
+            $lines = [System.IO.File]::ReadAllLines($agents, [System.Text.Encoding]::UTF8)
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+                if ($lines[$i] -match '^- \*\*Plan check\*\*: `([^`]+)`') { return @{ Dir = $dir; Line = $i + 1; Command = $Matches[1] } }
+            }
+            return $null
+        }
+        if ([System.IO.Path]::GetFullPath($dir).TrimEnd('\', '/') -eq $top) { return $null }
+        $parent = Split-Path -Parent $dir
+        if (-not $parent -or $parent -eq $dir) { return $null }
+        $dir = $parent
+    }
+    return $null
+}
+
+$planFile = (Resolve-Path -LiteralPath $PlanPath).Path
+$pc = Find-PlanCheck $planFile
+if ($pc) {
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    $tmp = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
+    if (-not $tmp) { $tmp = [System.IO.Path]::GetTempPath() }
+    $logDir = Join-Path (Join-Path $tmp 'karina-plugin') 'scratch'
+    New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+    $logName = 'check-plan-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '.log'
+    $limit = 120
+    $n = 0
+    if ([int]::TryParse([string]$env:KARINA_PLAN_CHECK_TIMEOUT_SEC, [ref]$n) -and $n -gt 0) { $limit = $n }
+
+    $script = '[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); ' + $pc.Command + "`n" + 'exit $LASTEXITCODE'
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = (Get-Process -Id $PID).Path
+    $psi.Arguments = '-NoProfile -NonInteractive -EncodedCommand ' + [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($script))
+    $psi.WorkingDirectory = $pc.Dir
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardInput = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = $utf8
+    $psi.StandardErrorEncoding = $utf8
+    $psi.EnvironmentVariables['KARINA_PLAN_PATH'] = $planFile
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    $proc.StandardInput.Close()
+    $outTask = $proc.StandardOutput.ReadToEndAsync()
+    $errTask = $proc.StandardError.ReadToEndAsync()
+    $timedOut = -not $proc.WaitForExit($limit * 1000)
+    if ($timedOut) {
+        # 5.1(.NET Framework)의 Kill() 은 자식만 끝내 손자가 출력 파이프를 쥔 채 남는다.
+        if ($PSVersionTable.PSVersion.Major -ge 7) { try { $proc.Kill($true) } catch { } }
+        else { $null = & taskkill.exe /T /F /PID $proc.Id 2>&1 }
+    }
+    $text = ''
+    if ($outTask.Wait(5000)) { $text += $outTask.Result }
+    if ($errTask.Wait(5000)) { $text += $errTask.Result }
+    [System.IO.File]::WriteAllText((Join-Path $logDir $logName), $text, $utf8)
+    if ($timedOut) { Add-Problem $pc.Line ('plan-check timeout ' + $limit + ' log ' + $logName) }
+    elseif ($proc.ExitCode -ne 0) { Add-Problem $pc.Line ('plan-check exit ' + $proc.ExitCode + ' log ' + $logName) }
+    else { Write-Output ('check-plan: ran plan-check exit 0 log ' + $logName) }
 }
 
 Complete-Check
