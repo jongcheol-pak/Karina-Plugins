@@ -399,7 +399,8 @@ class Ledger:
         ep = os.path.join(self.dir, 'entries.txt')
         with open(ep, 'w', encoding='utf-8', newline='\n') as f:
             f.write('\n'.join(entries) + '\n')
-        return run(APPEND, ['--ledger', self.path, '--group', group, '--entries', ep])
+        group_args = [] if group is None else ['--group', group]
+        return run(APPEND, ['--ledger', self.path] + group_args + ['--entries', ep])
 
     def close(self):
         shutil.rmtree(self.dir, ignore_errors=True)
@@ -523,6 +524,95 @@ def append_keeps_trailing_blank_lines():
         lines = lg.text().split('\r\n')
         i = lines.index(ENTRY)
         assert lines[i + 1:i + 5] == ['', '', '', '### eval · 측정'], lines[i:i + 5]
+    finally:
+        lg.close()
+
+
+# 다른 레포 대장 모양 — `## 대기` 아래 항목만 있고 그룹·잔량 줄이 없다
+REPO_LEDGER = (
+    '# Deferred 대장\r\n'
+    '\r\n'
+    '## 대기\r\n'
+    '- [2026-07-15] 첫 항목 (실해: 2026-07-15 관측)\r\n'
+    '- [2026-07-16] 둘째 항목 (실해: 2026-07-16 관측)\r\n'
+    '\r\n'
+    '## 종결\r\n'
+    '- [2026-07-01] 끝난 항목 (실해: 2026-07-01 관측)\r\n'
+)
+
+
+@case
+def append_no_group_into_daegi():
+    # ㉔ --group 없음 · `## 대기` 있음 → 대기 마지막 항목 뒤 · 종결 절 불변 · CRLF 유지
+    lg = Ledger(REPO_LEDGER)
+    try:
+        rc, _, err = lg.append(None, [ENTRY])
+        assert rc == 0, (rc, err)
+        lines = lg.text().split('\r\n')
+        assert lines[lines.index(ENTRY) - 1].startswith('- [2026-07-16] 둘째 항목'), lines
+        assert lg.text().endswith('## 종결\r\n- [2026-07-01] 끝난 항목 (실해: 2026-07-01 관측)\r\n'), lg.text()
+        assert lg.bytes().count(b'\n') == lg.bytes().count(b'\r\n'), '모든 줄이 CRLF'
+    finally:
+        lg.close()
+
+
+@case
+def append_no_group_whole_file():
+    # ㉕ --group 없음 · `## 대기` 없음(LF) → 파일 전체의 마지막 항목 뒤 · LF 유지
+    text = '# 대장\n\n- [2026-07-15] 하나 (실해: 2026-07-15 관측)\n- [2026-07-16] 둘 (실해: 2026-07-16 관측)\n\n> 꼬리\n'
+    lg = Ledger(text)
+    try:
+        rc, _, err = lg.append(None, [ENTRY])
+        assert rc == 0, (rc, err)
+        lines = lg.text().split('\n')
+        assert lines[lines.index(ENTRY) - 1].startswith('- [2026-07-16] 둘'), lines
+        assert b'\r' not in lg.bytes(), 'LF 유지'
+        assert lg.text().endswith('\n\n> 꼬리\n'), lg.text()
+    finally:
+        lg.close()
+
+
+@case
+def append_no_group_without_counter():
+    # ㉖ --group 없음 → 잔량 줄이 없어도 exit 0 · 있으면 넣은 수만큼 오른다
+    lg = Ledger(REPO_LEDGER)
+    try:
+        rc, _, err = lg.append(None, [ENTRY])
+        assert rc == 0, (rc, err)
+    finally:
+        lg.close()
+    lg = Ledger(REPO_LEDGER.replace('## 대기\r\n', '## 대기\r\n**▶ 현행 잔량(기계 대조 대상)**: 대기 2\r\n'))
+    try:
+        rc, _, err = lg.append(None, [ENTRY])
+        assert rc == 0, (rc, err)
+        assert '**▶ 현행 잔량(기계 대조 대상)**: 대기 3' in lg.text(), lg.text()
+    finally:
+        lg.close()
+
+
+@case
+def append_no_group_empty_daegi():
+    # ㉗ --group 없음 · `## 대기` 아래 항목 0 → 절 머리 뒤 빈 줄 하나 다음
+    lg = Ledger('# 대장\r\n\r\n## 대기\r\n\r\n## 종결\r\n')
+    try:
+        rc, _, err = lg.append(None, [ENTRY])
+        assert rc == 0, (rc, err)
+        lines = lg.text().split('\r\n')
+        i = lines.index('## 대기')
+        assert lines[i + 1:i + 5] == ['', ENTRY, '', '## 종결'], lines
+    finally:
+        lg.close()
+
+
+@case
+def append_no_group_after_continuation():
+    # ㉘ --group 없음 · 마지막 항목 아래 들여쓴 연속 줄 → 연속 줄 뒤에 들어가 항목이 쪼개지지 않는다
+    lg = Ledger('## 대기\r\n- [2026-07-16] 둘 (실해: 2026-07-16 관측)\r\n  - 하위 1\r\n  - 하위 2\r\n\r\n## 종결\r\n')
+    try:
+        rc, _, err = lg.append(None, [ENTRY])
+        assert rc == 0, (rc, err)
+        lines = lg.text().split('\r\n')
+        assert lines[1:5] == ['- [2026-07-16] 둘 (실해: 2026-07-16 관측)', '  - 하위 1', '  - 하위 2', ENTRY], lines
     finally:
         lg.close()
 
