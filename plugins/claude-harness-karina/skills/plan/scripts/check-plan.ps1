@@ -303,11 +303,6 @@ if (Find-Section $tasksTitle) {
     }
 }
 
-# ---- Plan check — 레포가 AGENTS.md 에 선언한 계획 단계 검사를 돌린다(서식 검사 모드만) ----
-# 찾기: plan 폴더에서 git 최상위까지 올라가며 처음 만나는 AGENTS.md(git 밖이면 plan 폴더만).
-# 실행: 현재 호스트를 -EncodedCommand 로 띄운다 — cwd = 그 AGENTS.md 폴더 · KARINA_PLAN_PATH = plan 절대경로 ·
-#   stdin 닫음 · 상한(KARINA_PLAN_CHECK_TIMEOUT_SEC, 기본 120초)을 넘으면 프로세스 트리를 끝내고 출력 EOF 는 수 초만 기다린다.
-# 출력은 늘 임시 폴더 karina-plugin\scratch 의 로그에 쓰고 줄에는 파일 이름만 싣는다 — 경로가 비ASCII 일 수 있다.
 function Find-PlanCheck([string]$PlanFile) {
     $dir = Split-Path -Parent $PlanFile
     $top = $null

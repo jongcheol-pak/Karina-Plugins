@@ -2162,8 +2162,6 @@ def main():
     if "--fix" in sys.argv:
         sys.exit(run_fix("--dry-run" in sys.argv))
 
-    # `--plan [<경로>]` 은 plan 을 읽는 축 중 계획 시점에 뜻이 있는 둘만 돈다 — check-plan 이
-    #  AGENTS.md 의 `Plan check` 줄로 부른다. 경로는 인자 → `KARINA_PLAN_PATH` → 루트 plan.md 순이다.
     if "--plan" in sys.argv:
         i = sys.argv.index("--plan")
         arg = sys.argv[i + 1] if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith("--") else ""
@@ -2206,13 +2204,11 @@ def main():
         ("큐 태그 열거 정합", (tagenum_issues, tagenum_n)),
         ("큐 태그 수 표현", check_queue_tag_count_words()),
     ]
-    # 통지는 exit 코드에 반영하지 않는다 — 경고선이지 게이트가 아니다(위 함수 docstring).
     sys.exit(report(axes, check_agents_target() + check_deleted_section_pointers() + budget_notices
                     + close_notices + ledger_notices + rule_notices + tagenum_notices + count_notices))
 
 
 def report(axes, notices):
-    """배너 · 통지 · 불일치 · 결과 줄을 내고 종료 코드를 돌려준다 — 전체 모드와 `--plan` 이 같이 쓴다."""
     all_issues, parts = [], []
     for label, (issues, n) in axes:
         all_issues.extend(issues)

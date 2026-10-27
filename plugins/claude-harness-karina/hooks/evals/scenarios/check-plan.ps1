@@ -276,8 +276,6 @@ if ($cpWinPs) {
     Assert-Case -Name "check-plan 증거: PS 5.1 에서도 본문 증거 없음을 잡는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'no-commit-evidence T1'
 }
 
-# ---- Plan check — plan 폴더에서 git 최상위까지 올라가며 찾은 AGENTS.md 의 `Plan check` 명령을 돌린다 ----
-# 서식 검사 모드에서만 돌고, 실패·시간 초과는 위반 `plan-check`, 성공은 `ran plan-check exit 0` 줄이다.
 $cpPcSeq = 0
 function New-PlanCheckDir([string]$AgentsLine, [switch]$Git, [string]$Sub = '') {
     $script:cpPcSeq++
@@ -311,7 +309,6 @@ Assert-Case -Name "check-plan Plan check: 명령이 KARINA_PLAN_PATH 로 plan �
 $r = Invoke-CheckPlan $cpBase (New-PlanCheckDir '')
 Assert-Case -Name "check-plan Plan check: 줄이 없으면 아무것도 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'plan-check'
 
-# 시간 초과 — 손자 프로세스(자식 셸이 띄운 powershell)가 매달리는 형태라야 트리 종료와 출력 대기 포기를 잰다.
 $cpPcHang = 'powershell -NoProfile -Command Start-Sleep 61'
 $env:KARINA_PLAN_CHECK_TIMEOUT_SEC = '2'
 $cpSw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -337,7 +334,6 @@ if ($cpWinPs) {
     Assert-Case -Name "check-plan Plan check: PS 5.1 에서도 상한을 넘으면 timeout 위반을 낸다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'plan-check timeout 2'
 }
 
-# -Base(증거 대조)는 Plan check 를 돌리지 않는다 — 회차 끝에는 plan 서식이 아니라 커밋 증거를 본다.
 $ev = New-EvidenceRepo @()
 [System.IO.File]::WriteAllText((Join-Path $ev.dir 'AGENTS.md'), "# AGENTS.md`n`n- **Plan check**: ``exit 3```n", (New-Object System.Text.UTF8Encoding($false)))
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
