@@ -276,4 +276,71 @@ if ($cpWinPs) {
     Assert-Case -Name "check-plan 증거: PS 5.1 에서도 본문 증거 없음을 잡는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'no-commit-evidence T1'
 }
 
+# ---- Plan check — plan 폴더에서 git 최상위까지 올라가며 찾은 AGENTS.md 의 `Plan check` 명령을 돌린다 ----
+# 서식 검사 모드에서만 돌고, 실패·시간 초과는 위반 `plan-check`, 성공은 `ran plan-check exit 0` 줄이다.
+$cpPcSeq = 0
+function New-PlanCheckDir([string]$AgentsLine, [switch]$Git, [string]$Sub = '') {
+    $script:cpPcSeq++
+    $root = Join-Path $cpRoot ('pc' + $script:cpPcSeq)
+    New-Item -ItemType Directory -Path $root -Force | Out-Null
+    $agents = "# AGENTS.md`n`n## Build & Test`n`n" + $(if ($AgentsLine) { "- **Plan check**: ``$AgentsLine`` — 데모`n" } else { "- **Build**: ``run```n" })
+    [System.IO.File]::WriteAllText((Join-Path $root 'AGENTS.md'), $agents, (New-Object System.Text.UTF8Encoding($false)))
+    if ($Git) { & git -C $root init -q 2>$null }
+    $dir = if ($Sub) { Join-Path $root $Sub } else { $root }
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    return $dir
+}
+function Get-PlanCheckLog([string]$Out) {
+    if ($Out -notmatch 'log (check-plan-[0-9-]+\.log)') { return '' }
+    $tmp = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
+    $p = Join-Path (Join-Path (Join-Path $tmp 'karina-plugin') 'scratch') $Matches[1]
+    if (Test-Path -LiteralPath $p) { return [System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8) }
+    return ''
+}
+
+$r = Invoke-CheckPlan $cpBase (New-PlanCheckDir 'exit 3')
+Assert-Case -Name "check-plan Plan check: 명령이 실패하면 plan-check 위반을 낸다" -R $r -ExpectExit 1 -ExpectContains 'plan-check exit 3 log check-plan-'
+$cpPcAscii = if ($r.out -match '[^\x00-\x7F]') { 'NON-ASCII' } else { 'ASCII-ONLY' }
+Assert-Case -Name "check-plan Plan check: 위반 줄도 출력은 ASCII 뿐이다" -R @{ code = $r.code; out = $cpPcAscii } -ExpectExit 1 -ExpectContains 'ASCII-ONLY'
+$r = Invoke-CheckPlan $cpBase (New-PlanCheckDir 'Write-Output ok')
+Assert-Case -Name "check-plan Plan check: 명령이 성공하면 실행 표지를 내고 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: ran plan-check exit 0 log check-plan-'
+$r = Invoke-CheckPlan $cpBase (New-PlanCheckDir 'exit 4' -Git -Sub 'sub/deep')
+Assert-Case -Name "check-plan Plan check: plan 이 하위 폴더면 git 최상위까지 올라가 AGENTS.md 를 찾는다" -R $r -ExpectExit 1 -ExpectContains 'plan-check exit 4'
+$r = Invoke-CheckPlan $cpBase (New-PlanCheckDir 'if (-not (Test-Path -LiteralPath $env:KARINA_PLAN_PATH)) { exit 5 }; if ((Split-Path -Leaf $env:KARINA_PLAN_PATH) -ne ''plan.md'') { exit 6 }')
+Assert-Case -Name "check-plan Plan check: 명령이 KARINA_PLAN_PATH 로 plan 경로를 받는다" -R $r -ExpectExit 0 -ExpectContains 'ran plan-check exit 0'
+$r = Invoke-CheckPlan $cpBase (New-PlanCheckDir '')
+Assert-Case -Name "check-plan Plan check: 줄이 없으면 아무것도 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'plan-check'
+
+# 시간 초과 — 손자 프로세스(자식 셸이 띄운 powershell)가 매달리는 형태라야 트리 종료와 출력 대기 포기를 잰다.
+$cpPcHang = 'powershell -NoProfile -Command Start-Sleep 61'
+$env:KARINA_PLAN_CHECK_TIMEOUT_SEC = '2'
+$cpSw = [System.Diagnostics.Stopwatch]::StartNew()
+$r = Invoke-CheckPlan $cpBase (New-PlanCheckDir $cpPcHang)
+$cpSw.Stop()
+Remove-Item Env:KARINA_PLAN_CHECK_TIMEOUT_SEC -ErrorAction SilentlyContinue
+Assert-Case -Name "check-plan Plan check: 상한을 넘으면 timeout 위반을 낸다" -R $r -ExpectExit 1 -ExpectContains 'plan-check timeout 2 log check-plan-'
+$cpLeft = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*Start-Sleep 61*' }).Count
+Assert-Case -Name "check-plan Plan check: 시간 초과 뒤 손자 프로세스가 남지 않고 곧 끝난다" -R @{ code = 0; out = ('left=' + $cpLeft + ' fast=' + ($cpSw.Elapsed.TotalSeconds -lt 20)) } -ExpectExit 0 -ExpectContains 'left=0 fast=True'
+
+if ($cpWinPs) {
+    $r = Invoke-CheckPlan $cpBase (New-PlanCheckDir 'Write-Output ''한글출력''; exit 3') $cpWinPs.Source
+    Assert-Case -Name "check-plan Plan check: PS 5.1 에서도 실패를 잡는다" -R $r -ExpectExit 1 -ExpectContains 'plan-check exit 3'
+    $cpLog = Get-PlanCheckLog $r.out
+    Assert-Case -Name "check-plan Plan check: PS 5.1 로그에 한글 출력이 깨지지 않는다" -R @{ code = 0; out = $cpLog } -ExpectExit 0 -ExpectContains '한글출력'
+    $env:KARINA_PLAN_CHECK_TIMEOUT_SEC = '2'
+    $r = Invoke-CheckPlan $cpBase (New-PlanCheckDir $cpPcHang) $cpWinPs.Source
+    Remove-Item Env:KARINA_PLAN_CHECK_TIMEOUT_SEC -ErrorAction SilentlyContinue
+    Assert-Case -Name "check-plan Plan check: PS 5.1 에서도 상한을 넘으면 timeout 위반을 낸다" -R $r -ExpectExit 1 -ExpectContains 'plan-check timeout 2'
+} else {
+    Assert-Case -Name "check-plan Plan check: PS 5.1 에서도 실패를 잡는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'plan-check exit 3'
+    Assert-Case -Name "check-plan Plan check: PS 5.1 로그에 한글 출력이 깨지지 않는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectContains '한글출력'
+    Assert-Case -Name "check-plan Plan check: PS 5.1 에서도 상한을 넘으면 timeout 위반을 낸다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'plan-check timeout 2'
+}
+
+# -Base(증거 대조)는 Plan check 를 돌리지 않는다 — 회차 끝에는 plan 서식이 아니라 커밋 증거를 본다.
+$ev = New-EvidenceRepo @()
+[System.IO.File]::WriteAllText((Join-Path $ev.dir 'AGENTS.md'), "# AGENTS.md`n`n- **Plan check**: ``exit 3```n", (New-Object System.Text.UTF8Encoding($false)))
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan Plan check: -Base 모드에서는 돌리지 않는다" -R $r -ExpectExit 1 -ExpectNotContains 'plan-check'
+
 }
