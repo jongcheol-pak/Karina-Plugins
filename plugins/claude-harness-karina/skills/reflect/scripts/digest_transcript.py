@@ -20,9 +20,9 @@ import os
 import re
 import sys
 
-TEXT_CAP = 600   # U·A
-SHORT_CAP = 300  # T·ERR·H
-BIG_CAP = 20000  # BIG — 문자 수(미리보기 크기는 1KB=1,000자로 환산)
+TEXT_CAP = 600
+SHORT_CAP = 300
+BIG_CAP = 20000
 BIG_HEAD = 120
 HOOK_TYPES = ('hook_additional_context', 'hook_cancelled')
 PERSISTED = re.compile(r'<persisted-output>\s*Output too large \(([\d.]+)(KB|MB)\)')
@@ -47,15 +47,21 @@ def _tool_hint(inp):
 
 
 def result_size(text):
-    """성공 결과의 크기(자). 미리보기면 그 안의 원래 크기다."""
     m = PERSISTED.search(text)
     if m:
         return int(float(m.group(1)) * (1000 if m.group(2) == 'KB' else 1000000))
     return len(text)
 
 
-def record_lines(d, tool_names):
-    """레코드 하나 → 요약 줄 목록. 모르는 레코드는 None(인식 안 함). tool_names 는 tool_use id → 이름."""
+def remember_tool_names(d, tool_name_by_id):
+    if d.get('type') != 'assistant' or not isinstance(d.get('message'), dict):
+        return
+    for b in d['message'].get('content') or []:
+        if isinstance(b, dict) and b.get('type') == 'tool_use':
+            tool_name_by_id[b.get('id')] = b.get('name')
+
+
+def record_lines(d, tool_name_by_id):
     t = d.get('type')
     m = d.get('message') if isinstance(d.get('message'), dict) else {}
     c = m.get('content')
@@ -72,7 +78,7 @@ def record_lines(d, tool_names):
                 text = _result_text(b.get('content'))
                 size = result_size(text)
                 if size >= BIG_CAP:
-                    name = tool_names.get(b.get('tool_use_id'), '?')
+                    name = tool_name_by_id.get(b.get('tool_use_id'), '?')
                     out.append('BIG: %s %d자 %s' % (name, size, cut(text, BIG_HEAD)))
         return out
     if t == 'assistant':
@@ -81,7 +87,6 @@ def record_lines(d, tool_names):
             if b.get('type') == 'text':
                 out.append('A: ' + cut(b.get('text', ''), TEXT_CAP))
             elif b.get('type') == 'tool_use':
-                tool_names[b.get('id')] = b.get('name')
                 hint = cut(_tool_hint(b.get('input') or {}), SHORT_CAP)
                 out.append(('T: %s %s' % (b.get('name'), hint)).rstrip())
         return out
@@ -96,7 +101,7 @@ def record_lines(d, tool_names):
 
 
 def digest_file(path, counts):
-    lines, recognized, tool_names = [], 0, {}
+    lines, recognized, tool_name_by_id = [], 0, {}
     with open(path, encoding='utf-8', errors='replace') as f:
         for raw in f:
             try:
@@ -105,7 +110,8 @@ def digest_file(path, counts):
                 continue
             if not isinstance(d, dict):
                 continue
-            got = record_lines(d, tool_names)
+            remember_tool_names(d, tool_name_by_id)
+            got = record_lines(d, tool_name_by_id)
             if got is None:
                 continue
             recognized += 1

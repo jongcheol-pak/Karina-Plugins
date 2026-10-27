@@ -79,7 +79,6 @@ def main(argv=None):
         insert = [''] + entries
     else:
         at = start + 2 if start + 1 < end and lines[start + 1] == '' else start + 1
-        # 빈 절 — 헤딩·빈 줄·항목·빈 줄 모양을 유지한다
         insert = entries + ([''] if at < len(lines) and lines[at] != '' else [])
 
     counter = [i for i, l in enumerate(lines) if COUNTER.match(l)]

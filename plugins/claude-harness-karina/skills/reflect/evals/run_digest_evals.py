@@ -269,7 +269,6 @@ def big_lines(out):
 
 @case
 def big_result_marked():
-    # ⑲ 본문 20,000자 성공 결과 → 도구 이름을 단 BIG 줄 · 본문은 120자까지만 · 머리 줄 수에 BIG 1
     t = Tree()
     try:
         t.session('proj-a', SID, [rec_assistant([tool_use('t1', 'Bash')]),
@@ -286,7 +285,6 @@ def big_result_marked():
 
 @case
 def persisted_output_marked():
-    # ⑳ 파일로 빠진 출력의 미리보기(Output too large) → BIG 줄
     t = Tree()
     try:
         preview = '<persisted-output>\nOutput too large (21.3KB). Full output saved to: C:\\x\\tool-results\\a.txt\n미리보기'
@@ -302,7 +300,6 @@ def persisted_output_marked():
 
 @case
 def big_parallel_tool_name():
-    # ㉑ 병렬 호출 — 결과의 tool_use_id 로 도구를 찾아, 바로 앞 T 줄(다른 도구)을 붙이지 않는다
     t = Tree()
     try:
         t.session('proj-a', SID, [rec_assistant([tool_use('r1', 'Read'), tool_use('b1', 'Bash')]),
@@ -318,7 +315,6 @@ def big_parallel_tool_name():
 
 @case
 def below_big_cap_excluded():
-    # ㉒ 문턱 미만(본문 19,999자 · 미리보기 19.5KB) → BIG 없음
     t = Tree()
     try:
         preview = '<persisted-output>\nOutput too large (19.5KB). Full output saved to: C:\\x\\b.txt'
@@ -334,7 +330,6 @@ def below_big_cap_excluded():
 
 @case
 def big_error_stays_err():
-    # ㉓ 20,000자 오류 결과는 ERR 로만 나온다
     t = Tree()
     try:
         t.session('proj-a', SID, [rec_assistant([tool_use('t1', 'Bash')]),
@@ -346,8 +341,6 @@ def big_error_stays_err():
     finally:
         t.close()
 
-
-# ── append_deferred ─────────────────────────────────────────────────────────
 
 LEDGER = (
     '﻿# Deferred 대장\r\n'
@@ -528,7 +521,6 @@ def append_keeps_trailing_blank_lines():
         lg.close()
 
 
-# 다른 레포 대장 모양 — `## 대기` 아래 항목만 있고 그룹·잔량 줄이 없다
 REPO_LEDGER = (
     '# Deferred 대장\r\n'
     '\r\n'
@@ -543,7 +535,6 @@ REPO_LEDGER = (
 
 @case
 def append_no_group_into_daegi():
-    # ㉔ --group 없음 · `## 대기` 있음 → 대기 마지막 항목 뒤 · 종결 절 불변 · CRLF 유지
     lg = Ledger(REPO_LEDGER)
     try:
         rc, _, err = lg.append(None, [ENTRY])
@@ -558,7 +549,6 @@ def append_no_group_into_daegi():
 
 @case
 def append_no_group_whole_file():
-    # ㉕ --group 없음 · `## 대기` 없음(LF) → 파일 전체의 마지막 항목 뒤 · LF 유지
     text = '# 대장\n\n- [2026-07-15] 하나 (실해: 2026-07-15 관측)\n- [2026-07-16] 둘 (실해: 2026-07-16 관측)\n\n> 꼬리\n'
     lg = Ledger(text)
     try:
@@ -574,7 +564,6 @@ def append_no_group_whole_file():
 
 @case
 def append_no_group_without_counter():
-    # ㉖ --group 없음 → 잔량 줄이 없어도 exit 0 · 있으면 넣은 수만큼 오른다
     lg = Ledger(REPO_LEDGER)
     try:
         rc, _, err = lg.append(None, [ENTRY])
@@ -592,7 +581,6 @@ def append_no_group_without_counter():
 
 @case
 def append_no_group_empty_daegi():
-    # ㉗ --group 없음 · `## 대기` 아래 항목 0 → 절 머리 뒤 빈 줄 하나 다음
     lg = Ledger('# 대장\r\n\r\n## 대기\r\n\r\n## 종결\r\n')
     try:
         rc, _, err = lg.append(None, [ENTRY])
@@ -606,7 +594,6 @@ def append_no_group_empty_daegi():
 
 @case
 def append_no_group_after_continuation():
-    # ㉘ --group 없음 · 마지막 항목 아래 들여쓴 연속 줄 → 연속 줄 뒤에 들어가 항목이 쪼개지지 않는다
     lg = Ledger('## 대기\r\n- [2026-07-16] 둘 (실해: 2026-07-16 관측)\r\n  - 하위 1\r\n  - 하위 2\r\n\r\n## 종결\r\n')
     try:
         rc, _, err = lg.append(None, [ENTRY])
