@@ -162,6 +162,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | 위키 운영 (`karina:llm-wiki`) | "위키에 등록/업데이트" | 프로젝트 지식을 쌓고 다음 작업 때 참조 |
 | PR 운영 (`karina:pr`) | "PR 지켜봐" · "CI 초록 될 때까지" · "리뷰 코멘트에 답해" · "검증하고 머지해" | **babysit** — CI 실패 중 그 PR 의 코드 실패만 고치고 리뷰 코멘트에 답한 뒤 merge 가능한 상태에서 멈춥니다. **ship** — 코드를 쓰지 않은 검증 에이전트(`pr-verifier`)가 PASS 를 낸 뒤에만 squash merge 합니다. 화면이 바뀐 PR 은 사용자가 「PR <n> 화면 확인함」이라고 답해야 merge 합니다. 상한 인상·면제 추가 같은 게이트 완화가 있으면 작성자가 아닌 쪽의 서명 뒤에만 merge 합니다 — 체인의 계획 PR 은 코디네이터가, 그 밖(체인 끝 PR 포함)은 사용자가 「PR <n> 게이트 완화 확인함」으로 서명합니다 |
 | worktree 정리 (`karina:worktree-cleanup`) | "머지된 worktree 정리해줘" · "worktree 가 디스크를 차지해" | 레포의 worktree 마다 병합 여부·미커밋 수정·PR·최근 세션을 표로 보여 주고, 한 번 승인받은 것만 지운다 — 지우기 전에 미추적·gitignore 파일(`plan.md` 등)을 임시 폴더에 백업하고, 미커밋 수정·열린 PR·미병합 체인 worktree 는 지우지 않으며 브랜치는 남긴다 |
+| 시안 비교 (`karina:prototype`) | "프로토타입 만들어줘" · "시안 몇 개 만들어 비교해줘" · "어떤 레이아웃이 나을지 만들어 봐" | 화면·동작·전례 없는 아키텍처 결정을 버리는 시안 2~3개로 만들어 봅니다. 화면 시안은 한 페이지에서 버튼으로 바꿔 보고, 변형마다 조작해 스크린샷을 남깁니다. 변형·증거·장단점·권장안을 보고하고, 고른 방향으로 `karina:plan` 을 시작할지 묻습니다. 시안은 임시 폴더에 두고 레포는 고치지 않습니다 |
 | 프로젝트 사실 기록 (`karina:record-project-fact`) | "AGENTS.md에 기록" · "AGENTS.md 새로 만들어줘" 또는 hook 제안 수락 | 빌드·DB·테스트 방식을 AGENTS.md에 축적(재확인 줄이기) · 파일이 없으면 최소 골격으로 생성 |
 | 검증 스킬 만들기 (`karina:create-verification-skill`) | `/karina:create-verification-skill` 직접 호출 | 앱을 사용자처럼 조작해 확인하는 검증 스킬(`.claude/skills/verify-앱이름/`)을 만들고, 실제로 한 번 돌려 성공하면 AGENTS.md 에 등록합니다 · 웹·CLI/TUI·HTTP 서비스·Windows 데스크톱 지원 |
 | 검증 스킬 유지 (`karina:maintain-verification-skill`) | `/karina:maintain-verification-skill` 직접 호출 | 앱이 바뀐 뒤 검증 스킬을 다시 맞추고, 실제로 돌려 확인된 수정만 PR 하나로 냅니다(고칠 것이 없으면 PR 없음) |
@@ -266,6 +267,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | "plan N부터" | 멈춘 계획 체인 재개 |
 | "PR 12 지켜봐" · "PR 12 검증하고 머지해" | PR 운영(`karina:pr` babysit · ship) |
 | "머지된 worktree 정리해줘" | worktree 정리 |
+| "시안 몇 개 만들어 비교해줘" | 시안 비교(`karina:prototype`) |
 | `/karina:create-verification-skill` | 검증 스킬 만들기 (직접 호출 전용) |
 | `/karina:maintain-verification-skill` | 검증 스킬 유지 (직접 호출 전용) |
 | `/karina:create-formal-verification-skill` | 형식 검증 스킬 만들기 (직접 호출 전용) |
@@ -540,7 +542,7 @@ karina는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
 - **재작업 방지 > 토큰 절약**: 검증에 드는 비용은 잘못 만든 걸 다시 만드는 비용보다 쌉니다.
 - **계획은 함께, 구현은 자동**: 방향은 사람이 정하고, 실행은 Claude가 끝까지.
 - **확실한 안전망**: 검토는 확률적이지만, 위험 명령 차단 같은 hook은 결정적으로 작동합니다.
-- **읽히는 문장**: 완료 보고·계획 승인 요약·커밋 메시지·PR 본문·README·디버깅 보고·체인 보고·PR 운영 보고·검증 스킬 보고·다시 설명(`karina:wait-what`)은 `skills/WRITING.md` 의 한글 문체 규칙(군더더기·번역투·피동 남용·과압축을 줄이고 느낌 대신 동작과 수치로 쓴다)을 따릅니다.
+- **읽히는 문장**: 완료 보고·계획 승인 요약·커밋 메시지·PR 본문·README·디버깅 보고·체인 보고·PR 운영 보고·검증 스킬 보고·다시 설명(`karina:wait-what`)·시안 보고(`karina:prototype`)는 `skills/WRITING.md` 의 한글 문체 규칙(군더더기·번역투·피동 남용·과압축을 줄이고 느낌 대신 동작과 수치로 쓴다)을 따릅니다.
 
 ---
 
