@@ -1,6 +1,6 @@
 # 임시 파일 폴더
 
-> karina 스킬·스크립트가 시스템 임시 폴더에 만드는 파일의 자리를 정하는 공용 규칙이다. 경로를 쓰는 문서(plan 인터뷰·초안·삭제 복구, chain-plan 결정·재개·검증, worktree-cleanup, 검증 스킬 생성·유지, temp-cleanup)가 이 파일을 가리킨다. 임시 폴더 바로 아래 흩어지면 무엇이 karina 것인지 가를 수 없고 정리할 대상도 정해지지 않는다.
+> karina 스킬·스크립트가 시스템 임시 폴더에 만드는 파일의 자리를 정하는 공용 규칙이다. 경로를 쓰는 문서(plan 인터뷰·초안·삭제 복구, prototype 시안, chain-plan 결정·재개·검증, worktree-cleanup, 검증 스킬 생성·유지, temp-cleanup)가 이 파일을 가리킨다. 임시 폴더 바로 아래 흩어지면 무엇이 karina 것인지 가를 수 없고 정리할 대상도 정해지지 않는다.
 
 ## 루트
 
@@ -14,11 +14,11 @@
 | 폴더 | 무엇을 두는가 | 이름 |
 |---|---|---|
 | `chain\` | chain-plan 대기·검증 래퍼의 잠금·상태·시도 로그, 체인 결정 파일 | 스크립트가 정한 접두(`karina-chain-wait-`·`karina-chain-verify-`) · `karina-chain-<Run id>-decisions.md` |
-| `plan-variants\` | plan 인터뷰의 화면 변형 HTML·스크린샷 | `<YYYYMMDD-HHmm>\` 아래 변형마다 파일 |
+| `plan-variants\` | plan 인터뷰·`karina:prototype` 의 화면 변형 HTML·스크린샷 | `<YYYYMMDD-HHmm>\` 아래 변형마다 파일 |
 | `verify\` | 검증 스킬(`verify-<app>`)의 증거·실행 데이터 | `<app>\<실행 id>\` |
 | `backup\` | plan.md·초안 백업, 복구 경로 없는 파일을 지우거나 덮기 전 백업 | `<원래 이름>-<레포 폴더명>-<YYYYMMDD-HHmm>.<확장자>` |
 | `worktree-backup\` | `karina:worktree-cleanup` 이 지우기 전에 복사한 미추적·ignore 파일 | `<레포 이름>\<worktree 이름>-<시각>\`(스크립트가 정한다) |
-| `scratch\` | 실험·실행용 일회성 스크립트 | 자유 — 다시 가리키지 않는 파일만 |
+| `scratch\` | 실험·실행용 일회성 스크립트 · `karina:prototype` 의 동작·아키텍처 스케치 | 자유 — 다시 가리키지 않는 파일만 |
 
 ## 누가 지우는가
 
