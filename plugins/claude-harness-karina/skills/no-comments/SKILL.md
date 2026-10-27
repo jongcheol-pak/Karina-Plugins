@@ -45,11 +45,12 @@ disable-model-invocation: true
 `karina:implement` 가 전 task 완료 뒤 4번 검증 앞에서 이 절을 읽고 따른다. 원문 pstack 이 리뷰 전에 이 스킬을 돌리는 것(`https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/skills/poteto-mode/SKILL.md` *"Before review → the **no-comments** skill"*)을 들였다 — 주석을 쓴 세션은 자기 주석을 변호해(guide 05 *"An author defends its comments the way you'd defend yours."*) 쓰지 않은 쪽이 판정해야 한다.
 
 - **회차마다 1회 돈다 — 시작 전에 `plan.md` `## Progress Log` 에 `주석 정리:` 로 시작하는 줄이 있으면 돌지 않는다** — 압축 뒤 재개·「계속」·4번 검증 실패나 `completion-reviewer` 지적을 고친 뒤 4번을 다시 돌 때도 같고, 그때의 수정 커밋은 다음 회차 범위다. 끝나면 건너뛰었거나 못 돌았어도 아래 표지 줄 하나를 Progress Log 에 남긴다 — 그 줄이 실행 표지다.
-- **경량 plan(`## Goal` 에 `> 경량:` 줄)이고 `git diff --name-only <BASE>..HEAD` 가 3파일 미만이면 리뷰어를 부르지 않는다** — 세션이 `code-style.md`「주석」 으로 범위 안 주석을 재서 직접 지우고 표지는 `주석 정리: 세션 판정(경량) — 삭제 <n>` 이다. `completion-reviewer` 를 건너뛰는 조건과 같다.
+- **`../implement/references/final-review.md`「절차」 가 `completion-reviewer` 를 부르지 않는 경량 조건이면 이 리뷰어도 부르지 않는다** — 세션이 `code-style.md`「주석」 으로 범위 안 주석을 재서 직접 지우고 표지는 `주석 정리: 세션 판정(경량) — 삭제 <n>` 이다. 조건을 여기 다시 적지 않는다 — 두 곳에 두면 한쪽만 고쳐진다.
 - **범위는 이번 plan 의 커밋이다** — `git diff <BASE>..HEAD`(`<BASE>` 는 `plan.md` 의 `> BASE:`)를 스크래치 파일에 저장해 범위 종류 `커밋 범위` 로 넘긴다. 작업 트리의 미커밋·untracked 변경은 사용자 것이라 넣지 않는다.
-- **2번·8번은 돌리지 않는다** — 기준선은 마지막 task 의 검증이고, 재검증은 정리 커밋 전 task 단위 검증(빌드 + `AGENTS.md` 검증 매핑)과 이어지는 4번 검증이다.
+- **2번·8번은 돌리지 않는다 — 정리 편집 뒤 정리가 바꾼 파일의 검증 매핑 검사(`AGENTS.md` — 빌드·전체 테스트 제외)만 돌리고 정리 커밋한다. 빌드·전체 테스트는 정리 커밋 뒤 implement 4번 1회가 맡는다** — 기준선은 마지막 task 의 검증이다. 커밋 전에 빌드까지 돌리면 바로 이어지는 4번과 같은 빌드가 두 번 돈다. 경량(세션 판정)·`미실행` 경로도 4번은 `../implement/SKILL.md`「검증」 이 1회 돈다.
 - **3~6번은 그대로 따르고 7번은 `MUST KILL` 만 한다** — 범위 안이면 구조 변경이라도 고치고 Progress Log 에 `판정:` 줄로 남긴다. 범위 밖으로 번지는 수정 · 두 번째 거부 · 범위 밖 원인은 `plan.md` `## Deferred / Follow-up` 의 열린 항목이다. `제약` 은 지우고 인코딩하지 않는다 — 원문 *"Unattended and eval require caller pre-approval"* 대로 「강제되지 않는 제약」 으로 같은 절에 남긴다. 리뷰어 호출은 3번의 1회와 4번 거부 때의 1회까지다.
-- **정리 커밋 전 검증이 실패하면 원인이 된 정리 편집을 Edit 로 되돌리고 그 행을 열린 항목으로 옮긴다** — 코드를 더 고쳐 메우지 않고, 통과하기 전에는 커밋하지 않는다. `git checkout`·`git restore` 는 쓰지 않는다.
+- **검증 매핑 검사가 실패하면 원인이 된 정리 편집을 Edit 로 되돌리고 그 행을 열린 항목으로 옮긴다** — 코드를 더 고쳐 메우지 않고, 통과하기 전에는 커밋하지 않는다. `git checkout`·`git restore` 는 쓰지 않는다.
+- **정리 커밋 뒤 4번이 실패하면 implement 실패 처리가 원인을 가르고, 원인이 정리 커밋이면 그 편집을 Edit 로 되돌린 되돌림 커밋을 더하고 그 행을 열린 항목으로 옮긴다** — 실패 출력이 정리가 바꾼 파일·심볼을 가리키면 정리 탓이다. 갈리지 않으면 정리 직전 커밋을 임시 `git worktree add` 로 꺼내 실패한 검사만 돌리고, 거기서 통과하면 정리 탓이다. 커밋을 먼저 해 두면 미커밋 정리 편집이 실패 처리의 수정 커밋·압축 재개와 섞이지 않는다.
 - **정리는 별도 커밋이다** — 제목 `리팩토링: 주석 정리 — 삭제 <n> · MUST KILL <m>`, 본문에 9번 「지운 주석의 이유」 문단과 검증 출력을 싣고 `../implement/SKILL.md`「커밋」 의 시크릿 확인을 거친다. 바뀐 것이 없으면 커밋하지 않는다.
 - **표지 줄은 implement 최종 보고 「수정 내용」 에도 싣는다** — `주석 정리: 삭제 <n> · MUST KILL 고침 <m> · 열린 <k>` 이고, 두 번째 거부가 있으면 `주석 정리: 실패 — 거부 2회 <j> · 삭제 <n> · MUST KILL 고침 <m> · 열린 <k>` 다. 열린 항목은 Deferred 판정을 거쳐 「남은 이슈」 로 간다. 리뷰어 호출 뒤 작업 트리 변경은 `../READONLY-SUBAGENTS.md` 의 `karina:implement` 줄 형식으로 Progress Log 에 싣는다.
 - **리뷰어를 부를 수 없으면 표지 `주석 정리: 미실행 — <사유>` 를 남기고 통과로 적지 않는다.**
