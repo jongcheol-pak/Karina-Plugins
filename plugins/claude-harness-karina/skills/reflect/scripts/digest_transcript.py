@@ -5,7 +5,9 @@
 최신 파일로 고르면 남의 세션을 읽는다.
 
 출력 줄 머리 — U: 사용자 text · A: 모델 text · T: 도구 호출(이름 + 명령·경로 한 구) · ERR: 오류 도구 결과(hook 차단 포함)
-· H: hook 첨부(경고 additionalContext · 취소). 그 밖(thinking·성공 결과·메타 레코드)은 싣지 않는다.
+· H: hook 첨부(경고 additionalContext · 취소) · BIG: 큰 성공 결과(`BIG: <도구명> <N>자 <앞 120자>` — 본문 길이나
+`<persisted-output>` 미리보기의 `Output too large (<크기>)` 가 BIG_CAP 이상, 도구명은 tool_use_id 로 찾고 못 찾으면 `?`).
+그 밖(thinking·BIG_CAP 미만의 성공 결과·메타 레코드)은 싣지 않는다.
 머리에 읽은 파일·갈래별 줄 수·총 줄 수를 싣는다 — 리뷰어가 총 줄 수까지 나눠 읽는다.
 
 종료 코드: 0 정상 · 2 세션 판정 실패(ID 없음·파일 0개·2개 이상) · 3 인식한 레코드 0(전사 형식이 바뀌었을 수 있다).
@@ -15,11 +17,15 @@ import argparse
 import glob
 import json
 import os
+import re
 import sys
 
 TEXT_CAP = 600   # U·A
 SHORT_CAP = 300  # T·ERR·H
+BIG_CAP = 20000  # BIG — 문자 수(미리보기 크기는 1KB=1,000자로 환산)
+BIG_HEAD = 120
 HOOK_TYPES = ('hook_additional_context', 'hook_cancelled')
+PERSISTED = re.compile(r'<persisted-output>\s*Output too large \(([\d.]+)(KB|MB)\)')
 
 
 def cut(value, cap):
@@ -40,8 +46,16 @@ def _tool_hint(inp):
     return ''
 
 
-def record_lines(d):
-    """레코드 하나 → 요약 줄 목록. 모르는 레코드는 None(인식 안 함)."""
+def result_size(text):
+    """성공 결과의 크기(자). 미리보기면 그 안의 원래 크기다."""
+    m = PERSISTED.search(text)
+    if m:
+        return int(float(m.group(1)) * (1000 if m.group(2) == 'KB' else 1000000))
+    return len(text)
+
+
+def record_lines(d, tool_names):
+    """레코드 하나 → 요약 줄 목록. 모르는 레코드는 None(인식 안 함). tool_names 는 tool_use id → 이름."""
     t = d.get('type')
     m = d.get('message') if isinstance(d.get('message'), dict) else {}
     c = m.get('content')
@@ -54,6 +68,12 @@ def record_lines(d):
                 out.append('U: ' + cut(b.get('text', ''), TEXT_CAP))
             elif b.get('type') == 'tool_result' and b.get('is_error'):
                 out.append('ERR: ' + cut(_result_text(b.get('content')), SHORT_CAP))
+            elif b.get('type') == 'tool_result':
+                text = _result_text(b.get('content'))
+                size = result_size(text)
+                if size >= BIG_CAP:
+                    name = tool_names.get(b.get('tool_use_id'), '?')
+                    out.append('BIG: %s %d자 %s' % (name, size, cut(text, BIG_HEAD)))
         return out
     if t == 'assistant':
         out = []
@@ -61,6 +81,7 @@ def record_lines(d):
             if b.get('type') == 'text':
                 out.append('A: ' + cut(b.get('text', ''), TEXT_CAP))
             elif b.get('type') == 'tool_use':
+                tool_names[b.get('id')] = b.get('name')
                 hint = cut(_tool_hint(b.get('input') or {}), SHORT_CAP)
                 out.append(('T: %s %s' % (b.get('name'), hint)).rstrip())
         return out
@@ -75,7 +96,7 @@ def record_lines(d):
 
 
 def digest_file(path, counts):
-    lines, recognized = [], 0
+    lines, recognized, tool_names = [], 0, {}
     with open(path, encoding='utf-8', errors='replace') as f:
         for raw in f:
             try:
@@ -84,7 +105,7 @@ def digest_file(path, counts):
                 continue
             if not isinstance(d, dict):
                 continue
-            got = record_lines(d)
+            got = record_lines(d, tool_names)
             if got is None:
                 continue
             recognized += 1
@@ -132,7 +153,7 @@ def main(argv=None):
         print('인식한 레코드 0 — 전사 형식이 바뀌었을 수 있다: %s' % mains[0], file=sys.stderr)
         return 3
     head = ['# reflect 요약 — 세션 %s' % sid, '# 본 전사: %s' % mains[0], '# 서브에이전트 전사: %d개' % len(subs),
-            '# 줄 수: ' + ' · '.join('%s %d' % (k, counts.get(k, 0)) for k in ('U', 'A', 'T', 'ERR', 'H'))]
+            '# 줄 수: ' + ' · '.join('%s %d' % (k, counts.get(k, 0)) for k in ('U', 'A', 'T', 'ERR', 'H', 'BIG'))]
     total = len(head) + 1 + len(body)
     text = '\n'.join(head + ['# 총 줄 수: %d' % total] + body) + '\n'
     if a.out:

@@ -255,6 +255,98 @@ def out_file_with_total_lines():
         t.close()
 
 
+def tool_use(tid, name, command='x'):
+    return {'type': 'tool_use', 'id': tid, 'name': name, 'input': {'command': command}}
+
+
+def tool_result(tid, content, is_error=False):
+    return {'type': 'tool_result', 'tool_use_id': tid, 'content': content, 'is_error': is_error}
+
+
+def big_lines(out):
+    return [l for l in out.splitlines() if l.startswith('BIG: ')]
+
+
+@case
+def big_result_marked():
+    # ⑲ 본문 20,000자 성공 결과 → 도구 이름을 단 BIG 줄 · 본문은 120자까지만 · 머리 줄 수에 BIG 1
+    t = Tree()
+    try:
+        t.session('proj-a', SID, [rec_assistant([tool_use('t1', 'Bash')]),
+                                   rec_user_blocks([tool_result('t1', '가' * 20000)])])
+        rc, out, err = digest(t)
+        assert rc == 0, (rc, err)
+        big = big_lines(out)
+        assert len(big) == 1 and big[0].startswith('BIG: Bash 20000자 '), big
+        assert '가' * 121 not in big[0], len(big[0])
+        assert 'BIG 1' in [l for l in out.splitlines() if l.startswith('# 줄 수: ')][0], out[:400]
+    finally:
+        t.close()
+
+
+@case
+def persisted_output_marked():
+    # ⑳ 파일로 빠진 출력의 미리보기(Output too large) → BIG 줄
+    t = Tree()
+    try:
+        preview = '<persisted-output>\nOutput too large (21.3KB). Full output saved to: C:\\x\\tool-results\\a.txt\n미리보기'
+        t.session('proj-a', SID, [rec_assistant([tool_use('t1', 'Grep')]),
+                                   rec_user_blocks([tool_result('t1', preview)])])
+        rc, out, err = digest(t)
+        assert rc == 0, (rc, err)
+        big = big_lines(out)
+        assert len(big) == 1 and big[0].startswith('BIG: Grep 21300자 '), big
+    finally:
+        t.close()
+
+
+@case
+def big_parallel_tool_name():
+    # ㉑ 병렬 호출 — 결과의 tool_use_id 로 도구를 찾아, 바로 앞 T 줄(다른 도구)을 붙이지 않는다
+    t = Tree()
+    try:
+        t.session('proj-a', SID, [rec_assistant([tool_use('r1', 'Read'), tool_use('b1', 'Bash')]),
+                                   rec_user_blocks([tool_result('r1', '나' * 20000)]),
+                                   rec_user_blocks([tool_result('b1', '짧음')])])
+        rc, out, err = digest(t)
+        assert rc == 0, (rc, err)
+        big = big_lines(out)
+        assert len(big) == 1 and big[0].startswith('BIG: Read '), big
+    finally:
+        t.close()
+
+
+@case
+def below_big_cap_excluded():
+    # ㉒ 문턱 미만(본문 19,999자 · 미리보기 19.5KB) → BIG 없음
+    t = Tree()
+    try:
+        preview = '<persisted-output>\nOutput too large (19.5KB). Full output saved to: C:\\x\\b.txt'
+        t.session('proj-a', SID, [rec_assistant([tool_use('t1', 'Bash'), tool_use('t2', 'Bash')]),
+                                   rec_user_blocks([tool_result('t1', '가' * 19999)]),
+                                   rec_user_blocks([tool_result('t2', preview)])])
+        rc, out, err = digest(t)
+        assert rc == 0, (rc, err)
+        assert big_lines(out) == [], big_lines(out)
+    finally:
+        t.close()
+
+
+@case
+def big_error_stays_err():
+    # ㉓ 20,000자 오류 결과는 ERR 로만 나온다
+    t = Tree()
+    try:
+        t.session('proj-a', SID, [rec_assistant([tool_use('t1', 'Bash')]),
+                                   rec_user_blocks([tool_result('t1', '오' * 20000, is_error=True)])])
+        rc, out, err = digest(t)
+        assert rc == 0, (rc, err)
+        assert big_lines(out) == [], big_lines(out)
+        assert any(l.startswith('ERR: 오') for l in out.splitlines()), out[:400]
+    finally:
+        t.close()
+
+
 # ── append_deferred ─────────────────────────────────────────────────────────
 
 LEDGER = (
