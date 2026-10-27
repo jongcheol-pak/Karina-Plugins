@@ -2551,5 +2551,156 @@
     "expect_keywords": [
       "README 목록: `README.md` 에 `### Subagents` 절이 없다"
     ]
+  },
+  {
+    "id": "harness-planmode-ignores-other-axes",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--plan"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "AGENTS.md",
+        "find": "「검증 매핑 (task 검증 선택)」",
+        "replace": "「없어진 절 이름」"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "README 행 동반"
+    ],
+    "expect_absent": [
+      "없어진 절 이름",
+      "포인터 도달성"
+    ]
+  },
+  {
+    "id": "harness-readme-companion-missing-planmode",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--plan"
+    ],
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- **Files**: `evals/check-harness-consistency.py`",
+        "replace": "- **Files**: `evals/check-harness-consistency.py` · `skills/brand-new/SKILL.md`"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "README 행 동반",
+      "skills/brand-new/SKILL.md"
+    ]
+  },
+  {
+    "id": "harness-readme-companion-missing-full",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- **Files**: `evals/check-harness-consistency.py`",
+        "replace": "- **Files**: `evals/check-harness-consistency.py` · `skills/brand-new/SKILL.md`"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "README 행 동반",
+      "skills/brand-new/SKILL.md"
+    ]
+  },
+  {
+    "id": "harness-planmode-path-arg",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--plan",
+      "docs/plans/2026-01-01-old-plan.md"
+    ],
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/2026-01-01-old-plan.md",
+        "find": "- 폐기한 Phase V 단계를 따른다.",
+        "replace": "- 폐기한 Phase V 단계를 따른다.\r\n- **Files**: `agents/brand-new-agent.md`"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "README 행 동반",
+      "agents/brand-new-agent.md"
+    ]
+  },
+  {
+    "id": "harness-readme-companion-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--plan"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- **Files**: `evals/check-harness-consistency.py`",
+        "replace": "- **Files**: `evals/check-harness-consistency.py` · `skills/brand-new/SKILL.md` · `README.md`"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "README 행 동반"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  },
+  {
+    "id": "harness-readme-companion-existing-skill",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--plan"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- **Files**: `evals/check-harness-consistency.py`",
+        "replace": "- **Files**: `evals/check-harness-consistency.py` · `skills/sample/SKILL.md`"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "README 행 동반"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  },
+  {
+    "id": "harness-planmode-impact-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--plan"
+    ],
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "| **③ 병목** | 픽스처 전용 — 실제로 잰 것이 아니다 | `echo fixture` | 미측정 |\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "영향 검토 3축 미기재: `병목` 행이"
+    ]
   }
 ]
