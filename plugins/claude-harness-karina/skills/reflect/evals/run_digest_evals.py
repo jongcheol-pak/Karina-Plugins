@@ -255,7 +255,92 @@ def out_file_with_total_lines():
         t.close()
 
 
-# ── append_deferred ─────────────────────────────────────────────────────────
+def tool_use(tid, name, command='x'):
+    return {'type': 'tool_use', 'id': tid, 'name': name, 'input': {'command': command}}
+
+
+def tool_result(tid, content, is_error=False):
+    return {'type': 'tool_result', 'tool_use_id': tid, 'content': content, 'is_error': is_error}
+
+
+def big_lines(out):
+    return [l for l in out.splitlines() if l.startswith('BIG: ')]
+
+
+@case
+def big_result_marked():
+    t = Tree()
+    try:
+        t.session('proj-a', SID, [rec_assistant([tool_use('t1', 'Bash')]),
+                                   rec_user_blocks([tool_result('t1', '가' * 20000)])])
+        rc, out, err = digest(t)
+        assert rc == 0, (rc, err)
+        big = big_lines(out)
+        assert len(big) == 1 and big[0].startswith('BIG: Bash 20000자 '), big
+        assert '가' * 121 not in big[0], len(big[0])
+        assert 'BIG 1' in [l for l in out.splitlines() if l.startswith('# 줄 수: ')][0], out[:400]
+    finally:
+        t.close()
+
+
+@case
+def persisted_output_marked():
+    t = Tree()
+    try:
+        preview = '<persisted-output>\nOutput too large (21.3KB). Full output saved to: C:\\x\\tool-results\\a.txt\n미리보기'
+        t.session('proj-a', SID, [rec_assistant([tool_use('t1', 'Grep')]),
+                                   rec_user_blocks([tool_result('t1', preview)])])
+        rc, out, err = digest(t)
+        assert rc == 0, (rc, err)
+        big = big_lines(out)
+        assert len(big) == 1 and big[0].startswith('BIG: Grep 21300자 '), big
+    finally:
+        t.close()
+
+
+@case
+def big_parallel_tool_name():
+    t = Tree()
+    try:
+        t.session('proj-a', SID, [rec_assistant([tool_use('r1', 'Read'), tool_use('b1', 'Bash')]),
+                                   rec_user_blocks([tool_result('r1', '나' * 20000)]),
+                                   rec_user_blocks([tool_result('b1', '짧음')])])
+        rc, out, err = digest(t)
+        assert rc == 0, (rc, err)
+        big = big_lines(out)
+        assert len(big) == 1 and big[0].startswith('BIG: Read '), big
+    finally:
+        t.close()
+
+
+@case
+def below_big_cap_excluded():
+    t = Tree()
+    try:
+        preview = '<persisted-output>\nOutput too large (19.5KB). Full output saved to: C:\\x\\b.txt'
+        t.session('proj-a', SID, [rec_assistant([tool_use('t1', 'Bash'), tool_use('t2', 'Bash')]),
+                                   rec_user_blocks([tool_result('t1', '가' * 19999)]),
+                                   rec_user_blocks([tool_result('t2', preview)])])
+        rc, out, err = digest(t)
+        assert rc == 0, (rc, err)
+        assert big_lines(out) == [], big_lines(out)
+    finally:
+        t.close()
+
+
+@case
+def big_error_stays_err():
+    t = Tree()
+    try:
+        t.session('proj-a', SID, [rec_assistant([tool_use('t1', 'Bash')]),
+                                   rec_user_blocks([tool_result('t1', '오' * 20000, is_error=True)])])
+        rc, out, err = digest(t)
+        assert rc == 0, (rc, err)
+        assert big_lines(out) == [], big_lines(out)
+        assert any(l.startswith('ERR: 오') for l in out.splitlines()), out[:400]
+    finally:
+        t.close()
+
 
 LEDGER = (
     '﻿# Deferred 대장\r\n'
@@ -307,7 +392,8 @@ class Ledger:
         ep = os.path.join(self.dir, 'entries.txt')
         with open(ep, 'w', encoding='utf-8', newline='\n') as f:
             f.write('\n'.join(entries) + '\n')
-        return run(APPEND, ['--ledger', self.path, '--group', group, '--entries', ep])
+        group_args = [] if group is None else ['--group', group]
+        return run(APPEND, ['--ledger', self.path] + group_args + ['--entries', ep])
 
     def close(self):
         shutil.rmtree(self.dir, ignore_errors=True)
@@ -431,6 +517,89 @@ def append_keeps_trailing_blank_lines():
         lines = lg.text().split('\r\n')
         i = lines.index(ENTRY)
         assert lines[i + 1:i + 5] == ['', '', '', '### eval · 측정'], lines[i:i + 5]
+    finally:
+        lg.close()
+
+
+REPO_LEDGER = (
+    '# Deferred 대장\r\n'
+    '\r\n'
+    '## 대기\r\n'
+    '- [2026-07-15] 첫 항목 (실해: 2026-07-15 관측)\r\n'
+    '- [2026-07-16] 둘째 항목 (실해: 2026-07-16 관측)\r\n'
+    '\r\n'
+    '## 종결\r\n'
+    '- [2026-07-01] 끝난 항목 (실해: 2026-07-01 관측)\r\n'
+)
+
+
+@case
+def append_no_group_into_daegi():
+    lg = Ledger(REPO_LEDGER)
+    try:
+        rc, _, err = lg.append(None, [ENTRY])
+        assert rc == 0, (rc, err)
+        lines = lg.text().split('\r\n')
+        assert lines[lines.index(ENTRY) - 1].startswith('- [2026-07-16] 둘째 항목'), lines
+        assert lg.text().endswith('## 종결\r\n- [2026-07-01] 끝난 항목 (실해: 2026-07-01 관측)\r\n'), lg.text()
+        assert lg.bytes().count(b'\n') == lg.bytes().count(b'\r\n'), '모든 줄이 CRLF'
+    finally:
+        lg.close()
+
+
+@case
+def append_no_group_whole_file():
+    text = '# 대장\n\n- [2026-07-15] 하나 (실해: 2026-07-15 관측)\n- [2026-07-16] 둘 (실해: 2026-07-16 관측)\n\n> 꼬리\n'
+    lg = Ledger(text)
+    try:
+        rc, _, err = lg.append(None, [ENTRY])
+        assert rc == 0, (rc, err)
+        lines = lg.text().split('\n')
+        assert lines[lines.index(ENTRY) - 1].startswith('- [2026-07-16] 둘'), lines
+        assert b'\r' not in lg.bytes(), 'LF 유지'
+        assert lg.text().endswith('\n\n> 꼬리\n'), lg.text()
+    finally:
+        lg.close()
+
+
+@case
+def append_no_group_without_counter():
+    lg = Ledger(REPO_LEDGER)
+    try:
+        rc, _, err = lg.append(None, [ENTRY])
+        assert rc == 0, (rc, err)
+    finally:
+        lg.close()
+    lg = Ledger(REPO_LEDGER.replace('## 대기\r\n', '## 대기\r\n**▶ 현행 잔량(기계 대조 대상)**: 대기 2\r\n'))
+    try:
+        rc, _, err = lg.append(None, [ENTRY])
+        assert rc == 0, (rc, err)
+        assert '**▶ 현행 잔량(기계 대조 대상)**: 대기 3' in lg.text(), lg.text()
+    finally:
+        lg.close()
+
+
+@case
+def append_no_group_empty_daegi():
+    lg = Ledger('# 대장\r\n\r\n## 대기\r\n\r\n## 종결\r\n')
+    try:
+        rc, _, err = lg.append(None, [ENTRY])
+        assert rc == 0, (rc, err)
+        lines = lg.text().split('\r\n')
+        i = lines.index('## 대기')
+        assert lines[i + 1:i + 5] == ['', ENTRY, '', '## 종결'], lines
+    finally:
+        lg.close()
+
+
+@case
+def append_no_group_after_continuation():
+    lg = Ledger('## 대기\r\n- [2026-07-16] 둘 (실해: 2026-07-16 관측)\r\n  - 하위 1\r\n  - 하위 2\r\n\r\n## 종결\r\n')
+    try:
+        rc, _, err = lg.append(None, [ENTRY])
+        assert rc == 0, (rc, err)
+        lines = lg.text().split('\r\n')
+        assert lines[1:5] == ['- [2026-07-16] 둘 (실해: 2026-07-16 관측)', '  - 하위 1', '  - 하위 2', ENTRY], lines
     finally:
         lg.close()
 
