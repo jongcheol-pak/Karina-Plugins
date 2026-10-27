@@ -5,15 +5,17 @@ description: >-
   `karina-cli` repo, worktree, and terminal commands: list and register repos,
   create, inspect, update, and remove worktrees, start a coding agent in a new
   worktree, and list, read, wait on, send to, create, split, rename, focus, or
-  close Karina terminals. Use for full handoffs ("hand off", "handover", "give
-  this to another agent", "another worktree", "spawn claude/codex in a
-  worktree"), for reading or waiting on another agent's terminal, for keeping a
-  worktree's status comment current, and for searching what agents said in
-  earlier sessions. Prefer it over raw git worktree or ad hoc terminals when
-  Karina state is involved. Use karina-orchestration for supervised multi-agent
-  coordination, karina-browser-use for Karina's browser tabs, and
-  karina-computer-use only when a visible window needs GUI control.
-version: 1.0.2
+  close Karina terminals. Also reads app status, runs shortcut commands
+  (`command run`), and sets a screen cover per monitor (`cover`). Use for full
+  handoffs ("hand off", "handover", "give this to another agent", "another
+  worktree", "spawn claude/codex in a worktree"), for reading or waiting on
+  another agent's terminal, for keeping a worktree's status comment current, and
+  for searching what agents said in earlier sessions. Prefer it over raw git
+  worktree or ad hoc terminals when Karina state is involved. Use
+  karina-orchestration for supervised multi-agent coordination,
+  karina-browser-use for Karina's browser tabs, and karina-computer-use only
+  when a visible window needs GUI control.
+version: 1.0.3
 ---
 
 # Karina Workspace (Windows)
@@ -25,13 +27,16 @@ drift from the binary that will actually run your commands.
 Engage it whenever **Karina's repos, worktrees, or terminals** matter: registering a repo,
 creating or removing a worktree, starting a coding agent in a new worktree, handing work off
 to another agent, reading, waiting on, or sending to another terminal, keeping a worktree's
-status comment current, and searching what agents said in earlier sessions.
+status comment current, and searching what agents said in earlier sessions. It also reads the
+app's status (`status`), runs Karina's keyboard-shortcut commands without a keypress
+(`command run`), and turns the screen cover on or off per monitor (`cover`).
 
 Use plain shell tools when Karina state does not matter. This provider is **Windows-only**.
 
 ## This surface talks to the running app
 
-The repo, worktree, and terminal commands are RPC calls to the Karina app over a named pipe.
+The repo, worktree, terminal, command, and cover commands are RPC calls to the Karina app over a
+named pipe.
 **The app must be running.** If it is not, every command answers with a JSON error saying so;
 the CLI will not launch the app for you.
 
