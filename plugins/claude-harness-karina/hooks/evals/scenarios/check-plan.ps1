@@ -325,13 +325,18 @@ if ($cpWinPs) {
     $cpLog = Get-PlanCheckLog $r.out
     Assert-Case -Name "check-plan Plan check: PS 5.1 로그에 한글 출력이 깨지지 않는다" -R @{ code = 0; out = $cpLog } -ExpectExit 0 -ExpectContains '한글출력'
     $env:KARINA_PLAN_CHECK_TIMEOUT_SEC = '2'
-    $r = Invoke-CheckPlan $cpBase (New-PlanCheckDir $cpPcHang) $cpWinPs.Source
+    $cpSw = [System.Diagnostics.Stopwatch]::StartNew()
+    $r = Invoke-CheckPlan $cpBase (New-PlanCheckDir 'powershell -NoProfile -Command Start-Sleep 62') $cpWinPs.Source
+    $cpSw.Stop()
     Remove-Item Env:KARINA_PLAN_CHECK_TIMEOUT_SEC -ErrorAction SilentlyContinue
     Assert-Case -Name "check-plan Plan check: PS 5.1 에서도 상한을 넘으면 timeout 위반을 낸다" -R $r -ExpectExit 1 -ExpectContains 'plan-check timeout 2'
+    $cpLeft = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*Start-Sleep 62*' }).Count
+    Assert-Case -Name "check-plan Plan check: PS 5.1 시간 초과 뒤에도 손자 프로세스가 남지 않고 곧 끝난다" -R @{ code = 0; out = ('left=' + $cpLeft + ' fast=' + ($cpSw.Elapsed.TotalSeconds -lt 20)) } -ExpectExit 0 -ExpectContains 'left=0 fast=True'
 } else {
     Assert-Case -Name "check-plan Plan check: PS 5.1 에서도 실패를 잡는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'plan-check exit 3'
     Assert-Case -Name "check-plan Plan check: PS 5.1 로그에 한글 출력이 깨지지 않는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectContains '한글출력'
     Assert-Case -Name "check-plan Plan check: PS 5.1 에서도 상한을 넘으면 timeout 위반을 낸다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'plan-check timeout 2'
+    Assert-Case -Name "check-plan Plan check: PS 5.1 시간 초과 뒤에도 손자 프로세스가 남지 않고 곧 끝난다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectContains 'left=0 fast=True'
 }
 
 $ev = New-EvidenceRepo @()
