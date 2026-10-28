@@ -27,11 +27,13 @@
 - **리뷰어는 백그라운드로 띄우고, 완료 통지를 기다리는 동안 레포 파일을 고치지 않는 일(`report-format.md` Read · 최종 보고·PR 본문 초안)만 한다** — 리뷰 대기 중 다른 파일을 만지면 다음 커밋이 그것을 함께 담아 커밋 단위가 엉킨다(하니스 레포 관측 2026-09-02 — 한 회차에 3회).
 - **결과를 받아 판정한 뒤에 완료 선언으로 간다** — 호출만 하고 다음으로 넘어가면 리뷰가 없는 것과 같다.
 - **BLOCKER·MAJOR는 고치고 다시 호출한다** — 지적이 남은 산출물을 통과시키면 그 결함이 다음 회차로 간다. MINOR 는 아래 「필터 패스」가 가른다. (중계 모드 예외는 `../../plan/references/relay-mode.md`「중계 모드」)
-  - **고치기 전에 그 지적이 실제 경로인지 가린다 — 반증 출력이 있는 오탐만 기각한다** — 리뷰어는 diff 와 문서만 보고 호출 사슬 전체를 보지 못해, 「여기 X 가 올 수 있다」 같은 가정 경로를 그대로 고치면 증거 없는 가드가 늘고 범위가 번진다. 기준은 넷이다(pstack interrogate 의 lead-judgment 를 들인 것 — `https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/skills/interrogate/references/lead-judgment.md`).
+  - **완료 리뷰 지적은 고치기 전에 지적의 명령을 다시 돌린다 — 같은 실패가 나오면 고치고, 나오지 않으면 재실행 출력으로 기각한다(`기각 — <요지> — <재실행 명령·출력 요지>`)** — 리뷰어는 diff 와 문서만 보고 호출 사슬 전체를 보지 못해, 「여기 X 가 올 수 있다」 같은 가정 경로를 그대로 고치면 증거 없는 가드가 늘고 범위가 번진다. 증명 책임을 지적한 쪽에 두는 것은 pstack interrogate 의 *"A finding survives only when a run proves it."* · *"Keep a finding when the output shows the failure and the failure breaks the intent. Drop the rest."* 를 들인 것이다(`https://github.com/cursor/plugins/blob/ab1f702ce8e8b6557edb56b09f52cde8bfb83f17/pstack/skills/interrogate/SKILL.md`).
+  - **근거에 실패를 보이는 출력이 없는 완료 리뷰 BLOCKER·MAJOR(줄이 있다는 출력·파일:라인 인용뿐인 것)는 MINOR 로 내려 아래 「필터 패스」로 보낸다 — 보안 지적만 예외로 등급을 유지한다** — 전달한 검증 출력·커밋 본문의 실패 출력 인용은 실패를 보이는 출력이다. 이 둘(재실행·강등)은 완료 리뷰에만 걸린다 — `plan-reviewer` 는 명령을 돌리지 못해 아래 기준 넷만 쓴다.
+  - **계획 리뷰 지적과 재현된 완료 리뷰 지적은 반증 출력이 있는 오탐만 기각한다.** 기준은 넷이다(pstack interrogate 의 lead-judgment 를 들인 것 — `https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/skills/interrogate/references/lead-judgment.md` · upstream 은 `ab1f702c` 에서 이 파일을 지웠다).
     - ⓐ 「X 가 올 수 있다」 류는 호출부를 추적해 상위에서 이미 막혀 있음을 보이는 명령 출력(반증 출력)이 있으면 기각한다.
     - ⓑ 「나라면 다르게 했다」·조기 추상화 권유처럼 현재 방식의 구체적 문제를 보이지 않는 지적은 출력 없이 기각한다.
     - ⓒ 이번 회차가 쓰지 않은 코드를 겨누거나 레포 전체 관례와 같은 패턴을 지적하는 것(맥락 부족)은 그 관례를 보이는 출력으로 기각한다.
-    - ⓓ 보안·정확성 지적은 반증 출력 없이는 기각하지 않는다.
+    - ⓓ 보안·정확성 지적은 반증 출력 없이는 기각하지 않는다 — 완료 리뷰의 정확성 지적은 재현된 것에만 걸린다.
   - **기각마다 `기각 — <지적 요지> — <반증 명령·출력 요지>` 줄을 최종 보고에 싣고, 재호출 때 그 줄들을 전달물에 더한다** — 리뷰어가 반증을 다시 대조할 수 있어야 같은 지적이 되풀이되지 않는다.
   - **같은 지적을 두 번째로 기각하게 되면 기각하지 않고 최종 보고 「남은 이슈」 에 원래 등급으로 올리고, 그 지적으로는 다시 부르지 않는다** — 기각과 재지적이 오가는 것을 멈추는 상한이다.
 
