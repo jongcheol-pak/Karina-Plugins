@@ -7,7 +7,7 @@
 > Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin
 > <br>Windows 에서 검증했고 macOS/Linux 는 실험적으로 지원합니다 — 자세한 조건은 [호환 환경](#호환-환경)
 
-**버전**: 2.51.0
+**버전**: 2.52.0
 **저장소**: https://github.com/jongcheol-pak/Karina-Plugins (모노레포 — 이 하니스는 plugins/claude-harness-karina/ 폴더)
 **Claude Code**: 최소 v2.0 — 권장 버전은 [호환 환경](#호환-환경)
 
