@@ -40,7 +40,7 @@
 ## Build & Test
 - **Build**: `<명령>`   - **Run (개발)**: `<명령>`   - **Test**: `<명령>`
 - **Test (task)**: `<선택 — task 검증용 대상 지정 테스트 형식. 대상 자리는 <대상>. 그 대상이 task 가 고친 코드를 전부 빌드하면 끝에 (빌드 포함) — karina:implement 가 task 마다 이 형식으로 돌리고 (빌드 포함)이면 Build 를 따로 돌리지 않는다. 없으면 이 줄을 두지 않는다>`
-- **Build cache**: `<선택 — <환경변수>=<경로>(예: CARGO_TARGET_DIR=…). karina:pr ship 이 새 검증 worktree 에 넘겨 빌드 산출물을 재사용한다. 상대경로는 레포 루트 기준. 동시 빌드에 안전하지 않은 도구이거나, Verify (앱 조작) 스킬의 Launch 가 이 환경변수로 산출물을 찾지 않으면 두지 않는다>`
+- **Build cache**: `<선택 — <환경변수>=<경로>(예: CARGO_TARGET_DIR=…). karina:pr ship 이 PR 마다 하위 폴더(<경로>/pr-<n>)로 새 검증 worktree 에 넘겨, 같은 PR 을 다시 ship 할 때 빌드 산출물을 재사용한다. 상대경로는 레포 루트 기준. 동시 빌드에 안전하지 않은 도구이거나, Verify (앱 조작) 스킬의 Launch 가 이 환경변수로 산출물을 찾지 않으면 두지 않는다>`
 - **Lint/Format**: `<있으면 — 파일을 고치지 않는 검사 형태(--check · -D warnings 류). karina:implement 는 최종 검증에서 1회만 돌리고, 검사 형태가 아니면 돌리지 않는다>`   - **Clean**: `<있으면>`
 - **Release**: `<버전을 올린 뒤 무엇을 하는가 — 태그·발행·배포 명령. 없으면 "없음">`
 - **Verify (앱 조작)**: `<앱을 사용자처럼 조작해 기능을 증명하는 검증 스킬 경로 — /karina:create-verification-skill 이 만들고 실행 증명을 통과한 .claude/skills/verify-앱이름/ · 없으면 사용자가 /karina:create-verification-skill 을 돌려 만든다 — 그 전에는 "없음">`
