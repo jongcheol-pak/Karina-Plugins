@@ -162,11 +162,11 @@ T2: <한 줄>
 
 ## 경량 계획
 
-**Step 3 실측이 아래 네 조건을 모두 채우면 짧은 plan 으로 계획하고 승인 1회로 끝낸다.** 1~2파일 변경에도 후보 라운드·`plan-reviewer`·전체 템플릿이 그대로 돌면 계획 비용이 변경보다 커진다. pstack multi-phase-plan 1단계의 *"When the change is one or two files with an obvious approach, skip the plan. Say so and stop."* 를 들이되, 계획을 건너뛰지 않고 줄인다 — 모델 혼자 판정해 게이트를 여는 경로를 만들지 않기 위해서다. `karina:karina-systematic-debugging` 의 「경량 경로」(원인이 확정된 버그의 단계 축약)와는 다른 절차다.
+**Step 3 실측이 아래 네 조건을 모두 채우면 짧은 plan 으로 계획하고 승인 1회로 끝낸다.** 1~2파일 변경(실행 경로를 바꾸지 않는 문서·이미지는 세지 않는다)에도 후보 라운드·`plan-reviewer`·전체 템플릿이 그대로 돌면 계획 비용이 변경보다 커진다. pstack multi-phase-plan 1단계의 *"When the change is one or two files with an obvious approach, skip the plan. Say so and stop."* 를 들이되, 계획을 건너뛰지 않고 줄인다 — 모델 혼자 판정해 게이트를 여는 경로를 만들지 않기 위해서다. `karina:karina-systematic-debugging` 의 「경량 경로」(원인이 확정된 버그의 단계 축약)와는 다른 절차다.
 
 | 조건 | 무엇을 재는가 |
 |---|---|
-| 파일 2개 이하 | task `Files` 줄의 백틱 경로 합집합 — 케이스 파일을 포함하고, 줄의 첫 `[면제` 뒤 경로는 세지 않는다 |
+| 파일 2개 이하 | task `Files` 줄의 백틱 경로 합집합 — 케이스 파일을 포함하고, 줄의 첫 `[면제` 뒤 경로는 세지 않는다. `[면제 ①]` 줄은 그 앞 경로가 전부 문서·이미지(`.md .png .jpg .jpeg .gif .svg .webp .ico`)면 통째로 세지 않는다(문서 제외) — 코드가 하나라도 섞이면 다 센다 |
 | 새 공개 표면 없음 | 새 파일·공개 API·명령·설정 키를 만들지 않고, task 하위 항목이 기존 파일에 새 절(`##`·`###`)을 만든다고 적지 않았고, 경계를 넘는 재구성(`plan-template.md`「작업 단계」)도 없다(`- **구조**:` 줄이 필요 없다) |
 | 승인 필요 없음 | `## 승인 필요 항목` 에 올릴 것이 없다 |
 | DB·외부 없음 | DB 변경·외부 호출·환경변수·새 패키지 소스가 없다 |
@@ -179,12 +179,12 @@ T2: <한 줄>
 - **승인 제시는 위 「승인 제시」 서식에 아래 두 줄을 더한다** — 사용자의 승인이 경량 진입의 확인을 겸한다.
 
   ```
-  경량 계획: 파일 <N>(<경로> · <경로>) · 새 공개 표면 없음 · 승인 필요 없음 · DB/외부 없음 — 실측
+  경량 계획: 파일 <N>(<경로> · <경로>) · 문서 제외 <M>(<경로> · …) · 새 공개 표면 없음 · 승인 필요 없음 · DB/외부 없음 — 실측
   후보 없음 — 확인 범위: <무엇을 쟀는가 한 구>
   ```
 
   `남은 리뷰 지적:` 줄은 `계획 리뷰 생략(경량)` 으로 적는다. 사용자가 `E` 로 일반 경로를 요청하면 경량 표지를 지우고 일반 템플릿으로 다시 쓴다.
-- **구현 중 변경이 파일 3개 이상으로 번지면 `karina:implement` 는 멈추지 않고 `판정:` 줄로 남긴다 — 완료 리뷰가 실제 diff 규모로 `completion-reviewer` 를 부른다(`../../implement/references/final-review.md`「절차」)** — 계획 시점 실측이 틀린 것은 정지가 아니라 리뷰로 잡는다. 승인이 필요한 변경이 새로 생기면 경량과 무관하게 `../../implement/references/loop-exceptions.md`「plan 밖 변경」 대로 멈춘다.
+- **구현 중 변경이 파일 3개 이상(위 「파일 2개 이하」 와 같은 셈법)으로 번지면 `karina:implement` 는 멈추지 않고 `판정:` 줄로 남긴다 — 완료 리뷰가 실제 diff 규모로 `completion-reviewer` 를 부른다(`../../implement/references/final-review.md`「절차」)** — 계획 시점 실측이 틀린 것은 정지가 아니라 리뷰로 잡는다. 승인이 필요한 변경이 새로 생기면 경량과 무관하게 `../../implement/references/loop-exceptions.md`「plan 밖 변경」 대로 멈춘다.
 
 ## 계획 불필요 판정과 면제 표식
 

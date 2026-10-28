@@ -141,6 +141,10 @@ $r = Invoke-CheckPlan ($cpLight.Replace('`a.ps1` · 케이스 `t.ps1` (RED)', '`
 Assert-Case -Name "check-plan 경량: Files 경로가 셋이면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'light-files 3'
 $r = Invoke-CheckPlan ($cpLight.Replace('케이스 `t.ps1` (RED)', '케이스 `t.ps1` (RED) · [면제 ② `old.ps1`]'))
 Assert-Case -Name "check-plan 경량: 면제 뒤 백틱은 파일로 세지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckPlan ($cpLight.Replace('`a.ps1` · 케이스 `t.ps1` (RED)', '`a.md` · `b.md` · `c.png` [면제 ① 문서]'))
+Assert-Case -Name "check-plan 경량: 경로가 모두 문서·이미지인 면제 ① 줄은 파일로 세지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckPlan ($cpLight.Replace('`a.ps1` · 케이스 `t.ps1` (RED)', '`a.ps1` · `b.md` · `c.md` [면제 ① 문서]'))
+Assert-Case -Name "check-plan 경량: 코드가 섞인 면제 ① 줄은 통째로 센다" -R $r -ExpectExit 1 -ExpectContains 'light-files 3'
 $r = Invoke-CheckPlan ($cpLight.Replace('- **Acceptance**:', "- **구조**: 새 파일`n- **Acceptance**:"))
 Assert-Case -Name "check-plan 경량: 구조 줄이 있으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'light-structure T1'
 $r = Invoke-CheckPlan ($cpLight.Replace('## Deferred / Follow-up', "## 승인 필요 항목`n`n- 항목`n`n## Deferred / Follow-up"))

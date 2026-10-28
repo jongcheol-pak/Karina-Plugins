@@ -21,6 +21,7 @@
 #   missing-section <절>         필수 절 없음 — goal·out-of-scope·investigation-log·tasks·verification·deferred
 #                                (Goal 절에 「> 경량:」 줄이 있는 경량 plan 은 out-of-scope·verification 을 재지 않는다)
 #   light-files <N>              경량 plan 의 task Files 줄 백틱 경로(줄의 첫 「[면제」 앞까지) 합집합이 2 를 넘음
+#                                (「[면제 ①」 줄은 경로가 전부 문서·이미지 확장자면 세지 않는다)
 #   light-structure T<N>         경량 plan 의 task 에 「- **구조**:」 줄이 있음(새 파일·새 절 추가·공개 표면·경계를 넘는 재구성)
 #   light-approval               경량 plan 에 「승인 필요 항목」 절이 있음
 #   light-relay                  경량 plan 의 「> 요구:」 가 「코디네이터 인터뷰 경유」(중계 모드는 경량 불허)
@@ -205,9 +206,13 @@ if ($isLight) {
             if (Test-Prefix $l.Text $structLabel) { Add-Problem $l.N ('light-structure T' + $b.Id) }
             if (-not (Test-Prefix $l.Text '- **Files**:')) { continue }
             $t = $l.Text
+            $docOnly = $t.Contains($exemptMark + ' ' + [string][char]0x2460)                 # [면제 ①
             $cut = $t.IndexOf($exemptMark, [System.StringComparison]::Ordinal)
             if ($cut -ge 0) { $t = $t.Substring(0, $cut) }
-            foreach ($m in [regex]::Matches($t, '`([^`]+)`')) { $null = $paths.Add($m.Groups[1].Value.Trim()) }
+            $found = @([regex]::Matches($t, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value.Trim() })
+            # 면제 ① 줄은 경로가 전부 문서·이미지일 때만 뺀다 — 코드가 하나라도 섞이면 통째로 센다
+            if ($docOnly -and $found.Count -and -not @($found | Where-Object { $_ -notmatch '\.(md|png|jpe?g|gif|svg|webp|ico)$' }).Count) { continue }
+            foreach ($p in $found) { $null = $paths.Add($p) }
         }
     }
     if ($paths.Count -gt 2) { Add-Problem $goal.N ('light-files ' + $paths.Count) }
