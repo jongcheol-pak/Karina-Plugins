@@ -14,6 +14,17 @@
 
 `worker-start` 가 `duplicate_worker` 로 다른 세션 워커를 이름 댔을 때 띄운다. 주기(`--poll-ms`, 기본 1분)마다 `check --wait` 로 쉬고 `worker-list --json`(전 Run)에서 그 dispatch 행을 본다. 행이 없거나 Karina 앱 `holds_place_at` 기준으로 놓았으면 freed 다. 시한·멈춤 판정은 없다 — 사람이 탭을 놓아야 풀리는 상태도 있어서다. 이 모드의 message·freed 지시문은 `--place` 재기동을 말하고 error 는 두 모드가 같다.
 
+## stall 뒤 감시
+
+`RESULT: stall` 로 멈춘 단일 체인은 retain 뒤 `--watch` 로 그 dispatch 를 지켜본다. 멈춤 판정은 백그라운드 셸·CI 대기가 상한(`BUSY_SAME_MAX`)을 넘으면 일하는 워커도 멈춤으로 센다 — 2026-10-29 plan 10 은 04:18 stall 뒤 워커가 스스로 이어 가 07:10 에 `worker_done` 을 보냈는데, 받을 대기가 없어 사용자가 07:20 에 말할 때까지 체인이 섰다.
+
+- **시한이 없다** — 그 사례에서 완료까지 약 3시간이 걸렸고, 백그라운드 대기는 5시간 넘게 살아 완료 알림을 냈다(같은 세션 실측). 끝나는 길은 message · closed · superseded · orphaned · error 다.
+- **구조는 자리 대기를 따른다** — 주기(`--poll-ms`, 기본 1분)마다 `check --wait` 로 쉬고 `worker-list --json` 에서 그 dispatch 행을 본다. 배치 없이 행이 자리를 놓았으면(사용자가 탭을 닫았다) closed 다. 화면·진행·PR 단계는 쓰지 않아 `--repo`·`--pr` 를 받지 않는다.
+- **배치는 `runId` 로 가른다** — `check --wait` 는 dispatch 가 아니라 코디네이터 수신함 전체를 받아, 사용자가 같은 세션에서 「plan N부터」(새 Run)나 다른 체인을 시작하면 감시와 새 대기가 같은 수신함을 읽는다. 메시지 `runId` 가 하나라도 행 `runId` 와 같거나 대조할 `runId` 가 없으면 message 로 깨우고, 전부 다르면 배치를 싣지 않고 closed 로 물러난다 — ack 전이라 그 Run 의 대기가 같은 배치를 받는다. 다른 Run 배치가 오기 전까지는 감시와 새 Run 대기가 함께 돌고, 감시가 물러난 뒤 옛 워커의 메시지는 새 Run 대기가 받는다(`interrupt.md` 「사용자 중단」 과 같은 성질).
+- **잠금은 평소 대기와 같은 `FileLock(<dispatch>)`** — 사용자가 「plan N 워커 재개」로 평소 대기를 띄우면 감시가 superseded 로 물러나, 따로 끄는 절차가 없다.
+- **단일만이다** — 병렬 그룹은 한 워커가 멈춰도 나머지를 끝까지 기다려 병합한 뒤 멈추고(`parallel.md`「멈춤」), `failed` 는 워커가 스스로 실패를 선언해 사람이 개입해야 다시 움직인다.
+- **한계** — 대기 보호 변수(`wait-exit.md`「대기 보호」)가 꺼진 환경에서는 메모리 부족 알림에 감시가 끊길 수 있고, 무출력 백그라운드 생존은 90분까지만 쟀다(`docs/conventions.md`). 그래서 멈춤 보고는 「plan N 워커 재개」 대체 경로를 함께 싣는다(`report.md`).
+
 ## 병렬 대기
 
 배치는 코디네이터 터미널에 오므로 `check` 는 주기마다 한 번이고, 화면 비교·멈춤 연속 수·진행 감지만 dispatch 마다 따로 둔다. 멈추면 그 dispatch 하나를 지목하고 지시문은 `parallel.md`「멈춤」 을 가리킨다. 잠금은 dispatch 마다 하나씩이고 전부 쥐었을 때만 소유다(AllLocks) — 끝난 워커를 뺀 나머지로 다시 띄운 대기가 집합이 겹치는 앞 대기를 물린다.
