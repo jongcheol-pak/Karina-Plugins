@@ -7,7 +7,8 @@
 - **리뷰어를 부르기 전에 증거 대조를 1회 돌린다 — `"<skill>/../plan/scripts/check-plan.ps1" "<plan.md>" -Base <BASE>` 를 work-clock 과 같은 호출형(`report-format.md`「소요 기록」)으로 부르고, `<BASE>` 는 아래 BASE SHA 와 같은 값이다** — `[x]` 는 완료 커밋보다 먼저 바뀌어(`../SKILL.md`「자율 루프」 4번) 커밋도 검증 기록도 없이 닫힌 task 가 리뷰까지 기계 검사 없이 온다. 커밋 본문을 증거 자리로 정한 것은 pstack multi-phase-plan 의 *"Check a box only when its evidence exists"* 를 들인 것이다(`https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/multi-phase-plan.md`).
   - **exit 1 이면 걸린 task 마다 그 task 의 검증 명령을 다시 돌려 `git commit --allow-empty` 로 보충 커밋(제목 `{유형}: T<N> — 검증 기록 보충` · 본문에 검증 결과)을 남기고 다시 돌린다** — 이력을 고치는(rebase·amend) 대신 증거를 더한다. 체크박스는 이미 `[x]` 라 보충 커밋은 체크박스 갱신과 따로 부른다.
   - **exit 2 나 출력이 없으면 `증거 대조 미실행 — <사유>` 줄을 만든다.** 대조 출력이나 그 줄을 리뷰어 전달물에 싣는다 — 미실행이면 리뷰어가 커밋 본문을 직접 대조한다.
-- **`completion-reviewer` 서브에이전트를 호출한다 — 호출 전후 작업 트리 확인은 `../../READONLY-SUBAGENTS.md`「호출 전후 확인」 대로다** — 회차 전체를 계획과 대조하는 것은 각 task를 지나온 쪽이 보기 어려운 각도다. 전달: `plan.md` 경로 · BASE SHA(`plan.md` `## Goal` 아래 `> BASE:` 줄의 값 — 커밋 제목으로 짐작하면 사이에 낀 커밋이 diff 범위를 틀어 놓는다) · HEAD SHA · `AGENTS.md` 경로 · 위 증거 대조 출력(또는 미실행 줄).
+- **리뷰어를 부를 때마다(재호출 포함) 그 직전에 이 세션 전사 요약을 만든다 — `python "<skill>/../reflect/scripts/digest_transcript.py" --audit --out <스크래치 경로>/completion-digest.txt`(`<skill>` 은 `../SKILL.md` 의 폴더). exit 2·3 이면 `전사 요약 미실행 — <출력 원문 요지>` 줄을 만들고 리뷰는 그대로 부른다. 아래 경량 plan 으로 리뷰어를 부르지 않으면 만들지 않는다** — 판정 줄 없이 고른 갈림길은 git·plan 어디에도 흔적이 없어 전사가 유일한 재료이고, 재호출 전 수정 구간은 옛 요약에 없다. 요약 실패로 리뷰를 막으면 나머지 검사 항목까지 잃는다.
+- **`completion-reviewer` 서브에이전트를 호출한다 — 호출 전후 작업 트리 확인은 `../../READONLY-SUBAGENTS.md`「호출 전후 확인」 대로다** — 회차 전체를 계획과 대조하는 것은 각 task를 지나온 쪽이 보기 어려운 각도다. 전달: `plan.md` 경로 · BASE SHA(`plan.md` `## Goal` 아래 `> BASE:` 줄의 값 — 커밋 제목으로 짐작하면 사이에 낀 커밋이 diff 범위를 틀어 놓는다) · HEAD SHA · `AGENTS.md` 경로 · 위 증거 대조 출력(또는 미실행 줄) · 전사 요약 경로(또는 미실행 줄).
   - **경량 plan(`## Goal` 에 `> 경량:` 줄 — 서식 `../../plan/references/plan-template.md`「경량 plan」)이고 `git diff --name-only <BASE>..HEAD` 가 3파일 미만이면 부르지 않는다 — 대신 이 세션이 `../../../agents/completion-reviewer.md`「검사 항목」 다섯(요구 ↔ 산출물 · task 완료 상태의 진실성 · Goal 성공 기준 · Deferred 처리 · 함정 기록)을 체크리스트로 재고, 항목마다 `<항목> — <참|거짓> — <근거 명령·출력>` 줄을 최종 보고에 싣는다** — 1~2파일 회차에 리뷰어 한 번(수 M 토큰)을 줄이되, 한 항목이라도 빠지면 그 항목을 아무도 재지 않는다. 위 증거 대조는 그대로 돌고, 거짓이 남으면 고친 뒤 다시 잰다. 3파일 이상이면 계획 시점 실측이 틀린 것이라 부른다.
 - **결과를 받아 판정한 뒤에 완료 선언으로 간다** — 호출만 하고 다음으로 넘어가면 리뷰가 없는 것과 같다.
 - **BLOCKER·MAJOR는 고치고 다시 호출한다** — 지적이 남은 산출물을 통과시키면 그 결함이 다음 회차로 간다. MINOR 는 아래 「필터 패스」가 가른다. (중계 모드 예외는 `../../plan/references/relay-mode.md`「중계 모드」)
@@ -18,6 +19,15 @@
     - ⓓ 보안·정확성 지적은 반증 출력 없이는 기각하지 않는다.
   - **기각마다 `기각 — <지적 요지> — <반증 명령·출력 요지>` 줄을 최종 보고에 싣고, 재호출 때 그 줄들을 전달물에 더한다** — 리뷰어가 반증을 다시 대조할 수 있어야 같은 지적이 되풀이되지 않는다.
   - **같은 지적을 두 번째로 기각하게 되면 기각하지 않고 최종 보고 「남은 이슈」 에 원래 등급으로 올리고, 그 지적으로는 다시 부르지 않는다** — 기각과 재지적이 오가는 것을 멈추는 상한이다.
+
+## 전사 대조
+
+`completion-reviewer` 가 전사 요약 경로를 받았을 때 이 절대로 본다. 출처는 pstack show-me-your-work 「Audit the log against the transcript」 다 — 고정 위치 `https://github.com/cursor/plugins/blob/ce649c03ac3b75b6ae80cbd15b7e2c536caedb5a/pstack/skills/show-me-your-work/SKILL.md` · *"A fork, pivot, or abandoned approach that shaped the work but isn't logged is a gap. Add it."*
+
+- **대조 범위는 요약의 마지막 plan 진입 표지 뒤에 오는 첫 implement 진입 표지 뒤다 — plan 표지가 없으면 첫 implement 표지 뒤, 둘 다 없으면 전체** — 표지는 `T: Skill karina:<이름>` 줄과 `<command-name>/karina:<이름>` 이 든 `U:` 줄이다. 그 앞의 인터뷰 결정은 plan Decisions·인터뷰 줄이 담고, 마지막 implement 표지에서 자르면 정지 뒤 재발동한 회차의 앞 구간이 빠진다.
+- **지적 대상은 `A:` 줄의 갈림길 선택·방향 전환·버린 접근과 `T: Bash` 의 되돌림 명령(`git restore`·`git checkout --`·`git revert`·`git reset`) 가운데 Progress Log `판정:`·`판정(정정):` 줄이나 plan Decisions 에 짝이 없는 것이다** — plan task 를 그대로 수행한 단계·기계적 재시도·이미 판정 줄이 있는 것은 대상이 아니다. 판정 줄은 실행 세션만 쓰고 최종 보고가 그 줄을 옮겨 실으므로, 짝이 없는 결정은 리뷰도 보고도 지나지 않고 사라진다.
+- **등급은 MINOR 이고, 근거 칸에 요약 줄 원문을 인용한다** — 산출물이 아니라 기록이 빠진 것이라 완료를 막지 않는다. 인용이 없으면 호출자가 그 갈림길을 찾지 못한다.
+- **호출자는 아래 필터 패스 ⓐ 로 빠진 판정 줄을 Progress Log 끝에 덧붙이고 줄 끝에 `(완료 리뷰 전사 대조)` 를 단다 — 앞 줄을 고쳐 쓰지 않는다** — *"Correct the log, not the story."* 사후에 붙였다는 표지가 있어야 그 자리에서 쓴 판정과 갈린다.
 
 ## 필터 패스
 
