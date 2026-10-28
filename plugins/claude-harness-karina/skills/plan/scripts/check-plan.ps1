@@ -207,8 +207,8 @@ if ($isLight) {
             if (Test-Prefix $l.Text $structLabel) { Add-Problem $l.N ('light-structure T' + $b.Id) }
             if (-not (Test-Prefix $l.Text '- **Files**:')) { continue }
             $t = $l.Text
-            $docOnly = $t.Contains($docExemptMark)
             $cut = $t.IndexOf($exemptMark, [System.StringComparison]::Ordinal)
+            $docOnly = $cut -ge 0 -and $t.Substring($cut).StartsWith($docExemptMark, [System.StringComparison]::Ordinal)
             if ($cut -ge 0) { $t = $t.Substring(0, $cut) }
             $found = @([regex]::Matches($t, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value.Trim() })
             if ($docOnly -and $found.Count -and -not @($found | Where-Object { $_ -notmatch '\.(md|png|jpe?g|gif|svg|webp|ico)$' }).Count) { continue }
