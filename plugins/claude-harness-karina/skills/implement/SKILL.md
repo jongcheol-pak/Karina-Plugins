@@ -89,8 +89,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ### 최종 리뷰 (4번 통과 후 1회)
 
-- **완료 순서는 「4번 검증 → Deferred 판정·대장 이관(「완료 정의」) → 함정 기록(「완료 시 함정 기록」) → 리뷰 → 필터 패스 등재분 대장 이관 → 완료 시각 기록(`references/report-format.md`「소요 기록」) → 추적 레포면 plan 파일 커밋(`references/report-format.md`「plan 파일 커밋」) → PR 열기(`references/pr-flow.md`「PR 열기」) → 최종 보고」다** — 리뷰어가 대장 판정 결과와 함정 기록을 검사하므로 그 둘이 리뷰보다 먼저다. 필터 패스(`references/final-review.md`)가 리뷰 뒤에 `[등재]` 로 남긴 항목은 앞의 대장 이관이 이미 지나간 뒤에 생기므로 그 자리에서 한 번 더 옮긴다 — 안 옮기면 `plan.md` 와 함께 다음 회차에 덮어써진다.
-- **`completion-reviewer` 서브에이전트를 호출한다 — 호출 조건·인자·판정·재호출 한계·리뷰어 부재 처리는 `references/final-review.md`「절차」가 정본이다** — 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
+- **4번 통과 뒤 `references/final-review.md`「완료 순서」 대로 닫고, `completion-reviewer` 서브에이전트는 같은 파일 「절차」 대로 호출한다** — Deferred 판정·함정 기록이 리뷰보다 먼저이고 완료 시각·plan 파일 커밋·PR 열기가 최종 보고 앞이다. 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
 
 ### 실패 처리
 
@@ -110,14 +109,12 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ## 완료 시 함정 기록
 
-전 task 완료 후, 이번 회차에 **① 같은 원인으로 2회 이상 막힌 것**이나 **② 다음 작업자가 모르면 다시 걸릴 함정**이 있었는지 판정하고, 있으면 레포 `docs/conventions.md` 에 기록한다 — 판정·형식·위치는 `../REPO-CONVENTIONS.md` 「쓰기」 가 정본이고 완료 때 그 절만 Read 한다.
-
-- **이 회차의 보류·기각 `[DECISION]` 을 여기서 1회 일괄 큐잉한다 — 대상은 plan 의 `## Out of Scope` 기각 · 완료 시점에 남은 `## Deferred / Follow-up` 보류 · 구현 중 새로 생긴 것과 기록된 보류·기각의 번복이고, 형식·입도·하네스 레포 예외는 `../llm-wiki/references/queue-rules.md`의 K 5-2가 정본이다** — 그 규약의 배치 시점은 여기 하나다(채택은 코드·커밋이 담아 큐잉하지 않는다). vault 판정은 `../WIKI.md` §0 이다. **`queue-rules.md` 는 파일째 읽지 않는다 — K 5~K 5-2 와 K 6 절만 `grep -n '^### K' <queue-rules.md 경로>` 경계로 Read 한다**(K 5-2 가 K 5 의 게이트·폴백과 K 6 커밋에 기댄다).
+- **전 task 완료 후 `references/final-review.md`「함정 기록·결정 큐잉」 을 Read 한다 — 함정 판정(`../REPO-CONVENTIONS.md`「쓰기」)과 보류·기각 `[DECISION]` 의 K 5-2 일괄 큐잉이 거기 있다** — 그 큐잉의 배치 시점은 여기 하나다.
 
 ## 완료 정의
 
 - **일부 task를 남긴 채 완료라고 보고하지 않는다** — 남은 것이 있으면 그것은 진행 중이거나 중단이지 완료가 아니다.
-- **`## Deferred / Follow-up`의 항목을 전부 판정한다 — 등재 전에 「지금 고칠 것인가」를 먼저 가른다** — 등재분은 그 레포의 **Deferred 대장**(위치는 그 레포 `AGENTS.md` 의 `## Plan Location`)으로 옮기고, **대장이 없는 레포면 등재가 아니라 `[미등재:대장 없음]`으로 닫는다**(판정 3조건과 하한선은 `../plan/references/deferred-rules.md`).
+- **`## Deferred / Follow-up`의 항목은 전부 판정한다 — 판정과 대장 이관은 `references/final-review.md`「Deferred 판정」** — 판정 없이 남긴 항목은 `plan.md` 와 함께 덮어써진다.
 
 ## 최종 보고
 
