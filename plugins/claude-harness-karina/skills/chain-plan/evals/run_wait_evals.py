@@ -1382,8 +1382,6 @@ def pr_pending_too_long_stalls():
     assert len([c for c in cli.calls if c[0] == 'worker-read']) == 9, out
 
 
-# ── 감시 대기(--watch — stall 로 멈춘 단일 워커의 메시지만 지켜본다) ─────────────────
-
 def run_batch(run_id):
     return json.dumps({'ok': True, 'count': 1, 'deliveryId': 'dlv_1',
                        'messages': [{'id': 'msg_1', 'runId': run_id, 'type': 'worker_done', 'subject': '완료'}]})
@@ -1430,7 +1428,6 @@ def watch_keeps_waiting_while_retained():
 
 @case
 def watch_foreign_run_closes():
-    # 「plan N부터」(새 Run)나 다른 체인의 대기와 수신함을 함께 읽는다 — 남의 배치는 싣지 않고 물러난다.
     out = watch(FakeCli([run_batch('run_new')], [RETAINED]))
     assert first(out).startswith('RESULT: closed — '), out
     assert not any('dlv_1' in l for l in out), '다른 Run 의 배치를 실으면 코디네이터가 그것을 처리한다'
@@ -1488,6 +1485,19 @@ def watch_args_rejected():
     finally:
         sys.stdout, sys.stderr = real_stdout, real_stderr
         ww.make_call, ww.FileLock = saved
+
+
+@case
+def sweep_keeps_live_old_lock():
+    lock = ww.FileLock('disp_sweep_live')
+    try:
+        week_ago = time.time() - ww.SWEEP_AGE_SEC - 60
+        os.utime(lock.path, (week_ago, week_ago))
+        assert lock.owned()
+        ww.sweep_stale(ww.chain_dir(), time.time())
+        assert lock.owned(), '시한 없는 감시처럼 오래 사는 대기의 잠금을 정리가 지우면 그 대기가 superseded 로 물러난다'
+    finally:
+        lock.release()
 
 
 @case

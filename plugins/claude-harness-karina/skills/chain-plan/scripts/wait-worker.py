@@ -266,9 +266,6 @@ def place_loop(call, lock, place, poll_ms, alive=None):
 
 
 def watch_loop(call, lock, dispatch, poll_ms, alive=None):
-    """감시 대기. stall 로 멈춘 단일 워커(dispatch)가 스스로 이어 가 보내는 배치를 기다린다 — 화면을 읽지 않고 시한도 없다.
-    배치가 오면 그 dispatch 행의 runId 와 메시지 runId 를 대조해 다른 Run 의 배치면 싣지 않고 closed 로 물러나고,
-    배치 없이 행이 자리를 놓았으면 closed 다(근거는 rationale 「stall 뒤 감시」)."""
     while True:
         try:
             raw = call(['check', '--json', '--wait', '--timeout-ms', str(poll_ms)])
@@ -304,7 +301,6 @@ def watch_loop(call, lock, dispatch, poll_ms, alive=None):
 
 
 def chain_dir():
-    """임시 폴더의 `karina-plugin/chain` — 없으면 만든다. 폴더 배치는 `../../TEMP-FILES.md`."""
     d = os.path.join(tempfile.gettempdir(), 'karina-plugin', 'chain')
     os.makedirs(d, exist_ok=True)
     return d
@@ -322,7 +318,10 @@ class FileLock:
     def owned(self):
         try:
             with open(self.path, encoding='utf-8') as f:
-                return f.read() == self.token
+                if f.read() != self.token:
+                    return False
+            os.utime(self.path)
+            return True
         except OSError:
             return False
 
@@ -581,10 +580,6 @@ class FileStore:
 
 
 def sweep_stale(folder, now):
-    """`folder` 의 `karina-chain-wait-*`(잠금·상태·쓰다 남은 임시 파일) 중 수정 시각이 SWEEP_AGE_SEC 지난 것을 지운다.
-    감시 대기(--watch)는 시한 없이 워커 탭이 닫힐 때까지 살지만 7일 넘게 사는 대기는 실측하지 못했다 — 그만큼 지난 파일은
-    죽은 대기의 것으로 본다. 지우지 않으면 dispatch 마다 하나씩 쌓인다.
-    정리는 부가 기능이라 실패는 삼킨다."""
     try:
         names = os.listdir(folder)
     except OSError:
