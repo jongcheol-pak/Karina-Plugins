@@ -116,4 +116,4 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
 ## 하지 않는 것
 
 - **파일 수정** — 산출물은 워커가 만든다. 이 세션이 고치면 워커의 `plan.md` 가 모르는 변경이 생긴다. 예외는 체인이 끝난 뒤의 인계 파일 삭제(`references/report.md`「인계 파일 정리」)와 병렬 병합 커밋(`references/parallel.md`「병합」)·PR 모드의 체인 브랜치 생성·push(`references/pr-mode.md`「켜기」)·fast-forward(같은 파일 「병렬」)·체인 끝 PR(「Y 체인 끝 PR」·「P 체인 끝 PR」)·스택 착지와 검증용 worktree(만들고 지움 — `references/stack-mode.md`)다.
-- **멈춘 워커의 자동 재개** — 재개는 사용자가 「plan N부터」로 부른다. 중단·무관한 요청은 `references/interrupt.md`「사용자 중단」·「무관한 요청」 을 따른다. 사용자가 stall·`failed` 로 멈춘 워커를 탭에서 직접 이어 가게 했다고 알리면 `references/manual-resume.md`「직접 재개」 를 따른다. **멈춘 계획에 새 워커를 띄우는 선택지도 내지 않는다** — 새 워커는 계획을 처음부터 다시 실측해 앞 워커의 진척을 버린다. 새 워커는 사용자가 「plan N부터」로 부를 때만이다.
+- **멈춘 워커의 자동 재개** — 재개는 사용자가 「plan N부터」로 부른다. 중단·무관한 요청은 `references/interrupt.md`「사용자 중단」·「무관한 요청」 을 따른다. 사용자가 stall·`failed` 로 멈춘 워커를 탭에서 직접 이어 가게 했다고 알리면 `references/manual-resume.md`「직접 재개」 를, stall 뒤 감시 대기가 깨운 배치는 같은 파일 「스스로 재개」 를 따른다. **멈춘 계획에 새 워커를 띄우는 선택지도 내지 않는다** — 새 워커는 계획을 처음부터 다시 실측해 앞 워커의 진척을 버린다. 새 워커는 사용자가 「plan N부터」로 부를 때만이다.

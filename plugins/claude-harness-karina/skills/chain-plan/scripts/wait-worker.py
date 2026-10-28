@@ -10,6 +10,8 @@
 - freed      (`--place` 만) 지켜보던 다른 세션 워커가 자리를 놓았다(그 dispatch 행 — message 와 같은 축약).
 - orphaned   대기를 띄운 셸·세션이 사라졌다(두 모드 공통 · 본문 없음).
 - deadline   (`--answer-by` 만) 시한까지 배치가 없었다(본문 없음).
+- closed     (`--watch` 만) 지켜보던 dispatch 행이 자리를 놓았거나 배치가 다른 Run 의 것이다(그 dispatch 행 —
+             배치는 싣지 않는다 · ack 전이라 그 Run 의 대기가 받는다).
 
 진행 줄(`--repo` 를 줬을 때만): 워커가 끝낸 task 마다 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작` 한 줄,
 `--pr <base>` 면 PR 단계마다 한 줄(문면은 `pr_stage.py` 모듈 docstring). 따로 깨우지 않고
@@ -17,6 +19,7 @@ message·stall·error 원문 앞에 싣는다.
 
 모드: `--dispatch` 하나(단일) · 여럿(병렬 — `--repo`·`--label` 도 같은 수·같은 순서) · `--place <dispatch>`(자리 대기).
 `--answer-by <epoch 초>` 는 단일에만 — 사용자에게 넘긴 질문의 미답 시한 대기다(화면을 읽지 않는다 · 45분 안).
+`--watch` 는 단일에만 — stall 로 멈춘 워커의 감시 대기다(화면·진행·시한 없음 · `--answer-by`·`--repo`·`--pr` 와 함께 주지 않는다).
 
 판정 근거(멈춤·진행 감지·PR 단계·고아 감시·외부 호출 시한·stdout 인코딩)는
 `../references/wait-worker-rationale.md` 가 정본이다.
@@ -62,7 +65,12 @@ def background_shell(lines):
     return bool(rules) and any(BG_SHELL.search(l) for l in lines[rules[-1] + 1:])
 
 
-def _action(kind, dispatch, streak=0, on_place=False, parallel=False, answer_by=None):
+def _action(kind, dispatch, streak=0, on_place=False, parallel=False, answer_by=None, watch=False):
+    if kind == 'message' and watch:
+        return ('stall 로 멈춘 워커가 스스로 이어 가 보낸 배치다 — references/manual-resume.md 「스스로 재개」 를 따른다')
+    if kind == 'closed':
+        return ('감시만 끝났다 — 지켜보던 워커 탭이 닫혔거나 다른 Run 의 배치가 왔다. 배치는 처리·ack 하지 않는다 '
+                '(다른 Run 의 대기가 받는다) · 아무것도 하지 않는다')
     if kind == 'message' and answer_by is not None:
         return ('배치를 chain-plan 「워커 루프」 규칙대로 처리하고 ack 한 뒤, 사용자에게 넘긴 질문이 아직 열려 있으면 '
                 '같은 --answer-by %d 로 다시 띄운다 (답을 reply 했으면 --answer-by 없이)' % answer_by)
@@ -86,7 +94,8 @@ def _action(kind, dispatch, streak=0, on_place=False, parallel=False, answer_by=
                 '병렬 대기라 references/parallel.md 「멈춤」 을 따른다' % (streak, dispatch))
     if kind == 'stall':
         return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고(화면은 구분 줄 뒤다), '
-                '같은 화면이 체크포인트마다 %d장 이어졌고 HEAD 가 움직이지 않았다 — worker-retain --dispatch %s 후 보고하고 멈춘다 '
+                '같은 화면이 체크포인트마다 %d장 이어졌고 HEAD 가 움직이지 않았다 — worker-retain --dispatch %s 후 '
+                '같은 --dispatch 에 --watch 만 붙인 감시 대기(--repo·--label·--pr 없이)를 run_in_background 로 띄우고 보고하고 멈춘다 '
                 '(보고의 멈춘 사유에 직접 재개 알림 안내를 싣는다 — references/report.md · references/manual-resume.md)'
                 % (streak, dispatch))
     if kind == 'error':
@@ -256,8 +265,42 @@ def place_loop(call, lock, place, poll_ms, alive=None):
             return _result('freed', place, [_compact(rows)[:RAW_LIMIT]])
 
 
+def watch_loop(call, lock, dispatch, poll_ms, alive=None):
+    while True:
+        try:
+            raw = call(['check', '--json', '--wait', '--timeout-ms', str(poll_ms)])
+        except OSError as e:
+            return _result('error', dispatch, ['CLI 실행 실패: %s' % e])
+        if alive is not None and not alive():
+            return _result('orphaned', dispatch)
+        if not lock.owned():
+            return _result('superseded', dispatch)
+        batch, err = _parse(raw)
+        if err is not None:
+            return _result('error', dispatch, [err])
+
+        try:
+            raw = call(['worker-list', '--json'])
+        except OSError as e:
+            return _result('error', dispatch, ['CLI 실행 실패: %s' % e])
+        if not lock.owned():
+            return _result('superseded', dispatch)
+        data, err = _parse(raw)
+        if err is not None:
+            return _result('error', dispatch, [err])
+        rows = [r for r in data.get('workers') or [] if r.get('dispatchId') == dispatch]
+
+        if batch.get('count', 0) > 0:
+            runs = {m.get('runId') for m in batch.get('messages') or [] if m.get('runId')}
+            own = {r.get('runId') for r in rows}
+            if runs and own and not runs & own:
+                return _result('closed', dispatch, [_compact(rows)[:RAW_LIMIT]])
+            return _result('message', dispatch, [_compact(batch)[:RESULT_CAP]], watch=True)
+        if not any(holds_place(r) for r in rows):
+            return _result('closed', dispatch, [_compact(rows)[:RAW_LIMIT]])
+
+
 def chain_dir():
-    """임시 폴더의 `karina-plugin/chain` — 없으면 만든다. 폴더 배치는 `../../TEMP-FILES.md`."""
     d = os.path.join(tempfile.gettempdir(), 'karina-plugin', 'chain')
     os.makedirs(d, exist_ok=True)
     return d
@@ -275,7 +318,10 @@ class FileLock:
     def owned(self):
         try:
             with open(self.path, encoding='utf-8') as f:
-                return f.read() == self.token
+                if f.read() != self.token:
+                    return False
+            os.utime(self.path)
+            return True
         except OSError:
             return False
 
@@ -534,9 +580,6 @@ class FileStore:
 
 
 def sweep_stale(folder, now):
-    """`folder` 의 `karina-chain-wait-*`(잠금·상태·쓰다 남은 임시 파일) 중 수정 시각이 SWEEP_AGE_SEC 지난 것을 지운다.
-    대기 수명은 45분 실측이라 그만큼 지난 파일은 죽은 대기의 것이다 — 지우지 않으면 dispatch 마다 하나씩 쌓인다.
-    정리는 부가 기능이라 실패는 삼킨다."""
     try:
         names = os.listdir(folder)
     except OSError:
@@ -587,6 +630,7 @@ def main(argv=None):
     ap.add_argument('--poll-ms', type=int, default=None)
     ap.add_argument('--pr', default=None)
     ap.add_argument('--answer-by', type=int, default=None)
+    ap.add_argument('--watch', action='store_true')
     a = ap.parse_args(argv)
     if (a.dispatch is None) == (a.place is None):
         ap.error('--dispatch 와 --place 중 하나만 준다')
@@ -594,6 +638,8 @@ def main(argv=None):
         ap.error('--pr 는 --repo 와 함께 준다')
     if a.answer_by is not None and (a.place is not None or len(a.dispatch) > 1):
         ap.error('--answer-by 는 --dispatch 하나와만 준다')
+    if a.watch and (a.place is not None or len(a.dispatch) > 1 or a.answer_by is not None or a.repo or a.pr):
+        ap.error('--watch 는 --dispatch 하나와만 준다 (--answer-by·--repo·--pr 없이)')
     if a.answer_by is not None and a.answer_by - time.time() > ANSWER_MAX_SEC:
         ap.error('--answer-by 는 지금부터 %d초 안이어야 한다' % ANSWER_MAX_SEC)
     for name, vals in (('--repo', a.repo), ('--label', a.label)):
@@ -607,6 +653,12 @@ def main(argv=None):
         print('\n'.join(out), flush=True)
         return 0
     sweep_stale(chain_dir(), time.time())
+    if a.watch:
+        lock = FileLock(a.dispatch[0])
+        out = watch_loop(make_call(a.cli), lock, a.dispatch[0], a.poll_ms or 60000, alive=alive)
+        lock.release()
+        print('\n'.join(out), flush=True)
+        return 0
     ids = a.dispatch
     labels = a.label or [''] * len(ids)
     progress = None
