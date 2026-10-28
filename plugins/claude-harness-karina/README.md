@@ -4,12 +4,12 @@
 
 # claude-harness-karina (자율 루프)
 
-> Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin (Windows 우선 · pwsh 7 또는 내장 PowerShell)
-> <br>(계획·검증 로직은 OS 무관 — 단 `chain-plan` 은 Karina 앱(Windows)가 필요하다, 자동 안전망 hook은 pwsh 7 우선·없으면 Windows 내장 PowerShell로 폴백 — Windows 검증·macOS/Linux 실험적, [호환 환경](#호환-환경) 참고)
+> Claude Code가 **계획하고 검증하며** 일하도록 만드는 plugin
+> <br>Windows 에서 검증했고 macOS/Linux 는 실험적으로 지원합니다 — 자세한 조건은 [호환 환경](#호환-환경)
 
 **버전**: 2.47.0
 **저장소**: https://github.com/jongcheol-pak/Karina-Plugins (모노레포 — 이 하니스는 plugins/claude-harness-karina/ 폴더)
-**Claude Code**: 최소 v2.0 — 플러그인을 쓰는 데는 이것으로 충분하다. CLAUDE.md 가 없는 프로젝트에서 Claude Code 가 AGENTS.md 를 직접 불러오는 것은 v2.1.277+ 이고, 그 미만이면 세션 시작 hook 의 Read 지시가 대신한다 · **하니스 자체를 고칠 때(eval 러너)는 권장 v2.1.269+** — `--filter` 이름 검증과 골든 러너 병렬 모드가 안정된 판이라, 그 미만에서는 부분 실행 필터가 조용히 0건을 돌 수 있다. <!-- verified: 2026-09-12 -->
+**Claude Code**: 최소 v2.0 — 권장 버전은 [호환 환경](#호환-환경)
 
 ---
 
@@ -22,9 +22,7 @@ Claude Code에게 코딩을 맡기면 가끔 이렇게 합니다:
 - 제대로 확인 안 하고 "다 됐습니다"라고 보고
 - task마다 "다음 진행할까요?"를 물어 흐름이 끊김
 
-**karina는 이걸 막습니다.** 코드를 바꾸기 전에 먼저 계획을 세우게 하고, 바꾼 뒤에는 여러 단계로 검증하게 하며, 한 번 승인하면 끝까지 자동으로 진행합니다. "꼼꼼한 시니어 개발자의 작업 습관"을 Claude Code에 입히는 도구라고 보면 됩니다.
-
-비유하자면, Claude Code가 "재능 있지만 가끔 덤벙대는 주니어"라면, karina는 그 옆에서 "계획서 보여줘 → 이 부분 빠졌네 → 검증했어? → 좋아 통과"를 챙기는 **작업 절차와 안전장치**입니다.
+**karina는 이걸 막습니다.** 코드를 바꾸기 전에 먼저 계획을 세우게 하고, 바꾼 뒤에는 여러 단계로 검증하게 하며, 한 번 승인하면 끝까지 자동으로 진행합니다.
 
 > 특정 언어 전용이 아닙니다 — 빌드/테스트 명령만 알면 **어떤 언어·프로젝트에서도** 동작합니다. (.NET·Android·Node/TS·Python·Go·Rust는 표식 파일로 자동 감지해 빌드·테스트 명령까지 채우고, 그 외는 물어서 채웁니다)
 
@@ -49,8 +47,7 @@ Claude Code에게 코딩을 맡기면 가끔 이렇게 합니다:
 
 ### 1. 사전 요구사항
 
-- Windows 10/11 + PowerShell (내장 5.1 로 충분 · pwsh 7 이 있으면 그쪽을 우선 사용)
-- macOS/Linux: pwsh 7 필요 — 동작하도록 구현했으나 실제 환경 미검증(실험적), `chain-plan` 은 Windows 전용 ([호환 환경](#호환-환경))
+- Windows 10/11 — 추가 설치 없이 동작합니다(macOS/Linux 는 pwsh 7 필요 · 실험적). 자세한 조건은 [호환 환경](#호환-환경)
 - Claude Code v2.0 이상
 
 ### 2. 설치
@@ -189,7 +186,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 
 ### Subagents
 
-작업을 직접 하는 Claude와 **별개의 검토자** 둘이 결과를 점검하고, PR 을 merge 할 때는 **독립 검증자** 하나가 PR head 를 직접 돌려 봅니다. 위키 세션에서는 **작성 담당** 하나가 페이지 작성을 나눠 맡습니다. 작성자와 검토자를 분리해 "자기 일을 자기가 검토하는" 맹점을 줄입니다.
+작업을 직접 하는 Claude와 별개인 **검토·검증 담당 다섯**(아래 표)이 정해진 자리에서 결과를 점검합니다 — PR 을 merge 할 때 PR head 를 직접 돌려 보는 독립 검증자(`pr-verifier`)도 여기 듭니다. 위키 세션에서는 **작성 담당 하나**가 페이지 작성을 나눠 맡습니다. 작성자와 검토자를 분리해 "자기 일을 자기가 검토하는" 맹점을 줄입니다.
 
 | 검토자 | 모델 | 언제 | 무엇을 |
 |---|---|---|---|
@@ -199,7 +196,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | reflect-reviewer | Opus | 사용자가 `/karina:reflect` 를 부를 때 1회 | 세션 전사를 읽고 karina 스킬·hook 과 작업 레포 환경·글로벌 지침의 개선 후보 표를 냅니다(파일은 고치지 않음) |
 | comment-reviewer | Opus | 사용자가 `/karina:no-comments` 를 부를 때와 implement 회차 끝(경량 계획이면서 변경 3파일 미만은 제외)에 1회(판정을 거부하면 1회 더) | 지정 범위의 코드 주석을 지울 것·남길 것·코드로 고칠 대상·제약 주석으로 판정한 표를 냅니다(파일은 고치지 않음) |
 
-**검토자는 정해진 자리에서만 부릅니다** — task마다 부르지 않습니다. Claude Opus 5는 지시 없이도 자기 작업을 검증하므로, 그 위에 검토 단계를 얹으면 비용과 시간만 늘고 품질은 오르지 않습니다([Anthropic 프롬프팅 가이드](https://platform.claude.com/docs/ko/build-with-claude/prompt-engineering/prompting-claude-opus-5)의 권고).
+**검토자는 정해진 자리에서만 부릅니다** — task마다 부르지 않습니다. Claude Opus 5.5는 지시 없이도 자기 작업을 검증하므로, 그 위에 검토 단계를 얹으면 비용과 시간만 늘고 품질은 오르지 않습니다([Anthropic 프롬프팅 가이드](https://platform.claude.com/docs/ko/build-with-claude/prompt-engineering/prompting-claude-opus-5)의 권고).
 
 검토 흐름의 규칙:
 
@@ -523,17 +520,15 @@ karina는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
 
 | 구성 | OS 의존 | 설명 |
 |---|---|---|
-| **Skills · Subagents** (계획·구현·디버깅·검증 로직) | OS 무관 | 지침(markdown)이라 어디서나 동작 — 단 `chain-plan` 은 Karina 앱(Windows)와 python 3 이 필요하다 |
-| **Hooks** (위험 명령 차단·권한/보안 변경 차단·외부 작업(push·릴리즈) 경고·민감정보 경고·plan 강제 등 자동 안전망) | **pwsh 7 우선·5.1 폴백** | hook 스크립트는 Claude Code가 띄운 PowerShell에서 직접 실행(자식 셸 재기동 없음). 실행 셸은 Claude Code의 powershell 해석을 따르며(실측: pwsh 7 있으면 `pwsh` 우선), 스크립트는 내장 powershell.exe(5.1) 호환을 유지; macOS/Linux는 `pwsh` 7 |
+| **Skills · Subagents** (계획·구현·디버깅·검증 로직) | OS 무관 | 지침(markdown)이라 어디서나 동작 — 단 `chain-plan` 은 Karina 앱(Windows)과 python 3 이 필요하다 |
+| **Hooks** (위험 명령 차단·권한/보안 변경 차단·외부 작업(push·릴리즈) 경고·민감정보 경고·plan 강제 등 자동 안전망) | **pwsh 7 우선·5.1 폴백** | hook 스크립트는 Claude Code가 띄운 PowerShell에서 직접 실행한다(자식 셸 재기동 없음). 어느 셸이 뜨는지는 아래 「런타임」 행 |
 
 | 항목 | 지원 |
 |---|---|
 | OS | **Windows 10/11**: 완전 지원·검증. **macOS/Linux**: pwsh 7 설치 시 동작하도록 구현됐으나 **실제 환경 미검증(실험적)** |
 | 런타임 | **Windows**: 추가 설치 불요 — 실행 셸은 Claude Code가 결정(실측: pwsh 7 있으면 그쪽 우선), 스크립트는 내장 powershell.exe(5.1) 호환 유지. **macOS/Linux**: pwsh 7 필요(`brew install powershell` 등) |
-| Claude Code | **최소 v2.0** (플러그인 사용) · AGENTS.md 직접 로드는 v2.1.277+ (미만이면 세션 시작 hook 의 Read 지시가 대신) · **하니스 개발(eval 러너)은 권장 v2.1.269+** — `--filter` 이름 검증과 골든 러너 병렬 모드가 안정된 판이다. 미만에서는 부분 실행 필터가 조용히 0건을 돌 수 있다 |
+| Claude Code | **최소 v2.0** (플러그인 사용) · AGENTS.md 직접 로드는 v2.1.277+ (미만이면 세션 시작 hook 의 Read 지시가 대신) · **하니스 개발(eval 러너)은 권장 v2.1.269+** — `--filter` 이름 검증과 골든 러너 병렬 모드가 안정된 판이다. 미만에서는 부분 실행 필터가 조용히 0건을 돌 수 있다 <!-- verified: 2026-09-27 --> |
 | 대상 언어 | **모든 언어 동작** — .NET, Android, Node/TS, Python, Go, Rust는 표식 파일로 자동 감지·자동 설정. 그 외(Flutter·Swift·Java·C++·Ruby 등)는 빌드/테스트 명령만 입력하면 동일하게 작동 |
-
-> **요약**: 자동 안전망(hook)은 OS에 무관하게 동작하도록 구현됐습니다. **Windows는 검증 완료** — pwsh 7이 있으면 그쪽에서, 없으면 내장 powershell.exe(5.1)에서 동작해 **추가 설치 없이 안전망이 항상 동작**합니다. **macOS/Linux는 pwsh 7 필요·실험적(미검증)** 입니다(`brew install powershell` 등).
 
 ---
 
