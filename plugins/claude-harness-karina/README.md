@@ -527,7 +527,7 @@ karina는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
 |---|---|
 | OS | **Windows 10/11**: 완전 지원·검증. **macOS/Linux**: pwsh 7 설치 시 동작하도록 구현됐으나 **실제 환경 미검증(실험적)** |
 | 런타임 | **Windows**: 추가 설치 불요 — 실행 셸은 Claude Code가 결정(실측: pwsh 7 있으면 그쪽 우선), 스크립트는 내장 powershell.exe(5.1) 호환 유지. **macOS/Linux**: pwsh 7 필요(`brew install powershell` 등) |
-| Claude Code | **최소 v2.0** (플러그인 사용) · AGENTS.md 직접 로드는 v2.1.277+ (미만이면 세션 시작 hook 의 Read 지시가 대신) · **하니스 개발(eval 러너)은 권장 v2.1.269+** — `--filter` 이름 검증과 골든 러너 병렬 모드가 안정된 판이다. 미만에서는 부분 실행 필터가 조용히 0건을 돌 수 있다 <!-- verified: 2026-09-27 --> |
+| Claude Code | **최소 v2.0** (플러그인 사용) · AGENTS.md 직접 로드는 v2.1.277+ (미만이면 세션 시작 hook 의 Read 지시가 대신) · **하니스 개발(eval 러너)은 권장 v2.1.269+** — `--filter` 이름 검증과 골든 러너 병렬 모드가 안정된 판이다. 미만에서는 부분 실행 필터가 조용히 0건을 돌 수 있다 |
 | 대상 언어 | **모든 언어 동작** — .NET, Android, Node/TS, Python, Go, Rust는 표식 파일로 자동 감지·자동 설정. 그 외(Flutter·Swift·Java·C++·Ruby 등)는 빌드/테스트 명령만 입력하면 동일하게 작동 |
 
 ---
