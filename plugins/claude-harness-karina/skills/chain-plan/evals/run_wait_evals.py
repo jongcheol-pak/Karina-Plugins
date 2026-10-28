@@ -198,10 +198,11 @@ def every_branch_has_action_line():
         ww.place_loop(FakeCli([EMPTY], [workers()]), FakeLock(), 'disp_o', 60000),
         run(FakeCli([EMPTY, msg_batch()]), alive=lambda: False),
         run(FakeCli([EMPTY]), answer_by=5, now=lambda: 10),
+        ww.watch_loop(FakeCli([EMPTY], [workers()]), FakeLock(), 'disp_o', 60000),
     ]
     kinds = [first(o).split(' — ')[0] for o in outs]
     assert kinds == ['RESULT: message', 'RESULT: stall', 'RESULT: error', 'RESULT: superseded',
-                     'RESULT: freed', 'RESULT: orphaned', 'RESULT: deadline'], kinds
+                     'RESULT: freed', 'RESULT: orphaned', 'RESULT: deadline', 'RESULT: closed'], kinds
     assert all(len(first(o).split(' — ', 1)[1]) > 10 for o in outs), '다음 행동 문구가 있어야 한다'
 
 
@@ -1379,6 +1380,131 @@ def pr_pending_too_long_stalls():
     out = runp(cli, pr_prog(gh), timeout_ms=60000, poll_ms=60000)
     assert first(out).startswith('RESULT: stall — '), out
     assert len([c for c in cli.calls if c[0] == 'worker-read']) == 9, out
+
+
+# ── 감시 대기(--watch — stall 로 멈춘 단일 워커의 메시지만 지켜본다) ─────────────────
+
+def run_batch(run_id):
+    return json.dumps({'ok': True, 'count': 1, 'deliveryId': 'dlv_1',
+                       'messages': [{'id': 'msg_1', 'runId': run_id, 'type': 'worker_done', 'subject': '완료'}]})
+
+
+def watch(cli, lock=None, alive=None):
+    return ww.watch_loop(cli, lock or FakeLock(), 'disp_o', 60000, alive=alive)
+
+
+RETAINED = workers(place_row('ready', 'retained'))
+
+
+@case
+def watch_message_wakes():
+    out = watch(FakeCli([run_batch('run_o')], [RETAINED]))
+    assert first(out).startswith('RESULT: message — '), out
+    assert '스스로 재개' in first(out), '감시가 깨운 배치는 manual-resume.md 「스스로 재개」 로 보내야 한다'
+    assert any('dlv_1' in l for l in out), '배치가 실려야 한다'
+
+
+@case
+def watch_never_reads_screen():
+    cli = FakeCli([EMPTY, EMPTY, EMPTY, run_batch('run_o')], [RETAINED] * 4)
+    out = watch(cli)
+    assert first(out).startswith('RESULT: message — '), out
+    assert not any(c[0] == 'worker-read' for c in cli.calls), '감시는 화면을 읽지 않는다'
+    waits = [c[c.index('--timeout-ms') + 1] for c in cli.calls if c[0] == 'check']
+    assert waits == ['60000'] * 4, waits
+
+
+@case
+def watch_closed_when_released():
+    out = watch(FakeCli([EMPTY], [workers(place_row('stopped', 'released'))]))
+    assert first(out).startswith('RESULT: closed — '), out
+
+
+@case
+def watch_keeps_waiting_while_retained():
+    cli = FakeCli([EMPTY, EMPTY, run_batch('run_o')], [RETAINED] * 3)
+    out = watch(cli)
+    assert first(out).startswith('RESULT: message — '), out
+    assert len([c for c in cli.calls if c[0] == 'check']) == 3, 'retain 된 행이면 계속 기다린다'
+
+
+@case
+def watch_foreign_run_closes():
+    # 「plan N부터」(새 Run)나 다른 체인의 대기와 수신함을 함께 읽는다 — 남의 배치는 싣지 않고 물러난다.
+    out = watch(FakeCli([run_batch('run_new')], [RETAINED]))
+    assert first(out).startswith('RESULT: closed — '), out
+    assert not any('dlv_1' in l for l in out), '다른 Run 의 배치를 실으면 코디네이터가 그것을 처리한다'
+
+
+@case
+def watch_missing_run_id_wakes():
+    out = watch(FakeCli([msg_batch()], [RETAINED]))
+    assert first(out).startswith('RESULT: message — '), out
+
+
+@case
+def watch_superseded():
+    out = watch(FakeCli([run_batch('run_o')], [RETAINED]), lock=FakeLock(owned_until=0))
+    assert first(out).startswith('RESULT: superseded — '), out
+    assert not any('dlv_1' in l for l in out), out
+
+
+@case
+def watch_orphaned():
+    out = watch(FakeCli([EMPTY, run_batch('run_o')], [RETAINED] * 2), alive=lambda: False)
+    assert first(out).startswith('RESULT: orphaned — '), out
+
+
+@case
+def watch_args_rejected():
+    saved = (ww.make_call, ww.FileLock)
+    ww.make_call = lambda c: FakeCli([run_batch('run_o')], [RETAINED])
+    ww.FileLock = lambda dispatch: FakeLock()
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+    soon = str(int(time.time()) + 600)
+    try:
+        for extra in (['--dispatch', 'disp_o', '--dispatch', 'disp_b', '--watch'],
+                      ['--place', 'disp_o', '--watch'],
+                      ['--dispatch', 'disp_o', '--watch', '--answer-by', soon],
+                      ['--dispatch', 'disp_o', '--watch', '--repo', 'r'],
+                      ['--dispatch', 'disp_o', '--watch', '--repo', 'r', '--pr', 'main']):
+            sys.stdout = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
+            sys.stderr = io.StringIO()
+            try:
+                ww.main(['--cli', 'x'] + extra)
+            except SystemExit as e:
+                assert e.code == 2, (extra, e.code)
+            else:
+                raise AssertionError('%s 를 받아들였다' % extra)
+        buf = io.BytesIO()
+        sys.stdout = io.TextIOWrapper(buf, encoding='utf-8')
+        try:
+            code = ww.main(['--cli', 'x', '--dispatch', 'disp_o', '--watch'])
+        except SystemExit as e:
+            raise AssertionError('--dispatch 하나와 준 --watch 를 거절했다 (exit %s)' % e.code)
+        sys.stdout.flush()
+        assert code == 0, code
+        assert buf.getvalue().decode('utf-8').startswith('RESULT: message — '), buf.getvalue()
+    finally:
+        sys.stdout, sys.stderr = real_stdout, real_stderr
+        ww.make_call, ww.FileLock = saved
+
+
+@case
+def stall_action_launches_watch():
+    out = run(FakeCli([EMPTY] * 3, [screen('i')] * 3))
+    assert first(out).startswith('RESULT: stall — '), out
+    assert '--watch' in first(out), '단일 stall 은 멈추기 전에 감시 대기를 띄우게 지시해야 한다'
+
+
+@case
+def parallel_stall_action_has_no_watch():
+    reads = []
+    for i in range(3):
+        reads += [screen('spin %d' % i), screen('same')]
+    out = run(FakeCli([EMPTY] * 3, reads), dispatch=['disp_a', 'disp_b'])
+    assert first(out).startswith('RESULT: stall — '), out
+    assert '--watch' not in first(out), '병렬 stall 은 parallel.md 「멈춤」 을 따르고 감시를 띄우지 않는다'
 
 
 @case
