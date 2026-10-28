@@ -15,11 +15,11 @@
 
 - **Build (전 ps1 구문 검사)**:
   ```
-  pwsh -NoProfile -Command "$f=0; Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object { $e=$null; $null=[System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$null,[ref]$e); if($e.Count){$f++; Write-Host ('PARSE FAIL ' + $_.Name + ': ' + $e.Count)} }; if($f){exit 1}; 'parse OK'"
+  pwsh -NoProfile -Command '$f=0; Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object { $e=$null; $null=[System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$null,[ref]$e); if($e.Count){$f++; Write-Host ("PARSE FAIL " + $_.Name + ": " + $e.Count)} }; if($f){exit 1}; "parse OK"'
   ```
 - **Test (JSON 매니페스트 유효성)**:
   ```
-  pwsh -NoProfile -Command "@('.claude-plugin/plugin.json','hooks/hooks.json','../../.claude-plugin/marketplace.json') | ForEach-Object { $c = Get-Content -LiteralPath $_ -Raw -ErrorAction Stop; $null = $c | ConvertFrom-Json; Write-Host ($_ + ' OK') }"
+  pwsh -NoProfile -Command '@(".claude-plugin/plugin.json","hooks/hooks.json","../../.claude-plugin/marketplace.json") | ForEach-Object { $c = Get-Content -LiteralPath $_ -Raw -ErrorAction Stop; $null = $c | ConvertFrom-Json; Write-Host ($_ + " OK") }'
   ```
 - **Plan check**: `python evals/check-harness-consistency.py --plan` — 계획 단계 검사(`karina:plan` Step 6 의 `check-plan` 이 승인 전에 돌린다)
 - **Hook 골든 회귀** (hook 스크립트·골든 케이스 수정 시 필수):
