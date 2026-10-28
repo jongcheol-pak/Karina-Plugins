@@ -37,7 +37,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
   2. 구현  — plan이 새 동작을 재는 신규 케이스를 지목한 task면 그 케이스를 먼저 쓰고 돌려 RED 확인(아래 「검증」) · 최소 변경 · 첫 코드 task 전 1회 `references/code-style.md`「코드 작성 규약」 Read
   3. 검증  — 아래 「검증」 · 그 task의 `**함정**` 줄을 어겼는지 1회 대조
   4. 기록  — 체크박스 [x](연속된 하위 항목 줄을 Edit 한 번에 묶어 바꾼다 — `plan.md` 를 스크립트로 고치는 것은 guard-bash 가 막는다) · 기능·UI를 바꿨으면 README 갱신 · 완료 커밋 · 2 task마다 Progress Log
-→ 전 task 완료 후 아래 「최종 리뷰」의 완료 순서대로 → 최종 보고
+→ 전 task 완료 후 아래 「회차 끝」 대로 → 최종 보고
 ```
 
 ### 멈추는 넷 — 그리고 목록 밖의 넷
@@ -87,10 +87,6 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
   - **새 동작에 짝으로 두는 신규 음성 케이스(그 동작이 걸리지 않아야 할 입력)도 GREEN 만 본다 — 단 같은 task 에 RED 를 본 양성 케이스가 하나 이상 있을 때만이고, 없으면 그 task 의 신규 케이스는 미검증으로 보고한다** — 음성 케이스는 구현 전에도 통과해야 정상이라 RED 를 요구하면 도달할 수 없고, 양성 짝 없이 이 예외를 쓰면 새 동작을 아무것도 재지 않은 task 가 통과한다.
   - **RED 와 GREEN 출력을 커밋 본문의 「검증 결과」에 함께 담는다** — 그 케이스가 무엇을 재는지 이력에 남는 자리가 거기뿐이다.
 
-### 최종 리뷰 (4번 통과 후 1회)
-
-- **4번 통과 뒤 `references/final-review.md`「완료 순서」 대로 닫고, `completion-reviewer` 서브에이전트는 같은 파일 「절차」 대로 호출한다** — Deferred 판정·함정 기록이 리뷰보다 먼저이고 완료 시각·plan 파일 커밋·PR 열기가 최종 보고 앞이다. 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
-
 ### 실패 처리
 
 - **task 검증이 실패하거나 막히거나 hook 이 막거나 하니스(스킬·hook) 결함을 만나면 `references/loop-exceptions.md`「실패 처리」 를 Read 한다** — 1회차 실패 기록·원인 수정·디버깅 절차 경로가 거기 있다.
@@ -107,14 +103,12 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 - **`plan.md`의 체크박스가 진행 상태의 정본이다** — 첫 미완료 task부터 시작한다.
 - **2 task마다 `## Progress Log`에 1~2줄 남긴다** — 이후 task는 대화 히스토리 대신 이 요약과 git log를 본다.
 
-## 완료 시 함정 기록
+## 회차 끝
 
-- **전 task 완료 후 `references/final-review.md`「함정 기록·결정 큐잉」 을 Read 한다 — 함정 판정(`../REPO-CONVENTIONS.md`「쓰기」)과 보류·기각 `[DECISION]` 의 K 5-2 일괄 큐잉이 거기 있다** — 그 큐잉의 배치 시점은 여기 하나다.
-
-## 완료 정의
-
+- **4번 통과 뒤 `references/final-review.md`「완료 순서」 대로 닫고, `completion-reviewer` 서브에이전트는 같은 파일 「절차」 대로 호출한다** — Deferred 판정·함정 기록이 리뷰보다 먼저이고 완료 시각·plan 파일 커밋·PR 열기가 최종 보고 앞이다. 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
+- **완료 때 함정 판정(`../REPO-CONVENTIONS.md`「쓰기」)과 보류·기각 `[DECISION]` 의 K 5-2 일괄 큐잉은 같은 파일 「함정 기록·결정 큐잉」 대로 한다** — 그 큐잉의 배치 시점은 여기 하나다.
+- **`## Deferred / Follow-up`의 항목은 전부 판정한다 — 판정과 대장 이관은 같은 파일 「Deferred 판정」** — 판정 없이 남긴 항목은 `plan.md` 와 함께 덮어써진다.
 - **일부 task를 남긴 채 완료라고 보고하지 않는다** — 남은 것이 있으면 그것은 진행 중이거나 중단이지 완료가 아니다.
-- **`## Deferred / Follow-up`의 항목은 전부 판정한다 — 판정과 대장 이관은 `references/final-review.md`「Deferred 판정」** — 판정 없이 남긴 항목은 `plan.md` 와 함께 덮어써진다.
 
 ## 최종 보고
 
