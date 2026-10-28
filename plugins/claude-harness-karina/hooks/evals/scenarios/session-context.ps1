@@ -297,6 +297,12 @@ if (Test-HookSelected @('session-context')) {
     & $scFire 'sc42i' 'karina:implement'
     $r = & $scCompact $scPlanless 'sc42i'
     Assert-Case -Name "session-context: plan 뒤 implement 발동 compact 엔 큐 규약 주입 (SC42i)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고'
+    & $scFire 'sc41h' 'karina:plan'
+    & $scFire 'sc41h' 'karina:implement'
+    & $scFire 'sc41h' 'karina:plan'
+    $r = & $scCompact $scPlanless 'sc41h'
+    Assert-Case -Name "session-context: implement 뒤 plan 재발동 compact 엔 계획 규칙 주입 (SC41h)" -R $r -ExpectExit 0 -ExpectContains '모든 사실 주장은 명령을 실행해 얻는다'
+    Assert-Case -Name "session-context: implement 뒤 plan 재발동 compact 엔 큐 규약 미주입 (SC42j)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
 
     # SC43~SC43f: 계획 세션에 **위키 조회 절차 경로 지시** (v1.220.0 — 원문 주입에서 전환).
     #   원문 15,402B를 싣는 대신 경로 1줄만 준다. ⚠ 회차 46에서 **가리키는 파일이 바뀌었다** —
