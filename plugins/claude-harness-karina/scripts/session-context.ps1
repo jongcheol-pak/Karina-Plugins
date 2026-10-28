@@ -247,7 +247,7 @@ try {
                 $lookupPath = "$skillsDir/WIKI.md"
                 $awkList = 'awk ''/^(```|~~~)/{f=!f} !f&&/^## /{c++; print c": "$0}'' "' + $lookupPath + '"'
                 $awkPick = 'awk -v n=<순번> ''/^(```|~~~)/{f=!f} !f&&/^## /{c++} c==n'' "' + $lookupPath + '"'
-                $lines.Add("[karina 세션 컨텍스트] 위키 조회 절차: $lookupPath — 파일째 읽지 말고 0절(vault 판정 게이트가 그 안에 있습니다)과 호출측 스킬이 지목한 절만 읽으세요(계획 — karina:plan Step 1 · 완료 기록 — karina:implement 「완료 시 함정 기록」). 절 목록 $awkList · 추출 $awkPick")
+                $lines.Add("[karina 세션 컨텍스트] 위키 조회 절차: $lookupPath — 파일째 읽지 말고 0절(vault 판정 게이트가 그 안에 있습니다)과 호출측 스킬이 지목한 절만 읽으세요(계획 — karina:plan Step 1 · 완료 기록 — karina:implement 「회차 끝」). 절 목록 $awkList · 추출 $awkPick")
                 # 줄을 실을 때만 기준선을 올린다 — 근거는 `rules/session-context-rationale-plan.md` §20
                 $cwdBaseCount++
             }
