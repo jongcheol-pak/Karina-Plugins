@@ -2,7 +2,7 @@
 
 > `../SKILL.md` 가 ship 요청일 때 읽는다. 출처는 Cursor pstack 의 shipping 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/shipping.md`. 7번의 base 이동 영향 판정과 게이트 완화 게이트는 pstack autopilot-full 5·6단계가 출처다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 스택 PR 은 체인 스택 착지(`../../chain-plan/references/stack-mode.md`「착지」 — 한 번에 PR 하나씩 아래부터)로만 받고, 클라우드 검증 에이전트·auto-merge·merge queue 는 들이지 않았다 — 대상은 PR 하나이고 검증자는 `pr-verifier` 서브에이전트다.
 >
-> 목차: 절차(1~10번 — 4번 스택 착지 판정 재사용 · 7번 영향 판정·게이트 완화·화면 게이트) · merge 뒤 버전 커밋 · 보고
+> 목차: 절차(1~11번 — 4번 스택 착지 판정 재사용 · 7번 영향 판정·게이트 완화·화면 게이트) · merge 뒤 버전 커밋 · 보고
 
 **코드를 쓰지 않은 검증자의 판정만 센다** — 작성자는 자기가 만들려던 것을 확인한다. CI 녹색과 봇 리뷰 승인은 판정이 아니다(*"Green CI and an approving bot review are not verdicts"*).
 
@@ -35,6 +35,9 @@
    - **merge 전에 1번의 `title` 이 커밋 제목 형식인지 본다 — 형식은 그 레포 `AGENTS.md` 의 커밋 형식이고, 없으면 `^(기능|수정|리팩토링|문서|설정): ` 다.** 아니면 유형을 `gh pr view <n> --json commits -q '.commits[].messageHeadline'` 의 유형 접두 중 가장 많은 것(없으면 `기능`)으로 정해 `gh pr edit <n> --title "<유형>: <제목>"` 로 고치고, 고친 제목을 `--subject` 로 쓴다. 고친 사실을 보고에 싣는다 — squash 하면 이 제목이 그대로 기본 브랜치의 커밋 제목이 된다(2026-10-18 PR #3 은 손으로 열려 유형 없이 main `33d47b3d` 가 됐다).
 9. **다시 읽어 확인한다** — `gh pr view <n> --json state,mergedAt,baseRefName,mergeCommit`. `state` 가 `MERGED` 이고 `baseRefName` 이 1번의 `baseRefName` 과 같아야 merge 다. 명령이 성공을 말해도 큐에 들어가기만 했거나 auto-merge 가 걸린 것은 merge 가 아니다.
 10. **로컬을 맞춘다** — 작업 트리가 깨끗하면(`git status --porcelain` 빈 출력) `git switch <1번의 baseRefName>` → `git pull --ff-only`. 깨끗하지 않거나 `switch`·`pull --ff-only` 가 실패하면 하지 않고 그 사실을 보고한다.
+11. **자기 `karina/` head 브랜치를 지운다 — 1번 `headRefName` 이 `karina/` 로 시작하고, 10번이 성공했고, 요청에 「체인 PR 모드」·「스택 착지」 가 없고, `git rev-parse <브랜치>` 와 `git ls-remote origin refs/heads/<브랜치>` 가 8번에 묶은 head SHA 와 같고, `gh pr list --head <브랜치> --state open` 이 비었을 때만이다** — 그러면 `git branch -D <브랜치>` 뒤 `git push origin --delete <브랜치>` 하고, 되살리는 명령 `git branch <브랜치> <head SHA>` 를 보고에 싣는다. 사용자가 merge 마다 삭제를 따로 요청하고, 원격 삭제를 그때그때 다르게 처리했던 것을 없앤다(2026-10-28 PR #65·#66). head SHA 일치로 재는 이유는 merge 된 것 밖의 커밋이 브랜치에 없음을 그대로 보이기 때문이다 — squash 커밋과의 diff 는 base 가 움직였으면 내용이 같아도 0 이 아니다.
+   - **원격 브랜치가 이미 없으면(레포의 자동 삭제 설정) 「원격 없음」 으로 적고 로컬만 지운다.** 조건 하나라도 거짓이거나 `branch -D` 가 거부되면(다른 worktree 가 체크아웃 중) 지우지 않고 남긴 브랜치와 사유를 보고한다 — 다른 수단으로 지우지 않는다.
+   - **체인 PR 모드·스택 착지는 건너뛴다** — 다음 계획이 직전 PR 의 head 브랜치를 출발점으로 쓴다(`../../chain-plan/references/stack-mode.md`「코디네이터」).
 
 ## merge 뒤 버전 커밋
 
@@ -54,4 +57,4 @@
 
 ## 보고
 
-PR URL · 판정과 판정자(`pr-verifier`) · 판정이 덮은 head·base SHA · 돌린 검증 명령과 결과 요지 · 게이트 완화(`게이트 완화:` 칸 원문 · 게이트 완화 서명의 서명자와 원문 | 확인 대기 | 거부 사유) · base 이동 영향 판정(움직였으면 두 목록과 참/거짓) · 화면 게이트(`화면 확인 대기` — 스크린샷 이름과 절대경로 · 코디네이터 판정·기각 변형 줄(있으면) | 확인한 사용자 원문 인용 | 표지 없음) · merge 여부와 확인한 방법(9번 출력) · 로컬 정리 결과(6번 worktree 미삭제 줄 포함) · 버전 커밋(push 했으면 full SHA · 재시도 여부 · 건너뛰었으면 사유) · 승인 필요 항목(릴리즈).
+PR URL · 판정과 판정자(`pr-verifier`) · 판정이 덮은 head·base SHA · 돌린 검증 명령과 결과 요지 · 게이트 완화(`게이트 완화:` 칸 원문 · 게이트 완화 서명의 서명자와 원문 | 확인 대기 | 거부 사유) · base 이동 영향 판정(움직였으면 두 목록과 참/거짓) · 화면 게이트(`화면 확인 대기` — 스크린샷 이름과 절대경로 · 코디네이터 판정·기각 변형 줄(있으면) | 확인한 사용자 원문 인용 | 표지 없음) · merge 여부와 확인한 방법(9번 출력) · 로컬 정리 결과(6번 worktree 미삭제 줄 포함 · 11번에서 지운 브랜치와 되살리는 명령 | 남긴 브랜치와 사유 · 남은 worktree 수) · 버전 커밋(push 했으면 full SHA · 재시도 여부 · 건너뛰었으면 사유) · 승인 필요 항목(릴리즈).
