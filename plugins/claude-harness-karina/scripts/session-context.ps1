@@ -117,11 +117,17 @@ try {
     }
 
     # ---- compact 직후 작업 시작 시각 재주입 — 근거는 `rules/session-context-rationale.md` §39 ----
+    # 이 세션의 plan·implement 발동 기록 — 계획 세션 발췌 게이트에도 쓴다 — 근거는 `rules/session-context-rationale-plan.md` §17
+    $firedPlan = $false
+    $firedImplement = $false
     if ($source -eq 'compact' -and -not [string]::IsNullOrWhiteSpace($sid)) {
+        $wsHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+        $sidSafe = $sid -replace '[^A-Za-z0-9._-]', '_'
+        $firedImplement = Test-Path -LiteralPath (Join-Path $wsHome ('.claude/.state/loop-continue/' + $sidSafe + '.active'))
         try {
-            $wsHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
-            $wsPath = Join-Path $wsHome ('.claude/.state/work-start/' + ($sid -replace '[^A-Za-z0-9._-]', '_') + '.json')
+            $wsPath = Join-Path $wsHome ('.claude/.state/work-start/' + $sidSafe + '.json')
             $ws = Get-Content -LiteralPath $wsPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+            $firedPlan = [bool][string]$ws.plan
             $wsParts = @()
             foreach ($k in @('plan', 'chain-plan')) {
                 $v = [string]$ws.$k
@@ -215,7 +221,10 @@ try {
             $cwdBaseCount++
 
             # 경로만 지시하면 읽었는지 검증할 수 없다. 계획이 추측으로 흐르는 것을 막는 절 하나만 — 근거는 `rules/session-context-rationale-plan.md` §19
-            $secPlanRules = Get-SkillSection -Path (Join-Path $skillsDir 'plan/SKILL.md') -StartHeading '## Step 3. 영향 범위 실측' -StopHeading '## Step 4. 작업 분해'
+            $secPlanRules = $null
+            if ($firedPlan -and -not $firedImplement) {
+                $secPlanRules = Get-SkillSection -Path (Join-Path $skillsDir 'plan/SKILL.md') -StartHeading '## Step 3. 영향 범위 실측' -StopHeading '## Step 4. 작업 분해'
+            }
             if ($secPlanRules) {
                 $lines.Add("[karina 세션 컨텍스트] 압축 직후 계획 규칙 (원문 발췌 — plan/SKILL.md 「영향 범위 실측」)`n$secPlanRules")
                 # 위 리마인더와 같은 이유로 기준선을 함께 올린다 — 근거는 `rules/session-context-rationale-plan.md` §20
@@ -223,23 +232,25 @@ try {
             }
 
             # 같은 분기에서 큐 기록 규약도 넣는다 — 구현 완료 단계의 배치 시점 — 근거는 `rules/session-context-rationale-plan.md` §21
-            $secQueueRules = Get-SkillSection -Path (Join-Path $skillsDir 'llm-wiki/references/queue-rules.md') -StartHeading '### K 5-2. 결정 큐잉 ([DECISION])' -StopHeading '### K 5-5. 증상 큐잉 ([SYMPTOM])'
+            $secQueueRules = $null
+            if ($firedImplement) {
+                $secQueueRules = Get-SkillSection -Path (Join-Path $skillsDir 'llm-wiki/references/queue-rules.md') -StartHeading '### K 5-2. 결정 큐잉 ([DECISION])' -StopHeading '### K 5-5. 증상 큐잉 ([SYMPTOM])'
+            }
             if ($secQueueRules) {
                 $lines.Add("[karina 세션 컨텍스트] 압축 직후 큐 기록 규약 (원문 발췌 — llm-wiki/references/queue-rules.md 「K 5-2」)`n$secQueueRules")
-                # 위 주입과 같은 짝 — 줄 1개 추가 = 기준선 1 증가(SC41e가 고정한 계약).
+                # 줄을 실을 때만 기준선을 올린다(SC42e가 고정한 계약) — 근거는 `rules/session-context-rationale-plan.md` §20
                 $cwdBaseCount++
             }
 
             # 조회 절차는 원문을 싣지 않고 경로만 가리킨다 — 근거는 `rules/session-context-rationale-plan.md` §22
-            $lookupPath = "$skillsDir/WIKI.md"
-            # 절 추출 awk 두 줄은 홑따옴표 문자열로 만든다 — 큰따옴표 안이면 백틱·$0·따옴표를 전부 이스케이프해야
-            #   한다(:284 의 여섯 겹 백틱). 파일째 Read 는 계획 세션이 쓰지 않는 §3 이하까지 싣는다.
-            $awkList = 'awk ''/^(```|~~~)/{f=!f} !f&&/^## /{c++; print c": "$0}'' "' + $lookupPath + '"'
-            $awkPick = 'awk -v n=<순번> ''/^(```|~~~)/{f=!f} !f&&/^## /{c++} c==n'' "' + $lookupPath + '"'
-            $lines.Add("[karina 세션 컨텍스트] 위키 조회 절차: $lookupPath — 파일째 읽지 말고 0절(vault 판정 게이트가 그 안에 있습니다)과 호출측 스킬이 지목한 절만 읽으세요(계획 — karina:plan Step 1 · 완료 기록 — karina:implement 「완료 시 함정 기록」). 절 목록 $awkList · 추출 $awkPick")
-            # 위 둘과 같은 짝 — 라인이 하나 늘었으므로 기준선도 하나 올린다.
-            #   주입과 달리 추출 실패 분기가 없어 무조건 올린다.
-            $cwdBaseCount++
+            if ($firedPlan -or $firedImplement) {
+                $lookupPath = "$skillsDir/WIKI.md"
+                $awkList = 'awk ''/^(```|~~~)/{f=!f} !f&&/^## /{c++; print c": "$0}'' "' + $lookupPath + '"'
+                $awkPick = 'awk -v n=<순번> ''/^(```|~~~)/{f=!f} !f&&/^## /{c++} c==n'' "' + $lookupPath + '"'
+                $lines.Add("[karina 세션 컨텍스트] 위키 조회 절차: $lookupPath — 파일째 읽지 말고 0절(vault 판정 게이트가 그 안에 있습니다)과 호출측 스킬이 지목한 절만 읽으세요(계획 — karina:plan Step 1 · 완료 기록 — karina:implement 「완료 시 함정 기록」). 절 목록 $awkList · 추출 $awkPick")
+                # 줄을 실을 때만 기준선을 올린다 — 근거는 `rules/session-context-rationale-plan.md` §20
+                $cwdBaseCount++
+            }
         }
 
         # 위키 신호 2종(vault 상태·뒤처짐)은 `session-wiki-signals.ps1`이 계산한다 —

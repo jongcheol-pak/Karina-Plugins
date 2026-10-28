@@ -248,13 +248,17 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact + 미완료 task엔 계획 지시 없음 (SC29)" -R $r -ExpectExit 0 -ExpectNotContains 'plan/SKILL.md'
 
-    # SC41~SC41e: 계획 세션에도 **절 원문 주입** (v1.217.0). SC41e는 vault 구간 안에 있다.
-    #   SC28이 고정한 것은 경로 지시(`plan/SKILL.md` 문자열)뿐이라, 주입을 지워도 그대로 통과한다.
-    #   SC39 계열이 구현 세션에서 양성·델타 음성·발췌 표기를 나눠 건 것과 같은 구조로 넷을 건다.
-    # SC41 (양성): compact + plan 없음 → 실측 규칙 **본문 문자열**이 실려 온다.
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    $scFire = {
+        param([string]$Sid, [string]$Skill)
+        foreach ($h in @('loop-continue.ps1', 'record-work-start.ps1')) {
+            $null = Invoke-Hook $h (@{ hook_event_name = 'PreToolUse'; tool_name = 'Skill'; tool_input = @{ skill = $Skill }; session_id = $Sid } | ConvertTo-Json -Compress)
+        }
+    }
+    $scCompact = { param([string]$Cwd, [string]$Sid) Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $Cwd; session_id = $Sid } | ConvertTo-Json -Compress) }
+
+    & $scFire 'sc41' 'karina:plan'
+    $r = & $scCompact $scPlanless 'sc41'
     Assert-Case -Name "session-context: compact 계획 규칙 절 주입 (SC41)" -R $r -ExpectExit 0 -ExpectContains '모든 사실 주장은 명령을 실행해 얻는다'
-    # SC41b (발췌 표기): 주입분이 전문이 아니라 발췌임을 밝힌다 — 없으면 모델이 이것을 전문으로 오인한다(SC39d와 같은 이유).
     Assert-Case -Name "session-context: 계획 주입에 발췌 표기 (SC41b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — plan/SKILL.md'
     # SC41c (델타 음성): startup엔 주입하지 않는다 — 압축 전용 보완이라 매 세션 얹으면 예산 낭비다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
@@ -263,14 +267,18 @@ if (Test-HookSelected @('session-context')) {
     #   ⚠ 대조 문자열은 **주입 본문**이어야 한다 — `plan/SKILL.md`로 걸면 SC29와 완전히 같아 새 회귀를 못 잡는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 미완료 task 세션엔 계획 규칙 미주입 (SC41d)" -R $r -ExpectExit 0 -ExpectNotContains '모든 사실 주장은 명령을 실행해 얻는다'
+    $r = & $scCompact $scPlanless 'sc41f'
+    Assert-Case -Name "session-context: 발동 기록 없는 compact 엔 계획 규칙 미주입 (SC41f)" -R $r -ExpectExit 0 -ExpectContains 'plan/SKILL.md' -ExpectNotContains '모든 사실 주장은 명령을 실행해 얻는다'
+    Assert-Case -Name "session-context: 발동 기록 없는 compact 엔 조회 절차 미주입 (SC43j)" -R $r -ExpectExit 0 -ExpectNotContains '위키 조회 절차:'
+    & $scFire 'sc41g' 'karina:plan'
+    & $scFire 'sc41g' 'karina:implement'
+    $r = & $scCompact $scPlanless 'sc41g'
+    Assert-Case -Name "session-context: plan 뒤 implement 발동 compact 엔 계획 규칙 미주입 (SC41g)" -R $r -ExpectExit 0 -ExpectNotContains '모든 사실 주장은 명령을 실행해 얻는다'
+    Assert-Case -Name "session-context: implement 발동 compact 엔 조회 절차 주입 (SC43i)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:'
 
-    # SC42~SC42f: 계획 세션에 **큐 기록 규약(K 5-2) 원문 주입** (v1.218.0).
-    #   위 SC41 계열과 같은 분기에서 돌지만 대상 문서가 다르므로 따로 건다 —
-    #   한 쪽 주입을 지워도 다른 쪽 assert가 그대로 통과하기 때문이다.
-    # SC42 (양성): compact + plan 없음 → K 5-2 **본문 문자열**이 실려 온다.
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    & $scFire 'sc42' 'karina:implement'
+    $r = & $scCompact $scPlanless 'sc42'
     Assert-Case -Name "session-context: compact 큐 기록 규약 절 주입 (SC42)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고'
-    # SC42b (발췌 표기): SC41b와 같은 이유 — 주입분이 전문이 아니라 발췌임을 밝힌다.
     Assert-Case -Name "session-context: 큐 규약 주입에 발췌 표기 (SC42b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — llm-wiki/references/queue-rules.md'
     # SC42f (경계 계약): 추출 구간이 **K 5-2 끝까지** 닿는다 — 종료 앵커가 `### K 5-5.`임을 고정한다.
     #   SC42는 K 5-2 첫머리 본문만 보므로 앵커를 절 중간으로 잘못 옮겨도 그대로 통과한다(K 5-3 은 2026-10-20 폐지).
@@ -278,9 +286,17 @@ if (Test-HookSelected @('session-context')) {
     # SC42c (델타 음성): startup엔 주입하지 않는다(SC41c와 같은 취지).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: startup엔 큐 규약 미주입 (SC42c)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
-    # SC42d (델타 음성): compact + 미완료 task 세션엔 새지 않는다 — 그쪽의 함정 기록 형식은 skills/REPO-CONVENTIONS.md 가 담는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 미완료 task 세션엔 큐 규약 미주입 (SC42d)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
+    & $scFire 'sc42g' 'karina:plan'
+    $r = & $scCompact $scPlanless 'sc42g'
+    Assert-Case -Name "session-context: plan 만 발동한 compact 엔 큐 규약 미주입 (SC42g)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
+    $r = & $scCompact $scPlanless 'sc42h'
+    Assert-Case -Name "session-context: 발동 기록 없는 compact 엔 큐 규약 미주입 (SC42h)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
+    & $scFire 'sc42i' 'karina:plan'
+    & $scFire 'sc42i' 'karina:implement'
+    $r = & $scCompact $scPlanless 'sc42i'
+    Assert-Case -Name "session-context: plan 뒤 implement 발동 compact 엔 큐 규약 주입 (SC42i)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고'
 
     # SC43~SC43f: 계획 세션에 **위키 조회 절차 경로 지시** (v1.220.0 — 원문 주입에서 전환).
     #   원문 15,402B를 싣는 대신 경로 1줄만 준다. ⚠ 회차 46에서 **가리키는 파일이 바뀌었다** —
@@ -288,8 +304,8 @@ if (Test-HookSelected @('session-context')) {
     #   디버깅 세션 전용으로 좁혀졌다. 그 전에는 이 주입이 계획 세션을 절차 K로 보내
     #   조회 정본이 이중이었다. 세 어서션이 재는 축도 함께 바뀌었다 — 종전의 「발췌 표기」·「추출
     #   경계」는 주입이 없어져 소멸했고, 그 자리를 「경로 정확성」·「행동 지시」가 잇는다.
-    # SC43 (양성): compact + plan 없음 → 경로 지시 라인이 실려 온다.
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    & $scFire 'sc43' 'karina:plan'
+    $r = & $scCompact $scPlanless 'sc43'
     Assert-Case -Name "session-context: compact 조회 절차 경로 지시 (SC43)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:'
     # SC43b (**경로 정확성**): 라인이 있는 것만으로는 부족하다 — 경로가 틀리면 세션이 그 파일을
     #   못 읽어 조회 절차가 통째로 사라지는데, SC43은 접두 라벨만 보므로 그 회귀를 못 잡는다.
@@ -398,15 +414,13 @@ if (Test-HookSelected @('session-context')) {
     #   **둘 다 이 짝 증가를 잡지 못한다**.
     $scEmptyAg = Join-Path $work 'sc-empty-agents'; New-Item -ItemType Directory $scEmptyAg -Force | Out-Null
     New-Item -ItemType File -Path (Join-Path $scEmptyAg 'AGENTS.md') -Force | Out-Null
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmptyAg } | ConvertTo-Json -Compress)
+    & $scFire 'sc41e' 'karina:plan'
+    $r = & $scCompact $scEmptyAg 'sc41e'
     Assert-Case -Name "session-context: 계획 규칙 주입도 vault 게이팅 신호 아님 (SC41e)" -R $r -ExpectExit 0 -ExpectContains '모든 사실 주장은 명령을 실행해 얻는다' -ExpectNotContains '위키 vault: 설정'
-    # SC42e (회귀 고정 — v1.218.0): 큐 규약 **주입**도 같은 짝을 지킨다.
-    #   주입이 둘로 늘었으므로 `$cwdBaseCount++`도 둘이어야 한다 — 한 쪽만 올리면
-    #   그 세션에 vault 라인이 새로 붙는다(SC41e가 고정한 것과 같은 형태의 회귀).
-    Assert-Case -Name "session-context: 큐 규약 주입도 vault 게이팅 신호 아님 (SC42e)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고' -ExpectNotContains '위키 vault: 설정'
-    # SC43e (회귀 고정): 경로 지시 라인도 같은 짝을 지킨다 — 라인이 셋이므로 `$cwdBaseCount++`도
-    #   셋이어야 한다. 하나만 빠뜨리면 그 세션에 vault 라인이 새로 붙는다.
     Assert-Case -Name "session-context: 조회 절차 지시도 vault 게이팅 신호 아님 (SC43e)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:' -ExpectNotContains '위키 vault: 설정'
+    & $scFire 'sc42e' 'karina:implement'
+    $r = & $scCompact $scEmptyAg 'sc42e'
+    Assert-Case -Name "session-context: 큐 규약 주입도 vault 게이팅 신호 아님 (SC42e)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고' -ExpectNotContains '위키 vault: 설정'
 
     # SC31/SC31b (회귀 고정 — **vault가 설정된 구간에서 돌아야 의미가 있다**): compact + plan.md는 있으나
     #   task 체크박스 0개인 세션. 계획 지시가 뜨면서도 **vault 라인이 함께 유지**되어야 한다.
