@@ -113,6 +113,7 @@ $scenarioGroups = @(
     @('guard-stale-docs'),
     @('loop-continue'),
     @('work-clock'),
+    @('screen-cover'),
     @('check-plan'),
     @('record-work-start'),
     @('inject-reply-language')
@@ -280,7 +281,6 @@ try {
         Get-ChildItem -LiteralPath (Join-Path $evalsDirTop 'scenarios') -Filter *.ps1 -File -ErrorAction SilentlyContinue
         Get-ChildItem -LiteralPath $evalsDirTop -Filter *.json -File -ErrorAction SilentlyContinue
         Get-ChildItem -LiteralPath (Join-Path (Split-Path (Split-Path $evalsDirTop -Parent) -Parent) 'scripts') -Filter *.ps1 -File -ErrorAction SilentlyContinue
-        # 골든이 재는 스킬 로컬 스크립트(work-clock·check-plan) — scripts/ 밖이라 따로 넣지 않으면 고쳐도 -Resume 이 옛 판정을 쓴다
         Get-ChildItem -LiteralPath (Join-Path (Split-Path (Split-Path $evalsDirTop -Parent) -Parent) 'skills/implement/scripts') -Filter *.ps1 -File -ErrorAction SilentlyContinue
         Get-ChildItem -LiteralPath (Join-Path (Split-Path (Split-Path $evalsDirTop -Parent) -Parent) 'skills/plan/scripts') -Filter *.ps1 -File -ErrorAction SilentlyContinue
     ) | Sort-Object FullName
@@ -492,7 +492,7 @@ if ($deadGroups.Count) {
 Write-Host ("결과: {0}/{1} OK (FAIL {2}){3}" -f ($total - $failCount), $total, $failCount, $deadSuffix)
 Write-TimingLine -Total $total
 
-$GoldenTotalBaseline = 1271
+$GoldenTotalBaseline = 1292
 if (-not $deadGroups.Count -and -not $Filter -and $total -ne $GoldenTotalBaseline) {
     Write-Host ("[WARN] 총계가 기준선과 다릅니다: {0} != {1} (`$GoldenTotalBaseline`)." -f $total, $GoldenTotalBaseline)
     Write-Host '        합산 규칙: 선언형(hook-cases.json) + 러너 내장 시나리오. guard-bash 무상태 케이스는 dispatch 에코를 함께 돌아 1건이 2로 셉니다.'
