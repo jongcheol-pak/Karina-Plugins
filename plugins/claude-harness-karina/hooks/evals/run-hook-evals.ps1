@@ -281,7 +281,6 @@ try {
         Get-ChildItem -LiteralPath (Join-Path $evalsDirTop 'scenarios') -Filter *.ps1 -File -ErrorAction SilentlyContinue
         Get-ChildItem -LiteralPath $evalsDirTop -Filter *.json -File -ErrorAction SilentlyContinue
         Get-ChildItem -LiteralPath (Join-Path (Split-Path (Split-Path $evalsDirTop -Parent) -Parent) 'scripts') -Filter *.ps1 -File -ErrorAction SilentlyContinue
-        # 골든이 재는 스킬 로컬 스크립트(work-clock·screen-cover·check-plan) — scripts/ 밖이라 따로 넣지 않으면 고쳐도 -Resume 이 옛 판정을 쓴다
         Get-ChildItem -LiteralPath (Join-Path (Split-Path (Split-Path $evalsDirTop -Parent) -Parent) 'skills/implement/scripts') -Filter *.ps1 -File -ErrorAction SilentlyContinue
         Get-ChildItem -LiteralPath (Join-Path (Split-Path (Split-Path $evalsDirTop -Parent) -Parent) 'skills/plan/scripts') -Filter *.ps1 -File -ErrorAction SilentlyContinue
     ) | Sort-Object FullName

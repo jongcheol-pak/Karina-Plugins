@@ -7,17 +7,10 @@
 # 출력은 늘 `karina-cover ` 으로 시작하는 한 줄이다:
 #   paused <번호,…|none> · held <남은 보유자 수> · restored <번호,…|none> · skip <no-cli|app-off> → exit 0
 #   ERROR <사유>                                                                                  → exit 1
-# 왜 기록한 모니터만 켜는가: 원래 꺼져 있던 모니터는 사용자가 끈 것이라 켜면 안 된다.
-# 왜 보유자를 세는가: 병렬 체인 워커가 동시에 검증하면 먼저 끝난 쪽이 덮으면 남은 쪽 검증이 막힌다.
-# 왜 resume 때 앱이 꺼져 있으면 기록을 지우는가: 덮개는 앱 창이라 앱과 함께 사라졌다 — 사용자가 앱을 종료한 것이니
-#   남은 보유자가 나중에 켜면 사용자가 없앤 덮개를 되살린다. 앱 꺼짐은 `status` 의 appRunning:false,
-#   `cover status` 의 ok:false·비0 종료 세 형태로 본다(실제 꺼진 앱의 응답 형태는 아직 재지 못했다).
-# 왜 끈 모니터를 한 대마다 기록하는가: 중간에 실패해도 이미 끈 모니터는 resume 이 켤 수 있어야 한다.
 # 왜 잠금이 FileShare.None 핸들인가: 잠근 프로세스가 죽으면 OS 가 핸들을 닫아 다음 호출이 영영 막히지 않는다.
 # CLI 선택 순서의 정본은 `karina-cli skills get karina-computer-use` 의 「Preconditions」 다
 #   (KARINA_CLI_COMMAND → PATH 의 karina-cli·karina-dev-cli → 설치본 전체경로).
 # 왜 출력에 한글이 없는가: Git Bash 를 거친 PowerShell 출력에서 한글이 깨진다(work-clock 과 같다).
-# stdin 은 읽지 않는다. PS 5.1·7 양쪽에서 돈다.
 param(
     [string]$Action = '',
     [string]$Holder = '',
@@ -67,7 +60,7 @@ function Resolve-KarinaCli {
     return $null
 }
 
-# 자식 CLI 의 stdout·stderr 를 함께 받아 JSON 한 개로 읽는다 — 응답은 오류까지 늘 JSON 이다
+# Karina CLI 는 오류까지 늘 JSON 으로 답한다(karina-computer-use 「Preconditions」)
 function Invoke-KarinaCli([string[]]$CliArgs) {
     $raw = & $script:cli @CliArgs 2>&1 | Out-String
     $code = $LASTEXITCODE
@@ -96,7 +89,6 @@ function Read-CoverState {
     return $state
 }
 
-# 임시 파일에 쓴 뒤 바꿔 끼운다 — 쓰는 도중 죽어도 반쯤 쓴 상태 파일이 남지 않는다
 function Write-CoverState($state) {
     $tmp = $statePath + '.tmp'
     $body = ConvertTo-Json -InputObject @{ paused = @($state.paused); holders = $state.holders } -Depth 4
