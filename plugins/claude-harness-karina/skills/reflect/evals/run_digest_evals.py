@@ -342,6 +342,75 @@ def big_error_stays_err():
         t.close()
 
 
+AUDIT = [
+    rec_user('평범한 사용자 말'),
+    rec_user('<command-name>/karina:implement</command-name>'),
+    rec_assistant([{'type': 'text', 'text': '접근 A 를 버리고 B 로 간다'},
+                   tool_use('b1', 'Bash', 'git restore a.py'),
+                   {'type': 'tool_use', 'id': 's1', 'name': 'Skill', 'input': {'skill': 'karina:implement'}},
+                   {'type': 'tool_use', 'id': 'r1', 'name': 'Read', 'input': {'file_path': 'C:\\x\\읽은파일.md'}}]),
+    rec_user_blocks([tool_result('b1', '오류 출력', is_error=True)]),
+    rec_user_blocks([tool_result('r1', '큰' * 20000)]),
+    rec_hook('훅 경고'),
+]
+
+
+def audit_digest(t):
+    t.session('proj-a', SID, AUDIT)
+    t.subagent('proj-a', SID, 'agent-abc.jsonl', [rec_assistant([{'type': 'text', 'text': '서브에이전트 답'}])])
+    return digest(t, ['--audit'])
+
+
+@case
+def audit_skips_subagents():
+    t = Tree()
+    try:
+        rc, out, err = audit_digest(t)
+        assert rc == 0, (rc, err)
+        assert '## subagent' not in out and '서브에이전트 답' not in out, out
+    finally:
+        t.close()
+
+
+@case
+def audit_drops_other_lines():
+    t = Tree()
+    try:
+        rc, out, err = audit_digest(t)
+        assert rc == 0, (rc, err)
+        body = [l for l in out.splitlines() if not l.startswith('# ')]
+        for bad in ('U: 평범한', 'ERR: ', 'H: ', 'BIG: ', 'T: Read'):
+            assert not any(l.startswith(bad) for l in body), (bad, body)
+    finally:
+        t.close()
+
+
+@case
+def audit_keeps_decision_lines():
+    t = Tree()
+    try:
+        rc, out, err = audit_digest(t)
+        assert rc == 0, (rc, err)
+        body = [l for l in out.splitlines() if not l.startswith('# ')]
+        assert body == ['U: <command-name>/karina:implement</command-name>', 'A: 접근 A 를 버리고 B 로 간다',
+                        'T: Bash git restore a.py', 'T: Skill karina:implement'], body
+    finally:
+        t.close()
+
+
+@case
+def audit_header_marks_mode():
+    t = Tree()
+    try:
+        rc, out, err = audit_digest(t)
+        assert rc == 0, (rc, err)
+        head = [l for l in out.splitlines() if l.startswith('# ')]
+        assert '# 모드: audit' in head, head
+        assert '# 줄 수: U 1 · A 1 · T 2' in head, head
+    finally:
+        t.close()
+
+
 LEDGER = (
     '﻿# Deferred 대장\r\n'
     '\r\n'

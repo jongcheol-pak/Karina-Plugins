@@ -9,6 +9,8 @@
 `<persisted-output>` 미리보기의 `Output too large (<크기>)` 가 BIG_CAP 이상, 도구명은 tool_use_id 로 찾고 못 찾으면 `?`).
 그 밖(thinking·BIG_CAP 미만의 성공 결과·메타 레코드)은 싣지 않는다.
 머리에 읽은 파일·갈래별 줄 수·총 줄 수를 싣는다 — 리뷰어가 총 줄 수까지 나눠 읽는다.
+`--audit`(implement 완료 리뷰의 전사 대조용) — 서브에이전트 전사를 읽지 않고 A: 줄 · Bash·Skill 의 T: 줄 ·
+`<command-name>` 이 든 U: 줄만 남긴다(Skill·slash command 줄은 대조 범위를 가르는 표지). 머리에 `# 모드: audit` 을 싣는다.
 
 종료 코드: 0 정상 · 2 세션 판정 실패(ID 없음·파일 0개·2개 이상) · 3 인식한 레코드 0(전사 형식이 바뀌었을 수 있다).
 전사 형식은 Claude Code 내부 형식이라 문서화돼 있지 않다 — 2.1.306 실측 기준이다.
@@ -26,6 +28,14 @@ BIG_CAP = 20000
 BIG_HEAD = 120
 HOOK_TYPES = ('hook_additional_context', 'hook_cancelled')
 PERSISTED = re.compile(r'<persisted-output>\s*Output too large \(([\d.]+)(KB|MB)\)')
+AUDIT_KINDS = ('U', 'A', 'T')
+AUDIT_TOOLS = ('T: Bash ', 'T: Skill ')
+
+
+def audit_keep(line):
+    if line.startswith('U: '):
+        return '<command-name>' in line
+    return line.startswith('A: ') or line.startswith(AUDIT_TOOLS)
 
 
 def cut(value, cap):
@@ -137,12 +147,15 @@ def main(argv=None):
     ap.add_argument('--session', default=None)
     ap.add_argument('--projects-dir', default=os.path.join(os.path.expanduser('~'), '.claude', 'projects'))
     ap.add_argument('--out', default=None)
+    ap.add_argument('--audit', action='store_true')
     a = ap.parse_args(argv)
     sid = a.session or os.environ.get('CLAUDE_CODE_SESSION_ID')
     if not sid:
         print('세션 ID 없음 — --session 을 주거나 CLAUDE_CODE_SESSION_ID 가 있는 세션에서 실행한다', file=sys.stderr)
         return 2
     mains, subs = find_files(a.projects_dir, sid)
+    if a.audit:
+        subs = []
     if len(mains) != 1:
         print('세션 전사 %d개 — 정확히 1개여야 한다: %s' % (len(mains), ', '.join(mains) or a.projects_dir),
               file=sys.stderr)
@@ -158,8 +171,14 @@ def main(argv=None):
     if recognized == 0:
         print('인식한 레코드 0 — 전사 형식이 바뀌었을 수 있다: %s' % mains[0], file=sys.stderr)
         return 3
-    head = ['# reflect 요약 — 세션 %s' % sid, '# 본 전사: %s' % mains[0], '# 서브에이전트 전사: %d개' % len(subs),
-            '# 줄 수: ' + ' · '.join('%s %d' % (k, counts.get(k, 0)) for k in ('U', 'A', 'T', 'ERR', 'H', 'BIG'))]
+    kinds = ('U', 'A', 'T', 'ERR', 'H', 'BIG')
+    head = ['# reflect 요약 — 세션 %s' % sid, '# 본 전사: %s' % mains[0], '# 서브에이전트 전사: %d개' % len(subs)]
+    if a.audit:
+        body = [line for line in body if audit_keep(line)]
+        counts = {k: sum(1 for line in body if line.startswith(k + ': ')) for k in AUDIT_KINDS}
+        kinds = AUDIT_KINDS
+        head.append('# 모드: audit')
+    head.append('# 줄 수: ' + ' · '.join('%s %d' % (k, counts.get(k, 0)) for k in kinds))
     total = len(head) + 1 + len(body)
     text = '\n'.join(head + ['# 총 줄 수: %d' % total] + body) + '\n'
     if a.out:
