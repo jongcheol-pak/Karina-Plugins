@@ -359,6 +359,7 @@
 
 ### 실행 환경 함정
 
+- [2026-10-28] **설치된 스킬이 많으면 모델의 스킬 목록에서 일부 스킬의 description 이 빠져 이름만 남는다 — 그 스킬은 자동 발동하지 못한다.** 다른 플러그인(unity 등)이 함께 켜진 세션에서 `karina:prototype` 이 이름만 실렸다. 자동 발동에 기대는 스킬은 description 을 짧게 유지하고, 발동이 안 되면 그 세션의 스킬 목록에 설명이 실렸는지부터 본다. 또 `settings.json` 의 `language` 는 메인 세션 시스템 프롬프트에만 실리고 서브에이전트에는 실리지 않는다 (실측)
 - [2026-10-21] **새 레포(Karina-Plugins)의 첫 PR 에서 `checks` 워크플로가 돌지 않았다 — Copilot 리뷰만 돌고 `gh pr checks` 는 「no checks reported」.** PR 을 닫았다 다시 열자(head 불변) `pull_request` 이벤트가 다시 나 돌았다. 원인은 확인하지 못했다(추정: 기본 브랜치에 워크플로가 없던 레포의 첫 실행). 「no checks」 를 통과로 읽지 말고 `gh run list` 로 워크플로 실행 자체를 확인한다
 - [2026-07-10] **skill-creator `run_eval.py`(트리거 eval)는 Windows 미호환** — `select.select`가 Windows 파이프를 미지원해 전 쿼리가 즉시 실패하는데 **전부 trigger_rate 0.0으로 집계돼 정상 실측처럼 보인다**(은닉 실패 — 1분 내 완주가 신호). Windows에서 돌리려면 ① 판정 로직 복제 드라이버(blocking readline + watchdog kill) ② `PYTHONUTF8=1` ③ **`CLAUDE_CONFIG_DIR` 격리 config**(실설치 스킬이 eval용 사본 대신 트리거를 흡수하는 교란 제거)가 필요하다.
 

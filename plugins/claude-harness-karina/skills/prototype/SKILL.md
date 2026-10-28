@@ -1,6 +1,7 @@
 ---
 name: prototype
-description: 화면(레이아웃·인터랙션·밀도)·동작(타이밍·출력)·전례 없는 아키텍처 결정을 버리는 시안 2~3개로 만들어 보고 증거로 고르게 한다. 한국어(프로토타입/시안/목업/몇 가지 안 만들어 비교/어떤 레이아웃이 나을지 만들어 봐)와 영어(prototype/mock it up/try this layout/sketch it to decide)에 발동한다. 고른 방향의 실제 구현·계획은 karina:plan 이다.
+description: 화면(레이아웃·인터랙션·밀도)·동작(타이밍·출력)·전례 없는 아키텍처 결정을 버리는 시안 2~3개로 만들어 보고 증거로 고르게 한다. 고른 방향의 실제 구현·계획은 karina:plan 이다. 사용자 호출 전용.
+disable-model-invocation: true
 ---
 
 # Prototype
