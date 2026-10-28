@@ -912,7 +912,7 @@ def check_line_endings():
     `--exclude-standard` 가 걸러 낸다) · index 쪽 줄바꿈(항상 LF 로 정규화돼 검사 의미가 없다).
 
     제외는 둘이다 — **바이너리**(NUL 바이트 포함. `.gitattributes` 가 없어 git 의 텍스트
-    판정을 빌릴 수 없고, `assets/logo.png` 가 bare CR 1,253개로 상시 위반이 된다)와
+    판정을 빌릴 수 없고, `assets/logo.png` 가 bare CR 420개로 상시 위반이 된다)와
     **fixture**(다른 축과 같은 정책 — 의도적으로 깨뜨린 파일이다).
     """
     issues, n = [], 0
