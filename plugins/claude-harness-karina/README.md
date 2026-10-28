@@ -162,7 +162,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | 위키 운영 (`karina:llm-wiki`) | "위키에 등록/업데이트" | 프로젝트 지식을 쌓고 다음 작업 때 참조 |
 | PR 운영 (`karina:pr`) | "PR 지켜봐" · "CI 초록 될 때까지" · "리뷰 코멘트에 답해" · "검증하고 머지해" | **babysit** — CI 실패 중 그 PR 의 코드 실패만 고치고 리뷰 코멘트에 답한 뒤 merge 가능한 상태에서 멈춥니다. **ship** — 코드를 쓰지 않은 검증 에이전트(`pr-verifier`)가 PASS 를 낸 뒤에만 squash merge 합니다. 화면이 바뀐 PR 은 사용자가 「PR <n> 화면 확인함」이라고 답해야 merge 합니다. 상한 인상·면제 추가 같은 게이트 완화가 있으면 작성자가 아닌 쪽의 서명 뒤에만 merge 합니다 — 체인의 계획 PR 은 코디네이터가, 그 밖(체인 끝 PR 포함)은 사용자가 「PR <n> 게이트 완화 확인함」으로 서명합니다 |
 | worktree 정리 (`karina:worktree-cleanup`) | "머지된 worktree 정리해줘" · "worktree 가 디스크를 차지해" | 레포의 worktree 마다 병합 여부·미커밋 수정·PR·최근 세션을 표로 보여 주고, 한 번 승인받은 것만 지운다 — 지우기 전에 미추적·gitignore 파일(`plan.md` 등)을 임시 폴더에 백업하고, 미커밋 수정·열린 PR·미병합 체인 worktree 는 지우지 않으며 브랜치는 남긴다 |
-| 시안 비교 (`karina:prototype`) | "프로토타입 만들어줘" · "시안 몇 개 만들어 비교해줘" · "어떤 레이아웃이 나을지 만들어 봐" | 화면·동작·전례 없는 아키텍처 결정을 버리는 시안 2~3개로 만들어 봅니다. 화면 시안은 한 페이지에서 버튼으로 바꿔 보고, 변형마다 조작해 스크린샷을 남깁니다. 변형·증거·장단점·권장안을 보고하고, 고른 방향으로 `karina:plan` 을 시작할지 묻습니다. 시안은 임시 폴더에 두고 레포는 고치지 않습니다 |
+| 시안 비교 (`karina:prototype`) | `/karina:prototype` 직접 호출 | 화면·동작·전례 없는 아키텍처 결정을 버리는 시안 2~3개로 만들어 봅니다. 화면 시안은 한 페이지에서 버튼으로 바꿔 보고, 변형마다 조작해 스크린샷을 남깁니다. 변형·증거·장단점·권장안을 보고하고, 고른 방향으로 `karina:plan` 을 시작할지 묻습니다. 시안은 임시 폴더에 두고 레포는 고치지 않습니다 |
 | 프로젝트 사실 기록 (`karina:record-project-fact`) | "AGENTS.md에 기록" · "AGENTS.md 새로 만들어줘" 또는 hook 제안 수락 | 빌드·DB·테스트 방식을 AGENTS.md에 축적(재확인 줄이기) · 파일이 없으면 최소 골격으로 생성 |
 | 검증 스킬 만들기 (`karina:create-verification-skill`) | `/karina:create-verification-skill` 직접 호출 | 앱을 사용자처럼 조작해 확인하는 검증 스킬(`.claude/skills/verify-앱이름/`)을 만들고, 실제로 한 번 돌려 성공하면 AGENTS.md 에 등록합니다 · 웹·CLI/TUI·HTTP 서비스·Windows 데스크톱 지원 |
 | 검증 스킬 유지 (`karina:maintain-verification-skill`) | `/karina:maintain-verification-skill` 직접 호출 | 앱이 바뀐 뒤 검증 스킬을 다시 맞추고, 실제로 돌려 확인된 수정만 PR 하나로 냅니다(고칠 것이 없으면 PR 없음) |
@@ -267,7 +267,6 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | "plan N부터" | 멈춘 계획 체인 재개 |
 | "PR 12 지켜봐" · "PR 12 검증하고 머지해" | PR 운영(`karina:pr` babysit · ship) |
 | "머지된 worktree 정리해줘" | worktree 정리 |
-| "시안 몇 개 만들어 비교해줘" | 시안 비교(`karina:prototype`) |
 | `/karina:create-verification-skill` | 검증 스킬 만들기 (직접 호출 전용) |
 | `/karina:maintain-verification-skill` | 검증 스킬 유지 (직접 호출 전용) |
 | `/karina:create-formal-verification-skill` | 형식 검증 스킬 만들기 (직접 호출 전용) |
@@ -277,6 +276,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | `/karina:wait-what [못 알아들은 부분]` | 다시 설명 — 직전 답을 어디까지 왔는지·요지·정할 것으로 다시 설명 (직접 호출 전용) |
 | `/karina:plan-draft [요청]` | 계획 초안 — plan.md 대신 초안으로 저장하고, 나중에 골라 진행·수정·삭제 (직접 호출 전용) |
 | `/karina:temp-cleanup` | 임시 폴더 정리 — `%TEMP%\karina-plugin\` 에서 고른 항목만 지움 (직접 호출 전용) |
+| `/karina:prototype` | 시안 비교 — 버리는 시안 2~3개를 만들어 보고 증거로 방향을 고름 (직접 호출 전용) |
 
 ---
 

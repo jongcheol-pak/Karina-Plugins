@@ -76,7 +76,7 @@ karina 플러그인에 **새 스킬을 추가하거나 기존 스킬을 개정**
 | `agent` | 이 스킬을 특정 subagent로 실행 |
 | `background` | 백그라운드 실행. **내장 도구가 축소되고 `LSP`가 빠지므로** 검증 성격의 스킬에는 쓰지 않는다 |
 | `paths` | 특정 경로에서만 활성화 |
-| `disable-model-invocation` | `true` 면 사용자 `/플러그인:이름` 호출 전용 — 설명은 물론 이름도 스킬 목록에 실리지 않아(2026-10-21 `skill_listing` 실측 — 위 근거 문서) 다른 스킬의 발동·목록 예산에 영향이 없다(`create-verification-skill`·`maintain-verification-skill`·`create-formal-verification-skill`·`maintain-formal-verification-skill`·`reflect`·`no-comments`·`plan-draft`·`temp-cleanup`·`wait-what`) |
+| `disable-model-invocation` | `true` 면 사용자 `/플러그인:이름` 호출 전용 — 설명은 물론 이름도 스킬 목록에 실리지 않아(2026-10-21 `skill_listing` 실측 — 위 근거 문서) 다른 스킬의 발동·목록 예산에 영향이 없다(`create-verification-skill`·`maintain-verification-skill`·`create-formal-verification-skill`·`maintain-formal-verification-skill`·`reflect`·`no-comments`·`plan-draft`·`prototype`·`temp-cleanup`·`wait-what`) |
 | `shell` | 본문의 `` !`cmd` `` 전처리에 쓸 셸 지정 |
 
 **본문 치환 변수**: `$ARGUMENTS`·`$ARGUMENTS[N]`·`$N`·`$name`·`${CLAUDE_SESSION_ID}`·`${CLAUDE_EFFORT}`·`${CLAUDE_SKILL_DIR}`·`${CLAUDE_PROJECT_DIR}`. **치환은 원본 파일 전체에 1회 적용되며 코드펜스 안이라고 예외가 아니다** — 변수명을 설명문에 그대로 적으면 그것까지 치환되므로, 설명할 때는 이름을 쪼개 쓴다.
