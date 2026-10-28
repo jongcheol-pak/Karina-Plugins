@@ -14,12 +14,13 @@ $appFile = Join-Path $d 'app.txt'
 if (Test-Path -LiteralPath $appFile) { $mode = (Get-Content -LiteralPath $appFile -Raw).Trim() }
 $mons = @(Get-Content -LiteralPath (Join-Path $d 'monitors.json') -Raw | ConvertFrom-Json)
 function Out-Fake($obj, [int]$code) { Write-Output (ConvertTo-Json -InputObject $obj -Depth 6 -Compress); exit $code }
+if ($mode -eq 'stderr-warn') { Write-Error 'fake warning on stderr' }
 if ($args[0] -eq 'status') {
+    if ($mode -eq 'status-err') { Out-Fake @{ ok = $false; error = @{ code = 'runtime_timeout' } } 1 }
     Out-Fake @{ ok = $true; result = @{ appRunning = ($mode -ne 'off-norunning') } } 0
 }
 if ($args[0] -ne 'cover') { Out-Fake @{ ok = $false; error = @{ code = 'unknown' } } 2 }
-if ($mode -eq 'off-okfalse') { Out-Fake @{ ok = $false; error = @{ code = 'app_not_running' } } 0 }
-if ($mode -eq 'off-exit') { Out-Fake @{ ok = $false; error = @{ code = 'app_not_running' } } 3 }
+if ($mode -eq 'cover-err') { Out-Fake @{ ok = $false; error = @{ code = 'app_not_running' } } 1 }
 if ($args[1] -eq 'status') { Out-Fake @{ ok = $true; result = @{ monitors = $mons } } 0 }
 $n = [int]$args[3]
 $failFile = Join-Path $d ('fail-' + $args[1] + '.txt')
@@ -97,13 +98,21 @@ $d = New-CoverRig @(1)
 $r = Invoke-ScreenCover $d @('-Action', 'pause', '-Holder', 'a') -Cli (Join-Path $scRoot 'no-such-cli.exe')
 Assert-Case -Name "screen-cover: CLI 가 없으면 건너뛰고 exit 0" -R (Join-CoverResult $r $d) -ExpectExit 0 -ExpectContains 'karina-cover skip no-cli [covered=1]'
 
-foreach ($form in @('off-okfalse', 'off-exit', 'off-norunning')) {
+foreach ($case in @(
+        @{ form = 'off-norunning'; exit = 0; expect = 'karina-cover skip app-off state-none'; name = '앱이 꺼져 있으면 상태를 남기지 않고 건너뛴다' }
+        @{ form = 'cover-err'; exit = 1; expect = 'karina-cover ERROR cover-status state-none'; name = 'cover 조회가 실패하면 앱 꺼짐이 아니라 ERROR 이고 상태를 남기지 않는다' }
+        @{ form = 'status-err'; exit = 1; expect = 'karina-cover ERROR status state-none'; name = 'status 조회가 실패하면 ERROR 이고 상태를 남기지 않는다' })) {
     $d = New-CoverRig @(1)
-    Set-CoverRigFile $d 'app.txt' $form
+    Set-CoverRigFile $d 'app.txt' $case.form
     $r = Invoke-ScreenCover $d @('-Action', 'pause', '-Holder', 'a')
     $stateNote = if (Test-Path -LiteralPath (Join-Path $d 'state/cover-state.json')) { ' state-exists' } else { ' state-none' }
-    Assert-Case -Name "screen-cover: pause 때 앱이 꺼져 있으면($form) 상태를 남기지 않고 건너뛴다" -R @{ code = $r.code; out = ($r.out + $stateNote) } -ExpectExit 0 -ExpectContains 'karina-cover skip app-off state-none'
+    Assert-Case -Name "screen-cover: pause($($case.form)) — $($case.name)" -R @{ code = $r.code; out = ($r.out + $stateNote) } -ExpectExit $case.exit -ExpectContains $case.expect
 }
+
+$d = New-CoverRig @(2)
+Set-CoverRigFile $d 'app.txt' 'stderr-warn'
+$r = Invoke-ScreenCover $d @('-Action', 'pause', '-Holder', 'a')
+Assert-Case -Name "screen-cover: CLI 가 stderr 에 경고를 내도 JSON 을 읽어 끈다" -R (Join-CoverResult $r $d) -ExpectExit 0 -ExpectContains 'karina-cover paused 2 [covered=]'
 
 $d = New-CoverRig @(1)
 $null = Invoke-ScreenCover $d @('-Action', 'pause', '-Holder', 'old', '-Now', '2026-10-27 00:00')
@@ -124,15 +133,25 @@ Set-CoverRigFile $d 'fail-on.txt' ''
 $r = Invoke-ScreenCover $d @('-Action', 'resume', '-Holder', 'a')
 Assert-Case -Name "screen-cover: 켜지 못한 모니터는 기록에 남아 다음 resume 이 켠다" -R (Join-CoverResult $r $d) -ExpectExit 0 -ExpectContains 'karina-cover restored 2 [covered=1,2]'
 
-foreach ($form in @('off-okfalse', 'off-exit', 'off-norunning')) {
+$d = New-CoverRig @(1)
+$null = Invoke-ScreenCover $d @('-Action', 'pause', '-Holder', 'a')
+$null = Invoke-ScreenCover $d @('-Action', 'pause', '-Holder', 'b')
+Set-CoverRigFile $d 'app.txt' 'off-norunning'
+$r1 = Invoke-ScreenCover $d @('-Action', 'resume', '-Holder', 'a')
+Set-CoverRigFile $d 'app.txt' 'on'
+$r2 = Invoke-ScreenCover $d @('-Action', 'resume', '-Holder', 'b')
+Assert-Case -Name "screen-cover: resume 때 앱이 꺼져 있으면 기록을 지워 남은 보유자도 켜지 않는다" -R (Join-CoverResult @{ code = $r2.code; out = ($r1.out + ' / ' + $r2.out) } $d) -ExpectExit 0 -ExpectContains 'karina-cover skip app-off / karina-cover restored none [covered=]'
+
+foreach ($case in @(
+        @{ form = 'cover-err'; expect = 'karina-cover ERROR cover-on 1 / karina-cover restored 1 [covered=1]' }
+        @{ form = 'status-err'; expect = 'karina-cover ERROR status / karina-cover restored 1 [covered=1]' })) {
     $d = New-CoverRig @(1)
     $null = Invoke-ScreenCover $d @('-Action', 'pause', '-Holder', 'a')
-    $null = Invoke-ScreenCover $d @('-Action', 'pause', '-Holder', 'b')
-    Set-CoverRigFile $d 'app.txt' $form
+    Set-CoverRigFile $d 'app.txt' $case.form
     $r1 = Invoke-ScreenCover $d @('-Action', 'resume', '-Holder', 'a')
     Set-CoverRigFile $d 'app.txt' 'on'
-    $r2 = Invoke-ScreenCover $d @('-Action', 'resume', '-Holder', 'b')
-    Assert-Case -Name "screen-cover: resume 때 앱이 꺼져 있으면($form) 기록을 지워 남은 보유자도 켜지 않는다" -R (Join-CoverResult @{ code = $r2.code; out = ($r1.out + ' / ' + $r2.out) } $d) -ExpectExit 0 -ExpectContains 'karina-cover skip app-off / karina-cover restored none [covered=]'
+    $r2 = Invoke-ScreenCover $d @('-Action', 'resume', '-Holder', 'a')
+    Assert-Case -Name "screen-cover: resume 중 CLI 가 실패하면($($case.form)) ERROR 로 기록을 지켜 다음 resume 이 덮는다" -R (Join-CoverResult @{ code = ([int]($r1.code -ne 1) + $r2.code); out = ($r1.out + ' / ' + $r2.out) } $d) -ExpectExit 0 -ExpectContains $case.expect
 }
 
 $d = New-CoverRig @(1, 2)
