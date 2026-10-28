@@ -492,7 +492,6 @@ if ($deadGroups.Count) {
 Write-Host ("결과: {0}/{1} OK (FAIL {2}){3}" -f ($total - $failCount), $total, $failCount, $deadSuffix)
 Write-TimingLine -Total $total
 
-# ---- 총계 기준선 대조 (회차 55 T4) ----
 $GoldenTotalBaseline = 1270
 if (-not $deadGroups.Count -and -not $Filter -and $total -ne $GoldenTotalBaseline) {
     Write-Host ("[WARN] 총계가 기준선과 다릅니다: {0} != {1} (`$GoldenTotalBaseline`)." -f $total, $GoldenTotalBaseline)

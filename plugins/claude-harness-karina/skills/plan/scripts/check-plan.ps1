@@ -199,6 +199,7 @@ if ($goal) {
 # ---- B5 경량 조건 — 사용자 승인 말고도 기계로 갈리는 조건은 여기서 잰다(모델 판정만으로 경량을 열지 않는다) ----
 if ($isLight) {
     $exemptMark = '[' + (Get-Text @(0xBA74, 0xC81C))                                  # [면제
+    $docExemptMark = $exemptMark + ' ' + [char]0x2460
     $structLabel = '- **' + (Get-Text @(0xAD6C, 0xC870)) + '**:'                       # - **구조**:
     $paths = New-Object System.Collections.Generic.HashSet[string]
     foreach ($b in @(Get-TaskBlocks)) {
@@ -206,11 +207,10 @@ if ($isLight) {
             if (Test-Prefix $l.Text $structLabel) { Add-Problem $l.N ('light-structure T' + $b.Id) }
             if (-not (Test-Prefix $l.Text '- **Files**:')) { continue }
             $t = $l.Text
-            $docOnly = $t.Contains($exemptMark + ' ' + [string][char]0x2460)                 # [면제 ①
+            $docOnly = $t.Contains($docExemptMark)
             $cut = $t.IndexOf($exemptMark, [System.StringComparison]::Ordinal)
             if ($cut -ge 0) { $t = $t.Substring(0, $cut) }
             $found = @([regex]::Matches($t, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value.Trim() })
-            # 면제 ① 줄은 경로가 전부 문서·이미지일 때만 뺀다 — 코드가 하나라도 섞이면 통째로 센다
             if ($docOnly -and $found.Count -and -not @($found | Where-Object { $_ -notmatch '\.(md|png|jpe?g|gif|svg|webp|ico)$' }).Count) { continue }
             foreach ($p in $found) { $null = $paths.Add($p) }
         }
