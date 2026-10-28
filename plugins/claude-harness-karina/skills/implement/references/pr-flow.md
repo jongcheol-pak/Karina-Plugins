@@ -42,7 +42,7 @@
 
 ## PR 열기
 
-**회차 끝 1회 — `../SKILL.md` 완료 순서의 plan 파일 커밋 뒤, 최종 보고 전이다.** 실패하면 그 오류를 최종 보고에 싣고 멈추지 않는다.
+**회차 끝 1회 — `final-review.md`「완료 순서」의 plan 파일 커밋 뒤, 최종 보고 전이다.** 실패하면 그 오류를 최종 보고에 싣고 멈추지 않는다.
 
 1. **push 한다 — `git push -u origin <브랜치>`.** refspec 을 생략하지 않는다 — 브랜치를 명시하지 않은 push 는 나중에 force-with-lease 가 필요할 때 차단 hook 에 막힌다.
 2. **같은 브랜치의 OPEN PR 이 있으면 push 로 끝낸다** — `gh pr view <브랜치> --json state,url` 이 `OPEN` 이면 그 URL 을 보고한다.
