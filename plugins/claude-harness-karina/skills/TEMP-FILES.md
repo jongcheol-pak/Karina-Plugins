@@ -1,6 +1,6 @@
 # 임시 파일 폴더
 
-> karina 스킬·스크립트가 시스템 임시 폴더에 만드는 파일의 자리를 정하는 공용 규칙이다. 경로를 쓰는 문서(plan 인터뷰·초안·삭제 복구, prototype 시안, chain-plan 결정·재개·검증, worktree-cleanup, 검증 스킬 생성·유지, temp-cleanup)가 이 파일을 가리킨다. 임시 폴더 바로 아래 흩어지면 무엇이 karina 것인지 가를 수 없고 정리할 대상도 정해지지 않는다.
+> karina 스킬·스크립트가 시스템 임시 폴더에 만드는 파일의 자리를 정하는 공용 규칙이다. 경로를 쓰는 문서(plan 인터뷰·초안·삭제 복구, prototype 시안, chain-plan 결정·재개·검증, worktree-cleanup, 검증 스킬 생성·유지, 앱 검증 중 화면 가리기 보유, temp-cleanup)가 이 파일을 가리킨다. 임시 폴더 바로 아래 흩어지면 무엇이 karina 것인지 가를 수 없고 정리할 대상도 정해지지 않는다.
 
 ## 루트
 
@@ -18,6 +18,7 @@
 | `verify\` | 검증 스킬(`verify-<app>`)의 증거·실행 데이터 | `<app>\<실행 id>\` |
 | `backup\` | plan.md·초안 백업, 복구 경로 없는 파일을 지우거나 덮기 전 백업 | `<원래 이름>-<레포 폴더명>-<YYYYMMDD-HHmm>.<확장자>` |
 | `worktree-backup\` | `karina:worktree-cleanup` 이 지우기 전에 복사한 미추적·ignore 파일 | `<레포 이름>\<worktree 이름>-<시각>\`(스크립트가 정한다) |
+| `cover\` | 앱 검증 동안 걷은 화면 가리기 모니터와 보유자 기록·잠금(`implement/scripts/screen-cover.ps1` — 규칙 `SCREEN-COVER.md`) | `cover-state.json` · `cover.lock` — 세션 시작 정리 대상이 아니고, 보유 중에는 지우지 않는다(지우면 걷은 모니터를 다시 덮지 못한다) |
 | `scratch\` | 실험·실행용 일회성 스크립트 · `karina:prototype` 의 동작·아키텍처 스케치 · `check-plan` 의 Plan check 로그(`check-plan-<시각>.log` — 위반 줄이 파일 이름을 가리킨다) | 자유 — 다시 가리키지 않는 파일만 |
 
 ## 누가 지우는가

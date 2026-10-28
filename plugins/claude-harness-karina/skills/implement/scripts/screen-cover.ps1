@@ -1,0 +1,190 @@
+﻿# screen-cover.ps1 — 앱 검증 동안 Karina 화면 가리기를 걷고, 단계가 끝나면 걷은 모니터만 다시 덮는다 (모델이 부르는 헬퍼 — hook 아님)
+#
+# 언제·누가 부르는가는 `skills/SCREEN-COVER.md` 가 정본이다.
+#   -Action pause  -Holder <이름>   가려진 모니터를 한 대씩 끄고 즉시 기록한다. 같은 보유자가 다시 불러도 무해하고,
+#                                   그 사이 사용자가 다시 켠 모니터도 끄고 기록에 더한다.
+#   -Action resume -Holder <이름>   보유자를 지우고, 남은 보유자가 없을 때만 기록한 모니터를 켠다.
+# 출력은 늘 `karina-cover ` 으로 시작하는 한 줄이다:
+#   paused <번호,…|none> · held <남은 보유자 수> · restored <번호,…|none> · skip <no-cli|app-off> → exit 0
+#   ERROR <사유>                                                                                  → exit 1
+# 왜 기록한 모니터만 켜는가: 원래 꺼져 있던 모니터는 사용자가 끈 것이라 켜면 안 된다.
+# 왜 보유자를 세는가: 병렬 체인 워커가 동시에 검증하면 먼저 끝난 쪽이 덮으면 남은 쪽 검증이 막힌다.
+# 왜 resume 때 앱이 꺼져 있으면 기록을 지우는가: 덮개는 앱 창이라 앱과 함께 사라졌다 — 사용자가 앱을 종료한 것이니
+#   남은 보유자가 나중에 켜면 사용자가 없앤 덮개를 되살린다. 앱 꺼짐은 `status` 의 appRunning:false,
+#   `cover status` 의 ok:false·비0 종료 세 형태로 본다(실제 꺼진 앱의 응답 형태는 아직 재지 못했다).
+# 왜 끈 모니터를 한 대마다 기록하는가: 중간에 실패해도 이미 끈 모니터는 resume 이 켤 수 있어야 한다.
+# 왜 잠금이 FileShare.None 핸들인가: 잠근 프로세스가 죽으면 OS 가 핸들을 닫아 다음 호출이 영영 막히지 않는다.
+# CLI 선택 순서의 정본은 `karina-cli skills get karina-computer-use` 의 「Preconditions」 다
+#   (KARINA_CLI_COMMAND → PATH 의 karina-cli·karina-dev-cli → 설치본 전체경로).
+# 왜 출력에 한글이 없는가: Git Bash 를 거친 PowerShell 출력에서 한글이 깨진다(work-clock 과 같다).
+# stdin 은 읽지 않는다. PS 5.1·7 양쪽에서 돈다.
+param(
+    [string]$Action = '',
+    [string]$Holder = '',
+    [string]$CliCommand = '',
+    [string]$StateDir = '',
+    [string]$Now = '',
+    [double]$StaleHours = 12,
+    [double]$LockTimeoutSec = 10
+)
+
+$fmt = 'yyyy-MM-dd HH:mm'
+$inv = [System.Globalization.CultureInfo]::InvariantCulture
+
+function Exit-Cover([string]$Text, [int]$Code) {
+    Write-Output ('karina-cover ' + $Text)
+    exit $Code
+}
+
+if (@('pause', 'resume') -notcontains $Action -or -not $Holder) { Exit-Cover 'ERROR usage' 1 }
+
+$nowValue = Get-Date
+if ($Now) {
+    $parsed = [datetime]::MinValue
+    if (-not [datetime]::TryParseExact($Now, $fmt, $inv, [System.Globalization.DateTimeStyles]::None, [ref]$parsed)) { Exit-Cover 'ERROR now-unparsed' 1 }
+    $nowValue = $parsed
+}
+
+if (-not $StateDir) {
+    $tempBase = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
+    if (-not $tempBase) { $tempBase = [System.IO.Path]::GetTempPath() }
+    $StateDir = Join-Path (Join-Path $tempBase 'karina-plugin') 'cover'
+}
+New-Item -ItemType Directory -Path $StateDir -Force | Out-Null
+$statePath = Join-Path $StateDir 'cover-state.json'
+$lockPath = Join-Path $StateDir 'cover.lock'
+
+function Resolve-KarinaCli {
+    if ($CliCommand) {
+        if (Get-Command $CliCommand -ErrorAction SilentlyContinue) { return $CliCommand }
+        return $null
+    }
+    $candidates = @($env:KARINA_CLI_COMMAND, 'karina-cli', 'karina-dev-cli')
+    if ($env:LOCALAPPDATA) { $candidates += (Join-Path $env:LOCALAPPDATA 'Programs\Karina\karina-cli.exe') }
+    foreach ($c in $candidates) {
+        if ($c -and (Get-Command $c -ErrorAction SilentlyContinue)) { return $c }
+    }
+    return $null
+}
+
+# 자식 CLI 의 stdout·stderr 를 함께 받아 JSON 한 개로 읽는다 — 응답은 오류까지 늘 JSON 이다
+function Invoke-KarinaCli([string[]]$CliArgs) {
+    $raw = & $script:cli @CliArgs 2>&1 | Out-String
+    $code = $LASTEXITCODE
+    $json = $null
+    try { $json = $raw | ConvertFrom-Json -ErrorAction Stop } catch { $json = $null }
+    $ok = ($code -eq 0) -and ($null -ne $json) -and ($json.ok -eq $true)
+    return [pscustomobject]@{ Ok = $ok; Code = $code; Json = $json }
+}
+
+function Test-AppOff {
+    $st = Invoke-KarinaCli @('status', '--json')
+    if ($st.Ok -and $st.Json.result.appRunning -eq $false) { return $true }
+    return $false
+}
+
+function Read-CoverState {
+    $state = @{ paused = @(); holders = @{} }
+    if (-not (Test-Path -LiteralPath $statePath)) { return $null }
+    try {
+        $j = Get-Content -LiteralPath $statePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    } catch { return $state }
+    $state.paused = @($j.paused | Where-Object { $null -ne $_ } | ForEach-Object { [int]$_ })
+    if ($j.holders) {
+        foreach ($p in $j.holders.PSObject.Properties) { $state.holders[$p.Name] = [string]$p.Value }
+    }
+    return $state
+}
+
+# 임시 파일에 쓴 뒤 바꿔 끼운다 — 쓰는 도중 죽어도 반쯤 쓴 상태 파일이 남지 않는다
+function Write-CoverState($state) {
+    $tmp = $statePath + '.tmp'
+    $body = ConvertTo-Json -InputObject @{ paused = @($state.paused); holders = $state.holders } -Depth 4
+    Set-Content -LiteralPath $tmp -Value $body -Encoding UTF8
+    Move-Item -LiteralPath $tmp -Destination $statePath -Force
+}
+
+function Remove-StaleHolders($state) {
+    $cutoff = $nowValue.AddHours(-$StaleHours)
+    foreach ($name in @($state.holders.Keys)) {
+        $t = [datetime]::MinValue
+        $fresh = [datetime]::TryParseExact($state.holders[$name], $fmt, $inv, [System.Globalization.DateTimeStyles]::None, [ref]$t) -and ($t -ge $cutoff)
+        if (-not $fresh) { $state.holders.Remove($name) }
+    }
+}
+
+function Format-Monitors([int[]]$List) {
+    if (-not $List -or $List.Count -eq 0) { return 'none' }
+    return (($List | Sort-Object) -join ',')
+}
+
+$lock = $null
+$deadline = (Get-Date).AddSeconds($LockTimeoutSec)
+while (-not $lock) {
+    try {
+        $lock = [System.IO.File]::Open($lockPath, 'OpenOrCreate', 'ReadWrite', 'None')
+    } catch {
+        if ((Get-Date) -ge $deadline) { Exit-Cover 'ERROR lock-timeout' 1 }
+        Start-Sleep -Milliseconds 100
+    }
+}
+
+try {
+    $state = Read-CoverState
+
+    if ($Action -eq 'resume' -and $null -eq $state) { Exit-Cover 'restored none' 0 }
+
+    $script:cli = Resolve-KarinaCli
+    if (-not $script:cli) { Exit-Cover 'skip no-cli' 0 }
+
+    if ($null -eq $state) { $state = @{ paused = @(); holders = @{} } }
+    Remove-StaleHolders $state
+
+    $appOff = Test-AppOff
+    $cover = $null
+    if (-not $appOff) {
+        $cover = Invoke-KarinaCli @('cover', 'status', '--json')
+        if (-not $cover.Ok) { $appOff = $true }
+    }
+
+    if ($Action -eq 'pause') {
+        if ($appOff) { Exit-Cover 'skip app-off' 0 }
+        $state.holders[$Holder] = $nowValue.ToString($fmt, $inv)
+        Write-CoverState $state
+        $turnedOff = @()
+        foreach ($m in @($cover.Json.result.monitors | Where-Object { $_.covered })) {
+            $n = [int]$m.monitor
+            $off = Invoke-KarinaCli @('cover', 'off', '--monitor', "$n", '--json')
+            if (-not $off.Ok) { Exit-Cover ('ERROR cover-off ' + $n) 1 }
+            if ($state.paused -notcontains $n) { $state.paused = @($state.paused) + $n }
+            Write-CoverState $state
+            $turnedOff += $n
+        }
+        Exit-Cover ('paused ' + (Format-Monitors $turnedOff)) 0
+    }
+
+    $state.holders.Remove($Holder)
+    if ($appOff) {
+        $state.paused = @()
+        Write-CoverState $state
+        Exit-Cover 'skip app-off' 0
+    }
+    if ($state.holders.Count -gt 0) {
+        Write-CoverState $state
+        Exit-Cover ('held ' + $state.holders.Count) 0
+    }
+    $restored = @()
+    foreach ($n in @($state.paused)) {
+        $on = Invoke-KarinaCli @('cover', 'on', '--monitor', "$n", '--json')
+        if (-not $on.Ok) {
+            Write-CoverState $state
+            Exit-Cover ('ERROR cover-on ' + $n) 1
+        }
+        $state.paused = @($state.paused | Where-Object { $_ -ne $n })
+        $restored += $n
+    }
+    Remove-Item -LiteralPath $statePath -Force
+    Exit-Cover ('restored ' + (Format-Monitors $restored)) 0
+} finally {
+    $lock.Dispose()
+}
