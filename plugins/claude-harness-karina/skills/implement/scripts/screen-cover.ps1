@@ -7,6 +7,8 @@
 # 출력은 늘 `karina-cover ` 으로 시작하는 한 줄이다:
 #   paused <번호,…|none> · held <남은 보유자 수> · restored <번호,…|none> · skip <no-cli|app-off> → exit 0
 #   ERROR <사유>                                                                                  → exit 1
+# 앱 꺼짐은 `status --json` 의 appRunning:false 하나로 판정한다 — 오류 코드(runtime_unavailable·app_not_running)는
+#   「꺼짐」과 「아직 응답 안 함」을 가르지 못해, 일시 오류에 기록을 지우면 걷은 모니터를 다시 덮지 못한다.
 # 왜 잠금이 FileShare.None 핸들인가: 잠근 프로세스가 죽으면 OS 가 핸들을 닫아 다음 호출이 영영 막히지 않는다.
 # CLI 선택 순서의 정본은 `karina-cli skills get karina-computer-use` 의 「Preconditions」 다
 #   (KARINA_CLI_COMMAND → PATH 의 karina-cli·karina-dev-cli → 설치본 전체경로).
@@ -62,7 +64,7 @@ function Resolve-KarinaCli {
 
 # Karina CLI 는 오류까지 늘 JSON 으로 답한다(karina-computer-use 「Preconditions」)
 function Invoke-KarinaCli([string[]]$CliArgs) {
-    $raw = & $script:cli @CliArgs 2>&1 | Out-String
+    $raw = & $script:cli @CliArgs 2>$null | Out-String
     $code = $LASTEXITCODE
     $json = $null
     try { $json = $raw | ConvertFrom-Json -ErrorAction Stop } catch { $json = $null }
@@ -70,10 +72,11 @@ function Invoke-KarinaCli([string[]]$CliArgs) {
     return [pscustomobject]@{ Ok = $ok; Code = $code; Json = $json }
 }
 
-function Test-AppOff {
+function Get-AppState {
     $st = Invoke-KarinaCli @('status', '--json')
-    if ($st.Ok -and $st.Json.result.appRunning -eq $false) { return $true }
-    return $false
+    if (-not $st.Ok) { return 'error' }
+    if ($st.Json.result.appRunning -eq $false) { return 'off' }
+    return 'on'
 }
 
 function Read-CoverState {
@@ -132,15 +135,13 @@ try {
     if ($null -eq $state) { $state = @{ paused = @(); holders = @{} } }
     Remove-StaleHolders $state
 
-    $appOff = Test-AppOff
-    $cover = $null
-    if (-not $appOff) {
-        $cover = Invoke-KarinaCli @('cover', 'status', '--json')
-        if (-not $cover.Ok) { $appOff = $true }
-    }
+    $app = Get-AppState
 
     if ($Action -eq 'pause') {
-        if ($appOff) { Exit-Cover 'skip app-off' 0 }
+        if ($app -eq 'off') { Exit-Cover 'skip app-off' 0 }
+        if ($app -eq 'error') { Exit-Cover 'ERROR status' 1 }
+        $cover = Invoke-KarinaCli @('cover', 'status', '--json')
+        if (-not $cover.Ok) { Exit-Cover 'ERROR cover-status' 1 }
         $state.holders[$Holder] = $nowValue.ToString($fmt, $inv)
         Write-CoverState $state
         $turnedOff = @()
@@ -156,10 +157,14 @@ try {
     }
 
     $state.holders.Remove($Holder)
-    if ($appOff) {
+    if ($app -eq 'off') {
         $state.paused = @()
         Write-CoverState $state
         Exit-Cover 'skip app-off' 0
+    }
+    if ($app -eq 'error') {
+        Write-CoverState $state
+        Exit-Cover 'ERROR status' 1
     }
     if ($state.holders.Count -gt 0) {
         Write-CoverState $state
