@@ -251,8 +251,18 @@ if (Test-HookSelected @('session-context')) {
     # SC41~SC41e: 계획 세션에도 **절 원문 주입** (v1.217.0). SC41e는 vault 구간 안에 있다.
     #   SC28이 고정한 것은 경로 지시(`plan/SKILL.md` 문자열)뿐이라, 주입을 지워도 그대로 통과한다.
     #   SC39 계열이 구현 세션에서 양성·델타 음성·발췌 표기를 나눠 건 것과 같은 구조로 넷을 건다.
-    # SC41 (양성): compact + plan 없음 → 실측 규칙 **본문 문자열**이 실려 온다.
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    # 발동 기록은 실제 hook 두 개(record-work-start · loop-continue)를 hooks.json 순서로 돌려 만든다 — 근거는 `scripts/rules/session-context-rationale-plan.md` §17
+    $scFire = {
+        param([string]$Sid, [string]$Skill)
+        foreach ($h in @('loop-continue.ps1', 'record-work-start.ps1')) {
+            $null = Invoke-Hook $h (@{ hook_event_name = 'PreToolUse'; tool_name = 'Skill'; tool_input = @{ skill = $Skill }; session_id = $Sid } | ConvertTo-Json -Compress)
+        }
+    }
+    $scCompact = { param([string]$Cwd, [string]$Sid) Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $Cwd; session_id = $Sid } | ConvertTo-Json -Compress) }
+
+    # SC41 (양성): compact + plan 없음 + 이 세션에 karina:plan 발동 → 실측 규칙 **본문 문자열**이 실려 온다.
+    & $scFire 'sc41' 'karina:plan'
+    $r = & $scCompact $scPlanless 'sc41'
     Assert-Case -Name "session-context: compact 계획 규칙 절 주입 (SC41)" -R $r -ExpectExit 0 -ExpectContains '모든 사실 주장은 명령을 실행해 얻는다'
     # SC41b (발췌 표기): 주입분이 전문이 아니라 발췌임을 밝힌다 — 없으면 모델이 이것을 전문으로 오인한다(SC39d와 같은 이유).
     Assert-Case -Name "session-context: 계획 주입에 발췌 표기 (SC41b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — plan/SKILL.md'
@@ -263,6 +273,18 @@ if (Test-HookSelected @('session-context')) {
     #   ⚠ 대조 문자열은 **주입 본문**이어야 한다 — `plan/SKILL.md`로 걸면 SC29와 완전히 같아 새 회귀를 못 잡는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: 미완료 task 세션엔 계획 규칙 미주입 (SC41d)" -R $r -ExpectExit 0 -ExpectNotContains '모든 사실 주장은 명령을 실행해 얻는다'
+    # SC41f (델타 음성): 발동 기록 없는 compact 세션 → 계획 규칙은 없고 경로 리마인더 1줄은 남는다.
+    $r = & $scCompact $scPlanless 'sc41f'
+    Assert-Case -Name "session-context: 발동 기록 없는 compact 엔 계획 규칙 미주입 (SC41f)" -R $r -ExpectExit 0 -ExpectContains 'plan/SKILL.md' -ExpectNotContains '모든 사실 주장은 명령을 실행해 얻는다'
+    # SC43j (델타 음성): 같은 세션에 위키 조회 절차 줄도 없다.
+    Assert-Case -Name "session-context: 발동 기록 없는 compact 엔 조회 절차 미주입 (SC43j)" -R $r -ExpectExit 0 -ExpectNotContains '위키 조회 절차:'
+    # SC41g (델타 음성): plan 뒤 implement 발동 → 계획 규칙은 빠진다(마지막으로 한 일이 구현).
+    & $scFire 'sc41g' 'karina:plan'
+    & $scFire 'sc41g' 'karina:implement'
+    $r = & $scCompact $scPlanless 'sc41g'
+    Assert-Case -Name "session-context: plan 뒤 implement 발동 compact 엔 계획 규칙 미주입 (SC41g)" -R $r -ExpectExit 0 -ExpectNotContains '모든 사실 주장은 명령을 실행해 얻는다'
+    # SC43i (양성): 같은 세션에 위키 조회 절차 줄은 실린다(implement 발동만으로도).
+    Assert-Case -Name "session-context: implement 발동 compact 엔 조회 절차 주입 (SC43i)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:'
 
     # SC42~SC42f: 계획 세션에 **큐 기록 규약(K 5-2) 원문 주입** (v1.218.0).
     #   위 SC41 계열과 같은 분기에서 돌지만 대상 문서가 다르므로 따로 건다 —
@@ -288,8 +310,9 @@ if (Test-HookSelected @('session-context')) {
     #   디버깅 세션 전용으로 좁혀졌다. 그 전에는 이 주입이 계획 세션을 절차 K로 보내
     #   조회 정본이 이중이었다. 세 어서션이 재는 축도 함께 바뀌었다 — 종전의 「발췌 표기」·「추출
     #   경계」는 주입이 없어져 소멸했고, 그 자리를 「경로 정확성」·「행동 지시」가 잇는다.
-    # SC43 (양성): compact + plan 없음 → 경로 지시 라인이 실려 온다.
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scPlanless } | ConvertTo-Json -Compress)
+    # SC43 (양성): compact + plan 없음 + karina:plan 발동 → 경로 지시 라인이 실려 온다.
+    & $scFire 'sc43' 'karina:plan'
+    $r = & $scCompact $scPlanless 'sc43'
     Assert-Case -Name "session-context: compact 조회 절차 경로 지시 (SC43)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:'
     # SC43b (**경로 정확성**): 라인이 있는 것만으로는 부족하다 — 경로가 틀리면 세션이 그 파일을
     #   못 읽어 조회 절차가 통째로 사라지는데, SC43은 접두 라벨만 보므로 그 회귀를 못 잡는다.
@@ -398,7 +421,8 @@ if (Test-HookSelected @('session-context')) {
     #   **둘 다 이 짝 증가를 잡지 못한다**.
     $scEmptyAg = Join-Path $work 'sc-empty-agents'; New-Item -ItemType Directory $scEmptyAg -Force | Out-Null
     New-Item -ItemType File -Path (Join-Path $scEmptyAg 'AGENTS.md') -Force | Out-Null
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmptyAg } | ConvertTo-Json -Compress)
+    & $scFire 'sc41e' 'karina:plan'
+    $r = & $scCompact $scEmptyAg 'sc41e'
     Assert-Case -Name "session-context: 계획 규칙 주입도 vault 게이팅 신호 아님 (SC41e)" -R $r -ExpectExit 0 -ExpectContains '모든 사실 주장은 명령을 실행해 얻는다' -ExpectNotContains '위키 vault: 설정'
     # SC42e (회귀 고정 — v1.218.0): 큐 규약 **주입**도 같은 짝을 지킨다.
     #   주입이 둘로 늘었으므로 `$cwdBaseCount++`도 둘이어야 한다 — 한 쪽만 올리면
