@@ -149,7 +149,7 @@ argument-hint: "<버그 또는 에러 설명>"
 
 ### 4-F. 커밋·PR
 
-**4-D 가 끝나면(통과든 `미검증` 이든) `../implement/references/pr-flow.md`「디버깅 단독 경로」 의 「커밋」·「PR」·「돌아가기」 를 따른다 — 보고에 PR URL 또는 `PR: 건너뜀 — <사유>` 와 수정 브랜치를 싣는다** — 이 단계가 없으면 고친 버그가 로컬 커밋 없이 작업 트리에만 남는다. 미검증도 PR 을 여는 이유와 커밋 순서의 근거는 `references/debugging-rationale.md` §11.
+**4-D 가 끝나면(통과든 `미검증` 이든) `../implement/references/pr-flow.md`「디버깅 단독 경로」 의 「커밋」·「PR」·「돌아가기」 를 따른다 — 보고에 PR URL 또는 `PR: 건너뜀 — <사유>` 와 수정 브랜치를 싣는다. 「갈래」 가 main 직행이었으면 「커밋」 뒤 「PR」·「돌아가기」 대신 같은 파일 「main 직행」 의 push 를 하고(그 갈래의 진행 중 회차 예외 포함) `PR: 건너뜀 — main 직행 · push <결과>` 를 싣는다** — 이 단계가 없으면 고친 버그가 로컬 커밋 없이 작업 트리에만 남는다. 미검증도 PR 을 여는 이유와 커밋 순서의 근거는 `references/debugging-rationale.md` §11.
 
 ## Phase 4.5 — 아키텍처 의심
 
