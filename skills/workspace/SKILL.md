@@ -15,7 +15,7 @@ description: >-
   karina-orchestration for supervised multi-agent coordination,
   karina-browser-use for Karina's browser tabs, and karina-computer-use only
   when a visible window needs GUI control.
-version: 1.0.4
+version: 1.1.0
 ---
 
 # Karina Workspace (Windows)

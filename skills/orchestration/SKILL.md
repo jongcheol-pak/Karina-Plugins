@@ -1,14 +1,15 @@
 ---
 name: karina-orchestration
 description: >-
-  Use Karina orchestration for structured multi-agent coordination on Windows:
+  Use Karina orchestration for structured multi-agent coordination on Windows,
+  or to work as a dispatched worker (heartbeats, ask, worker_done):
   persistent threaded messages between agent terminals, blocking ask/reply
   flows, task DAGs with dependencies, dispatching work to supervised worker
   tabs, waiting for worker_done or escalation, decision gates, and coordinator
   loops. Use whenever work is split across agent terminals and someone must
   track which task runs where and who reported what. Use plain terminal
   commands for ordinary shell work that needs no coordination state.
-version: 1.3.0
+version: 1.4.0
 ---
 
 # Inter-Agent Orchestration (Windows)
