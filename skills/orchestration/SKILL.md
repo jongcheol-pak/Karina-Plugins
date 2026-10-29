@@ -72,7 +72,7 @@ change between Karina releases, and this file deliberately does not list them. P
 `--json` for agent-driven calls; **every response is JSON, including errors**.
 
 **Drain stdout while the command runs — never wait for exit and read afterwards.** This
-very command prints about 13 KB, more than a pipe's default buffer holds, so a caller that
+very command prints about 30 KB, more than a pipe's default buffer holds, so a caller that
 blocks on process exit before reading will deadlock: the CLI is blocked on a write nobody
 is reading, and neither side moves. The same applies to stderr if you capture it —
 `check --wait` writes a keepalive line there every 15 seconds for up to an hour. Use a call
