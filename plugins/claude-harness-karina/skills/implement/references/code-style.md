@@ -52,4 +52,4 @@
 - **테스트·검증 스크립트에 `// Phase 1: add cards` 같은 단계 서술 주석을 쓰지 않는다 — 단언 메시지와 로그 문자열이 단계를 말한다** — 원문 pstack poteto-mode「Comments」 *"A verify or test script gets no phase-narrating comments … The assertion or log string documents the step"*(`https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/skills/poteto-mode/SKILL.md`). 단언 메시지는 실패할 때 출력돼 어느 단계가 깨졌는지 알려 주고, 주석은 아무것도 출력하지 않는다.
 - **「do not remove」「IMPORTANT」 같은 주석은 근거가 아니라 단서로 읽는다 — 근처 코드와 커밋 이력으로 외부 제약이 지금도 참인지 확인되면 예외로 남기고, 확인되지 않으면 지운다** — 강조 문구는 그 주장이 참이라는 증거가 아니다.
 - **보존 대상은 지우지 않고 필요하면 새로 쓰거나 고친다 — 검사기가 파싱하거나 앵커로 잡는 주석, 프로젝트 규약 문서가 정본·예외로 지정한 주석(머리 주석·모듈 docstring·상수 주석 등), 형식 검증 모델이 가드마다 다는 코드 대응 주석(`파일:줄` — `create-formal-verification-skill` 이 지정)이다** — 지우면 그 검사가 꺼지거나 규약이 가리키는 정본이 사라진다.
-- **프로젝트 규약(`AGENTS.md` 등)이나 린터가 요구하는 주석은 그쪽이 이긴다** — 저장 관례와 같은 원칙이고, 그 프로젝트의 판단이 이 하니스의 기본값보다 먼저다.
+- **프로젝트 규약(`AGENTS.md` 등)이나 린터가 요구하는 주석은 그쪽이 이긴다 — `AGENTS.md` 가 지목한 doc 감사(doc 이 없는 항목을 세어 실패하는 검사)가 요구하는 doc 주석도 같다** — 저장 관례와 같은 원칙이고, 그 프로젝트의 판단이 이 하니스의 기본값보다 먼저다. doc 감사는 주석 규약 문장이 아니라 테스트로 요구해, 규약 문장만 보면 그 doc 주석을 지우고 감사가 깨진다(2026-10-29 Karina 정리 커밋 9e799c1).

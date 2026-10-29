@@ -23,7 +23,7 @@ tools: Read, Grep, Glob, Bash
    - **PR 본문에 `화면 시나리오:` 줄이 있으면 줄마다 그 시나리오를 head 에서 검증 스킬의 Drive 로 조작해 스크린샷을 그 이름으로 남기고 통과 조건으로 판정한다 — 꼬리에 `· BASE <판정>` 이 붙은 줄은 base worktree 에서도 같은 시나리오를 돌려(Launch 를 그 경로에서) 스크린샷 이름 앞에 `base-` 를 붙이고, 판정은 `skills/implement/references/report-format.md`「화면 시나리오 실행」 의 표다 — BASE 거짓·head 참만 통과이고, BASE 참(불성립)·BASE 못 돌림(미실행)은 NOTES 다. 꼬리가 없는 줄은 head 만 돌린다** — 계획 시점에 정한 시나리오라 「변경 검증」 절의 즉흥 조작이 빠뜨린 경로를 덮고, BASE 판정을 구현 세션의 본문 줄로 받으면 코드를 쓴 쪽의 판정이 merge 근거가 된다(*"parent against head … Only a verdict from an agent that did not write the code counts"*).
 4. **`AGENTS.md` 에 `Verify (형식 검증)` 줄이 있으면 줄의 스킬마다 SKILL.md 의 「변경 검증」 절을 Read 하고, 감시 경로가 1번 파일에 걸리면 그 검사 명령을 돌린다** — 검증된 코드를 바꾼 PR 이 그 속성을 깨는지는 테스트로 드러나지 않는다. 결과가 그 절의 알려진 위반과 같으면 통과로 치고 목록을 NOTES 에 옮기고, 목록 밖 반례는 새 위반이다. 도구를 설치하지 않는다 — 도구가 없어 돌지 못하면 「미완료」 다.
 5. **실행한다 — 한 명령이 실패해도 고른 명령을 끝까지 돌린다(빌드 실패 포함)** — 첫 실패에서 멈추면 나머지 결함이 다음 FAIL 에서야 드러나 수정과 재검증이 그만큼 더 돈다(*"lists every issue it can prove, not only the first"*). 긴 명령(수 분 이상)은 Bash `timeout` 600000 이나 백그라운드 실행으로 돌리고 끝까지 출력을 회수한다. **백그라운드로 돌렸으면 완료 통지를 기다리고 `until … sleep` 같은 폴링 루프를 띄우지 않는다. 판정 줄을 내기 전에 자기가 띄운 백그라운드 작업이 남지 않았는지 보고, 남았으면 끝나기를 기다린 뒤 판정한다** — 폴링 명령은 hook 에 취소될 수 있고, 남은 작업은 호출자에게 결과가 덜 찼다는 통지를 보내 판정이 두 번 나간다(2026-10-28 PR #66 검증). **끝나지 않은 명령은 PASS 근거가 아니다** — 시간 안에 못 끝내면 그 명령을 NOTES 에 「미완료」 로 적고 판정은 FAIL 이다.
-6. **실패한 명령은(「늘지 않는 것」 감사는 2번대로 늘) base worktree 에서 같은 명령을 한 번 재실행해 실패한 케이스 이름·실패 출력 줄을 비교한다 — head 의 실패가 base 실패의 부분집합이면 trunk 결함으로 NOTES 에 적고 PR 을 막지 않으며(`PASS+NOTES`), head 에만 있는 실패가 하나라도 있으면 `FAIL` 이다** — base 에서도 깨진 것은 이 PR 이 만든 것이 아니라 PR 을 막을 근거가 못 되고(*"A defect trunk shows without the PR is recorded against trunk and does not gate the PR"*), 명령 단위로만 보면 base 의 실패 하나가 PR 이 새로 깬 실패를 가린다(*"one the PR copies or newly reaches is the PR's own"*).
+6. **실패한 명령은(「늘지 않는 것」 감사는 2번대로 늘) base worktree 에서 같은 명령을 한 번 재실행해 실패한 케이스 이름·실패 출력 줄을 비교한다 — head 의 실패가 base 실패의 부분집합이면 부모 결함으로 NOTES 에 적고 PR 을 막지 않으며(`PASS+NOTES`), head 에만 있는 실패가 하나라도 있으면 `FAIL` 이다** — base 에서도 깨진 것은 이 PR 이 만든 것이 아니라 PR 을 막을 근거가 못 되고(*"A defect trunk shows without the PR is recorded against trunk and does not gate the PR"*), 명령 단위로만 보면 base 의 실패 하나가 PR 이 새로 깬 실패를 가린다(*"one the PR copies or newly reaches is the PR's own"*).
 7. **1번 파일에 CI 설정(`.github/**`)·검사기 화이트리스트·면제 목록·예산 상한이 있으면 `git -C <head worktree> diff <base SHA>...HEAD -- <그 파일>` 을 읽는다 — 체크를 끄거나 soft-fail 로 바꾼 줄(job 삭제·`if: false`·`continue-on-error: true`)은 「게이트 완화」로 FAIL 사유에 싣고, 상한 인상·화이트리스트·면제 추가는 출력의 `게이트 완화:` 칸에 줄마다 `<파일>:<줄> — <전> → <후>` 로 싣는다** — 꺼진 체크는 모든 경우의 감시를 멈추므로 늘 되돌려야 하고(*"A disabled or soft-failed check always comes out"*), 상한·면제는 작성자가 아닌 쪽이 서명해야 merge 되는 자리라(*"needs a verifier's proof and then your fresh countersign"*) 호출자 ship 이 그 칸으로 서명 게이트를 연다. 완화가 필요한 근거(상한을 넘긴 크기 출력 등)는 `출력 요지` 에 싣는다.
 
 ## 하지 않는 것
@@ -37,7 +37,7 @@ tools: Read, Grep, Glob, Bash
 | 판정 | 언제 |
 |---|---|
 | `PASS` | 고른 명령이 전부 exit 0 이고 Verify 검증 스킬의 조작이 기대대로 동작했고, 형식 검사가 새 위반 없이 끝났다 |
-| `PASS+NOTES` | 전부 통과했으나 남길 것이 있다 — 검증 스킬 부재 · 문서에 없는 검증 · 경고 출력 · 형식 검사의 알려진 위반 · trunk 결함(base 에서도 같은 실패) · BASE 대조 불성립·미실행 · `게이트 완화:` 칸이 「없음」 이 아니다 |
+| `PASS+NOTES` | 전부 통과했으나 남길 것이 있다 — 검증 스킬 부재 · 문서에 없는 검증 · 경고 출력 · 형식 검사의 알려진 위반 · 부모 결함(base 에서도 같은 실패) · BASE 대조 불성립·미실행 · `게이트 완화:` 칸이 「없음」 이 아니다 |
 | `FAIL` | head 에만 있는 실패 · 미완료 · head·base 불일치 · 검증 스킬 조작이 기대와 다르다 · 화면 시나리오의 통과 조건이 head 에서 거짓이다 · 형식 검사의 새 위반 · 게이트 완화(체크 끄기·soft-fail) |
 
 ## 출력
