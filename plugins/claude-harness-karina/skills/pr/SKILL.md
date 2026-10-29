@@ -15,6 +15,7 @@ description: 이미 열린 GitHub PR 을 운영한다 — babysit(CI 가 초록�
 | 머지해 · ship · land · 검증하고 merge | `references/ship.md` |
 
 - **요청이 merge·land·ship 을 말하지 않으면 babysit 이다** — babysit 은 merge 를 허락하지 않는다(*"Babysitting never authorizes merging."*). 「초록 되면 머지까지」처럼 둘을 함께 요청하면 babysit 을 merge-ready 까지 돌린 뒤 ship 으로 잇는다.
+- **모드를 고른 안내와 진행 중 상태 메모도 한글로 쓴다** — 응답 언어 hook 은 도구 호출 사이 메모에 닿지 않는다.
 - **대상 PR 을 먼저 정한다** — 번호·URL 이 있으면 그것, 없으면 `gh pr view --json number,url` (현재 브랜치의 PR). 없으면 멈추고 보고한다.
 
 ## 전제
