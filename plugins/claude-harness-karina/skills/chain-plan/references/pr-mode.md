@@ -91,7 +91,7 @@
 **`Y` 로 승인한 체인이 끝까지 성공했을 때(`report.md`「인계 파일 정리」 의 성공 조건과 같다) 그 정리 커밋 뒤, 보고 전에 1회 한다.** pstack 은 모든 playbook 끝에 PR 을 연다(*"Invoked at the end of every other playbook."* — `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/opening-a-pr.md`). 끝 PR 이 없으면 체인 커밋이 로컬에만 남는다(2026-10-18 PR #3 이 그 뒤 손으로 열려 제목 유형이 빠진 채 main 커밋이 됐다).
 
 - **계획마다의 대상 레포 가운데 아래 셋이 참인 레포마다 한다** — 대상 레포 경로가 세션 시작 때 주입된 위키 vault 경로와 같지 않다(vault 는 `karina:llm-wiki` 가 직접 push 한다) · `../../implement/references/pr-flow.md`「적용 판정」 의 앞 두 조건(GitHub 원격 · `gh auth status` exit 0)이 참이다 · `git -C "<대상 레포 경로>" rev-list --count origin/<기본 브랜치>..HEAD` 가 0 이 아니다. 거짓인 레포는 보고의 `PR:` 줄에 `건너뜀 — <거짓인 조건>` 으로 싣는다.
-- **main 직행 레포는 PR 대신 `pr-flow.md`「main 직행」 의 push 를 하고 `PR:` 줄에 `건너뜀 — main 직행 · push <결과>` 를 싣는다** — 체인 끝 push 가 그 레포의 회차 끝 push 다.
+- **main 직행 레포는 위 셋을 보지 않고 PR 대신 `pr-flow.md`「main 직행」 의 push 를 하고 `PR:` 줄에 `건너뜀 — main 직행 · push <결과>` 를 싣는다** — 체인 끝 push 가 그 레포의 회차 끝 push 다.
 - **`pr-flow.md`「브랜치」 의 표와 「merge 된 브랜치에서 시작할 때」 를 체인 브랜치에 그대로 적용한 뒤 「PR 열기」 1~4 를 따른다** — 같은 절차를 두 곳에 두면 한쪽만 고쳐진다. 그 절차가 `plan.md` 에 적게 한 것(슬러그·`> BASE:` 이동)은 이 세션이 `plan.md` 를 쓰지 않으므로 보고에 싣는다.
   - **슬러그는 `chain-<Run id 의 run_ 뒤 앞 8자>` 다** — 끝 PR 은 체인 끝에 1회만 열리고, 압축 뒤에도 `run-current` 로 같은 id 를 얻는다.
   - **제목은 `<유형>: <계획 제목들을 · 로 이은 한 줄>` 이다** — 유형은 `git log --format=%s origin/<기본 브랜치>..HEAD` 의 유형 접두 중 가장 많은 것이고 같으면 `기능` 이다. 길면 앞 계획부터 줄인다.
