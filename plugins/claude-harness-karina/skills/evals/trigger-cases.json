@@ -535,6 +535,14 @@
       "why": "rec-pos-9 의 짝 음성 — 기능의 보류·기각 결정은 사실·함정이 아니라 [DECISION] 큐(queue-rules K 5-2) 몫이다. 「기록해」 어휘만으로 이 스킬이 발동하면 안 된다"
     },
     {
+      "id": "rec-pos-10",
+      "skill": "karina:record-project-fact",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "이 레포는 혼자 쓰니까 Git 흐름을 main 직행으로 기록해줘",
+      "why": "Git 흐름 선언 — 매 세션 implement 의 브랜치·PR 흐름을 바꾸는 레포 사실이라 AGENTS.md `## Conventions`(이 스킬) 몫이다(implement/references/pr-flow.md「main 직행」). rec-neg-4 의 기능 결정과 달리 실행 방식을 정한다"
+    },
+    {
       "id": "chain-pos-1",
       "skill": "karina:chain-plan",
       "expect": "trigger",
