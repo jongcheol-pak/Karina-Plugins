@@ -3,11 +3,21 @@
 > `karina:implement` 가 **루프 진입 전 1회**(「브랜치」)와 **회차 끝 1회**(「PR 열기」) 읽는다. 시작과 끝에만 쓰이는 절차라 `../SKILL.md` 본문에 두지 않는다. `karina:karina-systematic-debugging` 의 직접 수정 경로는 첫 편집 전과 4-D 뒤에 「디버깅 단독 경로」 로 읽는다.
 > 출처는 Cursor pstack 의 opening-a-pr 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/opening-a-pr.md`. 다른 playbook 이 끝날 때마다 PR 을 연다(*"Invoked at the end of every other playbook."*)는 규칙을 karina 의 회차 끝으로 옮겼다.
 >
-> 목차: 적용 판정 · 브랜치(merge 된 브랜치에서 시작할 때) · PR 열기 · PR 을 연 뒤 · 디버깅 단독 경로(갈래 · 커밋 · PR · 돌아가기)
+> 목차: main 직행 · 적용 판정 · 브랜치(merge 된 브랜치에서 시작할 때) · PR 열기 · PR 을 연 뒤 · 디버깅 단독 경로(갈래 · 커밋 · PR · 돌아가기)
+
+## main 직행
+
+**「적용 판정」 보다 먼저 1회 본다 — 대상 레포 `AGENTS.md` 에서 `grep -nE '^- \*\*Git 흐름\*\*: main 직행' AGENTS.md` 가 1줄 이상이면 그 레포는 main 직행이다** — 혼자·작은 레포가 회차마다 브랜치·PR 을 기다리지 않게 사용자가 선언한 줄이다(기록은 `karina:record-project-fact`). 이 판정이 이 절의 정본이고, 다른 스킬은 이 절을 가리킨다.
+
+- **직행이면 「적용 판정」·「브랜치」·「PR 열기」 를 건너뛰고, 브랜치를 바꾸지 않고 worktree 를 만들지 않고 지금 브랜치에 커밋한다** — 선언한 레포에는 PR 을 받을 리뷰어가 없어 브랜치가 시간만 든다. GitHub 원격·`gh` 인증은 보지 않는다.
+- **회차 끝(「PR 열기」 자리)에 지금 브랜치가 기본 브랜치이고 `origin` 이 있으면 `git push origin <기본>` 을 1회 한다** — 기본 브랜치는 git 만으로 정한다: `git symbolic-ref --short refs/remotes/origin/HEAD` 의 `origin/` 뒤, 실패하면 `git ls-remote --symref origin HEAD` 의 `ref: refs/heads/<이름>`. 원격이 없거나 기본 브랜치가 아니면 push 하지 않는다.
+- **push 가 거부되면 오류 원문을 보고하고 멈추지 않는다 — `pull --rebase`·rebase·force 로 맞추지 않는다** — 기본 브랜치의 미push 커밋 rebase 는 history rewrite 라 자기 `karina/` 브랜치 예외 밖이고, 맞추기는 사용자가 한다.
+- **중계 모드(`karina:chain-plan` 워커)면 push 하지 않는다** — 체인 끝에 코디네이터가 한 번 push 한다(`../../chain-plan/references/pr-mode.md`「Y 체인 끝 PR」).
+- **보고 `PR` 줄은 `건너뜀 — main 직행 · push <결과>` 다** — 결과는 `origin/<기본> <sha7>` · `건너뜀 — <사유>` · `거부 — <오류 요지>` 중 하나다.
 
 ## 적용 판정
 
-**셋이 모두 참일 때만 아래 두 절을 따른다. 하나라도 거짓이면 브랜치 전환·push·PR 을 하지 않고, 최종 보고의 `PR` 줄에 `건너뜀 — <사유>` 로 적는다.** 판정은 루프 진입 전 1회다.
+**셋이 모두 참일 때만 아래 두 절을 따른다. 하나라도 거짓이면 브랜치 전환·push·PR 을 하지 않고, 최종 보고의 `PR` 줄에 `건너뜀 — <사유>` 로 적는다.** 판정은 루프 진입 전 1회이고, 위 「main 직행」 이면 이 판정을 하지 않는다.
 
 - **원격이 GitHub 다** — `git remote get-url origin` 이 성공하고 `github.com` 을 담는다. 원격이 없거나 다른 포지면 PR 을 열 곳이 없다.
 - **`gh` 가 인증돼 있다** — `gh auth status` 가 exit 0 이다. 인증정보를 새로 받는 것은 이 루프 밖이다(`../SKILL.md`「멈추는 넷」 3번).
@@ -74,7 +84,7 @@
 
 ### 갈래
 
-**첫 편집 전 1회 위에서부터 가른다.** 「적용 판정」 셋은 그대로 쓰고(중계 조건은 참), 거짓이면 브랜치를 바꾸지 않고 「커밋」 만 한 뒤 보고에 `PR: 건너뜀 — <사유>` 를 싣는다.
+**첫 편집 전 1회 위에서부터 가른다.** 「main 직행」 이면 아래 1~3을 건너뛰고 브랜치를 그대로 둔 채 「커밋」 뒤 그 절의 push 를 한다(「PR」·「돌아가기」 없음). 「적용 판정」 셋은 그대로 쓰고(중계 조건은 참), 거짓이면 브랜치를 바꾸지 않고 「커밋」 만 한 뒤 보고에 `PR: 건너뜀 — <사유>` 를 싣는다.
 
 1. **진행 중 `plan.md`(미완료 `[ ]`/`[/]` task)가 있고 지금 브랜치가 기본 브랜치가 아니면 브랜치를 바꾸지 않는다** — 「커밋」 만 하고 PR 은 열지 않으며, 보고에 `PR: 건너뜀 — 진행 중 회차「<plan 제목>」 의 PR 에 실린다` 를 싣는다. 그 회차 PR 은 `karina:implement` 가 같은 브랜치에서 연다. 따로 열면 회차 작업이 섞인 브랜치에서 `수정:` PR 이 열린다. 기본 브랜치면(구현 진입 전 plan) 2번 이하로 간다 — 기본 브랜치에 남긴 커밋은 나중에 회차 PR 에 섞인다.
 2. **`karina:pr` 이 넘긴 경로면(세션에 그 PR 번호가 있다) `gh pr view <번호> --json headRefName` 으로 head 브랜치를 얻는다** — 지금 브랜치가 그것이면 3번으로 간다. 아니면 `git status --porcelain` 이 비었을 때만 `git switch <headRefName>` 뒤 3번으로 가고, 비어 있지 않으면 커밋·PR 없이 고친 내용과 그 사실을 보고한다. babysit 은 PR 브랜치로 옮기지 않아, 옮기지 않으면 아래 표 첫 행이 별도 PR 을 연다.
