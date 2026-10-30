@@ -206,6 +206,14 @@
       "why": "값 치환과 동작 변경이 섞인 경계 — 순수 값 치환이면 trivial이지만 조건 분기 추가는 동작 변경이라 애매 3갈래(A/B 질문) 규칙 적용 대상이고, 그 판정을 하려면 스킬이 발동해야 한다 (구형 id=18 흡수). **재교정(2026-08-06, v1.161.0 T4)**: 직전 질의(\"소수점 둘째 자리까지만 나오게\")는 모델이 `'합계 %s'` → `'합계 %.2f'` **포맷 문자열 치환**으로 처리해 `level=\"INFO\"` → `\"DEBUG\"` 와 함께 **두 줄 모두 리터럴 치환**이 됐다 — description의 \"multi-element pure value substitution → 직접 수정\" 예외에 정확히 해당해 미발동이 정상이었다(description 결함이 아니다). **음수 처리는 조건 분기 신설**이라 리터럴 치환으로 끝나지 않으므로 축(값 치환 + 동작 변경 혼합)이 복원된다. `plan-neg-2`(단건)·`plan-neg-7`(다건)이 순수 치환 축을 따로 재므로 중복도 없다"
     },
     {
+      "id": "plan-pos-10",
+      "skill": "karina:plan",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "1) sample.py 에 로그 레벨 설정 추가 2) 설정 파일 경로를 옵션으로 받기 3) README 사용법 갱신 — 이거 해줘",
+      "why": "plan 1·plan 2 표기 없는 번호 목록 — 여러 항목 나열은 karina:plan 이고, 목록이라는 이유만으로 karina:chain-plan 이 먼저 뜨면 안 된다(2026-10-30 트리거 겹침 감사의 경계 공백)"
+    },
+    {
       "id": "plan-neg-6",
       "skill": "karina:plan",
       "expect": "no-trigger",
@@ -439,6 +447,15 @@
       "why": "개선 요청이지 결함 보고가 아니다"
     },
     {
+      "id": "dbg-neg-3",
+      "skill": "karina:karina-systematic-debugging",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "- 언어 변경시 메뉴 문구 변경 안되는 문제 수정\n- 화면 깜빡임 수정\n- 안내 문구 표시\n- 전체 문구 하드코딩 → 리소스 → 다국어 적용",
+      "route_to": "karina:plan",
+      "why": "plan-pos-6 과 같은 질의의 디버깅 쪽 음성 짝 — 버그 항목이 섞인 작업 목록은 karina:plan 이 첫 발동이어야 한다(2026-10-30 감사의 경계 공백)"
+    },
+    {
       "id": "rec-pos-1",
       "skill": "karina:record-project-fact",
       "expect": "trigger",
@@ -573,6 +590,14 @@
       "workspace": "with_plan",
       "query": "plan 1: summarize()에 통화별 합계 추가, plan 2: 합계 결과를 JSON 파일로 저장, plan 3: README에 사용 예시 보강 — 이 셋을 plan 하나씩 새 세션에서 돌리다가 plan 1 만 끝나고 멈췄어. plan 2부터 다시 이어줘",
       "why": "**멈춘 체인의 계획 번호 재개** — 「plan N부터」는 task 번호(T N) 재개가 아니라 남은 계획을 새 세션으로 잇는 요청이다. 질의는 계획 목록을 담아 자기완결이고, 앞 계획의 plan.md 가 남은 with_plan 에서 implement 가 먼저 뜨지 않는지 잰다(chain-neg-3 과 짝)."
+    },
+    {
+      "id": "chain-pos-5",
+      "skill": "karina:chain-plan",
+      "expect": "trigger",
+      "workspace": "no_plan",
+      "query": "멈춘 계획 체인을 plan 3부터 다시 이어서 진행해줘",
+      "why": "체인 재개 문구 — description 의 「plan 3부터 다시」 를 재는 양성 케이스가 없었다(2026-10-30 감사). karina:implement 의 「T3부터 계속」 과 갈려야 한다"
     },
     {
       "id": "chain-neg-1",

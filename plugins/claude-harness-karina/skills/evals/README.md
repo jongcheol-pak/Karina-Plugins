@@ -6,7 +6,7 @@
 
 | 러너 | 재는 것 | 입력 | 출력 |
 |---|---|---|---|
-| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 88건 (8스킬 × 최소 7건, `karina:llm-wiki`는 20건) | `trigger-<isolation>-<run_id>.json` |
+| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 91건 (8스킬 × 최소 7건, `karina:llm-wiki`는 20건) | `trigger-<isolation>-<run_id>.json` |
 
 ## 공통 출력 계약
 
@@ -103,7 +103,7 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 
 ## 비용
 
-`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(88건 → 176세션). 스모크 확인은 `--filter` 로 케이스 하나만 돌린다.
+`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(91건 → 182세션). 스모크 확인은 `--filter` 로 케이스 하나만 돌린다.
 
 ## 실행 함정 (2026-09-03 실측)
 
