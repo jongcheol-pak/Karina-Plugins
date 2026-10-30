@@ -168,6 +168,15 @@ $cmdJoined = $cmd -replace '`\r?\n', ' '
 $cmdJoined = $cmdJoined -replace '\\\r?\n', ' '
 $subs = Split-TopLevel $cmdJoined $isPowerShellTool
 
+# 데이터 인자 스트립의 치환기 — 작은따옴표 밖에 heredoc 이 아닌 `$(` 가 있으면 그 인자를 그대로 둔다.
+#   보존할 때 `$(`·괄호·큰따옴표를 공백으로 펴 안쪽 명령이 삭제 패턴의 경계에 걸리게 한다.
+#   작은따옴표 안은 bash 가 치환하지 않는다. 5.1 호환을 위해 -replace 스크립트블록 대신 MatchEvaluator 다.
+$keepLiveSubst = [System.Text.RegularExpressions.MatchEvaluator] {
+    param($m)
+    if (($m.Value -replace "'[^']*'", '') -match '\$\((?!\s*cat\s+<<)') { return ' ' + ($m.Value -replace '\$\(|[()"]', ' ') + ' ' }
+    return ' '
+}
+
 foreach ($sub in $subs) {
     $sub = $sub.Trim()
     if ([string]::IsNullOrWhiteSpace($sub)) { continue }
@@ -175,15 +184,16 @@ foreach ($sub in $subs) {
     # ---- 데이터 인자 스트립 ----
     # git 커밋 메시지·echo/printf 출력·grep 패턴·sed/awk 스크립트·Set-Content -Value는 실행되지 않는
     #   텍스트다. 반대로 psql·bash -c·eval 등 실행자의 따옴표 내용은 실제 실행되므로 보존한다.
+    # 단 heredoc(`$(cat <<`)이 아닌 `$(` 가 든 인자는 실행되는 치환이라 지우지 않는다 — 근거는 `rules/destructive-rationale.md`「데이터 인자 속 명령 치환」
     $scan = $sub
     if ($scan -match '(?i)(^|\s)git(\s|$)') {
-        $scan = $scan -replace '(?i)(^|\s)(-[a-z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', ' '
+        $scan = [regex]::Replace($scan, '(?i)(^|\s)(-[a-z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', $keepLiveSubst)
     }
     if ($scan -match '(?i)(^|\s)(echo|printf)(\s|$)') {
-        $scan = $scan -replace '(?i)(^|\s)(echo|printf)\b.*$', ' '
+        $scan = [regex]::Replace($scan, '(?i)(^|\s)(echo|printf)\b.*$', $keepLiveSubst)
     }
     if ($scan -match '(?i)(^|\s)(grep|egrep|fgrep|rg|ag|ack|sed|awk)(\s|$)') {
-        $scan = ($scan -replace '"[^"]*"', ' ') -replace "'[^']*'", ' '
+        $scan = [regex]::Replace([regex]::Replace($scan, '"[^"]*"', $keepLiveSubst), "'[^']*'", ' ')
     }
     if ($scan -match '(?i)(^|\s)(Set-Content|Add-Content|Out-File)(\s|$)') {
         $scan = $scan -replace '(?i)(^|\s)-Value(\s+|:)("[^"]*"|''[^'']*'')', ' '

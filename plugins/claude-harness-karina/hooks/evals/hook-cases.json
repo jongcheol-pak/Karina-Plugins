@@ -2160,6 +2160,53 @@
       "name": "단서 어휘 밖 수신자는 통과한다 (의도된 미탐 — 계약 고정)",
       "command": "_repo.RemoveRange(items)",
       "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "데이터 스트립: echo 인자의 $(…) 속 파괴 명령 차단",
+      "command": "echo $(rm -rf ~)",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "데이터 스트립: printf 큰따옴표 $(…) 속 파괴 명령 차단",
+      "command": "printf \"%s\" \"$(rm -rf /)\"",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "데이터 스트립: git -m 값의 $(…) 속 파괴 명령 차단",
+      "command": "git commit -m \"$(rm -rf ~)\"",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "데이터 스트립: grep 큰따옴표 $(…) 속 파괴 명령 차단",
+      "command": "grep x \"$(rm -rf ~)\"",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "데이터 스트립: heredoc 메시지 뒤에 이은 $(…) 도 차단",
+      "command": "git commit -m \"$(cat <<'EOF'\n본문\nEOF\n)$(rm -rf ~)\"",
+      "expect_exit": 2,
+      "expect_contains": "재귀 삭제"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "데이터 스트립: heredoc 커밋 메시지 본문의 파괴 명령 문자열은 데이터 (음성 짝)",
+      "command": "git commit -m \"$(cat <<'EOF'\n수정: rm -rf ~ 오탐 정리\nEOF\n)\"",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "데이터 스트립: 작은따옴표 속 $(…) 는 치환되지 않는 데이터 (음성 짝)",
+      "command": "echo '$(rm -rf ~)'",
+      "expect_exit": 0
     }
   ]
 }
