@@ -88,7 +88,7 @@
 - **아키텍처**: 계층 없음 — 실행 단위가 hook 스크립트와 Markdown 지침이라 도메인/UI/인프라로 가를 대상이 없다(글로벌 「단순 스크립트·유틸리티는 대상이 아니다」).
 - **인코딩**: `.ps1` 은 **UTF-8 BOM 필수**(PS 5.1 한글 호환), 그 외는 **BOM 없음**.
 - **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i` 도 `Edit` 도구도 python 텍스트 쓰기(`open(p,'w')`)도 파일 전체를 LF 로 바꿔 놓는다** — 편집 후 `git ls-files --eol` 로 확인(정본은 `docs/harness-conventions.md` 의 「편집 스크립트 사고」).
-- **주석**: 한글 · 무엇을 남기는가는 `skills/implement/references/code-style.md` 「주석」, 근거를 어디로 내리는가는 `skills/BUDGET.md` 「처방 ④의 단서 셋」. **보존 대상**(지우지 않는다): 문서가 정본으로 지정한 스크립트의 모듈 docstring·머리 주석·함수 주석·상수 주석(찾기: `git grep -n -E '모듈 docstring|머리 주석|주석이 정본|상수 주석'`)과 `scripts/*.ps1` 의 rationale 포인터 주석 — `comment-reviewer` 가 이 줄을 판정 기준으로 읽는다.
+- **주석**: 한글 · 무엇을 남기는가는 `skills/implement/references/code-style.md` 「주석」, 근거를 어디로 내리는가는 `skills/BUDGET.md` 「처방 ④의 단서 셋」. **보존 대상**(지우지 않는다): 문서가 정본으로 지정한 스크립트의 모듈 docstring·머리 주석·함수 주석·상수 주석(찾기: `git grep -n -E '모듈 docstring|머리 주석|주석이 정본|상수 주석'`)과 `scripts/*.ps1`·`skills/*/scripts/*` 의 rationale 포인터 주석 — `comment-reviewer` 가 이 줄을 판정 기준으로 읽는다.
 - **명령 출력 예산**: 판정용 명령은 **최소 형식**으로 낸다(정본은 `docs/harness-conventions.md` 「명령 출력 예산」).
 - **파일 크기**: 상한 표·초과 처방·참조 깊이·목차 규칙은 `skills/BUDGET.md`「예산 표」가 정본. **처방은 묻지 않고 적용하고, 상한을 올리는 것은 처방이 아니다.**
 - **병행 세션의 커밋은 `git commit -- <경로…>` 다** — 순서는 `git commit -m "$(cat <<'MSG' … MSG)" -- <경로…>`(`-m` 을 `--` 뒤에 두면 경로로 읽혀 실패), 명령에 `2>&1`. 근거·주의는 `docs/harness-conventions.md` 「병행 세션의 커밋」.
