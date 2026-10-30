@@ -1,4 +1,4 @@
-# 하니스 검사기 13종과 Hook 골든 경로 판정을 CI 에서 돌린다.
+# 하니스 검사기 19종과 Hook 골든 경로 판정을 CI 에서 돌린다.
 #
 # **windows-latest 인 이유**: hook 스크립트가 PowerShell 이고 `run-hook-evals.ps1` 이
 #   pwsh 로 골든을 돌린다. 검증 환경은 Windows 이고(`AGENTS.md` 「OS/플랫폼」)
@@ -65,7 +65,7 @@ jobs:
         shell: pwsh
         run: '@(''.claude-plugin/plugin.json'',''hooks/hooks.json'',''../../.claude-plugin/marketplace.json'') | ForEach-Object { $c = Get-Content -LiteralPath $_ -Raw -ErrorAction Stop; $null = $c | ConvertFrom-Json; Write-Host ($_ + '' OK'') }'
 
-      # ── python 검사기 10종 ───────────────────────────────────────────
+      # ── python 검사기 15종 ───────────────────────────────────────────
       - name: 하니스 정합 셀프체크
         run: python evals/check-harness-consistency.py
 
@@ -95,6 +95,37 @@ jobs:
 
       - name: AGENTS.md 이관 골든
         run: python skills/record-project-fact/evals/run_relocation_evals.py
+
+      - name: chain-plan 대기 스크립트 골든
+        run: python skills/chain-plan/evals/run_wait_evals.py
+
+      - name: chain-plan 검증 래퍼 골든
+        run: python skills/chain-plan/evals/run_verify_evals.py
+
+      - name: reflect 스크립트 골든
+        run: python skills/reflect/evals/run_digest_evals.py
+
+      - name: worktree-cleanup 스크립트 골든
+        run: python skills/worktree-cleanup/evals/run_cleanup_evals.py
+
+      - name: temp-cleanup 스크립트 골든
+        run: python skills/temp-cleanup/evals/run_temp_cleanup_evals.py
+
+      # ── 플러그인 매니페스트·frontmatter 검사 (Claude Code CLI 1종) ──────────
+      #   런타임이 조용히 무시하는 오타 키·누락 메타데이터를 --strict 가 실패로 바꾼다. 인증 없이 돈다.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Claude Code CLI 설치
+        run: npm install -g @anthropic-ai/claude-code@2.1.312
+
+      - name: plugin validate --strict
+        shell: pwsh
+        run: |
+          claude plugin validate --strict .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          claude plugin validate --strict ../..
 
       # ── Hook 골든 경로 판정 ──────────────────────────────────────────
       - name: CI 경로 판정 테스트
