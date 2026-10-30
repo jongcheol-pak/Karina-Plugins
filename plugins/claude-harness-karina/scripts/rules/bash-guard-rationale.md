@@ -242,3 +242,54 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 **허용목록이고 차단목록이 아니다** — 셸 이름을 막는 방식은 `| sudo bash`·`| /bin/sh`·`| xargs sh -c`·`| ForEach-Object { iex $_ }` 를 놓친다(2026-10-17 계획 리뷰 2R). 모르는 명령·모르는 수신자는 걷지 않아 그대로 경고한다. `bash -c "…"`·`ssh host "…"` 는 데이터 명령이 아니라 대상 밖이다.
 
 **`Split-TopLevel` 본문은 고치지 않는다** — 파이프 수신자를 보려면 구분자가 필요한데, 그 함수는 「복제 사본 동기」 축의 사본이라 고치면 차단 hook 까지 번진다. 대신 원문에서 각 세그먼트 뒤 문자를 따로 본다(`Remove-DataQuotes`). 세그먼트 뒤가 `&&` 아닌 `&` 면(`&>`·`2>&1 > f`·`>&2`·백그라운드) 걷지 않는다 — `&` 에서 갈린 뒤의 리다이렉트·파이프를 다시 맞춰 읽지 않고 경고 쪽으로 둔다(2026-10-17 완료 리뷰 · `grep 'x' f 2>&1 | head` 의 경고 오탐은 수용). 두 목록은 판정 데이터라 `rules/external-ops.json` 에 둔다(§13).
+
+## §18 커밋·add 판정식은 한 파일이다
+
+```
+# git-commit-match.ps1 — git 커밋·add 명령 판정식과 커밋이 도는 레포 해석 (dot-source 전용, hook 아님) — 근거는 `rules/bash-guard-rationale.md` §18
+```
+
+**커밋 판정은 세 검사(task 체크박스 게이트 · 커밋 시크릿 · 문서 낡음)가 같은 자리에서 쓴다.** 예전에는 같은 정규식이 세 파일에 여섯 벌 있었고 동기 검사도 없었다 — 2026-09-11 에 한쪽만 고쳐 판정이 실제로 갈렸다(`guard-stale-docs.ps1` 주석). 그래서 `scripts/git-commit-match.ps1` 하나에 두고 셋이 dot-source 한다.
+
+**옛 식은 git 전역 옵션을 `-c`/`-C <공백 없는 값>` 만 건너뛰었다.** 그래서 다음이 커밋으로 읽히지 않아 세 검사가 통째로 꺼졌다(2026-10-30 재현).
+
+- `git --no-pager commit` · `git -P commit` — 값 없는 플래그
+- `git -C "D:/Personal Project/x" commit` — 따옴표로 묶인 공백 경로(값이 `\S+` 라 공백에서 끊겼다)
+
+새 식은 `-c`/`-C <값>` · 값을 따로 받는 긴 옵션(`--git-dir`·`--work-tree` 등) · 그 밖의 `-x`/`--xx[=값]` 플래그를 건너뛰고, 값은 따옴표째 한 토큰으로 받는다.
+
+**끝 경계는 `\b` 가 아니라 `(?![\w-])` 다** — `\b` 는 `commit-tree` 의 `-` 앞에서도 성립해, 스테이징에 시크릿이 있으면 `git commit-tree` 에도 커밋 경고가 났다.
+
+**디스패처는 이 파일을 상시 dot-source 하고, 없으면 `commit` 이 든 명령을 막는다(fail-closed — 판정식이 없어 커밋인지 가를 수 없으니 넓게 막는다).** task 체크박스 게이트가 이 정의로 커밋을 알아보므로, 조용히 통과시키면 설치 손상이 차단 게이트를 끈다. 커밋이 아닌 명령은 그대로 통과한다. lib 둘(시크릿·문서 낡음)의 부재는 종전대로 경고만 한다(`stale-docs-rationale.md` §2) — 그 둘은 경고 검사다.
+
+## §19 커밋 검사는 커밋이 도는 레포를 본다
+
+```
+# 커밋이 도는 레포 폴더 — 근거는 `rules/bash-guard-rationale.md` §19
+    # 커밋이 도는 레포(`-C`·앞선 `cd`)의 plan 을 본다 — 근거는 `rules/bash-guard-rationale.md` §19
+        # 커밋이 도는 레포(`-C`·앞선 `cd`)를 스캔한다 — 근거는 `rules/bash-guard-rationale.md` §19
+    # 커밋이 도는 레포(`-C`·앞선 `cd`)에서 루트를 찾는다 — 근거는 `rules/bash-guard-rationale.md` §19
+```
+
+**세 검사(task 체크박스 게이트 · 커밋 시크릿 · 문서 낡음)는 hook 입력의 `cwd` 가 아니라 커밋이 실제로 도는 레포를 판정한다.** `git -C ../B commit` 이나 `cd ../B && git commit` 은 B 에 커밋한다. `cwd` 로만 보면 두 방향이 다 틀린다(2026-10-30 재현).
+
+- B 에 스테이징된 개인키를 놓친다 — 시크릿 차단이 꺼진다
+- `cwd` 의 시크릿·미완료 task 때문에 깨끗한 B 커밋에 경고하거나 막는다
+
+`karina:chain-plan` 코디네이터처럼 세션 폴더 밖 worktree 에 `-C` 로 커밋하는 흐름에서 실제로 생긴다.
+
+**`Resolve-GitCommitDir` 가 정하는 순서**: `cwd` 에서 시작해, 커밋 앞에 나온 `cd`·`pushd`·`Set-Location`·`Push-Location` 대상을 차례로 결합하고, 그다음 커밋 명령의 `-C` 값을 차례로 결합한다(git 은 `-C` 여럿을 앞에서부터 잇는다). 결과 폴더가 없으면 `cwd` 로 돌아간다 — 판정할 수 없는 경로로 검사를 끄느니 종전대로 보는 편이 낫다.
+
+`-F <파일>` 의 상대 경로도 이 폴더 기준이다 — git 은 `-C` 로 옮긴 뒤 경로를 푼다. 그래서 `Get-CommitTitle` 이 따로 하던 `-C` 결합을 지웠다(두 번 결합된다).
+
+## §20 worktree 의 `.git` 파일은 레포 경계다
+
+```
+# worktree 의 `.git` 파일(`gitdir: …/worktrees/…`)만 레포 경계로 본다 — 서브모듈(`…/modules/…`)은 아니다 — 근거는 `rules/bash-guard-rationale.md` §20
+```
+
+**plan 상향 탐색은 `.git` 폴더에서 멈추는데, worktree 의 `.git` 은 폴더가 아니라 `gitdir: <원본>/.git/worktrees/<이름>` 한 줄짜리 파일이다.** 그래서 worktree 안 커밋이 경계를 지나 부모 레포의 `plan.md` 를 잡고, 그 plan 의 미완료 task 로 워커 커밋을 막았다(2026-10-30 재현 — `.claude/worktrees/wt1` 에서 `기능: T2 — …` 커밋이 부모 plan 의 `[ ] T2` 로 차단).
+
+**경계로 보는 것은 첫 줄이 `gitdir:` 이고 경로에 `/worktrees/` 가 든 파일뿐이다.** 서브모듈 루트도 `.git` 파일(`gitdir: ../.git/modules/<이름>`)을 갖는데, 서브모듈에서 연 세션은 지금까지 상위 레포 plan 으로 판정돼 왔다. 그 동작은 바꿀 근거가 없어 그대로 둔다.
+
+같은 판정이 `guard-write.ps1` 에도 있다(`write-gate-rationale.md` §25) — 두 파일의 상향 탐색이 갈리면 쓰기는 통과하고 커밋은 막히는 조합이 생긴다.

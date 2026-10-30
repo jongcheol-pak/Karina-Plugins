@@ -18,7 +18,7 @@
   - 같은 폴더의 다른 세션 워커면 기다린다 — 기다리기 시작할 때 사용자 화면에 그 dispatch·`state`·`terminalState` 를 한 번 알리고, `start_unknown`·`stop_unknown`·`retained`·`release_unknown` 이면 「그 탭을 사람이 놓아야 풀린다 — 탭을 이미 닫았으면 Karina 앱을 재시작해야 풀린다」와 그 워커의 `runId` 를 함께 적는다 — 사람이 닫은 워커 탭은 오케스트레이션 기록이 바뀌지 않아 자리를 계속 쥐고, 앱 재시작의 정리(`stop_unknown`·`released`)만 그 자리를 푼다(2026-10-09 Karina 앱 소스 확인 — 자리 대기는 그 정리를 `freed` 로 받는다). 그 뒤 자리 대기 `python "<skill>/scripts/wait-worker.py" --cli <CLI> --place <그 dispatch>` 를 `../SKILL.md` 「워커 루프」 대기처럼 `run_in_background: true` 로 띄우고 turn 을 끝낸다 — 놓을 때까지 이 세션은 깨어나지 않는다. `RESULT: freed` 면 `worker-start` 를 다시 보내고, 또 `duplicate_worker` 면 이 갈래들을 처음부터 다시 가른다. 그 밖의 RESULT 는 첫 줄 지시를 따르고, RESULT 줄이 없으면 `../SKILL.md` 「워커 루프」 와 같다
   - 자리 대기는 같은 명령의 재시도가 아니라 상태 관찰이라 위 3회 상한이 걸리지 않는다
 - **그 밖의 코드는 코드와 `error` 문장을 보고하고 멈춘다.** 응답이 이름 댄 탭·dispatch 는 `report.md` 「보고 서식」의 남은 탭 줄에 싣는다.
-  - `worker_start_failed` — 원인이 사람이 답해야 하는 화면(trust·sign-in·권한)이거나 대기 만료라 코디네이터가 고칠 수 없다. 응답이 남긴 것으로 이름 댄 탭·dispatch 를 싣는다. `error` 가 `그런 터미널이 없습니다` 이면 대상 레포가 Karina 앱에 열려 있지 않다 — 사용자가 그 레포를 Karina 앱에서 열면 풀린다.
+  - `worker_start_failed` — 원인이 사람이 답해야 하는 화면(trust·sign-in·권한)이거나 대기 만료라 코디네이터가 고칠 수 없다. 응답이 남긴 것으로 이름 댄 탭·dispatch 를 싣는다. `error` 가 `그런 워크트리를 모릅니다` 로 시작하면 대상 레포가 Karina 앱에 등록돼 있지 않거나 주소가 등록된 워크트리가 아니다 — 사용자가 그 레포를 Karina 앱에 더하면 풀린다(등록된 레포의 워크트리면 닫혀 있어도 앱이 그 자리를 연다). `그런 터미널이 없습니다` 는 `--terminal` 로 지목한 탭이 없다는 뜻이다 — `worker-list`·`terminal list` 로 지금 핸들을 확인한다.
   - `task_not_startable` — 이 체인의 Task 를 살아 있는 다른 워커가 쥐고 있는 예상 밖 상태다. 이름 댄 dispatch 를 닫지 않고 싣는다.
   - `app_not_running` — CLI 는 앱을 띄우지 않는다. 앱 실행은 사용자 몫이다.
   - `no_bound_run`·`unknown_*`·`unsupported_capability` 등 — Run 바인딩이나 이 세션이 받은 id 가 어긋났거나 이 빌드에 없는 기능이라, 이어 가면 상태 추적이 깨진다.

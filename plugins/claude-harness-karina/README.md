@@ -9,7 +9,7 @@
 
 **버전**: 2.63.0
 **저장소**: https://github.com/jongcheol-pak/Karina-Plugins (모노레포 — 이 하니스는 plugins/claude-harness-karina/ 폴더)
-**Claude Code**: 최소 v2.0 — 권장 버전은 [호환 환경](#호환-환경)
+**Claude Code**: v2.1.312 이상 — 자세한 조건은 [호환 환경](#호환-환경)
 
 ---
 
@@ -48,7 +48,7 @@ Claude Code에게 코딩을 맡기면 가끔 이렇게 합니다:
 ### 1. 사전 요구사항
 
 - Windows 10/11 — 추가 설치 없이 동작합니다(macOS/Linux 는 pwsh 7 필요 · 실험적). 자세한 조건은 [호환 환경](#호환-환경)
-- Claude Code v2.0 이상
+- Claude Code v2.1.312 이상
 
 ### 2. 설치
 
@@ -209,7 +209,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 
 | 작성 담당 | 모델 | 언제 | 무엇을 |
 |---|---|---|---|
-| wiki-page-writer | Sonnet (effort high) | 위키 세션이 작성할 페이지가 3개 이상이고 겹치지 않게 나눌 수 있을 때 | 배정받은 위키 페이지만 소스 코드를 읽어 작성합니다. 인덱스·로그 같은 공유 파일과 커밋은 위키 세션 본체가 맡습니다 |
+| wiki-page-writer | Sonnet (effort medium) | 위키 세션이 작성할 페이지가 3개 이상이고 겹치지 않게 나눌 수 있을 때 | 배정받은 위키 페이지만 소스 코드를 읽어 작성합니다. 인덱스·로그 같은 공유 파일과 커밋은 위키 세션 본체가 맡습니다 |
 
 모델과 effort 를 정의에 고정한 이유는, 이름 없이 부르면 본체의 모델(Opus)과 effort 를 그대로 물려받기 때문입니다 — 범위가 정해진 대량 작성이라 Sonnet 이면 충분합니다.
 
@@ -529,7 +529,7 @@ karina는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
 |---|---|
 | OS | **Windows 10/11**: 완전 지원·검증. **macOS/Linux**: pwsh 7 설치 시 동작하도록 구현됐으나 **실제 환경 미검증(실험적)** |
 | 런타임 | **Windows**: 추가 설치 불요 — 실행 셸은 Claude Code가 결정(실측: pwsh 7 있으면 그쪽 우선), 스크립트는 내장 powershell.exe(5.1) 호환 유지. **macOS/Linux**: pwsh 7 필요(`brew install powershell` 등) |
-| Claude Code | **최소 v2.0** (플러그인 사용) · AGENTS.md 직접 로드는 v2.1.277+ (미만이면 세션 시작 hook 의 Read 지시가 대신) · **하니스 개발(eval 러너)은 권장 v2.1.269+** — `--filter` 이름 검증과 골든 러너 병렬 모드가 안정된 판이다. 미만에서는 부분 실행 필터가 조용히 0건을 돌 수 있다 <!-- verified: 2026-09-27 --> |
+| Claude Code | **v2.1.312 이상만 지원합니다** — 안전 hook 이 PowerShell 로 `exit 2` 를 내 막는 동작(v2.1.309 수정)과, hook 이 실패하면 도구 호출을 막는 `onFailure`(v2.1.295)에 기댑니다. 그 아래 판은 고려하지 않습니다 <!-- verified: 2026-10-30 --> |
 | 대상 언어 | **모든 언어 동작** — .NET, Android, Node/TS, Python, Go, Rust는 표식 파일로 자동 감지·자동 설정. 그 외(Flutter·Swift·Java·C++·Ruby 등)는 빌드/테스트 명령만 입력하면 동일하게 작동 |
 
 ---

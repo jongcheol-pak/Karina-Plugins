@@ -21,6 +21,7 @@
   ```
   pwsh -NoProfile -Command '@(".claude-plugin/plugin.json","hooks/hooks.json","../../.claude-plugin/marketplace.json") | ForEach-Object { $c = Get-Content -LiteralPath $_ -Raw -ErrorAction Stop; $null = $c | ConvertFrom-Json; Write-Host ($_ + " OK") }'
   ```
+- **플러그인 매니페스트·frontmatter 검사** (`.claude-plugin/**`·`hooks/hooks.json`·`agents/*.md`·`skills/*/SKILL.md` frontmatter 수정 시 필수 · 인증 불요): `claude plugin validate --strict .` · `claude plugin validate --strict ../..`
 - **Plan check**: `python evals/check-harness-consistency.py --plan` — 계획 단계 검사(`karina:plan` Step 6 의 `check-plan` 이 승인 전에 돌린다)
 - **Hook 골든 회귀** (hook 스크립트·골든 케이스 수정 시 필수):
   ```
@@ -101,7 +102,7 @@
 ## DO NOT
 
 - **실제 자격증명을 코드·문서·notes·plan 에 기록** — 환경변수 이름만 적고 값은 `.env` 에 둔다. 종류는 `docs/harness-conventions.md` 「자격증명 취급」.
-- **`exit 2` 를 내는 넷의 차단 동작 변경** — `block-destructive.ps1`·`guard-harness.ps1`·`guard-bash.ps1`(**dot-source 하는 `guard-commit-secrets`·`guard-stale-docs` 의 커밋 판정 포함**)·`guard-write.ps1`. 안전 임계 hook(끌 수 없는 마지막 방어선)이고 차단 대상은 `scripts/rules/` 가 정본이다. **넷 전부에 오탐 수정·미탐 보완·사용자 지시의 범위 축소·사용자 지시의 이름 교체만 허용되며 골든 실증이 붙는다**(`docs/harness-conventions.md` 「안전 임계 hook 의 차단 동작 변경」).
+- **`exit 2` 를 내는 넷의 차단 동작 변경** — `block-destructive.ps1`·`guard-harness.ps1`·`guard-bash.ps1`(**dot-source 하는 `git-commit-match`·`guard-commit-secrets`·`guard-stale-docs` 의 커밋 판정 포함**)·`guard-write.ps1`. 안전 임계 hook(끌 수 없는 마지막 방어선)이고 차단 대상은 `scripts/rules/` 가 정본이다. **넷 전부에 오탐 수정·미탐 보완·사용자 지시의 범위 축소·사용자 지시의 이름 교체만 허용되며 골든 실증이 붙는다**(`docs/harness-conventions.md` 「안전 임계 hook 의 차단 동작 변경」).
 - **검증·테스트 스크립트에 평문 자격증명·창 숨김·과도한 실행정책 완화**(사유는 같은 절).
 
 ## Plan Location
@@ -113,4 +114,4 @@
 ## OS/플랫폼
 
 - Windows 검증 · macOS/Linux 실험적(hooks 는 pwsh 7 cross-platform 의도).
-- **Claude Code**: 최소 v2.0 · **권장 v2.1.269+**(`--filter` 이름 검증·골든 러너 병렬 모드가 안정된 판) · AGENTS.md 자체 로드는 **v2.1.277+**(CLAUDE.md 없는 레포 — 미만이면 `session-context` 목차 줄의 Read 지시가 폴백). <!-- verified: 2026-09-27 -->
+- **Claude Code**: **v2.1.312 이상만 지원한다** — 그 아래 판은 고려하지 않는다(PowerShell hook 의 `exit 2` 차단은 v2.1.309, hooks.json `onFailure` 는 v2.1.295 부터다). <!-- verified: 2026-10-30 -->

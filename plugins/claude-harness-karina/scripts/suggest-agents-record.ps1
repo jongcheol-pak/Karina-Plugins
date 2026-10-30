@@ -113,7 +113,9 @@ $sid = if ($data.session_id) { [string]$data.session_id } else { '' }
 $projLeaf = Split-Path -Leaf $projDir
 # 파일명 안전 문자만 남김 (디렉터리명 공백·session_id 등)
 $sidSafe = ($sid -replace '[^A-Za-z0-9._-]', '_')
-$leafSafe = ($projLeaf -replace '[^A-Za-z0-9._-]', '_')
+# 폴더 이름의 비 ASCII 가 전부 `_` 가 되므로 전체 경로 해시 8자를 붙여 프로젝트마다 마커를 가른다 — 근거는 `rules/suggest-record-rationale.md` §7
+$projHash = -join ([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($projDir.ToLowerInvariant())) | Select-Object -First 4 | ForEach-Object { $_.ToString('x2') })
+$leafSafe = ($projLeaf -replace '[^A-Za-z0-9._-]', '_') + '-' + $projHash
 
 # ---- 제안 대상 추림: AGENTS.md에 토큰 없음 + 마커 없음 ----
 $toSuggest = New-Object System.Collections.Generic.List[object]

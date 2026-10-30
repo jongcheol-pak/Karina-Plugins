@@ -377,7 +377,7 @@ def judge_case(case, triggered, stop_reason, timed_out):
     `skill` 이 뜨지 않으면 PASS 다.
 
     `fired` 는 통과 방향과 같은 뜻을 지닌다 — trigger 는 「목표가 첫 발동」, no-trigger 는
-    「`skill` 이 떴다(오발동)」. `compare_evals.py`·`summarize` 가 이 필드를 그대로 읽는다.
+    「`skill` 이 떴다(오발동)」. `summarize` 가 이 필드를 그대로 읽는다.
 
     목표가 있는데 아무 스킬도 안 뜬 채 턴이 소진되면 `inconclusive` 다 — 스킬을 안 쓰기로 한
     것이 아니라 호출 기회에 닿지 못한 것이라 판정 불가다. `route_to` 없는 no-trigger 의 턴
@@ -447,7 +447,7 @@ def run_case(case, config_dir, model, workspaces):
         "triggered": triggered or [],
     }
     if case.get("route_to"):
-        base["route_to"] = case["route_to"]  # compare_evals 가 첫 발동 표시에 쓴다
+        base["route_to"] = case["route_to"]
 
     if timed_out:
         # 성공으로도 실패로도 집계하지 않는다 — 판정을 못 한 것이지 결과가 아니다.

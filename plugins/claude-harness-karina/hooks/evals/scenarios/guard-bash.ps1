@@ -9,6 +9,7 @@ if (Test-HookSelected @('guard-bash')) {
 #   lib 없는 임시 사본에서 디스패처를 단독 실행한다(Invoke-Hook은 $scriptsDir 고정이라 lib가 항상 옆에 있음).
 $noLib = Join-Path $work 'dispatch-nolib'; New-Item -ItemType Directory $noLib -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noLib -Force
+Copy-Item (Join-Path $scriptsDir 'git-commit-match.ps1') $noLib -Force
 $noLibExe = Join-Path $noLib 'guard-bash.ps1'
 # cwd 는 plan.md 없는 사본 폴더 — cwd 를 빼면 require-task-checkbox 가 러너 레포의 실제 plan.md 를 읽어 결과가 갈린다.
 $outNoLib = (New-CommitJson $noLib 'T1: x') | pwsh -NoProfile -ExecutionPolicy Bypass -File $noLibExe 2>&1
@@ -42,6 +43,7 @@ Assert-Case -Name "guard-bash: 라이브러리 부재 + 완료 [x] T 커밋은 �
 # LZ1·LZ2: 지연 로드 실증 — dot-source 될 때 표식 파일을 쓰는 가짜 라이브러리 둘을 둔 사본.
 $stubLib = Join-Path $work 'dispatch-stublib'; New-Item -ItemType Directory $stubLib -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $stubLib -Force
+Copy-Item (Join-Path $scriptsDir 'git-commit-match.ps1') $stubLib -Force
 New-Item -ItemType Directory (Join-Path $stubLib 'rules') -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'rules/*.json') (Join-Path $stubLib 'rules') -Force
 'Set-Content -LiteralPath (Join-Path $PSScriptRoot ''loaded-cs.txt'') x; function Invoke-WarnCommitSecrets { param($data) New-HookResult }' | Set-Content (Join-Path $stubLib 'guard-commit-secrets.ps1')
@@ -54,6 +56,17 @@ Assert-Case -Name "guard-bash: 비커밋 명령은 커밋 판정 라이브러리
 $o = (New-CommitJson $stubLib 'x') | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $stubLib 'guard-bash.ps1') 2>&1
 $r = @{ code = @($stubMarks | Where-Object { Test-Path -LiteralPath $_ }).Count; out = (($o | Out-String)).Trim() }
 Assert-Case -Name "guard-bash: 커밋 명령은 커밋 판정 라이브러리 둘을 dot-source 한다 (LZ2 — 표식 파일 2개)" -R $r -ExpectExit 2 -ExpectNotContains '로드 실패'
+
+$noMatch = Join-Path $work 'dispatch-nomatch'; New-Item -ItemType Directory $noMatch -Force | Out-Null
+Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noMatch -Force
+$noMatchExe = Join-Path $noMatch 'guard-bash.ps1'
+$o = (New-CommitJson $noMatch 'x') | pwsh -NoProfile -ExecutionPolicy Bypass -File $noMatchExe 2>&1
+$r = @{ code = $LASTEXITCODE; out = (($o | Out-String)).Trim() }
+Assert-Case -Name "guard-bash: 커밋 판정 정의 부재 시 커밋 명령 차단 (LZ7 — fail-closed)" -R $r -ExpectExit 2 -ExpectContains 'git-commit-match.ps1'
+$lz = @{ tool_name = 'Bash'; cwd = $noMatch; tool_input = @{ command = 'ls -la' } } | ConvertTo-Json -Compress
+$o = $lz | pwsh -NoProfile -ExecutionPolicy Bypass -File $noMatchExe 2>&1
+$r = @{ code = $LASTEXITCODE; out = (($o | Out-String)).Trim() }
+Assert-Case -Name "guard-bash: 커밋 판정 정의 부재여도 비커밋 명령은 통과 (LZ8 — 음성 짝)" -R $r -ExpectExit 0
 }   # ---- 로드 가드 게이트 끝 (guard-bash) ----
 
 # ---- require-task-checkbox 시나리오 흡수 (v1.225.0 — 그 hook이 guard-bash로 합쳐졌다) ----
@@ -82,6 +95,40 @@ $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
 Assert-Case -Name "rtc: 미완료 [ ] T3 커밋 차단 (차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcIn 'T3: 검색 요약')
 Assert-Case -Name "rtc: 진행중 [/] T3 커밋 차단" -R $r -ExpectExit 2 -ExpectContains 'T3'
+$rtcSp = Join-Path $work 'rtc space dir'; New-Item -ItemType Directory $rtcSp -Force | Out-Null
+"# plan`n- [ ] T2. 워커 작업" | Set-Content (Join-Path $rtcSp 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $rtcSp; tool_input = @{ command = ('git -C "' + $rtcSp + '" commit -m "기능: T2 — 워커 작업"') } } | ConvertTo-Json -Compress)
+Assert-Case -Name "rtc: 공백 경로 -C 커밋도 미완료 T2 차단" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$rtcB = Join-Path $work 'rtc-b-unchecked'; New-Item -ItemType Directory $rtcB -Force | Out-Null
+"# plan`n- [ ] T2. 워커 작업" | Set-Content (Join-Path $rtcB 'plan.md')
+$rtcBok = Join-Path $work 'rtc-b-checked'; New-Item -ItemType Directory $rtcBok -Force | Out-Null
+"# plan`n- [x] T2. 워커 작업" | Set-Content (Join-Path $rtcBok 'plan.md')
+$rtcAun = Join-Path $work 'rtc-a-unchecked'; New-Item -ItemType Directory $rtcAun -Force | Out-Null
+"# plan`n- [ ] T2. 다른 작업" | Set-Content (Join-Path $rtcAun 'plan.md')
+$rtcAnone = Join-Path $work 'rtc-a-noplan'; New-Item -ItemType Directory $rtcAnone -Force | Out-Null
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $rtcAnone; tool_input = @{ command = 'cd ../rtc-b-unchecked && git commit -m "기능: T2 — 워커 작업"' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "rtc: 앞선 cd 대상 레포의 미완료 T2 차단" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $rtcAnone; tool_input = @{ command = 'git -C ../rtc-b-unchecked commit -m "기능: T2 — 워커 작업"' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "rtc: -C 대상 레포의 미완료 T2 차단" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $rtcAun; tool_input = @{ command = 'git -C ../rtc-b-checked commit -m "기능: T2 — 워커 작업"' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "rtc: cwd 가 미완료여도 -C 대상 레포가 완료면 통과" -R $r -ExpectExit 0
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcAun '기능: T2 — 다른 작업')
+Assert-Case -Name "rtc: -C 없는 cwd 미완료 T2 차단 유지 (음성 짝)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$rtcWtRepo = Join-Path $work 'rtc-wt-repo'; New-Item -ItemType Directory (Join-Path $rtcWtRepo '.git') -Force | Out-Null
+"# plan`n- [ ] T2. 부모 작업" | Set-Content (Join-Path $rtcWtRepo 'plan.md')
+$rtcWt = Join-Path $rtcWtRepo 'wtroot/wt1'; New-Item -ItemType Directory $rtcWt -Force | Out-Null
+"gitdir: $rtcWtRepo/.git/worktrees/wt1" | Set-Content (Join-Path $rtcWt '.git')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcWt '기능: T2 — 워커 작업')
+Assert-Case -Name "rtc: worktree 커밋은 부모 레포 plan 으로 막지 않는다" -R $r -ExpectExit 0
+$rtcWt2 = Join-Path $rtcWtRepo 'wtroot/wt2'; New-Item -ItemType Directory $rtcWt2 -Force | Out-Null
+"gitdir: $rtcWtRepo/.git/worktrees/wt2" | Set-Content (Join-Path $rtcWt2 '.git')
+"# plan`n- [ ] T2. 워커 작업" | Set-Content (Join-Path $rtcWt2 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcWt2 '기능: T2 — 워커 작업')
+Assert-Case -Name "rtc: worktree 자기 plan 미완료는 차단 (음성 짝)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$rtcSm = Join-Path $rtcWtRepo 'sub'; New-Item -ItemType Directory $rtcSm -Force | Out-Null
+'gitdir: ../.git/modules/sub' | Set-Content (Join-Path $rtcSm '.git')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcSm '기능: T2 — 부모 작업')
+Assert-Case -Name "rtc: 서브모듈 커밋은 상위 plan 미완료로 차단 유지 (음성 짝)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcOk 'T3: 검색 요약')
 Assert-Case -Name "rtc: 완료 [x] T3 커밋 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUn 'T99: 없는 task')
@@ -335,6 +382,7 @@ Assert-Case -Name "split: 닫히지 않은 따옴표 뒤여도 리다이렉션 �
 $noJson = Join-Path $work 'ops-nojson'; New-Item -ItemType Directory (Join-Path $noJson 'rules') -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noJson -Force
 Copy-Item (Join-Path $scriptsDir 'guard-commit-secrets.ps1') $noJson -Force
+Copy-Item (Join-Path $scriptsDir 'git-commit-match.ps1') $noJson -Force
 Copy-Item (Join-Path $scriptsDir 'rules/*.md') (Join-Path $noJson 'rules') -Force -ErrorAction SilentlyContinue
 
 # EOJ1: json 부재 → 외부 작업 경고는 사라지고 stderr 로 그 사실이 보인다(침묵 fail-open 아님).

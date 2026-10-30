@@ -1,14 +1,15 @@
 ---
 name: karina-orchestration
 description: >-
-  Use Karina orchestration for structured multi-agent coordination on Windows:
+  Use Karina orchestration for structured multi-agent coordination on Windows,
+  or to work as a dispatched worker (heartbeats, ask, worker_done):
   persistent threaded messages between agent terminals, blocking ask/reply
   flows, task DAGs with dependencies, dispatching work to supervised worker
   tabs, waiting for worker_done or escalation, decision gates, and coordinator
   loops. Use whenever work is split across agent terminals and someone must
   track which task runs where and who reported what. Use plain terminal
   commands for ordinary shell work that needs no coordination state.
-version: 1.2.0
+version: 1.4.0
 ---
 
 # Inter-Agent Orchestration (Windows)
@@ -72,7 +73,7 @@ change between Karina releases, and this file deliberately does not list them. P
 `--json` for agent-driven calls; **every response is JSON, including errors**.
 
 **Drain stdout while the command runs — never wait for exit and read afterwards.** This
-very command prints about 13 KB, more than a pipe's default buffer holds, so a caller that
+very command prints about 30 KB, more than a pipe's default buffer holds, so a caller that
 blocks on process exit before reading will deadlock: the CLI is blocked on a write nobody
 is reading, and neither side moves. The same applies to stderr if you capture it —
 `check --wait` writes a keepalive line there every 15 seconds for up to an hour. Use a call

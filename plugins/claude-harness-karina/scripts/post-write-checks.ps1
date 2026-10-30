@@ -353,11 +353,10 @@ try {
         #   근거 §15 가 정본이다: ① 파일 단위 `check-attr eol` ② 속성이 없으면 추적 파일의 실제 워킹트리 eol 비율.
         if ($notIgnored) {
             $bytes = [System.IO.File]::ReadAllBytes($file)
-            $lf = 0; $crlf = 0
-            for ($i = 0; $i -lt $bytes.Length; $i++) {
-                if ($bytes[$i] -ne 0x0A) { continue }
-                if ($i -gt 0 -and $bytes[$i - 1] -eq 0x0D) { $crlf++ } else { $lf++ }
-            }
+            # `Encoding.Latin1` 속성은 .NET 5+ 전용이라 5.1 호환으로 코드페이지 28591 을 쓴다.
+            $eolText = [System.Text.Encoding]::GetEncoding(28591).GetString($bytes)
+            $crlf = ([regex]::Matches($eolText, "`r`n")).Count
+            $lf = ($eolText.Length - $eolText.Replace("`n", '').Length) - $crlf
             $crlfRepo = $false; $repoCrlf = 0; $repoTotal = 0
             if ($lf -gt 0) {
                 $eolAttr = ((& git check-attr eol -- $file 2>$null) -join '')

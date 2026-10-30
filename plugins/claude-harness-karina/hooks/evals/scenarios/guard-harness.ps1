@@ -16,6 +16,12 @@ $ph = Join-Path $work 'ph'; New-Item -ItemType Directory $ph -Force | Out-Null
 $fakeInstall = Join-Path $ph '.claude/plugins/cache/karina-plugins/karina/1.89.0'
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'scripts/block-destructive.ps1'))
 Assert-Case -Name "guard-harness: 설치본 hook 스크립트 Write 차단 (차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph '.claude/worktrees/feat/scripts/build.ps1') 'Edit')
+Assert-Case -Name "guard-harness: worktree 안 사용자 스크립트 편집 통과" -R $r -ExpectExit 0
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph '.claude/worktrees/feat/plugins/claude-harness-karina/hooks/hooks.json') 'Edit')
+Assert-Case -Name "guard-harness: 하니스 레포 worktree 의 hooks.json 편집 통과" -R $r -ExpectExit 0
+$r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $ph '.claude/worktrees/feat/.claude/plugins/cache/karina-plugins/karina/1.89.0/scripts/guard-bash.ps1'))
+Assert-Case -Name "guard-harness: worktree 안이어도 설치 캐시 경로는 차단 유지 (음성 짝)" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
 $r = Invoke-Hook 'guard-harness.ps1' (New-WriteJson $ph (Join-Path $fakeInstall 'hooks/hooks.json'))
 Assert-Case -Name "guard-harness: 설치본 hooks.json Write 차단" -R $r -ExpectExit 2
 

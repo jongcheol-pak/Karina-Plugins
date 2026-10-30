@@ -30,6 +30,9 @@ $script:StaleAxisMap = @(
 #   빠졌다(회차 64). 근거 문서 §5 의 「감소에도 정당한 형태가 하나 있다」가 이 자리다.
 $script:StaleAxisBaseline = 3
 
+# 커밋·add 판정식 — 디스패처 없이 읽혀도 같은 정의를 쓴다 — 근거는 `rules/bash-guard-rationale.md` §18
+. (Join-Path $PSScriptRoot 'git-commit-match.ps1')
+
 function Test-AxisVerifiedFresh {
     <#
       축에 TTL 이 걸려 있고 그 파일의 verified 표기가 아직 신선하면 $true — 그때만 고지를
@@ -142,20 +145,21 @@ function Invoke-WarnStaleDocs {
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
-    # 커밋 판정은 `guard-commit-secrets.ps1` 과 **같은 형태를 쓴다** — 두 검사가 같은 자리에서
-    #   발화하므로 판정이 갈리면 한쪽만 도는 조합이 생긴다. **heredoc 스트립도 그 형태에
-    #   포함된다** — 2026-09-11 한쪽만 고쳐 그 조합이 실제로 생겼다(완료 리뷰 MAJOR).
+    # 커밋 판정은 `guard-commit-secrets.ps1` 과 **같은 정의(`git-commit-match.ps1`)와 같은 heredoc 스트립을 쓴다** —
+    #   두 검사가 같은 자리에서 발화하므로 판정이 갈리면 한쪽만 도는 조합이 생긴다(2026-09-11 실제로 생겼다).
     $cmdForJudge = if (Get-Command Remove-HeredocBodyForJudge -ErrorAction SilentlyContinue) { Remove-HeredocBodyForJudge $cmd } else { $cmd }
-    if ($cmdForJudge -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
+    if ($cmdForJudge -notmatch $script:GitCommitRx) { return New-HookResult }
     if ($cmdForJudge -match '--dry-run' -or $cmdForJudge -match '--help' -or $cmdForJudge -match '(^|\s)-h(\s|$)') { return New-HookResult }
 
-    # **레포는 `$data.cwd` 기준으로 찾는다** — 프로세스 cwd 를 쓰면 안 된다. .NET 의
+    # **레포는 `$data.cwd`(`-C`·앞선 `cd` 가 있으면 그 대상) 기준으로 찾는다** — 프로세스 cwd 를 쓰면 안 된다. .NET 의
     #   `Environment.CurrentDirectory` 는 PowerShell 의 `Set-Location`·`Push-Location` 을
     #   따라가지 않아, 자식 프로세스가 엉뚱한 레포에서 `git` 을 돌린다(골든이 이것을 잡았다 —
     #   다른 레포의 스테이징을 이 커밋의 것으로 읽는 오판정이 실제로 났다).
     $cwd = [string]$data.cwd
     if ([string]::IsNullOrWhiteSpace($cwd)) { $cwd = (Get-Location).Path }
     if (-not (Test-Path -LiteralPath $cwd)) { return New-HookResult }
+    # 커밋이 도는 레포(`-C`·앞선 `cd`)에서 루트를 찾는다 — 근거는 `rules/bash-guard-rationale.md` §19
+    $cwd = Resolve-GitCommitDir $cmdForJudge $cwd
     # 하니스 레포에서만 돈다 — 하니스 루트(모노레포의 플러그인 폴더)를 위로 올라가며 찾는다(`harness-root.ps1`,
     #   `warn-version-drift.ps1` 과 같은 판정). 하위 폴더에서 커밋해도 지금처럼 판정이 돈다.
     $root = Find-HarnessRoot -StartDir $cwd

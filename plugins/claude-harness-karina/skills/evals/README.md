@@ -6,9 +6,7 @@
 
 | 러너 | 재는 것 | 입력 | 출력 |
 |---|---|---|---|
-| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 88건 (8스킬 × 최소 7건, `karina:llm-wiki`는 20건) | `trigger-<isolation>-<run_id>.json` |
-| `rubric_eval.py` | plan **산출물 품질** (`rubric.md` 8항목 × 1-10점 + 근거) | `docs/plans/`의 과거 plan | `rubric-<run_id>.json` |
-| `compare_evals.py` | 두 run의 **증감·회귀** | 위 두 러너의 결과 JSON 2개 | stdout 증감표 |
+| `trigger_eval.py` | 스킬 **트리거 정확도** (should-trigger 발동률 / should-not-trigger 오발동률) | `trigger-cases.json` 91건 (8스킬 × 최소 7건, `karina:llm-wiki`는 20건) | `trigger-<isolation>-<run_id>.json` |
 
 ## 공통 출력 계약
 
@@ -69,7 +67,6 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 
 ⚠ **이 값은 앞의 `0.6`·`0.750`과 분모가 다르다** — should-trigger 케이스의 턴 소진분을 분모에서 빼기 시작한 뒤의 수치이므로(위 「턴 상한」), 그 전 값과 직접 빼서 증감으로 읽지 말 것. **같은 정의로 잰 값끼리의 추이**는 `20260805-175450` 0.750 → `20260806-122901` 0.833 → `20260806-143647` 0.871 → **`20260806-153530` 0.906**이다.
 
-**직전 두 run은 성격이 다르다** — `143647`은 러너 CLI 인자 수정 직후·description 개정 **전**의 기준선이고, `153530`은 개정 **후**다. `compare_evals.py`로 그 둘을 대조하면 **개선 2건**(`plan-pos-2`·`boot-pos-2`) / **회귀 1건**(`dsvc-pos-2` — `ddd_project` 픽스처에 재고 개념이 없어 모델이 되물은 것으로, 개정과 인과 없음)이다. A/B를 다시 잴 때는 **개정 전후를 각각 새로 떠서** 대조할 것 — 케이스 파일이 바뀌면 옛 run은 기준선 자격을 잃는다.
 
 ### 판정 규칙
 
@@ -102,49 +99,11 @@ python trigger_eval.py --model opus       # 측정 모델 (기본 opus)
 
 **질의에 스택·환경을 쓰지 않는다** — 그것은 워크스페이스(AGENTS.md)가 정한다. 워크스페이스가 WinUI인데 질의에 "MAUI 프로젝트에"라고 쓰면 **전제가 모순돼 미발동이 정상**이 되고, 그 FAIL은 트리거 품질과 무관하다(실제로 `vm-pos-3`이 그렇게 실패했다). `no-trigger`는 **인접 스킬과 갈리는 경계**를 고르는 것이 가장 값지다(예: `karina:plan`의 "여러 곳 고쳐야 해" ↔ `karina:implement`의 "이대로 진행해" — 두 방향을 모두 케이스로 두면 라우팅이 실제로 갈리는지 보인다). `why`는 러너가 읽지 않는 판정 근거이며, 케이스가 왜 그 기대값을 갖는지 후속 세션이 알 수 있게 남긴다.
 
-## rubric_eval.py
-
-```
-python rubric_eval.py --plans-dir <경로>   # 그 폴더의 전 plan을 2회씩 채점
-python rubric_eval.py --repeats 1         # 편차 측정 없이 1회만 (스모크)
-python rubric_eval.py --filter harness     # plan 파일명 부분 일치 필터
-python rubric_eval.py --repeats 3         # 편차를 더 넓게
-```
-
-`rubric.md`의 8개 항목을 judge에게 그대로 실어 보내 각 plan을 채점한다. **기본 경로(`docs/plans`)에는 채점 대상이 없다** — 이 레포는 `plan.md`를 추적하지 않아(.gitignore) `YYYY-MM-DD-<slug>.md`가 거기 존재하지 않는다. 보관해 둔 plan 세트를 `--plans-dir`로 지목하고, 0건이면 러너가 `exit 2`로 멈춘다(조용한 성공을 만들지 않는다).  채점 대상은 파일명이 `YYYY-MM-DD-<slug>.md`인 것만이다 — `deferred.md`·`deferred-closed.md` 같은 대장 문서를 plan으로 오인해 채점하지 않기 위한 필터다(파일명 규약 기준이라 대장이 둘로 갈려도 동작은 같다).
-
-### 이 러너가 반드시 지키는 것
-
-1. **근거 없는 점수는 점수로 세지 않는다** — 항목마다 `파일:라인` 근거를 받고, 근거가 없으면 러너가 그 점수를 `N/A`로 내린다(judge가 숫자를 냈더라도). 근거 없는 숫자는 A/B 비교의 기준이 되지 못한다.
-2. **기본 2회 채점 + 편차 보고** — judge 채점은 실행마다 흔들린다. 편차를 모르면 "1점 올랐다"가 개선인지 잡음인지 구분할 수 없다. 편차는 **전 회차의 폭(최댓값 - 최솟값)** 이라 `--repeats`를 3 이상으로 올려도 뒤 회차가 통계에서 빠지지 않는다. 한 회차라도 `N/A`인 항목은 편차를 계산하지 않는다(`N/A`를 0점으로 취급하면 "채점 못 함"이 "최하점"으로 둔갑한다).
-3. **중립 cwd + 격리 `CLAUDE_CONFIG_DIR`** — 프로젝트 `AGENTS.md`나 글로벌 `CLAUDE.md`가 채점 기준에 끼어들면 같은 plan이 환경에 따라 다른 점수를 받는다. 플러그인은 싣지 않는다(judge는 스킬을 쓰지 않는다).
-4. **절단을 숨기지 않는다** — 입력 상한 30,000자를 넘으면 잘라내되 `truncated`와 `issues`에 남긴다. 조용한 절단은 "뒷부분이 부실해서 낮은 점수"와 "안 보여줘서 낮은 점수"를 구분 불가능하게 만든다.
-
-### 루브릭을 고칠 때
-
-항목 키는 `rubric.md`의 `### N. 이름 (key)` 형식에서 **동적으로 추출**한다 — 루브릭을 고쳤는데 러너가 옛 항목을 기대해 전부 "불일치"로 집계되는 어긋남을 막기 위해서다. 다만 **항목을 더하거나 빼면 과거 run과의 점수 비교가 깨지므로**, 그럴 때는 새 `run_id` 세대로 구분하고 옛 run과 직접 비교하지 않는다. **judge 출력 계약(스키마 강제·출력 형식 예시 값)이 바뀐 run 도 이전 run 과 점수 비교 세대가 다르다** — 같은 plan 이라도 judge 가 받는 지시가 달라 점수 차이가 plan 의 차이로 읽히지 않는다.
-
-## compare_evals.py
-
-```
-python compare_evals.py <before.json> <after.json>
-```
-
-두 러너의 결과 JSON **만** 읽는다 — 러너를 호출하지 않으므로 모델 비용이 들지 않고 언제든 다시 돌릴 수 있다. `kind`에 따라 비교 방식이 갈린다(트리거는 케이스별 발동 여부, 루브릭은 plan × 항목 점수).
-
-- **회귀를 따로 모아 보여준다** — 총점이 올라도 특정 케이스가 무너졌으면 그것이 알아야 할 사실이다.
-- **교집합만 비교하고 빠진 것을 반드시 출력한다** — 조용히 빼면 "비교했다"가 거짓이 된다. 공통 항목이 0건이면 그 사실을 경고로 알린다.
-- **한쪽이 `N/A`인 항목은 증감을 만들지 않는다** — 없는 점수를 0으로 두면 허위 낙폭이 생긴다.
-- 통계 검정도 시각화도 하지 않는다. 차이가 잡음인지 신호인지는 러너가 함께 보고하는 **편차 수치**를 보고 사람이 판단한다(2026-07-29 기준선의 편차는 최대 1점).
-- exit code: 비교 완료 `0` / 입력 오류·`kind` 불일치 `1`.
-
 > **`trigger_eval.py`의 종료 코드**: 전건 통과 `0` / `fail` 있음 `1` / **`error`·`timeout` 있음 `2`**(관측 실패는 통과가 아니다 — 로드 단언 실패와 같은 등급이다).
-
-`kind`가 다른 run, 위 「공통 출력 계약」 구조가 아닌 파일, 없는 파일은 전부 명확한 메시지와 함께 `exit 1`로 거부한다.
 
 ## 비용
 
-`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(88건 → 176세션). `rubric_eval.py`는 plan 수 × `--repeats`회의 judge 호출을 하며, plan 1건 채점에 1분 내외가 걸린다. 스모크 확인은 `--filter`(+ `--repeats 1`)로 1건만 돌린다.
+`trigger_eval.py --isolation both`는 케이스 수 × 2회의 세션을 띄운다(91건 → 182세션). 스모크 확인은 `--filter` 로 케이스 하나만 돌린다.
 
 ## 실행 함정 (2026-09-03 실측)
 
@@ -154,7 +113,7 @@ python compare_evals.py <before.json> <after.json>
 
 ## 네이티브 `claude plugin eval` 과의 관계
 
-> **실측 2026-09-17 · Claude Code v2.1.274.** 이 절이 재는 것은 *"이 폴더의 러너 셋을 네이티브로 갈음할 수 있는가"* 하나다. **판정에 쓴 명령을 항목마다 적는다** — 갈음 여부는 CC 판이 올라갈 때마다 바뀌므로, 다시 잴 때 같은 명령을 돌려 대조한다.
+> **실측 2026-09-17 · Claude Code v2.1.274.** 이 절이 재는 것은 *"이 폴더의 러너를 네이티브로 갈음할 수 있는가"* 하나다. **판정에 쓴 명령을 항목마다 적는다** — 갈음 여부는 CC 판이 올라갈 때마다 바뀌므로, 다시 잴 때 같은 명령을 돌려 대조한다.
 
 > **판정 — 이관 보류(2026-09-17 사용자 결정).** 이 폴더는 **현행 유지**다. 가른 것은 아래 「비대응」의 ①·②이고 나머지 셋은 대가가 크지 않다. ① `inconclusive` 분모 제외를 잃으면 **발동률 기준선과 대조할 자격이 사라진다** — 분모 정의가 달라진 값은 같은 축의 값이 아니라 재기준선이 필요하다. ② 비격리 모드를 잃으면 *실사용 환경의 발동률* 을 재는 축이 통째로 없어진다 — 격리 0.6 / 비격리 0.9 의 차이가 글로벌 지침의 기여분이고, 네이티브에는 그 모드를 켜는 옵션이 없다. **아래 표는 그 판정의 근거이지 이관 계획이 아니다.**
 
@@ -169,9 +128,7 @@ python compare_evals.py <before.json> <after.json>
 | **격리 모드**(`CLAUDE_CONFIG_DIR` 비우기) | **기본 동작** — *"user settings, hooks, `CLAUDE.md` files, MCP servers, other installed plugins, memory, and skills are absent"* | 이 폴더가 손으로 만드는 격리가 네이티브에서는 끄는 쪽이 불가능한 기본값이다 |
 | **watchdog**(케이스당 180초) | `timeout_seconds`(기본 300 · 상한 3600) · `max_turns`(기본 10 · 상한 200) | 프로세스 트리 정리까지 러너가 진다 |
 | **픽스처**(`plan.md` 유무 워크스페이스) | `context.scaffold_script` + `--scaffold` | 케이스 디렉터리의 bash 스크립트가 빈 작업 폴더를 채운다 |
-| `compare_evals.py` 의 **증감 대조** | `--ablation with-without` | **네이티브가 더 넓다** — 두 run 을 사람이 짝지어 비교하는 것이 아니라, 같은 실행 안에서 플러그인 유/무 두 arm 을 돌려 케이스별 `delta` 와 improved/flat/regressed 집계를 낸다 |
 | **공통 출력 계약**(`run_id`·`summary`·`cases[]`) | `--json` 의 `aggregate-result.json` + 자체 포함 HTML 리포트 | 케이스별 `aggregates.score`·`aggregates.delta`·run 별 `error` 를 담는다 |
-| `rubric_eval.py` 의 **8항목 채점** | `llm` 그레이더(`criteria` · 3표 중 2표 PASS) · `baseline` 그레이더(기준 transcript 대비) | 심사 모델은 `--judge-model`(기본 haiku) |
 | **`PYTHONUTF8=1` 강제** | — | 러너가 python 이라 생긴 문제다. 네이티브는 python 을 거치지 않아 **원인이 소멸**한다 |
 
 ### 비대응 — 이관하면 잃는 것
