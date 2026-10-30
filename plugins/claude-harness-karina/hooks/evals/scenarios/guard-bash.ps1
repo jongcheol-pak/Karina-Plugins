@@ -9,7 +9,6 @@ if (Test-HookSelected @('guard-bash')) {
 #   lib 없는 임시 사본에서 디스패처를 단독 실행한다(Invoke-Hook은 $scriptsDir 고정이라 lib가 항상 옆에 있음).
 $noLib = Join-Path $work 'dispatch-nolib'; New-Item -ItemType Directory $noLib -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noLib -Force
-# 커밋 판정 정의(`git-commit-match.ps1`)는 디스패처의 필수 의존이라 사본에도 둔다 — 여기서 빼는 것은 lib 둘이다.
 Copy-Item (Join-Path $scriptsDir 'git-commit-match.ps1') $noLib -Force
 $noLibExe = Join-Path $noLib 'guard-bash.ps1'
 # cwd 는 plan.md 없는 사본 폴더 — cwd 를 빼면 require-task-checkbox 가 러너 레포의 실제 plan.md 를 읽어 결과가 갈린다.
@@ -58,9 +57,6 @@ $o = (New-CommitJson $stubLib 'x') | pwsh -NoProfile -ExecutionPolicy Bypass -Fi
 $r = @{ code = @($stubMarks | Where-Object { Test-Path -LiteralPath $_ }).Count; out = (($o | Out-String)).Trim() }
 Assert-Case -Name "guard-bash: 커밋 명령은 커밋 판정 라이브러리 둘을 dot-source 한다 (LZ2 — 표식 파일 2개)" -R $r -ExpectExit 2 -ExpectNotContains '로드 실패'
 
-# LZ7·LZ8: 커밋 판정 정의(`git-commit-match.ps1`)가 없으면 커밋 명령은 막는다(fail-closed) — 차단 게이트
-#   (require-task-checkbox)가 그 정의로 커밋을 알아보므로, 조용히 통과시키면 설치 손상이 게이트를 끈다.
-#   커밋이 아닌 명령은 그대로 통과한다.
 $noMatch = Join-Path $work 'dispatch-nomatch'; New-Item -ItemType Directory $noMatch -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noMatch -Force
 $noMatchExe = Join-Path $noMatch 'guard-bash.ps1'
@@ -99,12 +95,10 @@ $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
 Assert-Case -Name "rtc: 미완료 [ ] T3 커밋 차단 (차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcIn 'T3: 검색 요약')
 Assert-Case -Name "rtc: 진행중 [/] T3 커밋 차단" -R $r -ExpectExit 2 -ExpectContains 'T3'
-# `-C` 값이 따옴표로 묶인 공백 경로여도 커밋이다 — 판정식이 `\S+` 로 경로를 받아 공백에서 끊겨 게이트를 건너뛰었다.
 $rtcSp = Join-Path $work 'rtc space dir'; New-Item -ItemType Directory $rtcSp -Force | Out-Null
 "# plan`n- [ ] T2. 워커 작업" | Set-Content (Join-Path $rtcSp 'plan.md')
 $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $rtcSp; tool_input = @{ command = ('git -C "' + $rtcSp + '" commit -m "기능: T2 — 워커 작업"') } } | ConvertTo-Json -Compress)
 Assert-Case -Name "rtc: 공백 경로 -C 커밋도 미완료 T2 차단" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
-# 커밋이 가리키는 레포의 plan 을 본다 — `-C <경로>`·앞선 `cd <경로>` 가 있으면 hook `cwd` 가 아니다.
 $rtcB = Join-Path $work 'rtc-b-unchecked'; New-Item -ItemType Directory $rtcB -Force | Out-Null
 "# plan`n- [ ] T2. 워커 작업" | Set-Content (Join-Path $rtcB 'plan.md')
 $rtcBok = Join-Path $work 'rtc-b-checked'; New-Item -ItemType Directory $rtcBok -Force | Out-Null
@@ -120,8 +114,6 @@ $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $rtcAun; tool_in
 Assert-Case -Name "rtc: cwd 가 미완료여도 -C 대상 레포가 완료면 통과" -R $r -ExpectExit 0
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcAun '기능: T2 — 다른 작업')
 Assert-Case -Name "rtc: -C 없는 cwd 미완료 T2 차단 유지 (음성 짝)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
-# worktree 의 `.git` 은 `gitdir: …/worktrees/…` 파일이다 — 그것을 경계로 보지 않으면 부모 레포 plan 을 잡아 오차단했다.
-#   서브모듈의 `.git` 파일(`gitdir: …/modules/…`)은 경계가 아니다 — 종전대로 상위 plan 을 본다.
 $rtcWtRepo = Join-Path $work 'rtc-wt-repo'; New-Item -ItemType Directory (Join-Path $rtcWtRepo '.git') -Force | Out-Null
 "# plan`n- [ ] T2. 부모 작업" | Set-Content (Join-Path $rtcWtRepo 'plan.md')
 $rtcWt = Join-Path $rtcWtRepo 'wtroot/wt1'; New-Item -ItemType Directory $rtcWt -Force | Out-Null

@@ -18,8 +18,6 @@ $sj2 = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 's2'; tool_input = @{ c
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sj2
 Assert-Case -Name "suggest: AGENTS.md 기재 시 억제(self-terminating)" -R $r -ExpectExit 0 -ExpectSilent $true
 
-# 1회 마커는 프로젝트마다 따로다 — 폴더 이름의 한글이 전부 `_` 로 바뀌어, 같은 세션에서 글자 수가 같은
-#   한글 폴더 두 프로젝트가 마커를 공유해 둘째 제안이 빠졌다(2026-10-30 감사). 전체 경로 해시를 붙인다.
 $kprojA = Join-Path $work '가나프로젝트'; New-Item -ItemType Directory $kprojA -Force | Out-Null
 $kprojB = Join-Path $work '다라프로젝트'; New-Item -ItemType Directory $kprojB -Force | Out-Null
 "# AGENTS`n" | Set-Content (Join-Path $kprojA 'AGENTS.md')

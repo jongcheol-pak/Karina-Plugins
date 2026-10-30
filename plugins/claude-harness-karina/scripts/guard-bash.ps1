@@ -438,7 +438,7 @@ $script:IsPsTool = ([string]$data.tool_name -eq 'PowerShell')
 
 $cmdText = [string]$data.tool_input.command
 
-# 커밋·add 판정식 — 차단 게이트가 쓰므로 상시 로드하고, 없으면 커밋 명령을 막는다 — 근거는 `rules/bash-guard-rationale.md` §18
+# 커밋·add 판정식 — 차단 게이트가 쓰므로 상시 로드하고, 없으면 commit 이 든 명령을 막는다 — 근거는 `rules/bash-guard-rationale.md` §18
 $commitMatchPath = Join-Path $PSScriptRoot 'git-commit-match.ps1'
 if (Test-Path -LiteralPath $commitMatchPath) { . $commitMatchPath }
 if (-not $script:GitCommitRx) {

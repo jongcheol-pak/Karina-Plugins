@@ -40,8 +40,6 @@ try {
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
     Assert-Case -Name 'stale-docs: 산문 서술 축 고지' -R $r -ExpectExit 0 -ExpectContains '산문 서술'
 
-    # 2-b) 하니스 루트 밖 cwd 에서 `git -C <하니스 루트> commit` 이어도 그 레포를 판정한다 — hook `cwd` 로만
-    #      루트를 찾으면 커밋되는 레포가 아니라 세션 폴더를 보고 침묵했다(2026-10-30 재현).
     $sdOutJson = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $work
                     tool_input = @{ command = ('git -C "' + $sdRoot + '" commit -m "x"') } } | ConvertTo-Json -Compress
     $r = Invoke-Hook 'guard-bash.ps1' $sdOutJson

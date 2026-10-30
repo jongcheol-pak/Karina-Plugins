@@ -447,7 +447,7 @@ def run_case(case, config_dir, model, workspaces):
         "triggered": triggered or [],
     }
     if case.get("route_to"):
-        base["route_to"] = case["route_to"]  # 결과 JSON 에 첫 발동 기대를 남긴다
+        base["route_to"] = case["route_to"]
 
     if timed_out:
         # 성공으로도 실패로도 집계하지 않는다 — 판정을 못 한 것이지 결과가 아니다.

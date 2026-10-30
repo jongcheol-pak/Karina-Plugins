@@ -168,9 +168,7 @@ $cmdJoined = $cmd -replace '`\r?\n', ' '
 $cmdJoined = $cmdJoined -replace '\\\r?\n', ' '
 $subs = Split-TopLevel $cmdJoined $isPowerShellTool
 
-# 데이터 인자 스트립의 치환기 — 작은따옴표 밖에 heredoc 이 아닌 `$(` 가 있으면 그 인자를 그대로 둔다.
-#   보존할 때 `$(`·괄호·큰따옴표를 공백으로 펴 안쪽 명령이 삭제 패턴의 경계에 걸리게 한다.
-#   작은따옴표 안은 bash 가 치환하지 않는다. 5.1 호환을 위해 -replace 스크립트블록 대신 MatchEvaluator 다.
+# 작은따옴표 안은 bash 가 치환하지 않는다. 5.1 에는 -replace 스크립트블록이 없어 MatchEvaluator 를 쓴다.
 $keepLiveSubst = [System.Text.RegularExpressions.MatchEvaluator] {
     param($m)
     if (($m.Value -replace "'[^']*'", '') -match '\$\((?!\s*cat\s+<<)') { return ' ' + ($m.Value -replace '\$\(|[()"]', ' ') + ' ' }

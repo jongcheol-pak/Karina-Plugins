@@ -301,7 +301,6 @@ $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo
 Assert-Case -Name "post-write: 추적 파일이 LF 면 경고 (EOL1)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
 # 이 hook 은 모든 레포에서 돈다 — 문구가 하네스 레포 문서를 가리키면 다른 레포에서 틀린 지시가 된다(2026-10-08 Karina 앱).
 Assert-Case -Name "post-write: EOL 경고 문구에 하네스 레포 참조가 없다 (EOL1)" -R $r -ExpectExit 0 -ExpectNotContains 'AGENTS.md'
-# 줄바꿈 계수 고정 — 계수 구현을 바꿔도(2026-10-30 바이트 루프 → 문자열 계수) 수가 같아야 한다.
 Assert-Case -Name "post-write: LF 파일 계수 (LF 2 / CRLF 0) (EOL1c)" -R $r -ExpectExit 0 -ExpectContains '(LF 2 / CRLF 0)'
 $eolMix = Join-Path $eolRepo 'mixed.md'
 [System.IO.File]::WriteAllText($eolMix, "가`r`n나`r`n다`r`n라`n마`n")

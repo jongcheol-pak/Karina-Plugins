@@ -23,9 +23,6 @@ $starplan = Join-Path $work 'proj-star';  New-Item -ItemType Directory $starplan
 $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $noplan (Join-Path $noplan 'A.cs'))
 Assert-Case -Name "guard-write: plan 없이 .cs Write 차단 (차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '코드 변경 전에 plan이 필요합니다'
 
-# worktree 경로 — `.claude/worktrees/<이름>/` 아래는 하니스 설정이 아니라 프로젝트 소스다. `.claude` 무조건 허용이
-#   그 소스 쓰기까지 통과시켰다(2026-10-30 재현). worktree 의 `.git` 은 `gitdir: …/worktrees/…` 파일이라 거기가
-#   프로젝트 루트이고, 서브모듈(`gitdir: …/modules/…`)은 종전대로 상위 plan 을 본다.
 $wtRepo = Join-Path $work 'wt-repo'; New-Item -ItemType Directory (Join-Path $wtRepo '.git') -Force | Out-Null
 $wtChild = Join-Path $wtRepo '.claude/worktrees/wt1'; New-Item -ItemType Directory (Join-Path $wtChild 'src') -Force | Out-Null
 "gitdir: $wtRepo/.git/worktrees/wt1" | Set-Content (Join-Path $wtChild '.git')

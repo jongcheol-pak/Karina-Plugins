@@ -240,7 +240,6 @@ function Find-PlanUpwards {
     for ($i = 0; $i -lt $MaxDepth; $i++) {
         if (-not $dir) { break }
         if (Test-PlanInDirectory -Dir $dir) { return $dir }
-        # .git 또는 .claude 만나면 거기까지가 프로젝트 루트 → 더 위로 안 감
         if ((Test-Path -LiteralPath (Join-Path $dir '.git') -PathType Container) -or
             (Test-WorktreeGitFile $dir) -or
             (Test-Path -LiteralPath (Join-Path $dir '.claude') -PathType Container)) {

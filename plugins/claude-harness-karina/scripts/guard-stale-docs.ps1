@@ -30,7 +30,7 @@ $script:StaleAxisMap = @(
 #   빠졌다(회차 64). 근거 문서 §5 의 「감소에도 정당한 형태가 하나 있다」가 이 자리다.
 $script:StaleAxisBaseline = 3
 
-# 커밋·add 판정식 — 디스패처 없이 단독으로 읽혀도(골든 프로브) 같은 정의를 쓴다 — 근거는 `rules/bash-guard-rationale.md` §18
+# 커밋·add 판정식 — 디스패처 없이 읽혀도 같은 정의를 쓴다 — 근거는 `rules/bash-guard-rationale.md` §18
 . (Join-Path $PSScriptRoot 'git-commit-match.ps1')
 
 function Test-AxisVerifiedFresh {
@@ -151,7 +151,7 @@ function Invoke-WarnStaleDocs {
     if ($cmdForJudge -notmatch $script:GitCommitRx) { return New-HookResult }
     if ($cmdForJudge -match '--dry-run' -or $cmdForJudge -match '--help' -or $cmdForJudge -match '(^|\s)-h(\s|$)') { return New-HookResult }
 
-    # **레포는 `$data.cwd` 기준으로 찾는다** — 프로세스 cwd 를 쓰면 안 된다. .NET 의
+    # **레포는 `$data.cwd`(`-C`·앞선 `cd` 가 있으면 그 대상) 기준으로 찾는다** — 프로세스 cwd 를 쓰면 안 된다. .NET 의
     #   `Environment.CurrentDirectory` 는 PowerShell 의 `Set-Location`·`Push-Location` 을
     #   따라가지 않아, 자식 프로세스가 엉뚱한 레포에서 `git` 을 돌린다(골든이 이것을 잡았다 —
     #   다른 레포의 스테이징을 이 커밋의 것으로 읽는 오판정이 실제로 났다).

@@ -246,7 +246,7 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 ## §18 커밋·add 판정식은 한 파일이다
 
 ```
-# git-commit-match.ps1 — git 커밋·add 명령 판정식 (dot-source 전용, hook 아님) — 근거는 `rules/bash-guard-rationale.md` §18
+# git-commit-match.ps1 — git 커밋·add 명령 판정식과 커밋이 도는 레포 해석 (dot-source 전용, hook 아님) — 근거는 `rules/bash-guard-rationale.md` §18
 ```
 
 **커밋 판정은 세 검사(task 체크박스 게이트 · 커밋 시크릿 · 문서 낡음)가 같은 자리에서 쓴다.** 예전에는 같은 정규식이 세 파일에 여섯 벌 있었고 동기 검사도 없었다 — 2026-09-11 에 한쪽만 고쳐 판정이 실제로 갈렸다(`guard-stale-docs.ps1` 주석). 그래서 `scripts/git-commit-match.ps1` 하나에 두고 셋이 dot-source 한다.
@@ -260,7 +260,7 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 
 **끝 경계는 `\b` 가 아니라 `(?![\w-])` 다** — `\b` 는 `commit-tree` 의 `-` 앞에서도 성립해, 스테이징에 시크릿이 있으면 `git commit-tree` 에도 커밋 경고가 났다.
 
-**디스패처는 이 파일을 상시 dot-source 하고, 없으면 커밋 명령을 막는다(fail-closed).** task 체크박스 게이트가 이 정의로 커밋을 알아보므로, 조용히 통과시키면 설치 손상이 차단 게이트를 끈다. 커밋이 아닌 명령은 그대로 통과한다. lib 둘(시크릿·문서 낡음)의 부재는 종전대로 경고만 한다(`stale-docs-rationale.md` §2) — 그 둘은 경고 검사다.
+**디스패처는 이 파일을 상시 dot-source 하고, 없으면 `commit` 이 든 명령을 막는다(fail-closed — 판정식이 없어 커밋인지 가를 수 없으니 넓게 막는다).** task 체크박스 게이트가 이 정의로 커밋을 알아보므로, 조용히 통과시키면 설치 손상이 차단 게이트를 끈다. 커밋이 아닌 명령은 그대로 통과한다. lib 둘(시크릿·문서 낡음)의 부재는 종전대로 경고만 한다(`stale-docs-rationale.md` §2) — 그 둘은 경고 검사다.
 
 ## §19 커밋 검사는 커밋이 도는 레포를 본다
 
