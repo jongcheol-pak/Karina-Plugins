@@ -171,7 +171,7 @@ $subs = Split-TopLevel $cmdJoined $isPowerShellTool
 # 작은따옴표 안은 bash 가 치환하지 않는다. 5.1 에는 -replace 스크립트블록이 없어 MatchEvaluator 를 쓴다.
 $keepLiveSubst = [System.Text.RegularExpressions.MatchEvaluator] {
     param($m)
-    if (($m.Value -replace "'[^']*'", '') -match '\$\((?!\s*cat\s+<<)') { return ' ' + ($m.Value -replace '\$\(|[()"]', ' ') + ' ' }
+    if (($m.Value -replace "'[^']*'", '') -match '\$\((?!\s*cat\s*<<)') { return ' ' + ($m.Value -replace '\$\(|[()"]', ' ') + ' ' }
     return ' '
 }
 

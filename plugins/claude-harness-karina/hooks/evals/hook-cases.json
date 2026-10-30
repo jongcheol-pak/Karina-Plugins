@@ -2207,6 +2207,12 @@
       "name": "데이터 스트립: 작은따옴표 속 $(…) 는 치환되지 않는 데이터 (음성 짝)",
       "command": "echo '$(rm -rf ~)'",
       "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "데이터 스트립: 공백 없는 cat<< heredoc 메시지 본문도 데이터 (오탐 수정)",
+      "command": "git commit -m \"$(cat<<'EOF'\n수정: rm -rf ~ 오탐 정리\nEOF\n)\"",
+      "expect_exit": 0
     }
   ]
 }
