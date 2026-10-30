@@ -295,12 +295,12 @@ function Invoke-WarnExternalOps {
 # 커밋 제목 읽기 — 근거는 `rules/bash-guard-rationale.md` §14
 function Get-CommitTitle([string]$cmd, [string]$baseDir) {
     $judge = [regex]::Replace((Remove-HeredocBodyForJudge $cmd), '(?s)@([''"])[ \t]*\r?\n.*?\r?\n\1@', { param($m) '@' + $m.Groups[1].Value + ' ' + $m.Groups[1].Value + '@' })
-    $cm = [regex]::Match($judge, 'git\s+((-c|-C)\s+\S+\s+)*commit\b')
+    $cm = [regex]::Match($judge, $script:GitCommitRx)
     if (-not $cm.Success) { return $null }
     $seg = @(Split-TopLevel $judge.Substring($cm.Index) $script:IsPsTool)[0]
     $hereDocFirst = $null
     foreach ($hm in [regex]::Matches($cmd, $script:HeredocBlockRx)) {
-        if ($hm.Groups['line'].Value -match 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { $hereDocFirst = @($hm.Groups['body'].Value -split '\r?\n')[0]; break }
+        if ($hm.Groups['line'].Value -match $script:GitCommitRx) { $hereDocFirst = @($hm.Groups['body'].Value -split '\r?\n')[0]; break }
     }
     $hs = [regex]::Match($cmd, '(?s)@([''"])[ \t]*\r?\n(?<body>.*?)\r?\n\1@')
     $hereStrFirst = if ($hs.Success) { @($hs.Groups['body'].Value -split '\r?\n')[0] } else { $null }
@@ -339,7 +339,7 @@ function Invoke-RequireTaskCheckbox {
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
-    if ($cmd -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
+    if ($cmd -notmatch $script:GitCommitRx) { return New-HookResult }
 
     $startDir = $null
     if ($data.cwd) { $startDir = $data.cwd }
@@ -429,6 +429,17 @@ try {
 $script:IsPsTool = ([string]$data.tool_name -eq 'PowerShell')
 
 $cmdText = [string]$data.tool_input.command
+
+# 커밋·add 판정식 — 차단 게이트가 쓰므로 상시 로드하고, 없으면 커밋 명령을 막는다 — 근거는 `rules/bash-guard-rationale.md` §18
+$commitMatchPath = Join-Path $PSScriptRoot 'git-commit-match.ps1'
+if (Test-Path -LiteralPath $commitMatchPath) { . $commitMatchPath }
+if (-not $script:GitCommitRx) {
+    if ($cmdText -match 'commit') {
+        [Console]::Error.WriteLine('[HARNESS] BLOCKED: 커밋 판정 정의(git-commit-match.ps1)를 읽지 못해 커밋 검사를 할 수 없습니다 — 플러그인을 재설치하세요.')
+        exit 2
+    }
+    $script:GitCommitRx = '(?!)'
+}
 
 # 커밋 시점 검사 둘은 별도 파일이고 로드 실패를 침묵시키지 않는다 — 근거는 `rules/stale-docs-rationale.md` §2
 $loadCommitLibs = $cmdText -match 'commit'

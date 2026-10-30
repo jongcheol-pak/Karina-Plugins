@@ -3,6 +3,9 @@
 # warn-commit-secrets: git commit 직전 스테이징될 변경에서 시크릿 패턴 경고(비차단) — 근거는 `rules/commit-secrets-rationale.md` §2
 # 결과 객체 생성기 `New-HookResult`·커밋 판정용 heredoc 스트립 `Remove-HeredocBodyForJudge` 는
 #   디스패처 `guard-bash.ps1` 에 있다 — 이 파일은 커밋 명령에서만 dot-source 되므로 공용 헬퍼를 둘 수 없다.
+# 커밋·add 판정식 — 디스패처 없이 단독으로 읽혀도(골든 프로브) 같은 정의를 쓴다 — 근거는 `rules/bash-guard-rationale.md` §18
+. (Join-Path $PSScriptRoot 'git-commit-match.ps1')
+
 function Get-DiffHeadAdded {
     param([string[]]$PathArgs = @())
     $out = if ($PathArgs.Count) { @(& git diff HEAD --unified=0 -- $PathArgs 2>$null) }
@@ -29,7 +32,7 @@ function Invoke-WarnCommitSecrets {
 
     # **커밋 판정은 heredoc 본문을 뺀 뒤에 한다** — 근거는 `rules/commit-secrets-rationale.md` §3a
     $cmdForJudge = if (Get-Command Remove-HeredocBodyForJudge -ErrorAction SilentlyContinue) { Remove-HeredocBodyForJudge $cmd } else { $cmd }
-    if ($cmdForJudge -notmatch 'git\s+((-c|-C)\s+\S+\s+)*commit\b') { return New-HookResult }
+    if ($cmdForJudge -notmatch $script:GitCommitRx) { return New-HookResult }
     if ($cmdForJudge -match '--dry-run' -or $cmdForJudge -match '--help' -or $cmdForJudge -match '(^|\s)-h(\s|$)') { return New-HookResult }
 
     # cwd로 이동해 git 명령 실행. Set-Location이 caller(디스패처)·다른 검사에 잔존하지 않게 finally로 복원.
@@ -51,7 +54,7 @@ function Invoke-WarnCommitSecrets {
         $cmdFlags = $cmd -replace '(?i)(^|\s)(-[a-zA-Z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', '$1$2'
         # 셸 줄 연속 — 근거는 `rules/commit-secrets-rationale.md` §6
         $commitSeg = @(($cmdFlags -replace '\\\r?\n\s*', ' ') -split '(\|\||&&|[;|]|\r?\n)' |
-            Where-Object { $_ -match 'git\s+((-c|-C)\s+\S+\s+)*commit\b' })
+            Where-Object { $_ -match $script:GitCommitRx })
         # 분리 결과가 비면 전체 명령으로 되돌아간다 — 정규화가 못 잡은 표기에서 판정 대상을
         #   잃느니 종전처럼 넓게 보는 편이 안전하다(스캔이 한 번 더 도는 대가로 미탐을 막는다).
         if (-not $commitSeg.Count) { $commitSeg = @($cmdFlags) }
@@ -63,9 +66,9 @@ function Invoke-WarnCommitSecrets {
 
         # 선행 스테이징 인지 — 근거는 `rules/commit-secrets-rationale.md` §7
         $capHit = $false
-        $addMatch = [regex]::Match($cmd, '(?i)git\s+((-c|-C)\s+\S+\s+)*add\s+([^&;|\r\n]*)')
+        $addMatch = [regex]::Match($cmd, '(?i)' + $script:GitAddRx + '\s+(?<args>[^&;|\r\n]*)')
         if ($addMatch.Success) {
-            $addArgs = $addMatch.Groups[3].Value.Trim()
+            $addArgs = $addMatch.Groups['args'].Value.Trim()
             $addTargets = @()
             # 스캔 캡은 **추적 파일 분기와 공유한다** — 근거는 `rules/commit-secrets-rationale.md` §8
             $scanned = 0

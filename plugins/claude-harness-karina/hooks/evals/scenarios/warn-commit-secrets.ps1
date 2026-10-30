@@ -138,6 +138,27 @@ if ($gitOk) {
     $r = Invoke-Hook 'guard-bash.ps1' $wcsJson
     Assert-Case -Name "commit-secrets: staged 시크릿 경고" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
 
+    # 1b) git 전역 옵션을 앞에 둔 커밋도 커밋이다 — `git\s+((-c|-C)…)*commit` 은 `--no-pager`·`-P` 를
+    #   건너뛰지 못해 시크릿 검사를 통째로 껐다(2026-10-30 재현). 판정식 정본은 `git-commit-match.ps1`.
+    foreach ($gc in @('git --no-pager commit -m x', 'git -P commit -m x')) {
+        $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = $gc } } | ConvertTo-Json -Compress)
+        Assert-Case -Name "commit-secrets: 전역 옵션 커밋도 경고 ($gc)" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
+    }
+    # 1c) `-C` 값이 따옴표로 묶인 공백 경로여도 커밋이다 — `\S+` 가 공백에서 끊겨 놓쳤다.
+    $wcsSp = Join-Path $work 'wcs space repo'; New-Item -ItemType Directory $wcsSp -Force | Out-Null
+    Push-Location $wcsSp
+    git init -q; git config user.email t@t; git config user.name t
+    'v=1' | Set-Content app.js; git add .; git commit -qm init
+    Set-Content secret.js $fakeApi; git add secret.js
+    Pop-Location
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsSp; tool_input = @{ command = ('git -C "' + $wcsSp + '" commit -m x') } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 공백 경로 -C 커밋도 경고" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
+    # 1d) `commit-tree`·`log` 는 커밋이 아니다 — 끝 경계가 `\b` 면 `commit-tree` 의 `-` 앞에서 성립해 오탐했다.
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit-tree HEAD^{tree} -m x' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: git commit-tree 는 커밋 판정 밖(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git log --oneline -3' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: git log 는 커밋 판정 밖(무출력 · 음성 짝)" -R $r -ExpectExit 0 -ExpectSilent $true
+
     # 2) --dry-run → 스킵(무출력)
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit --dry-run' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: --dry-run 스킵(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
