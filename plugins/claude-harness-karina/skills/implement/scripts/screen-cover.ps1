@@ -4,9 +4,6 @@
 #   -Action pause  -Holder <이름>   가려진 모니터를 한 대씩 끄고 즉시 기록한다. 같은 보유자가 다시 불러도 무해하고,
 #                                   그 사이 사용자가 다시 켠 모니터도 끄고 기록에 더한다.
 #   -Action resume -Holder <이름>   보유자를 지우고, 남은 보유자가 없을 때만 기록한 모니터를 켠다.
-# 출력은 늘 `karina-cover ` 으로 시작하는 한 줄이다:
-#   paused <번호,…|none> · held <남은 보유자 수> · restored <번호,…|none> · skip <no-cli|app-off> → exit 0
-#   ERROR <사유>                                                                                  → exit 1
 # 잠금 방식·꺼짐 판정의 근거는 skills/implement/references/screen-cover-rationale.md
 # CLI 선택 순서의 정본은 `karina-cli skills get karina-computer-use` 의 「Preconditions」 다
 #   (KARINA_CLI_COMMAND → PATH 의 karina-cli·karina-dev-cli → 설치본 전체경로).

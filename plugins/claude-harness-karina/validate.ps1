@@ -1,7 +1,4 @@
 ﻿# validate.ps1 — karina plugin 설치 후 정상 동작 검증
-#
-# 사용법:
-#   .\validate.ps1
 
 param(
     [switch]$Verbose
