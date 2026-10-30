@@ -2,7 +2,7 @@
 name: wiki-page-writer
 description: llm-wiki 위키 세션의 병렬 분업에서 호스트가 이름으로 명시 호출할 때만 쓴다. 배정받은 위키 페이지를 소스 코드를 읽어 작성한다. 코드 작업·리뷰·일반 질의에는 쓰지 않는다.
 model: sonnet
-effort: high
+effort: medium
 tools: Read, Grep, Glob, Write, Edit
 ---
 
