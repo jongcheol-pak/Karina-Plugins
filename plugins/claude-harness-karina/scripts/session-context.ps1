@@ -336,7 +336,7 @@ try {
                             $agentsNear = ($agentsBytes -ge ($agentsMaxBytes * $agentsNearRatio)) -or ($agentsSlack -lt $agentsNearSlack)
                             $agentsNearMsg = if ($agentsNear) { " ⚠ 주입 상한 임박(${agentsBytes}/${agentsMaxBytes}B · 여유 ${agentsSlack}B) — 'karina:record-project-fact'의 「주입 상한 점검·이관」으로 큰 절을 별도 문서로 옮기세요." } else { "" }
                             if ($agentsSelfLoaded) {
-                                $agentsLoadedBy = if ($agentsImported) { "CLAUDE.md 가 AGENTS.md 를 import 해 Claude Code 가 함께 불러오므로" } else { "CLAUDE.md 가 없어 Claude Code(v2.1.277+)가 프로젝트 지침으로 불러오므로" }
+                                $agentsLoadedBy = if ($agentsImported) { "CLAUDE.md 가 AGENTS.md 를 import 해 Claude Code 가 함께 불러오므로" } else { "CLAUDE.md 가 없어 Claude Code 가 프로젝트 지침으로 불러오므로" }
                                 $lines.Add("[karina 세션 컨텍스트] AGENTS.md (${agentsBytes}B) — ${agentsLoadedBy} 전문은 여기 다시 싣지 않습니다. ${agentsToc}${agentsReadMsg}${agentsNearMsg}")
                             } else {
                                 $lines.Add("[karina 세션 컨텍스트] AGENTS.md (${agentsBytes}B) 전문 — ${agentsNotLoadedMsg}이 전문이 이 repo 프로젝트 가이드의 정본입니다(재Read 불필요). AGENTS.md에 관한 판단은 아래 전문을 근거로 하세요 — '관련 내용이 없다'고 말하려면 아래 전문 전체를 근거로만 단정하고, 앞부분만 보고 단정하지 마세요.${agentsNearMsg}`n---`n${agentsText}`n---")

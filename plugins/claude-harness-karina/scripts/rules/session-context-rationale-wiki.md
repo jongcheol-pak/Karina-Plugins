@@ -117,7 +117,7 @@
 
 ```
         # ---- AGENTS.md 주입 (Claude Code 가 로드하는가에 따라 목차 또는 전문) ----
-        # 왜: Claude Code(v2.1.277+)는 cwd·상위에 CLAUDE.md 류가 없을 때만 AGENTS.md 를 프로젝트 지침으로
+        # 왜: Claude Code 는 cwd·상위에 CLAUDE.md 류가 없을 때만 AGENTS.md 를 프로젝트 지침으로
         #   읽는다. 읽히는 쪽에서 hook 이 전문을 또 실으면 같은 문서가 세션마다 두 번 들어가고(이 레포 약
         #   10.8KB), 안 읽히는 쪽에서 목차만 실으면 AGENTS.md 가 컨텍스트에서 통째로 빠진다 — v1.310.0 이
         #   조건 없이 목차만 실어 후자가 실제로 났다. 그래서 판정해 가른다(§33-1).
@@ -165,8 +165,8 @@
                         #   .claude/CLAUDE.md 가 상위 파일로 세어져 CLAUDE.md 없는 픽스처가 전문 분기로 뒤집힌다.
                         #   GetFolderPath 는 Windows 에서 환경변수가 아니라 알려진 폴더를 읽어 실제 홈을 낸다(2026-09-27 실측).
                         # 판정하지 않는 것: /config 「Project instructions」 설정값(claude-md-and-agents-md 등)과
-                        #   Claude Code 버전(v2.1.277 미만). 전자는 사용자 settings.json 을 읽어야 하고 후자는 입력에 없다 —
-                        #   틀려도 전자는 이중 주입(비용), 후자는 목차 줄의 Read 지시가 폴백이다.
+                        #   Claude Code 버전. 전자는 사용자 settings.json 을 읽어야 한다 — 틀려도 이중 주입(비용)이다.
+                        #   후자는 지원 하한(v2.1.312 — AGENTS.md 「OS/플랫폼」) 아래를 고려하지 않는다.
 ```
 
 ## §34 ---- vault 라인 주입

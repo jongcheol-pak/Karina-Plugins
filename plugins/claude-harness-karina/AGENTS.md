@@ -21,6 +21,7 @@
   ```
   pwsh -NoProfile -Command '@(".claude-plugin/plugin.json","hooks/hooks.json","../../.claude-plugin/marketplace.json") | ForEach-Object { $c = Get-Content -LiteralPath $_ -Raw -ErrorAction Stop; $null = $c | ConvertFrom-Json; Write-Host ($_ + " OK") }'
   ```
+- **플러그인 매니페스트·frontmatter 검사** (`.claude-plugin/**`·`hooks/hooks.json`·`agents/*.md`·`skills/*/SKILL.md` frontmatter 수정 시 필수 · 인증 불요): `claude plugin validate --strict .` · `claude plugin validate --strict ../..`
 - **Plan check**: `python evals/check-harness-consistency.py --plan` — 계획 단계 검사(`karina:plan` Step 6 의 `check-plan` 이 승인 전에 돌린다)
 - **Hook 골든 회귀** (hook 스크립트·골든 케이스 수정 시 필수):
   ```
@@ -113,4 +114,4 @@
 ## OS/플랫폼
 
 - Windows 검증 · macOS/Linux 실험적(hooks 는 pwsh 7 cross-platform 의도).
-- **Claude Code**: 최소 v2.0 · **권장 v2.1.269+**(`--filter` 이름 검증·골든 러너 병렬 모드가 안정된 판) · AGENTS.md 자체 로드는 **v2.1.277+**(CLAUDE.md 없는 레포 — 미만이면 `session-context` 목차 줄의 Read 지시가 폴백). <!-- verified: 2026-09-27 -->
+- **Claude Code**: **v2.1.312 이상만 지원한다** — 그 아래 판은 고려하지 않는다(PowerShell hook 의 `exit 2` 차단은 v2.1.309, hooks.json `onFailure` 는 v2.1.295 부터다). <!-- verified: 2026-10-30 -->
