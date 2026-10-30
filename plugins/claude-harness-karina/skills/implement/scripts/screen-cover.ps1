@@ -7,9 +7,7 @@
 # 출력은 늘 `karina-cover ` 으로 시작하는 한 줄이다:
 #   paused <번호,…|none> · held <남은 보유자 수> · restored <번호,…|none> · skip <no-cli|app-off> → exit 0
 #   ERROR <사유>                                                                                  → exit 1
-# 앱 꺼짐은 `status --json` 의 appRunning:false 하나로 판정한다 — 오류 코드(runtime_unavailable·app_not_running)는
-#   「꺼짐」과 「아직 응답 안 함」을 가르지 못해, 일시 오류에 기록을 지우면 걷은 모니터를 다시 덮지 못한다.
-# 왜 잠금이 FileShare.None 핸들인가: 잠근 프로세스가 죽으면 OS 가 핸들을 닫아 다음 호출이 영영 막히지 않는다.
+# 잠금 방식·꺼짐 판정의 근거는 skills/implement/references/screen-cover-rationale.md
 # CLI 선택 순서의 정본은 `karina-cli skills get karina-computer-use` 의 「Preconditions」 다
 #   (KARINA_CLI_COMMAND → PATH 의 karina-cli·karina-dev-cli → 설치본 전체경로).
 # 왜 출력에 한글이 없는가: Git Bash 를 거친 PowerShell 출력에서 한글이 깨진다(work-clock 과 같다).
