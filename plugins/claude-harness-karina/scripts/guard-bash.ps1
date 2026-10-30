@@ -325,8 +325,6 @@ function Get-CommitTitle([string]$cmd, [string]$baseDir) {
     if ($path -match '^/tmp(/.*)?$') { $path = $env:TEMP + ($Matches[1] -replace '/', '\') }
     elseif ($path -match '^/([A-Za-z])/(.*)$') { $path = $Matches[1] + ':\' + ($Matches[2] -replace '/', '\') }
     if (-not [System.IO.Path]::IsPathRooted($path)) {
-        $gc = [regex]::Match($seg, 'git\s+(?:-c\s+\S+\s+)*-C\s+("[^"]*"|''[^'']*''|\S+)')
-        if ($gc.Success) { $baseDir = Join-Path $baseDir $gc.Groups[1].Value.Trim('"', "'") }
         $path = Join-Path $baseDir $path
     }
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $false }
@@ -345,6 +343,8 @@ function Invoke-RequireTaskCheckbox {
     if ($data.cwd) { $startDir = $data.cwd }
     elseif ($env:CLAUDE_PROJECT_DIR) { $startDir = $env:CLAUDE_PROJECT_DIR }
     else { $startDir = (Get-Location).Path }
+    # 커밋이 도는 레포(`-C`·앞선 `cd`)의 plan 을 본다 — 근거는 `rules/bash-guard-rationale.md` §19
+    $startDir = Resolve-GitCommitDir (Remove-HeredocBodyForJudge $cmd) $startDir
 
     # 완료 커밋 제목 판정 — 근거는 `rules/bash-guard-rationale.md` §14
     $msgTitle = Get-CommitTitle $cmd $startDir

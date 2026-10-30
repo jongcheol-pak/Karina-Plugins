@@ -104,6 +104,22 @@ $rtcSp = Join-Path $work 'rtc space dir'; New-Item -ItemType Directory $rtcSp -F
 "# plan`n- [ ] T2. 워커 작업" | Set-Content (Join-Path $rtcSp 'plan.md')
 $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $rtcSp; tool_input = @{ command = ('git -C "' + $rtcSp + '" commit -m "기능: T2 — 워커 작업"') } } | ConvertTo-Json -Compress)
 Assert-Case -Name "rtc: 공백 경로 -C 커밋도 미완료 T2 차단" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+# 커밋이 가리키는 레포의 plan 을 본다 — `-C <경로>`·앞선 `cd <경로>` 가 있으면 hook `cwd` 가 아니다.
+$rtcB = Join-Path $work 'rtc-b-unchecked'; New-Item -ItemType Directory $rtcB -Force | Out-Null
+"# plan`n- [ ] T2. 워커 작업" | Set-Content (Join-Path $rtcB 'plan.md')
+$rtcBok = Join-Path $work 'rtc-b-checked'; New-Item -ItemType Directory $rtcBok -Force | Out-Null
+"# plan`n- [x] T2. 워커 작업" | Set-Content (Join-Path $rtcBok 'plan.md')
+$rtcAun = Join-Path $work 'rtc-a-unchecked'; New-Item -ItemType Directory $rtcAun -Force | Out-Null
+"# plan`n- [ ] T2. 다른 작업" | Set-Content (Join-Path $rtcAun 'plan.md')
+$rtcAnone = Join-Path $work 'rtc-a-noplan'; New-Item -ItemType Directory $rtcAnone -Force | Out-Null
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $rtcAnone; tool_input = @{ command = 'cd ../rtc-b-unchecked && git commit -m "기능: T2 — 워커 작업"' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "rtc: 앞선 cd 대상 레포의 미완료 T2 차단" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $rtcAnone; tool_input = @{ command = 'git -C ../rtc-b-unchecked commit -m "기능: T2 — 워커 작업"' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "rtc: -C 대상 레포의 미완료 T2 차단" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $rtcAun; tool_input = @{ command = 'git -C ../rtc-b-checked commit -m "기능: T2 — 워커 작업"' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "rtc: cwd 가 미완료여도 -C 대상 레포가 완료면 통과" -R $r -ExpectExit 0
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcAun '기능: T2 — 다른 작업')
+Assert-Case -Name "rtc: -C 없는 cwd 미완료 T2 차단 유지 (음성 짝)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcOk 'T3: 검색 요약')
 Assert-Case -Name "rtc: 완료 [x] T3 커밋 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUn 'T99: 없는 task')

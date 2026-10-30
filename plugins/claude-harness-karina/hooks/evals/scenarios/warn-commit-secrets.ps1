@@ -159,6 +159,24 @@ if ($gitOk) {
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git log --oneline -3' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: git log 는 커밋 판정 밖(무출력 · 음성 짝)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+    # 1e) 커밋이 가리키는 레포를 스캔한다 — `-C <경로>`·앞선 `cd <경로>` 가 있으면 hook `cwd` 가 아니라 그 레포다.
+    #   cwd 만 보면 다른 레포에 스테이징된 시크릿을 놓치고, 반대로 cwd 의 시크릿으로 깨끗한 레포 커밋에 경고했다.
+    #   B = $wcs(시크릿 스테이징 상태) · A = 깨끗한 레포.
+    $wcsA = Join-Path $work 'wcs-clean-a'; New-Item -ItemType Directory $wcsA -Force | Out-Null
+    Push-Location $wcsA
+    git init -q; git config user.email t@t; git config user.name t
+    'v=1' | Set-Content app.js; git add .; git commit -qm init
+    'v=2' | Set-Content app.js; git add app.js
+    Pop-Location
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsA; tool_input = @{ command = 'git -C ../wcsrepo commit -m x' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: cwd 밖 -C 대상 레포의 시크릿 경고" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsA; tool_input = @{ command = ('cd "' + $wcs + '" && git commit -m x') } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 앞선 cd 대상 레포의 시크릿 경고" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git -C ../wcs-clean-a commit -m x' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: cwd 에 시크릿이 있어도 깨끗한 -C 대상 커밋은 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsA; tool_input = @{ command = 'git -C . commit -m x' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 깨끗한 레포 -C . 커밋 무출력 (음성 짝)" -R $r -ExpectExit 0 -ExpectSilent $true
+
     # 2) --dry-run → 스킵(무출력)
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit --dry-run' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: --dry-run 스킵(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true

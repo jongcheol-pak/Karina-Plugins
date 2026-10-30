@@ -38,8 +38,10 @@ function Invoke-WarnCommitSecrets {
     # cwd로 이동해 git 명령 실행. Set-Location이 caller(디스패처)·다른 검사에 잔존하지 않게 finally로 복원.
     $origLoc = Get-Location
     try {
-        if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
-            Set-Location -LiteralPath $data.cwd
+        # 커밋이 도는 레포(`-C`·앞선 `cd`)를 스캔한다 — 근거는 `rules/bash-guard-rationale.md` §19
+        $commitDir = Resolve-GitCommitDir $cmdForJudge ([string]$data.cwd)
+        if ($commitDir -and (Test-Path -LiteralPath $commitDir -PathType Container)) {
+            Set-Location -LiteralPath $commitDir
         } elseif ($env:CLAUDE_PROJECT_DIR -and (Test-Path -LiteralPath $env:CLAUDE_PROJECT_DIR -PathType Container)) {
             Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR
         }

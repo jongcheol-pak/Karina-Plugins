@@ -261,3 +261,23 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 **끝 경계는 `\b` 가 아니라 `(?![\w-])` 다** — `\b` 는 `commit-tree` 의 `-` 앞에서도 성립해, 스테이징에 시크릿이 있으면 `git commit-tree` 에도 커밋 경고가 났다.
 
 **디스패처는 이 파일을 상시 dot-source 하고, 없으면 커밋 명령을 막는다(fail-closed).** task 체크박스 게이트가 이 정의로 커밋을 알아보므로, 조용히 통과시키면 설치 손상이 차단 게이트를 끈다. 커밋이 아닌 명령은 그대로 통과한다. lib 둘(시크릿·문서 낡음)의 부재는 종전대로 경고만 한다(`stale-docs-rationale.md` §2) — 그 둘은 경고 검사다.
+
+## §19 커밋 검사는 커밋이 도는 레포를 본다
+
+```
+# 커밋이 도는 레포 폴더 — 근거는 `rules/bash-guard-rationale.md` §19
+    # 커밋이 도는 레포(`-C`·앞선 `cd`)의 plan 을 본다 — 근거는 `rules/bash-guard-rationale.md` §19
+        # 커밋이 도는 레포(`-C`·앞선 `cd`)를 스캔한다 — 근거는 `rules/bash-guard-rationale.md` §19
+    # 커밋이 도는 레포(`-C`·앞선 `cd`)에서 루트를 찾는다 — 근거는 `rules/bash-guard-rationale.md` §19
+```
+
+**세 검사(task 체크박스 게이트 · 커밋 시크릿 · 문서 낡음)는 hook 입력의 `cwd` 가 아니라 커밋이 실제로 도는 레포를 판정한다.** `git -C ../B commit` 이나 `cd ../B && git commit` 은 B 에 커밋한다. `cwd` 로만 보면 두 방향이 다 틀린다(2026-10-30 재현).
+
+- B 에 스테이징된 개인키를 놓친다 — 시크릿 차단이 꺼진다
+- `cwd` 의 시크릿·미완료 task 때문에 깨끗한 B 커밋에 경고하거나 막는다
+
+`karina:chain-plan` 코디네이터처럼 세션 폴더 밖 worktree 에 `-C` 로 커밋하는 흐름에서 실제로 생긴다.
+
+**`Resolve-GitCommitDir` 가 정하는 순서**: `cwd` 에서 시작해, 커밋 앞에 나온 `cd`·`pushd`·`Set-Location`·`Push-Location` 대상을 차례로 결합하고, 그다음 커밋 명령의 `-C` 값을 차례로 결합한다(git 은 `-C` 여럿을 앞에서부터 잇는다). 결과 폴더가 없으면 `cwd` 로 돌아간다 — 판정할 수 없는 경로로 검사를 끄느니 종전대로 보는 편이 낫다.
+
+`-F <파일>` 의 상대 경로도 이 폴더 기준이다 — git 은 `-C` 로 옮긴 뒤 경로를 푼다. 그래서 `Get-CommitTitle` 이 따로 하던 `-C` 결합을 지웠다(두 번 결합된다).

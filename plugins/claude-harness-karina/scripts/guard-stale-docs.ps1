@@ -158,6 +158,8 @@ function Invoke-WarnStaleDocs {
     $cwd = [string]$data.cwd
     if ([string]::IsNullOrWhiteSpace($cwd)) { $cwd = (Get-Location).Path }
     if (-not (Test-Path -LiteralPath $cwd)) { return New-HookResult }
+    # 커밋이 도는 레포(`-C`·앞선 `cd`)에서 루트를 찾는다 — 근거는 `rules/bash-guard-rationale.md` §19
+    $cwd = Resolve-GitCommitDir $cmdForJudge $cwd
     # 하니스 레포에서만 돈다 — 하니스 루트(모노레포의 플러그인 폴더)를 위로 올라가며 찾는다(`harness-root.ps1`,
     #   `warn-version-drift.ps1` 과 같은 판정). 하위 폴더에서 커밋해도 지금처럼 판정이 돈다.
     $root = Find-HarnessRoot -StartDir $cwd
