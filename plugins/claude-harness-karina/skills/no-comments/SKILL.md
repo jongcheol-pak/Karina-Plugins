@@ -18,15 +18,15 @@ disable-model-invocation: true
 1. **범위를 정한다**
    - **인자 경로가 있으면** 그 파일 전체다(폴더면 그 아래 추적·untracked 파일).
    - **없으면 diff 다** — base 는 `git symbolic-ref --short refs/remotes/origin/HEAD` 에서 `origin/` 을 뗀 로컬 브랜치, 실패하면 `main` 이다. 기준점은 `git merge-base <base> HEAD` 이고, 범위는 `git diff <merge-base>`(작업 트리 포함)의 hunk 에 `git ls-files --others --exclude-standard` 가 내는 새 파일 전체를 더한 것이다. base 끝과 비교하지 않는다 — 분기 뒤 base 에 쌓인 남의 커밋이 역방향 hunk 로 섞인다.
-   - **`*.md` 같은 문서 파일의 HTML 주석(`<!-- -->`)은 범위 밖이다** — 판정 기준인 `code-style.md`「주석」 은 코드 주석을 잰다. 문서 속 메타 표기(`verified` 날짜 등)는 사람이 읽는 본문의 일부다.
+   - **판정 대상이 아닌 주석(문서 파일의 HTML 주석 등)은 `code-style.md`「주석」 이 정한다.**
    - diff 는 스크래치 파일에 저장해 리뷰어에게 경로로 넘긴다. **범위가 비면 「정리할 범위 없음」을 보고하고 끝낸다.**
 2. **기준선을 남긴다** — 그 레포 `AGENTS.md` 의 빌드·테스트를 편집 전에 한 번 돌려 실패 목록을 적어 둔다. 명령이 없으면 8번이 「미검증」이다. 기준선 없이 편집하면 원래 있던 실패가 이 스킬 탓으로 잡혀 맞는 편집까지 되돌리게 된다.
 3. **`comment-reviewer` 를 이름으로 1회 부른다 — 호출 전후 작업 트리 확인은 `../READONLY-SUBAGENTS.md`「호출 전후 확인」 대로다** — 입력은 범위 종류 · 파일 목록 또는 diff 파일 경로 · 레포 루트 · `code-style.md` 의 절대 경로(이 SKILL.md 폴더 기준 `../implement/references/code-style.md`)다.
 4. **판정을 검수한다 — 리뷰어의 새 시각을 따르고, 거부는 아래 증거가 있을 때만 한다** — 원문 *"Defer to Comment Sicko's fresh perspective."* 다. 주석을 쓴 세션이 검수에서 삭제를 뒤집으면 쓰지 않은 쪽에 판정을 맡긴 이유가 사라진다.
-   - **거부한다**: 범위 밖 행 · 근거가 사실과 다른 `MUST KILL`·`불일치:` · 의도적으로 남긴 코드를 결함으로 지목한 행 · 예외(`code-style.md`「주석」)에 드는데 `삭제` 로 판정한 행.
+   - **거부한다**: 범위 밖 행(근거가 `hunk 밖 doc 대조` 인 `유지` 행은 hunk 밖이어도 범위 밖이 아니다) · 근거가 사실과 다른 `MUST KILL`·`불일치:` · 의도적으로 남긴 코드를 결함으로 지목한 행 · 예외(`code-style.md`「주석」)에 드는데 `삭제` 로 판정한 행.
    - **삭제 거부는 정확한 예외 하나와 범위 안 증거가 있을 때만이다** — 증거는 넷 중 하나다: `code-style.md`「주석」 의 예외·보존 대상 항목 이름과 그 주석이 그 조건을 채우는 이유 · 규약 파일 `경로:줄` · 반증 명령 출력 · (자동 모드) 승인된 `plan.md` `## Goal` 성공 기준의 측정 방법이 그 주석 리터럴을 잰다는 `plan.md:줄`. 다른 주석에 기댄 근거는 받지 않는다(`code-style.md`「주석」 의 관례·일관성 줄) — 그 다른 주석의 `유지` 도 같은 기준으로 다시 잰다. 원문 *"Restore deletions only with exact exceptions and scoped proof."* 다.
    - **삭제가 애매하면 복원하지 않는다** — 원문 *"If a kill is ambiguous, do not restore."* 다. 우리 코드의 놀라운 동작을 짚은 `MUST KILL` 은 근거 문구가 틀려도 고칠 대상으로 남기고 그 주석은 복원하지 않는다(원문 *"Reshape flags on our-code surprises stay actionable. Do not restore those comments."*).
-   - **`유지` 는 바꿀 수 없는 외부 제약이라는 근거, 또는 (자동 모드) 승인된 `plan.md` `## Goal` 이 그 리터럴을 잰다는 근거가 있을 때만 받는다 — 뒤의 것은 지우면 승인된 기준이 낮아진다(`../implement/references/loop-exceptions.md`「실패 처리」)** — 「IMPORTANT」「do not remove」류 유지·삭제 판정이 근거가 얇으면 그 심볼을 직접 읽고 `git log -S` 와 그 커밋의 PR(`../../agents/comment-reviewer.md` 할 일 4번)로 확인한다. 확인 뒤에도 유지 근거가 애매하면 삭제한다.
+   - **`유지` 는 바꿀 수 없는 외부 제약이라는 근거, 또는 (자동 모드) 승인된 `plan.md` `## Goal` 이 그 리터럴을 잰다는 근거가 있을 때만 받는다 — 뒤의 것은 지우면 승인된 기준이 낮아진다(`../implement/references/loop-exceptions.md`「실패 처리」)** — 「IMPORTANT」「do not remove」류 유지·삭제 판정이 근거가 얇으면 그 심볼을 직접 읽고 `git log -S` 와 그 커밋의 PR(`../../agents/comment-reviewer.md` 할 일 4번)로 확인한다. 확인 뒤에도 유지 근거가 애매하면 삭제한다. **근거가 예외 다섯·보존 대상·규약 요구인 `유지` 는 그 범주가 맞으면 받는다 — 근거가 `hunk 밖 doc 대조` 인 행도 hunk 밖이어도 같고, 그 행은 지우지 않는다.**
    - **리뷰어가 놓친 범위 안 억제 주석**(`eslint-disable`·`@ts-ignore`·`noqa` 등)을 찾아 같은 기준으로 더한다.
    - **거부가 있으면 거부 행마다 `거부 — <#> — <근거>` 줄을 붙여 리뷰어를 1회 다시 부른다. 두 번째 표에도 위 증거를 갖춘 거부가 남는 행은 고치지 않고 열린 항목으로 두며, 보고에 「주석 정리 실패」 로 적는다** — 원문 *"Reject a second, report it open, and fail /no-comments."* 다. 실패로 적지 않으면 세션이 판정을 뒤집은 사실이 보고에서 보이지 않는다.
 5. **주석을 지운다** — 받은 `삭제`·`MUST KILL`·`제약` 행의 주석을 Edit 로 지운다(부분 편집). 파일 전체를 다시 쓰지 않는다. 근거에 `불일치:` 가 붙은 `유지` 행은 지우지 않고 코드에 맞게 고친다.
@@ -46,7 +46,7 @@ disable-model-invocation: true
 `karina:implement` 가 전 task 완료 뒤 4번 검증 앞에서 이 절을 읽고 따른다. 원문 pstack 이 리뷰 전에 이 스킬을 돌리는 것(`https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/skills/poteto-mode/SKILL.md` *"Before review → the **no-comments** skill"*)을 들였다 — 주석을 쓴 세션은 자기 주석을 변호해(guide 05 *"An author defends its comments the way you'd defend yours."*) 쓰지 않은 쪽이 판정해야 한다.
 
 - **회차마다 1회 돈다 — 시작 전에 `plan.md` `## Progress Log` 에 `주석 정리:` 로 시작하는 줄이 있으면 돌지 않는다** — 압축 뒤 재개·「계속」·4번 검증 실패나 `completion-reviewer` 지적을 고친 뒤 4번을 다시 돌 때도 같고, 그때의 수정 커밋은 다음 회차 범위다. 끝나면 건너뛰었거나 못 돌았어도 아래 표지 줄 하나를 Progress Log 에 남긴다 — 그 줄이 실행 표지다.
-- **`../implement/references/final-review.md`「절차」 가 `completion-reviewer` 를 부르지 않는 경량 조건이면 이 리뷰어도 부르지 않는다** — 세션이 `code-style.md`「주석」 으로 범위 안 주석을 재서 직접 지우고, 남기는 주석은 `../../agents/comment-reviewer.md` 할 일 3번 `유지` 의 내용 대조대로 코드와 맞춰 어긋나면 고친다. 표지는 `주석 정리: 세션 판정(경량) — 삭제 <n> · 불일치 고침 <u> · 작성 위반 <w>` 이다. 조건을 여기 다시 적지 않는다 — 두 곳에 두면 한쪽만 고쳐진다.
+- **`../implement/references/final-review.md`「절차」 가 `completion-reviewer` 를 부르지 않는 경량 조건이면 이 리뷰어도 부르지 않는다** — 세션이 `code-style.md`「주석」 으로 범위 안 주석을 재서 직접 지우고, 남기는 주석은 `../../agents/comment-reviewer.md` 할 일 2번 범위(hunk 밖이어도 대조하는 doc 주석 포함)와 3번 `유지` 의 내용 대조대로 코드와 맞춰 어긋나면 고친다. 표지는 `주석 정리: 세션 판정(경량) — 삭제 <n> · 불일치 고침 <u> · 작성 위반 <w>` 이다. 조건을 여기 다시 적지 않는다 — 두 곳에 두면 한쪽만 고쳐진다.
 - **범위는 이번 plan 의 커밋이다** — `git diff <BASE>..HEAD`(`<BASE>` 는 `plan.md` 의 `> BASE:`)를 스크래치 파일에 저장해 범위 종류 `커밋 범위` 로 넘긴다. 작업 트리의 미커밋·untracked 변경은 사용자 것이라 넣지 않는다. **리뷰어 입력에 `plan.md` 경로를 더한다** — 승인된 `## Goal` 이 재는 리터럴을 리뷰어가 `유지` 로 가르게 하려는 것이다(이것 없이 지우면 기준이 낮아져 완료 리뷰가 되돌린다).
 - **2번·8번은 돌리지 않는다 — 정리 편집 뒤 정리가 바꾼 파일의 검증 매핑 검사(`AGENTS.md` — 빌드·전체 테스트 제외)만 돌리고 정리 커밋한다. 빌드·전체 테스트는 정리 커밋 뒤 implement 4번 1회가 맡는다** — 기준선은 마지막 task 의 검증이다. 커밋 전에 빌드까지 돌리면 바로 이어지는 4번과 같은 빌드가 두 번 돈다. 경량(세션 판정)·`미실행` 경로도 4번은 `../implement/SKILL.md`「검증」 이 1회 돈다. **doc 주석(`///`·docstring 등)을 지운 정리면 `AGENTS.md` 가 doc 감사로 지목한 명령 중 따로 도는 것도 커밋 전에 돌린다** — 전체 테스트 안의 doc 감사는 같은 이유로 4번에 맡긴다.
 - **3~6번은 그대로 따르고 7번은 `MUST KILL` 만 한다** — 범위 안이면 구조 변경이라도 고치고 Progress Log 에 `판정:` 줄로 남긴다. 범위 밖으로 번지는 수정 · 두 번째 거부 · 범위 밖 원인은 `plan.md` `## Deferred / Follow-up` 의 열린 항목이다. `제약` 은 지우고 인코딩하지 않는다 — 원문 *"Unattended and eval require caller pre-approval"* 대로 「강제되지 않는 제약」 으로 같은 절에 남긴다. 리뷰어 호출은 3번의 1회와 4번 거부 때의 1회까지다.
@@ -60,5 +60,5 @@ disable-model-invocation: true
 ## 하지 않는 것
 
 - **직접 호출은 커밋·push 하지 않는다** — 커밋은 사용자가 위 문단과 함께 한다. 자동 모드는 로컬 커밋만 하고 push 는 implement 의 PR 흐름이 한다.
-- **범위 밖 파일을 고치지 않는다** — 범위는 1번(자동 모드는 그 절)이 정한 파일과 hunk 다.
+- **범위 밖 파일을 고치지 않는다** — 범위는 1번(자동 모드는 그 절)이 정한 파일과 hunk 다. 근거가 `hunk 밖 doc 대조` 인 행의 불일치 수정은 hunk 밖이어도 범위 안이다.
 - **implement 의 「hunk 밖의 주석은 건드리지 않는다」 를 바꾸지 않는다** — 그 규칙은 implement·디버깅이 코드를 고칠 때의 범위이고, 이 스킬의 범위는 사용자가 인자로 정한다.
