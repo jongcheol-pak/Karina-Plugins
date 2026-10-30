@@ -56,10 +56,12 @@ try {
 #   `scripts/rules/*.json`이 대상인 이유: v1.225.0이 차단 패턴과 자기보호 이름 집합을 스크립트
 #   밖으로 내렸다. 그 파일을 고치면 차단이 통째로 꺼지는데 스크립트는 한 글자도 안 바뀐다 —
 #   보호면이 데이터로 옮겨간 만큼 보호 대상도 따라가야 한다.
-$isHookScript = ($norm -match ('/\.claude/.*/(' + $harnessHookName + ')\.ps1$')) -or
-                ($norm -match '/\.claude/.*/hooks\.json$') -or
-                ($norm -match '(?i)/\.claude/.*/scripts/rules/[^/]+\.json$') -or
-                ($norm -match '(?i)/\.claude/.*/scripts/[^/]+\.ps1$')
+# `.claude/worktrees/<이름>/` 까지는 떼고 본다 — 그 아래는 설치본이 아니라 프로젝트 worktree 다 — 근거는 `rules/harness-guard-rationale.md` §8
+$normWt = $norm -replace '(?i)^.*/\.claude/worktrees/[^/]+', ''
+$isHookScript = ($normWt -match ('/\.claude/.*/(' + $harnessHookName + ')\.ps1$')) -or
+                ($normWt -match '/\.claude/.*/hooks\.json$') -or
+                ($normWt -match '(?i)/\.claude/.*/scripts/rules/[^/]+\.json$') -or
+                ($normWt -match '(?i)/\.claude/.*/scripts/[^/]+\.ps1$')
 # 규칙 — 근거는 `rules/harness-guard-rationale.md` §3
 $has83 = ($norm -match '(?i)/CLAUDE~[0-9]+(/|$)')
 $suspect83 = $has83 -and

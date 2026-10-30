@@ -155,8 +155,8 @@ if ($targetPath -match '[\\/](\.git|\.vs|node_modules|bin|obj)[\\/]') { exit 0 }
 # Android 리소스 디렉터리 (res/values, res/drawable 등) — 무조건 허용
 if ($targetPath -match '[\\/]res[\\/](values|drawable|mipmap|layout|raw|xml|color|font|menu|anim)') { exit 0 }
 
-# .claude (하니스 설정·도구) — 무조건 허용
-if ($targetPath -match '[\\/]\.claude[\\/]') { exit 0 }
+# .claude (하니스 설정·도구) — 무조건 허용. `.claude/worktrees/<이름>/` 까지는 떼고 본다 — 근거는 `rules/write-gate-rationale.md` §25
+if (($targetPath -replace '^.*[\\/]\.claude[\\/]worktrees[\\/][^\\/]+', '') -match '[\\/]\.claude[\\/]') { exit 0 }
 
 # 시스템 임시 폴더 — 근거는 `rules/write-gate-rationale.md` §10
 try {
@@ -226,6 +226,13 @@ function Test-PlanInDirectory {
     return $false
 }
 
+# worktree 의 `.git` 파일(`gitdir: …/worktrees/…`)만 레포 경계로 본다 — 서브모듈(`…/modules/…`)은 아니다 — 근거는 `rules/write-gate-rationale.md` §25
+function Test-WorktreeGitFile([string]$dir) {
+    $gf = Join-Path $dir '.git'
+    if (-not (Test-Path -LiteralPath $gf -PathType Leaf)) { return $false }
+    $first = [string](@(Get-Content -LiteralPath $gf -TotalCount 1 -ErrorAction SilentlyContinue)[0])
+    return ($first -match '^gitdir:.*[\\/]worktrees[\\/]')
+}
 function Find-PlanUpwards {
     param([string]$StartDir, [int]$MaxDepth = 8)
     if ([string]::IsNullOrEmpty($StartDir)) { return $null }
@@ -235,6 +242,7 @@ function Find-PlanUpwards {
         if (Test-PlanInDirectory -Dir $dir) { return $dir }
         # .git 또는 .claude 만나면 거기까지가 프로젝트 루트 → 더 위로 안 감
         if ((Test-Path -LiteralPath (Join-Path $dir '.git') -PathType Container) -or
+            (Test-WorktreeGitFile $dir) -or
             (Test-Path -LiteralPath (Join-Path $dir '.claude') -PathType Container)) {
             return $null  # 루트인데 plan 없음
         }

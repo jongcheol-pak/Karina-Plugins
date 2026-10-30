@@ -120,6 +120,23 @@ $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $rtcAun; tool_in
 Assert-Case -Name "rtc: cwd 가 미완료여도 -C 대상 레포가 완료면 통과" -R $r -ExpectExit 0
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcAun '기능: T2 — 다른 작업')
 Assert-Case -Name "rtc: -C 없는 cwd 미완료 T2 차단 유지 (음성 짝)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+# worktree 의 `.git` 은 `gitdir: …/worktrees/…` 파일이다 — 그것을 경계로 보지 않으면 부모 레포 plan 을 잡아 오차단했다.
+#   서브모듈의 `.git` 파일(`gitdir: …/modules/…`)은 경계가 아니다 — 종전대로 상위 plan 을 본다.
+$rtcWtRepo = Join-Path $work 'rtc-wt-repo'; New-Item -ItemType Directory (Join-Path $rtcWtRepo '.git') -Force | Out-Null
+"# plan`n- [ ] T2. 부모 작업" | Set-Content (Join-Path $rtcWtRepo 'plan.md')
+$rtcWt = Join-Path $rtcWtRepo 'wtroot/wt1'; New-Item -ItemType Directory $rtcWt -Force | Out-Null
+"gitdir: $rtcWtRepo/.git/worktrees/wt1" | Set-Content (Join-Path $rtcWt '.git')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcWt '기능: T2 — 워커 작업')
+Assert-Case -Name "rtc: worktree 커밋은 부모 레포 plan 으로 막지 않는다" -R $r -ExpectExit 0
+$rtcWt2 = Join-Path $rtcWtRepo 'wtroot/wt2'; New-Item -ItemType Directory $rtcWt2 -Force | Out-Null
+"gitdir: $rtcWtRepo/.git/worktrees/wt2" | Set-Content (Join-Path $rtcWt2 '.git')
+"# plan`n- [ ] T2. 워커 작업" | Set-Content (Join-Path $rtcWt2 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcWt2 '기능: T2 — 워커 작업')
+Assert-Case -Name "rtc: worktree 자기 plan 미완료는 차단 (음성 짝)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$rtcSm = Join-Path $rtcWtRepo 'sub'; New-Item -ItemType Directory $rtcSm -Force | Out-Null
+'gitdir: ../.git/modules/sub' | Set-Content (Join-Path $rtcSm '.git')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcSm '기능: T2 — 부모 작업')
+Assert-Case -Name "rtc: 서브모듈 커밋은 상위 plan 미완료로 차단 유지 (음성 짝)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcOk 'T3: 검색 요약')
 Assert-Case -Name "rtc: 완료 [x] T3 커밋 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUn 'T99: 없는 task')

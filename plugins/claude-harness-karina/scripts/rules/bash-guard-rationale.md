@@ -281,3 +281,15 @@ dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 **`Resolve-GitCommitDir` 가 정하는 순서**: `cwd` 에서 시작해, 커밋 앞에 나온 `cd`·`pushd`·`Set-Location`·`Push-Location` 대상을 차례로 결합하고, 그다음 커밋 명령의 `-C` 값을 차례로 결합한다(git 은 `-C` 여럿을 앞에서부터 잇는다). 결과 폴더가 없으면 `cwd` 로 돌아간다 — 판정할 수 없는 경로로 검사를 끄느니 종전대로 보는 편이 낫다.
 
 `-F <파일>` 의 상대 경로도 이 폴더 기준이다 — git 은 `-C` 로 옮긴 뒤 경로를 푼다. 그래서 `Get-CommitTitle` 이 따로 하던 `-C` 결합을 지웠다(두 번 결합된다).
+
+## §20 worktree 의 `.git` 파일은 레포 경계다
+
+```
+# worktree 의 `.git` 파일(`gitdir: …/worktrees/…`)만 레포 경계로 본다 — 서브모듈(`…/modules/…`)은 아니다 — 근거는 `rules/bash-guard-rationale.md` §20
+```
+
+**plan 상향 탐색은 `.git` 폴더에서 멈추는데, worktree 의 `.git` 은 폴더가 아니라 `gitdir: <원본>/.git/worktrees/<이름>` 한 줄짜리 파일이다.** 그래서 worktree 안 커밋이 경계를 지나 부모 레포의 `plan.md` 를 잡고, 그 plan 의 미완료 task 로 워커 커밋을 막았다(2026-10-30 재현 — `.claude/worktrees/wt1` 에서 `기능: T2 — …` 커밋이 부모 plan 의 `[ ] T2` 로 차단).
+
+**경계로 보는 것은 첫 줄이 `gitdir:` 이고 경로에 `/worktrees/` 가 든 파일뿐이다.** 서브모듈 루트도 `.git` 파일(`gitdir: ../.git/modules/<이름>`)을 갖는데, 서브모듈에서 연 세션은 지금까지 상위 레포 plan 으로 판정돼 왔다. 그 동작은 바꿀 근거가 없어 그대로 둔다.
+
+같은 판정이 `guard-write.ps1` 에도 있다(`write-gate-rationale.md` §25) — 두 파일의 상향 탐색이 갈리면 쓰기는 통과하고 커밋은 막히는 조합이 생긴다.

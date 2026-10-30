@@ -77,3 +77,13 @@
 **경계는 세 조각으로 잰다** — 회차 53 실측: `.claude` 세그먼트만 없는 개발 레포 경로 · `scripts/` 아래인데 확장자가 `.ps1` 이 아닌 것 · `.claude/` 인데 `scripts/` 하위가 아닌 `.ps1`. 셋 다 `exit 0` 이고, 각각 새 경계에서 **한 조각씩만** 어긋난 근접형이라 오차단 0 을 실제로 잰다.
 
 **이 판정은 「개발 레포 경로에 `.claude` 세그먼트가 없다」는 전제 위에 있다**(§5 의 안내문이 이미 그렇게 적는다) — 레포를 `~/.claude/` 아래 클론하면 자기 자신을 막는다.
+
+## §8 worktree 경로는 설치본이 아니다
+
+```
+# `.claude/worktrees/<이름>/` 까지는 떼고 본다 — 그 아래는 설치본이 아니라 프로젝트 worktree 다 — 근거는 `rules/harness-guard-rationale.md` §8
+```
+
+**경로 축(`/.claude/.*/scripts/*.ps1` · `hooks.json` · `scripts/rules/*.json`)은 `.claude/` 아래 어디든 걸린다.** 그래서 `<레포>/.claude/worktrees/<이름>/scripts/build.ps1` 처럼 worktree 안의 사용자 스크립트 편집이나, 하니스 레포 자신의 worktree 편집이 「설치본 개조」로 막혔다(2026-10-30 재현).
+
+**경로에서 마지막 `.claude/worktrees/<이름>` 까지를 떼고 판정한다.** worktree 안에 다시 `.claude/plugins/cache/…` 가 나오면 그것은 여전히 설치본이라 막힌다. 8.3 짧은 경로 판정은 `/plugins/cache/` 컨텍스트로만 서므로 손대지 않았다.

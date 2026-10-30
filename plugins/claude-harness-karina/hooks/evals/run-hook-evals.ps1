@@ -492,7 +492,7 @@ if ($deadGroups.Count) {
 Write-Host ("결과: {0}/{1} OK (FAIL {2}){3}" -f ($total - $failCount), $total, $failCount, $deadSuffix)
 Write-TimingLine -Total $total
 
-$GoldenTotalBaseline = 1319
+$GoldenTotalBaseline = 1330
 if (-not $deadGroups.Count -and -not $Filter -and $total -ne $GoldenTotalBaseline) {
     Write-Host ("[WARN] 총계가 기준선과 다릅니다: {0} != {1} (`$GoldenTotalBaseline`)." -f $total, $GoldenTotalBaseline)
     Write-Host '        합산 규칙: 선언형(hook-cases.json) + 러너 내장 시나리오. guard-bash 무상태 케이스는 dispatch 에코를 함께 돌아 1건이 2로 셉니다.'

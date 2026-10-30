@@ -69,7 +69,7 @@
 
 **`guard-write` 와 같은 plan 을 본다** — 후보는 `plan.md` → `PLAN.md` → `docs/plan.md` 이고, `cwd` 부터 8단계 위까지 각 단계에서 후보를 먼저 찾은 뒤 경계를 본다. 종전에는 `cwd` 의 `plan.md` 하나만 봐서, 하위 폴더에서 연 세션은 `guard-write` 가 plan 이 있다고 쓰기를 통과시키는 동안 「plan 없음」으로 안내했다(회차 4 — 감사 결과 정리).
 
-**한 곳만 `guard-write` 와 다르다 — `.git` 은 폴더든 파일이든 레포 경계다.** `guard-write`·`guard-bash` 는 `.git` 을 폴더로만 봐서, worktree(`.git` 이 `gitdir:` 파일)에서는 부모 레포의 plan 을 잡는다(회차 4 착수 실측). 이 hook 은 그 plan 으로 세션 상태를 알리고 `loop-continue` 는 그 plan 의 미완 task 로 「계속」을 주입하므로, 다른 레포의 plan 을 잡지 않도록 경계를 넓혔다. 차단 hook 쪽은 동작 보존 제약으로 그대로 둔다. `.claude` 폴더에서도 멈춘다(사용자 홈이 이것으로 막힌다).
+**한 곳만 `guard-write` 와 다르다 — `.git` 은 폴더든 파일이든 레포 경계다.** `guard-write`·`guard-bash` 는 `.git` 을 폴더로만 봐서, worktree(`.git` 이 `gitdir:` 파일)에서는 부모 레포의 plan 을 잡는다(회차 4 착수 실측). 이 hook 은 그 plan 으로 세션 상태를 알리고 `loop-continue` 는 그 plan 의 미완 task 로 「계속」을 주입하므로, 다른 레포의 plan 을 잡지 않도록 경계를 넓혔다. 차단 hook(`guard-write`·`guard-bash`)은 worktree 의 `.git` 파일(`gitdir: …/worktrees/…`)만 경계로 본다 — 서브모듈의 `.git` 파일은 상위 plan 으로 통과하던 동작을 지키려고 경계에서 뺐다(`bash-guard-rationale.md` §20). `.claude` 폴더에서도 멈춘다(사용자 홈이 이것으로 막힌다).
 
 **`docs/plans/` 의 날짜별 파일로는 폴백하지 않는다(v1.210.0)** — 과거 회차 plan 이 쌓인 디렉터리라, 폴백하면 그 미완료분이 이번 세션의 상태로 주입된다. 후보의 `docs/plan.md` 는 그 폴더가 아니라 단일 파일이다.
 

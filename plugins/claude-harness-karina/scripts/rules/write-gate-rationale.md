@@ -240,3 +240,16 @@
 **`-ErrorAction Stop` 이 없으면 그 `catch` 는 죽은 코드다.** 이 파일은 머리에서 `$ErrorActionPreference = 'SilentlyContinue'` 를 세우는데, 그 상태에서 `Get-Content` 의 파일 부재는 **non-terminating error** 라 `try/catch` 를 그냥 지나간다. 변수는 `$null` 이 되고 뒤 폴백이 조용히 걸려, **검사가 사라진 것을 아무도 모른다**(회차 53 실측 — 규칙 json 을 지우고 돌리면 stderr 한 줄 없이 통과했다). `block-destructive.ps1` 만 파일 전역이 `'Stop'` 이라 같은 파이프라인 형태로도 `catch` 가 걸린다 — 그 파일의 가시화가 실제로 동작하는 이유이고, 나머지 hook 은 **지역 `-ErrorAction Stop`** 으로 같은 상태를 만든다(전역을 바꾸면 이번에 재지 않은 경로가 함께 바뀐다).
 
 **게이트는 종전대로 `exit 0` 으로 빠진다** — 목록을 못 읽으면 판정 근거가 없어 차단할 수 없다(fail-open). 바뀐 것은 **그 사실이 화면에 보인다**는 것뿐이다.
+
+## §25 `.claude/worktrees/` 는 프로젝트 소스다
+
+```
+# .claude (하니스 설정·도구) — 무조건 허용. `.claude/worktrees/<이름>/` 까지는 떼고 본다 — 근거는 `rules/write-gate-rationale.md` §25
+# worktree 의 `.git` 파일(`gitdir: …/worktrees/…`)만 레포 경계로 본다 — 서브모듈(`…/modules/…`)은 아니다 — 근거는 `rules/write-gate-rationale.md` §25
+```
+
+**`.claude` 무조건 허용은 하니스 설정·도구(settings·hooks·skills)를 위한 것이다.** 그런데 Claude Code 의 worktree 는 `<레포>/.claude/worktrees/<이름>/` 에 만들어져, 그 안의 모든 소스 쓰기가 plan 게이트를 통째로 통과했다(2026-10-30 재현 — `…\.claude\worktrees\wt1\src\Program.cs` 40줄 Write 가 `exit 0`).
+
+**그래서 경로에서 마지막 `.claude/worktrees/<이름>` 까지를 떼고 남은 경로로 판정한다.** worktree 안의 `.claude/` 설정(`<wt>/.claude/settings.json`)은 그 뒤에 다시 `.claude` 가 나오므로 계속 허용된다.
+
+**plan 상향 탐색의 경계에 worktree 의 `.git` 파일을 더했다.** 그러지 않으면 worktree 쓰기가 부모 레포 plan 으로 통과한다. 서브모듈 `.git` 파일은 경계가 아니다 — 판정은 `bash-guard-rationale.md` §20 과 같다.
