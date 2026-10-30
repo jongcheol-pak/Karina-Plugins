@@ -2,9 +2,6 @@
 #
 # 사용법:
 #   .\validate.ps1
-#
-# 검증 항목:
-#   3-1. 가이드 문서 11개 존재 (DESIGN/AUTHORING/BUDGET/WIKI/AGENTS-BOUNDARY/WRITING/PERF-MEASUREMENT/REPO-CONVENTIONS/READONLY-SUBAGENTS/TEMP-FILES/SCREEN-COVER)
 
 param(
     [switch]$Verbose
