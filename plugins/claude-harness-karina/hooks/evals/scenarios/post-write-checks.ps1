@@ -321,6 +321,8 @@ $r = Invoke-CommentEdit 'cm_go.py' 'v = 0' "# go: 이 값은 첫 화면 기준`n
 Assert-Case -Name "post-write H4: .py 의 go: 로 시작하는 주석은 Go 지시문이 아니다" -R $r -ExpectExit 0 -ExpectContains '[COMMENT]'
 $r = Invoke-CommentEdit 'cm_ps_directive.ps1' '$z = 0' "#Requires -Version 7`n#region Helpers`n#endregion`n`$z = 0"
 Assert-Case -Name "post-write H4: .ps1 의 #Requires·#region 지시문은 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_go_directive.go' 'var w = 0' "//go:generate stringer -type=W`n// #region A`n// #endregion`nvar w = 0"
+Assert-Case -Name "post-write H4: // 계열의 //go:·// #region 지시문은 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
 $r = Invoke-CommentEdit 'cm_move.rs' "// 기존 설명`nfn a() {}" "fn b() {}`n// 기존 설명"
 Assert-Case -Name "post-write H4: 옮기기만 한 주석은 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
 $r = Invoke-CommentEdit 'cm_lint.ts' 'f();' "// eslint-disable-next-line`n// @ts-ignore`n// prettier-ignore`nf();"
