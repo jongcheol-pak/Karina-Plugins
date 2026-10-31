@@ -280,7 +280,7 @@ if ($gitOk) {
 # ---- [P1T4] C# 전처리 지시문(#region/#if)은 영문 주석 오집계 제외 ----
 $prePath = Join-Path $pw 'Pre.cs'
 # 영문 // 주석 3줄(≤5) + 전처리 지시문 6개 — 종전 '//|#' 판정이면 지시문까지 세어 9줄(>5)로
-# 영문주석 경고를 오탐했을 것. 새 판정(.cs는 //만)이면 3줄뿐이라 >5 미달로 무경고여야 한다.
+# 영문주석 경고를 오탐했을 것. 새 판정(.cs는 //만)이면 3줄뿐이라 >5 미달로 영문주석 경고가 없어야 한다.
 # .cs이지만 BOM 없이 저장(BOM 경고와 분리해 영문주석 판정만 검증).
 $preBody = @('#region Helpers', '#if DEBUG', '#pragma warning disable', '// one', '// two', '// three', '#else', '#endif', '#endregion') -join "`n"
 [System.IO.File]::WriteAllText($prePath, $preBody, [System.Text.UTF8Encoding]::new($false))
@@ -313,6 +313,14 @@ $r = Invoke-CommentEdit 'cm_tool.ps1' '$a = 1' "# 설명`n`$a = 1"
 Assert-Case -Name "post-write H4: .ps1 # 주석도 경고" -R $r -ExpectExit 0 -ExpectContains '[COMMENT]'
 $r = Invoke-CommentEdit 'cm_word.ts' 'const r = 1;' "// 이 region 좌표는 화면 기준`nconst r = 1;"
 Assert-Case -Name "post-write H4: 지시문 낱말이 본문 중간에 있으면 제외하지 않는다" -R $r -ExpectExit 0 -ExpectContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_requires.cs' 'int p = 0;' "// Requires admin rights to open the port`nint p = 0;"
+Assert-Case -Name "post-write H4: Requires 로 시작하는 일반 주석은 .ps1 지시문이 아니다" -R $r -ExpectExit 0 -ExpectContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_region.ts' 'let q = 0;' "// region of interest is the visible rect`nlet q = 0;"
+Assert-Case -Name "post-write H4: region 으로 시작하는 일반 주석은 접기 지시문이 아니다" -R $r -ExpectExit 0 -ExpectContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_go.py' 'v = 0' "# go: 이 값은 첫 화면 기준`nv = 0"
+Assert-Case -Name "post-write H4: .py 의 go: 로 시작하는 주석은 Go 지시문이 아니다" -R $r -ExpectExit 0 -ExpectContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_ps_directive.ps1' '$z = 0' "#Requires -Version 7`n#region Helpers`n#endregion`n`$z = 0"
+Assert-Case -Name "post-write H4: .ps1 의 #Requires·#region 지시문은 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
 $r = Invoke-CommentEdit 'cm_move.rs' "// 기존 설명`nfn a() {}" "fn b() {}`n// 기존 설명"
 Assert-Case -Name "post-write H4: 옮기기만 한 주석은 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
 $r = Invoke-CommentEdit 'cm_lint.ts' 'f();' "// eslint-disable-next-line`n// @ts-ignore`n// prettier-ignore`nf();"

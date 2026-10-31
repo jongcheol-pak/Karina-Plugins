@@ -193,7 +193,8 @@ try {
     $hashExtsH4 = @('.py', '.ps1', '.sh')
     $isSlashH4 = $slashExtsH4 -contains $extH4
     if (($isSlashH4 -or ($hashExtsH4 -contains $extH4)) -and $data.tool_name -ne 'NotebookEdit') {
-        $exemptH4 = '(?i)^(eslint-|prettier-ignore|@ts-|noqa|type:\s*ignore|pylint:|pyright:|mypy:|nolint|istanbul ignore|c8 ignore|biome-ignore|resharper|fmt:\s*(off|on)\b|isort:|#?region\b|#?endregion\b|requires\b|go:|<reference|spdx-license-identifier|copyright|@license|-\*-\s*coding)'
+        $exemptH4 = '(?i)^(eslint-|prettier-ignore|@ts-|noqa|type:\s*ignore|pylint:|pyright:|mypy:|nolint|istanbul ignore|c8 ignore|biome-ignore|resharper|fmt:\s*(off|on)\b|isort:|<reference|spdx-license-identifier|copyright|@license|-\*-\s*coding)'
+        $rawExemptH4 = if ($isSlashH4) { '^//(go:|\s*#(end)?region\b)' } elseif ($extH4 -eq '.ps1') { '(?i)^#(requires|(end)?region)\b' } else { '(?!)' }
 
         function Get-CommentBodies([string[]]$Lines) {
             $bodies = New-Object System.Collections.Generic.List[string]
@@ -217,7 +218,7 @@ try {
                 }
                 if ($null -eq $body) { continue }
                 $body = ($body -replace '(\*/|#>)\s*$', '').Trim()
-                if ($body -eq '' -or $body -match $exemptH4) { continue }
+                if ($body -eq '' -or $body -match $exemptH4 -or $t -match $rawExemptH4) { continue }
                 $bodies.Add($t)
             }
             return , $bodies

@@ -232,7 +232,7 @@
 
 **주석 문법.** `//`·`/* */` 계열은 `.cs .ts .tsx .js .jsx .java .go .rs .cpp .c .h .hpp .fs .kt .swift`, `#` 계열은 `.py .ps1 .sh` 이고 `.ps1` 은 `<# #>` 블록도 본다. 블록 주석은 그 편집이 더한 텍스트 안에서 열림·닫힘을 따라가 블록 안 줄을 센다 — 따라가지 않으면 블록 밖에서 `*` 로 시작하는 코드 줄(포인터 역참조 등)을 주석으로 잘못 센다. doc 주석(`///`·`//!`·`/** */`)도 센다 — Karina 회차가 지운 주석의 절반 이상이 doc 주석이었다.
 
-**세지 않는 줄.** 빈 주석 줄, shebang(`#!`), 그리고 주석 표지 **바로 뒤**가 린트·포매터 지시문(`eslint-`·`prettier-ignore`·`@ts-`·`noqa`·`NOLINT` 등)·`region`/`endregion`·`#Requires`·`//go:`·`/// <reference`·인코딩 선언·`SPDX-License-Identifier`·`Copyright`·`@license` 인 줄이다. 접두 일치만 보는 이유는 「이 region 좌표는…」 처럼 본문 중간에 같은 낱말이 든 설명 주석까지 빠지지 않게 하려는 것이다.
+**세지 않는 줄.** 빈 주석 줄, shebang(`#!`), 그리고 주석 표지 **바로 뒤**가 린트·포매터 지시문(`eslint-`·`prettier-ignore`·`@ts-`·`noqa`·`NOLINT` 등)·`/// <reference`·인코딩 선언·`SPDX-License-Identifier`·`Copyright`·`@license` 인 줄이다. 접두 일치만 보는 이유는 「이 region 좌표는…」 처럼 본문 중간에 같은 낱말이 든 설명 주석까지 빠지지 않게 하려는 것이다. **영어 낱말과 겹치는 지시문은 언어별 원문 꼴로만 뺀다** — `//go:`(공백 없이)·`// #region`/`#endregion` 은 `//` 계열에서, `#Requires`·`#region`/`#endregion` 은 `.ps1` 에서만이다. 처음에는 `requires`·`region`·`go:` 를 언어와 무관한 본문 접두로 뺐는데, 완료 리뷰가 `.cs` 의 `// Requires admin rights …` 가 경고에서 빠지는 것을 재현했다(골든 케이스 셋이 이 꼴을 잰다).
 
 **세션 디듑(`Test-WarnOnce`)을 쓰지 않는다** — 한 파일에 주석을 여러 번 나눠 쓰는 경우가 Karina 회차의 형태였고, 파일당 1회면 두 번째부터는 아무 말도 하지 않는다(사용자 결정 2026-10-31).
 
