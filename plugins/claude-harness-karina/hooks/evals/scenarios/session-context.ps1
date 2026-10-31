@@ -658,7 +658,7 @@ if (Test-HookSelected @('session-context')) {
     #   케이스마다 레포를 새로 파면 골든 러너에 git 프로세스가 수십 회 더 붙는다.
     # **git 게이트** — 이 묶음은 실제 레포 픽스처를 만들므로 git 이 없으면 통째로 건너뛴다.
     #   `& git` 은 명령을 못 찾으면 종료 오류를 던지는데 러너의 시나리오 루프에는 catch 가 없어
-    #   그 예외가 스위트 전체를 중단시킨다(같은 이유로 `post-write-checks.ps1:138,181` 이
+    #   그 예외가 스위트 전체를 중단시킨다(같은 이유로 `scenarios/post-write-checks.ps1` 의 git 픽스처 묶음 둘이
     #   git 시나리오를 이 게이트로 감싼다. $gitOk 는 `eval-common.ps1:98` 의 top-level 정의라
     #   필터 조합과 무관하게 항상 판정된다).
     if ($gitOk) {
