@@ -189,6 +189,21 @@ if ($gitOk) {
     $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pwFresh; tool_input = @{ file_path = $pwFreshDoc } } | ConvertTo-Json -Compress)
     Assert-Case -Name "post-write: HEAD 없는 저장소는 전재 폴백 — 시크릿 경고 유지" -R $r -ExpectExit 0 -ExpectContains '민감 정보'
     Remove-Item -Recurse -Force $pwFresh -ErrorAction SilentlyContinue
+
+    $cmRepo = Join-Path $work 'cmrepo'; New-Item -ItemType Directory $cmRepo -Force | Out-Null
+    Push-Location $cmRepo
+    git init -q; git config user.email t@t; git config user.name t
+    "// 기존 설명`nvar a = 1" | Set-Content added.go
+    "// 기존 설명`nvar b = 1" | Set-Content codeonly.go
+    git add .; git commit -qm base
+    "// 기존 설명`n// 새 설명`nvar a = 1" | Set-Content added.go
+    "// 기존 설명`nvar b = 1`nvar c = 2" | Set-Content codeonly.go
+    Pop-Location
+    $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $cmRepo; tool_input = @{ file_path = (Join-Path $cmRepo 'added.go') } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "post-write H4: 추적 파일 Write 는 새로 더한 주석 1줄만 센다" -R $r -ExpectExit 0 -ExpectContains '이번 편집이 주석 1줄'
+    $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $cmRepo; tool_input = @{ file_path = (Join-Path $cmRepo 'codeonly.go') } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "post-write H4: 추적 파일의 커밋된 주석은 다시 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
+    Remove-Item -Recurse -Force $cmRepo -ErrorAction SilentlyContinue
 }
 
 # =====================================================================
@@ -270,7 +285,48 @@ $prePath = Join-Path $pw 'Pre.cs'
 $preBody = @('#region Helpers', '#if DEBUG', '#pragma warning disable', '// one', '// two', '// three', '#else', '#endif', '#endregion') -join "`n"
 [System.IO.File]::WriteAllText($prePath, $preBody, [System.Text.UTF8Encoding]::new($false))
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; session_id = 'pre-sess'; tool_input = @{ file_path = $prePath } } | ConvertTo-Json -Compress)
-Assert-Case -Name "post-write: C# 전처리 지시문 영문주석 오집계 제외 (P1T4 — //3줄뿐이라 >5 미달로 무경고)" -R $r -ExpectExit 0 -ExpectSilent $true
+Assert-Case -Name "post-write: C# 전처리 지시문 영문주석 오집계 제외 (P1T4 — //3줄뿐이라 >5 미달로 영문주석 경고 없음)" -R $r -ExpectExit 0 -ExpectNotContains '영문'
+
+function Invoke-CommentEdit {
+    param([string]$Name, [string]$Old, [string]$New)
+    $path = Join-Path $pw $Name
+    [System.IO.File]::WriteAllText($path, $New, [System.Text.UTF8Encoding]::new($false))
+    $j = @{ tool_name = 'Edit'; cwd = $pw; tool_input = @{ file_path = $path; old_string = $Old; new_string = $New } } | ConvertTo-Json -Compress -Depth 5
+    return (Invoke-Hook 'post-write-checks.ps1' $j)
+}
+$r = Invoke-CommentEdit 'cm_line.rs' 'fn a() {}' "// 섹션의 첫 행인가`nfn a() {}"
+Assert-Case -Name "post-write H4: 줄 주석 추가는 경고" -R $r -ExpectExit 0 -ExpectContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_doc.rs' 'pub fn b() {}' "/// 그 모니터 작업 영역 가운데.`npub fn b() {}"
+Assert-Case -Name "post-write H4: doc 주석(///) 추가도 경고" -R $r -ExpectExit 0 -ExpectContains '[COMMENT]'
+$multiPath = Join-Path $pw 'cm_multi.ts'
+[System.IO.File]::WriteAllText($multiPath, "const a = 1;`n// 설명`nconst b = 2;", [System.Text.UTF8Encoding]::new($false))
+$multiEdits = @(@{ old_string = 'const a = 0;'; new_string = 'const a = 1;' }, @{ old_string = 'const b = 2;'; new_string = "// 설명`nconst b = 2;" })
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'MultiEdit'; cwd = $pw; tool_input = @{ file_path = $multiPath; edits = $multiEdits } } | ConvertTo-Json -Compress -Depth 5)
+Assert-Case -Name "post-write H4: MultiEdit 둘째 편집 쌍의 주석도 경고" -R $r -ExpectExit 0 -ExpectContains '[COMMENT]'
+$pyPath = Join-Path $pw 'cm_new.py'
+[System.IO.File]::WriteAllText($pyPath, "# 설명`nx = 1", [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $pyPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write H4: git 밖 새 파일 Write 는 파일 전체의 주석을 센다" -R $r -ExpectExit 0 -ExpectContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_block.cs' 'int x = 1;' "/* 첫 줄`n * 둘째 줄`n * 셋째 줄 */`nint x = 1;"
+Assert-Case -Name "post-write H4: 블록 주석은 블록 안 줄까지 센다" -R $r -ExpectExit 0 -ExpectContains '이번 편집이 주석 3줄'
+$r = Invoke-CommentEdit 'cm_tool.ps1' '$a = 1' "# 설명`n`$a = 1"
+Assert-Case -Name "post-write H4: .ps1 # 주석도 경고" -R $r -ExpectExit 0 -ExpectContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_word.ts' 'const r = 1;' "// 이 region 좌표는 화면 기준`nconst r = 1;"
+Assert-Case -Name "post-write H4: 지시문 낱말이 본문 중간에 있으면 제외하지 않는다" -R $r -ExpectExit 0 -ExpectContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_move.rs' "// 기존 설명`nfn a() {}" "fn b() {}`n// 기존 설명"
+Assert-Case -Name "post-write H4: 옮기기만 한 주석은 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_lint.ts' 'f();' "// eslint-disable-next-line`n// @ts-ignore`n// prettier-ignore`nf();"
+Assert-Case -Name "post-write H4: 린트·포매터 지시문만 더하면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
+$shPath = Join-Path $pw 'cm_head.sh'
+[System.IO.File]::WriteAllText($shPath, "#!/usr/bin/env bash`n# SPDX-License-Identifier: MIT`necho hi", [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $shPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write H4: shebang·라이선스 줄만 있으면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_note.md' '본문' "<!-- 메모 -->`n본문"
+Assert-Case -Name "post-write H4: 문서 HTML 주석은 대상이 아니다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_ptr.c' 'int y;' "int y;`n*ptr = 1;"
+Assert-Case -Name "post-write H4: 블록 밖 * 시작 줄은 주석이 아니다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
+$r = Invoke-CommentEdit 'cm_code.rs' 'let x = 1;' "let x = 1;`nlet y = 2;"
+Assert-Case -Name "post-write H4: 주석 없는 편집은 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
 
 # .state 디듑 마커 30일 정리는 2026-10-08 세션 시작 1회로 옮겼다 — 그 케이스는 scenarios/session-context.ps1 에 있다.
 

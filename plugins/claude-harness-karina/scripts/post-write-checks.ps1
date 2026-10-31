@@ -188,6 +188,78 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
         # 섹션 1 전체 실패는 섹션 2 실행을 막지 않는다(격리 — 분리 프로세스였을 때와 동일하게 독립).
     }
 
+# H4: 새 주석 경고 — 근거는 `rules/post-write-rationale.md` §22
+try {
+    $extH4 = [System.IO.Path]::GetExtension($file).ToLower()
+    $slashExtsH4 = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift')
+    $hashExtsH4 = @('.py', '.ps1', '.sh')
+    $isSlashH4 = $slashExtsH4 -contains $extH4
+    if (($isSlashH4 -or ($hashExtsH4 -contains $extH4)) -and $data.tool_name -ne 'NotebookEdit') {
+        $exemptH4 = '(?i)^(eslint-|prettier-ignore|@ts-|noqa|type:\s*ignore|pylint:|pyright:|mypy:|nolint|istanbul ignore|c8 ignore|biome-ignore|resharper|fmt:\s*(off|on)\b|isort:|#?region\b|#?endregion\b|requires\b|go:|<reference|spdx-license-identifier|copyright|@license|-\*-\s*coding)'
+
+        function Get-CommentBodies([string[]]$Lines) {
+            $bodies = New-Object System.Collections.Generic.List[string]
+            $inBlock = $false
+            foreach ($line in $Lines) {
+                $t = ([string]$line).Trim()
+                $body = $null
+                if ($inBlock) {
+                    $body = $t -replace '^\*+(?!/)', ''
+                    if ($t -match '\*/|#>') { $inBlock = $false }
+                } elseif ($isSlashH4 -and $t.StartsWith('//')) {
+                    $body = $t -replace '^/{2,}!?', ''
+                } elseif ($isSlashH4 -and $t.StartsWith('/*')) {
+                    $body = $t -replace '^/\*+!?', ''
+                    $inBlock = -not ($body -match '\*/')
+                } elseif ((-not $isSlashH4) -and $extH4 -eq '.ps1' -and $t.StartsWith('<#')) {
+                    $body = $t.Substring(2)
+                    $inBlock = -not ($body -match '#>')
+                } elseif ((-not $isSlashH4) -and $t.StartsWith('#') -and -not $t.StartsWith('#!')) {
+                    $body = $t -replace '^#+', ''
+                }
+                if ($null -eq $body) { continue }
+                $body = ($body -replace '(\*/|#>)\s*$', '').Trim()
+                if ($body -eq '' -or $body -match $exemptH4) { continue }
+                $bodies.Add($t)
+            }
+            return , $bodies
+        }
+
+        $addedH4 = New-Object System.Collections.Generic.List[string]
+        $pairsH4 = @()
+        if ($data.tool_input.edits) {
+            $pairsH4 = @($data.tool_input.edits | ForEach-Object { , @([string]$_.old_string, [string]$_.new_string) })
+        } elseif ($null -ne $data.tool_input.new_string) {
+            $pairsH4 = @(, @([string]$data.tool_input.old_string, [string]$data.tool_input.new_string))
+        }
+        if ($pairsH4.Count -gt 0) {
+            foreach ($pair in $pairsH4) {
+                $oldSet = New-Object System.Collections.Generic.HashSet[string]
+                foreach ($o in ($pair[0] -split '\r?\n')) { [void]$oldSet.Add($o.Trim()) }
+                foreach ($c in (Get-CommentBodies ($pair[1] -split '\r?\n'))) {
+                    if (-not $oldSet.Contains($c)) { $addedH4.Add($c) }
+                }
+            }
+        } else {
+            $writeLines = if ($sharedDiffOk) {
+                @($sharedDiffLines | Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') } | ForEach-Object { $_.Substring(1) })
+            } else { $content }
+            if ($null -ne $writeLines) {
+                foreach ($c in (Get-CommentBodies $writeLines)) { $addedH4.Add($c) }
+            }
+        }
+
+        if ($addedH4.Count -gt 0) {
+            if ($allMsgs.Count -gt 0) { $allMsgs.Add("") }
+            $allMsgs.Add("[COMMENT] ${file}: 이번 편집이 주석 $($addedH4.Count)줄을 더했습니다")
+            foreach ($c in ($addedH4 | Select-Object -First 3)) {
+                $allMsgs.Add("  | " + $(if ($c.Length -gt 100) { $c.Substring(0, 100) + '…' } else { $c }))
+            }
+            $allMsgs.Add("  남길 수 있는 것은 라이선스 고지·바꿀 수 없는 외부 제약·린트/포매터 지시문·공개 API 계약 doc·이슈/RFC 링크와 프로젝트 규약이 요구하는 주석뿐입니다 — 아니면 지우고 이유는 커밋 본문에 적으세요 (code-style.md「주석」 · 차단 아님)")
+        }
+    }
+} catch {}
+
 # ============================================================ — 근거는 `rules/post-write-rationale.md` §10
     try {
         if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {
