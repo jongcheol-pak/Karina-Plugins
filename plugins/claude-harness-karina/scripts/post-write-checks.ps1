@@ -184,9 +184,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             $allMsgs.Add("")
             $allMsgs.Add("수정 후 다시 저장하거나, 이유와 함께 plan.md에 follow-up으로 기록하세요.")
         }
-    } catch {
-        # 섹션 1 전체 실패는 섹션 2 실행을 막지 않는다(격리 — 분리 프로세스였을 때와 동일하게 독립).
-    }
+    } catch {}
 
 # H4: 새 주석 경고 — 근거는 `rules/post-write-rationale.md` §22
 try {

@@ -328,8 +328,6 @@ Assert-Case -Name "post-write H4: 블록 밖 * 시작 줄은 주석이 아니다
 $r = Invoke-CommentEdit 'cm_code.rs' 'let x = 1;' "let x = 1;`nlet y = 2;"
 Assert-Case -Name "post-write H4: 주석 없는 편집은 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[COMMENT]'
 
-# .state 디듑 마커 30일 정리는 2026-10-08 세션 시작 1회로 옮겼다 — 그 케이스는 scenarios/session-context.ps1 에 있다.
-
 # ---- [회차 51] H3 저장 직후 줄바꿈 경고 ----
 #   워킹트리 규약은 CRLF 인데 Write·Edit 도구는 LF 로 쓴다. AGENTS.md 「줄바꿈」이 확인을 요구하지만
 #   회차 50 이 intent/ 를 쓰고 확인하지 않아 「줄바꿈 정합」 축이 red 를 냈다 — 저장한 자리에서 알린다.
