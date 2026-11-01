@@ -47,11 +47,6 @@ function Write-UnknownFilterWarning {
     }
 }
 
-# ---- 무상태 그룹 샤딩 ----
-# `stateless` 313케이스가 한 자식에서 순차로 돌면 전체 wall-clock을 혼자 결정한다
-#   (샤드 하나 약 25초 — 2026-11-01 hook in-process 실측). 상태가 없어 케이스 간 순서
-#   의존이 없으므로 `stateless-<N>` 그룹으로 나눠 병렬로 돌린다.
-# **코디네이터와 자식이 같은 함수를 쓴다** — 한쪽만 고치면 자식이 없는 파일명을 찾아 FAIL한다.
 $script:GoldenShardCount = 8
 
 function Resolve-ScenarioShard {
