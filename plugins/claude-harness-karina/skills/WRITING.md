@@ -3,6 +3,13 @@
 > karina 스킬이 사용자에게 내는 글의 문장 규칙이다. 각 스킬의 보고·커밋 절이 이 파일을 가리키고, 글을 쓰기 전에 한 번 읽는다.
 > 출처는 Cursor pstack 의 unslop·technical-writing 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/unslop/SKILL.md` 와 같은 커밋의 `pstack/skills/technical-writing/SKILL.md`. 언어와 무관한 규칙만 한글로 옮겼고, 들이지 않은 것은 맨 끝 절에 이유와 함께 둔다.
 
+## 목차
+
+- 적용 범위
+- 원칙
+- 규칙 (내용 · 단어 · 문장 · 목록 · 커밋 본문 · 말투)
+- 들이지 않은 것
+
 ## 적용 범위
 
 - **거는 곳** — 완료 보고, 계획 승인 제시, 커밋 메시지, PR 본문, README, 디버깅 보고, 체인 보고, PR 운영 보고, 검증 스킬(생성·형식 검증·유지)의 보고 문장, 다시 설명(`wait-what`), 시안 보고(`prototype`)이다. 사용자가 이 글로 판단하므로 읽는 데 드는 수고가 곧 비용이다.

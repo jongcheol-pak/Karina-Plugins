@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 18개로 잰다.
+r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 19개로 잰다.
 
 사용법: python evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
        python evals/check-harness-consistency.py --fix [--dry-run]
@@ -9,6 +9,7 @@ r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것�
     ⑥ 추출 앵커 도달성 ⑦ 문서 예산 ⑧ 줄바꿈 정합 ⑨ 종결 사유 명시 ⑩ 핵심 포인터 실재
     ⑪ 등재 마커 실재 ⑭ 폐기 식별자 실재 ⑮ 등재 근거 실측 ⑯ 복제 사본 동기 ⑰ 계수·버전 정합 ⑱ 규칙 근거 보유
     ⑲ 영향 검토 3축 ⑳ (폐지 — 관련 파일 절 폐지로 대상 소멸) ㉑ 큐 태그 열거 정합(+하위 「수 표현」) ㉒ README 행 동반
+    ㉓ 참조 문서 목차
     (**⑫⑬ 은 결번이다** — v1.224.0 이 지운 옛 축 둘을 대장 대기 항목이 아직 그 번호로
      가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.)
 
@@ -939,6 +940,43 @@ def check_line_endings():
                           % (rel, lf))
         if cr:
             issues.append("bare CR: %s (%d개) — LF 없는 단독 CR 이 박혔다" % (rel, cr))
+    return issues, n
+
+
+TOC_THRESHOLD_RX = re.compile(r"(\d+)줄을 넘으면 머리에 목차")
+TOC_MARK_RX = re.compile(r"^(## 목차(\s|$)|> 목차:|> 수록:)")
+TOC_HEAD_LINES = 15
+
+
+def check_reference_toc():
+    """㉓ 참조 문서 목차 — `skills/` 아래 `SKILL.md` 가 아닌 `.md` 가 임계 줄 수를 넘으면
+    머리 `TOC_HEAD_LINES` 줄 안에 목차 표지(`TOC_MARK_RX`)가 있어야 한다.
+
+    왜 필요한가·임계를 문면에서 읽는 이유·못 잡는 것은 `harness-consistency-rationale.md` 의
+    「축 ㉓ — 참조 문서 목차」. 임계는 `skills/BUDGET.md` 의 `TOC_THRESHOLD_RX` 문면이 정본이고,
+    못 읽으면 `die()` 다. 대상 열거·`fixtures/` 제외는 축 ⑧ 과 같은 것을 쓴다.
+    """
+    m = TOC_THRESHOLD_RX.search(read(BUDGET_MD))
+    if not m:
+        die("skills/BUDGET.md 목차 임계 문면(`N줄을 넘으면 머리에 목차`)을 찾지 못함")
+    limit = int(m.group(1))
+    issues, n = [], 0
+    for rel in _line_ending_targets():
+        if (not rel.startswith("skills/") or not rel.endswith(".md")
+                or rel.endswith("/SKILL.md") or _LE_SKIP_RX.search(rel)):
+            continue
+        try:
+            with open(os.path.join(ROOT, rel), encoding="utf-8") as fh:
+                lines = fh.read().splitlines()
+        except OSError:
+            continue
+        if len(lines) <= limit:
+            continue
+        n += 1
+        if not any(TOC_MARK_RX.match(l) for l in lines[:TOC_HEAD_LINES]):
+            issues.append("목차 없음: %s (%d줄 > %d) — 머리 %d줄 안에 `## 목차` 절이나 "
+                          "`> 목차:` 줄을 둔다(`skills/BUDGET.md` 「나눈 뒤에 지킬 것」)"
+                          % (rel, len(lines), limit, TOC_HEAD_LINES))
     return issues, n
 
 
@@ -2203,6 +2241,7 @@ def main():
         ("README 행 동반", check_readme_companion()),
         ("큐 태그 열거 정합", (tagenum_issues, tagenum_n)),
         ("큐 태그 수 표현", check_queue_tag_count_words()),
+        ("참조 문서 목차", check_reference_toc()),
     ]
     sys.exit(report(axes, check_agents_target() + check_deleted_section_pointers() + budget_notices
                     + close_notices + ledger_notices + rule_notices + tagenum_notices + count_notices))

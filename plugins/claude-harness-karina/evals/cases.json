@@ -2702,5 +2702,171 @@
       "[MISMATCH]",
       "영향 검토 3축 미기재: `병목` 행이"
     ]
+  },
+  {
+    "id": "toc-ok",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "참조 문서 목차 1항목"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  },
+  {
+    "id": "toc-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "skills/sample/references/long-ref.md",
+        "find": "## 목차\r\n",
+        "replace": "## 차례\r\n"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "목차 없음",
+      "long-ref.md"
+    ]
+  },
+  {
+    "id": "toc-beyond-head",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "skills/sample/references/long-ref.md",
+        "find": "# 긴 참조 (픽스처)\r\n",
+        "replace": "# 긴 참조 (픽스처)\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "목차 없음",
+      "long-ref.md"
+    ]
+  },
+  {
+    "id": "toc-anchor-missing",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 2,
+    "mutate": [
+      {
+        "file": "skills/BUDGET.md",
+        "find": "100줄을 넘으면 머리에 목차",
+        "replace": "100줄 넘는 문서"
+      }
+    ],
+    "expect_keywords": [
+      "[ANCHOR FAIL]",
+      "목차 임계 문면"
+    ]
+  },
+  {
+    "id": "toc-boundary-100",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "skills/sample/references/long-ref.md",
+        "find": "## 목차\r\n",
+        "replace": ""
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "참조 문서 목차 0항목"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  },
+  {
+    "id": "toc-quote-form",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "skills/sample/references/long-ref.md",
+        "find": "## 목차\r\n",
+        "replace": "> 목차: 첫째 절 / 둘째 절\r\n"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "참조 문서 목차 1항목"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  },
+  {
+    "id": "toc-suryok-form",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "skills/sample/references/long-ref.md",
+        "find": "## 목차\r\n",
+        "replace": "> 수록: 첫째 절\r\n"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "참조 문서 목차 1항목"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  },
+  {
+    "id": "toc-heading-suffix",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "skills/sample/references/long-ref.md",
+        "find": "## 목차\r\n",
+        "replace": "## 목차 (부연)\r\n"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "참조 문서 목차 1항목"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  },
+  {
+    "id": "toc-skill-exempt",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "skills/sample/SKILL.md",
+        "find": "여기서 추출이 멈춘다.\r\n",
+        "replace": "여기서 추출이 멈춘다.\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "참조 문서 목차 1항목"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
   }
 ]
