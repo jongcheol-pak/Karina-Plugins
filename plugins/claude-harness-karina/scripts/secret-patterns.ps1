@@ -73,12 +73,14 @@ function Get-SecretMatches {
     if ([string]::IsNullOrEmpty($content)) { return @() }
 
     # 실제 '값' 패턴만 잡고 단순 언급 — 근거는 `rules/secret-patterns-rationale.md` §8
+    # 따옴표 없는 값 자리의 코드 식(호출 `read_or(` · 블록 `unsafe {`)은 값이 아니다 — 근거는 같은 §8
+    $notCodeExpr = '(?:(?<=["''`])|(?![\w.:]+(?:\(|\s+\{)))'
     $secretPatterns = @(
-        @{ rx = '(?i)(password|passwd|pwd)\s*[:=]\s*["'']?(?!(os\.|process\.env|Environment\.|System\.getenv|ENV\[|getenv\(|string\b|str\b|int\b|bool\b|char\b|secure(string)?\b|none\b|null\b|nil\b|true\b|false\b))[^\s"''<>{}$]{3,}'; label = 'password 값' },
+        @{ rx = '(?i)(password|passwd|pwd)\s*[:=]\s*["'']?(?!(os\.|process\.env|Environment\.|System\.getenv|ENV\[|getenv\(|string\b|str\b|int\b|bool\b|char\b|secure(string)?\b|none\b|null\b|nil\b|true\b|false\b))' + $notCodeExpr + '[^\s"''<>{}$]{3,}'; label = 'password 값' },
         # 한글 키워드 (v1.119.0) — 종전엔 영문 password 계열만 봐서 "비밀번호: <값>"이 통째로 미탐이었다.
         #   환경변수 이름만 적으라는 이 hook의 권고를 따른 문장("비밀번호: 환경변수 X로 지정")은 제외한다.
-        @{ rx = '(?i)(비밀번호|패스워드|암호)\s*[:=]\s*["''`]?(?!(환경변수|없음|미설정|변경|설정|\$env|os\.|process\.env|Environment\.|<))[^\s"''`<>{}$]{3,}'; label = 'password 값' },
-        @{ rx = '(?i)(api[_-]?key|apikey|access[_-]?token|secret[_-]?key|auth[_-]?token|client[_-]?secret)\s*[:=]\s*["'']?[A-Za-z0-9_\-]{8,}'; label = 'API key/token 값' },
+        @{ rx = '(?i)(비밀번호|패스워드|암호)\s*[:=]\s*["''`]?(?!(환경변수|없음|미설정|변경|설정|\$env|os\.|process\.env|Environment\.|<))' + $notCodeExpr + '[^\s"''`<>{}$]{3,}'; label = 'password 값' },
+        @{ rx = '(?i)(api[_-]?key|apikey|access[_-]?token|secret[_-]?key|auth[_-]?token|client[_-]?secret)\s*[:=]\s*["'']?' + $notCodeExpr + '[A-Za-z0-9_\-]{8,}'; label = 'API key/token 값' },
         # 중간 키·`User Id` 공백 표기 수용 — 근거는 `rules/secret-patterns-rationale.md` §9
         @{ rx = '(?i)(Server|Data Source)[ \t]*=[^;\r\n]+;(?:[^;\r\n]*;)*[ \t]*(User[ \t]*Id|User|Uid|Password|Pwd)[ \t]*='; label = 'DB 연결 문자열' },
         @{ rx = '(?i)(mongodb(\+srv)?|postgres|postgresql|mysql|redis|amqp)://[^\s]+:[^\s]+@'; label = 'DB/서비스 URI 인증정보' },
