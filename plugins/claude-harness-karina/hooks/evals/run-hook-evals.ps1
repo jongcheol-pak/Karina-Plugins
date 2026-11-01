@@ -18,8 +18,8 @@
 #   공용 헬퍼·격리 구성은 eval-common.ps1이며, 이 파일과 run-scenario.ps1이 함께 dot-source한다.
 #
 # 실행 구조(v1.159.0): 기본은 **시나리오 그룹 단위 병렬**이다 — 그룹마다 자식 pwsh를 띄워
-#   각자의 격리 홈에서 돌리고 판정 JSON을 취합한다. 케이스마다 자식 pwsh를 새로 띄우는 구조상
-#   비용의 절반 이상이 프로세스 기동이라(빈 pwsh 콜드스타트 약 1.0초 / hook 1회 약 1.8초),
+#   각자의 격리 홈에서 돌리고 판정 JSON을 취합한다. hook 은 그룹 프로세스 안 runspace 에서
+#   in-process 로 돈다(Windows 가 아니거나 `Invoke-Hook -Process` 면 케이스마다 자식 pwsh).
 #   시나리오를 동시에 돌리면 wall-clock이 최대 그룹 하나의 시간으로 수렴한다.
 #   케이스 단위로 쪼개지 않는 이유는 시나리오 내부의 픽스처 생성 순서가 깨지기 때문이다.
 #
@@ -52,13 +52,8 @@ param(
     [switch]$Sequential,
     # 이전 실행의 완료된 그룹을 건너뛰고 남은 그룹만 실행
     [switch]$Resume,
-    # 케이스 줄을 전부 낸다 — 기본은 [PASS] 줄을 생략한다(위 「-Full 계약」)
     [switch]$Full,
-    # 동시에 띄울 자식 프로세스 상한. 기본은 **논리 코어 수의 절반**(최소 4·최대 12)이다 —
-    # 케이스마다 pwsh를 새로 띄우므로(케이스당 약 600ms 중 285ms가 콜드스타트) CPU가 놀면
-    # 그만큼 wall-clock이 길어지고, 코어 수를 넘겨 띄우면 경합으로 케이스당 시간이 늘어난다.
     [int]$MaxParallel = [Math]::Max(4, [Math]::Min(12, [int]([Environment]::ProcessorCount / 2))),
-    # 그룹별 판정 JSON을 둘 디렉터리. 기본은 임시 폴더 하위(실행 간 재사용 = -Resume의 입력).
     [string]$StateDir
 )
 
@@ -119,21 +114,13 @@ $scenarioGroups = @(
     @('inject-reply-language')
 )
 
-# ---- 발사 순서 (비용 내림차순) ----
-# 오래 걸리는 그룹이 늦게 뜨면 그 그룹 하나가 전체 종료 시각을 정한다 — 2026-10-08 실측에서
-#   session-context(144초)가 191초에야 떠 끝 시각이 335초였다. 그래서 병렬 경로는 아래 비용표의
-#   큰 순서로 띄운다. **결과 취합·출력 순서는 위 $scenarioGroups 그대로다**(순차 경로와 형식 등가).
-# 값은 그룹별 소요 초(2026-10-08 실측)이고, 병렬 실행 끝의 `[TIMING-GROUPS]` 줄로 다시 맞춘다.
-#   stateless 샤드는 케이스 번호 나머지로 나눈 같은 단위라 평균 한 값을 같이 쓴다 — 샤드별 값
-#   (121~172초)은 실행마다 갈리는 측정 잡음이라 그대로 적으면 순서가 잡음을 따른다.
-#   표에 없는 그룹은 맨 앞에 띄운다 — 비용을 모르는 큰 그룹이 마지막에 떠 임계 경로가 되지 않게.
-#   비용이 같으면 $scenarioGroups 순서를 따른다.
-$statelessCostSec = 143
+$statelessCostSec = 25
 $groupCostSec = @{
-    'guard-write' = 192; 'guard-harness' = 170; 'warn-commit-secrets' = 168; 'session-context' = 144
-    'guard-bash' = 125; 'post-write-checks' = 69; 'guard-stale-docs' = 55; 'suggest-agents-record' = 42
-    'guard-harness-content' = 40; 'loop-continue' = 29; 'guard-harness-installed+hook-event-log' = 21
-    'warn-version-drift' = 16; 'session-end-cleanup' = 8
+    'check-plan' = 184; 'warn-commit-secrets' = 167; 'screen-cover' = 103; 'guard-bash' = 92
+    'session-context' = 76; 'post-write-checks' = 50; 'guard-harness' = 47; 'guard-write' = 41
+    'guard-stale-docs' = 34; 'warn-version-drift' = 29; 'work-clock' = 17; 'loop-continue' = 12
+    'guard-harness-content' = 10; 'guard-harness-installed+hook-event-log' = 10; 'suggest-agents-record' = 8
+    'session-end-cleanup' = 8; 'record-work-start' = 5; 'inject-reply-language' = 4
 }
 $launchGroups = @(
     for ($i = 0; $i -lt $scenarioGroups.Count; $i++) {
@@ -207,15 +194,15 @@ if ($Sequential) {
         foreach ($g in $scenarioGroups) {
             foreach ($n in $g) {
                 $script:EvalCurrentScenario = $n
-                # 무상태 그룹은 `stateless-<N>` 이름으로 샤딩된다 — 그 313케이스가 한 자식에서
-                #   순차로 돌면 전체 wall-clock을 혼자 결정하기 때문이다(케이스당 약 600ms 실측).
-                #   상태가 없어 샤드끼리 간섭하지 않는다.
+                $env:USERPROFILE = $EvalIso
+                Set-Location $EvalWork
                 $sh = Resolve-ScenarioShard $n
                 $script:ShardIndex = $sh.Index; $script:ShardCount = $sh.Count
                 . (Join-Path $evalsDirTop ('scenarios/' + $sh.File + '.ps1'))
             }
         }
     } finally {
+        Close-EvalHookRunspace
         $env:USERPROFILE = $realHome
         Set-Location $env:TEMP
         Remove-Item -Recurse -Force $EvalIso -ErrorAction SilentlyContinue

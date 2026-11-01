@@ -148,26 +148,115 @@ function Assert-EvalParentAlive {
 }
 
 function Invoke-Hook {
-    param([string]$ScriptName, [string]$InputJson)
-    # 자식 pwsh를 띄우기 직전에 부모 생존을 확인한다 — 케이스 대부분이 이 함수를 지나므로
-    #   폴링 지점으로 가장 촘촘하다(`run-scenario.ps1`의 시나리오 루프가 성긴 백스톱이다).
+    param([string]$ScriptName, [string]$InputJson, [switch]$Process)
     Assert-EvalParentAlive
-    # 자식 프로세스 출력을 **UTF-8로 디코딩**한다(v1.182.0). `2>&1`이 stderr를 이미 $R.out에
-    #   합치지만, 콘솔 코드페이지가 UTF-8이 아닌 기동 경로(러너는 Start-Process로 새 콘솔에서
-    #   뜬다 — 실측 ks_c_5601-1987)에서는 hook의 한글 경고가 `?패`처럼 깨져 들어와
-    #   `expect_contains`로 assert할 수 없었다. 영문 앵커만 걸 수 있던 것이 그 때문이다.
-    #   실측: 같은 경로에서 한글 앵커 매칭 False → 이 설정 후 True(영문 앵커는 양쪽 다 True).
-    # 진입부가 아니라 **이 함수**에 두는 이유는 자식을 띄우는 유일한 자리이고, 러너가 시나리오를
-    #   병렬 자식 프로세스로 나눠 돌아 진입부 설정의 상속이 환경 의존이기 때문이다.
-    #   프로세스당 1회만 설정한다 — 이 setter는 스트림을 다시 여는 비용이 있어 호출마다 켰다
-    #   껐다 하면 케이스 수만큼 그 비용이 붙는다. 실패해도 종전 동작을 유지하도록 감싼다.
+    $path = Join-Path $scriptsDir $ScriptName
+    if ($Process -or -not $IsWindows) { return Invoke-HookProcess $path $InputJson }
+    return Invoke-HookInProcess $path $InputJson
+}
+
+function Invoke-HookProcess([string]$Path, [string]$InputJson) {
     if (-not $script:hookOutEncFixed) {
         try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
         $script:hookOutEncFixed = $true
     }
-    $path = Join-Path $scriptsDir $ScriptName
-    $out = $InputJson | pwsh -NoProfile -ExecutionPolicy Bypass -File $path 2>&1
+    $out = $InputJson | pwsh -NoProfile -ExecutionPolicy Bypass -File $Path 2>&1
     return @{ code = $LASTEXITCODE; out = (($out | Out-String)).Trim() }
+}
+
+$script:HookRunspace = $null
+$script:HookRunspaceHome = $null
+$script:HookInvokeScript = @'
+param($HookPath, $Location)
+Set-Location -LiteralPath $Location
+$global:LASTEXITCODE = 0
+try { & $HookPath *>&1 | Out-String } catch { $_ | Out-String; $global:LASTEXITCODE = 1 }
+[int]$global:LASTEXITCODE
+'@
+
+function Get-EvalHookRunspace {
+    if ($script:HookRunspace -and $script:HookRunspaceHome -eq $env:USERPROFILE) { return $script:HookRunspace }
+    Close-EvalHookRunspace
+    $rs = [runspacefactory]::CreateRunspace()
+    $rs.Open()
+    $script:HookRunspace = $rs
+    $script:HookRunspaceHome = $env:USERPROFILE
+    return $rs
+}
+
+function Close-EvalHookRunspace {
+    if ($null -eq $script:HookRunspace) { return }
+    $script:HookRunspace.Dispose()
+    $script:HookRunspace = $null
+    $script:HookRunspaceHome = $null
+}
+
+function Restore-EvalEnvironment([System.Collections.IDictionary]$Snapshot) {
+    foreach ($e in [Environment]::GetEnvironmentVariables().GetEnumerator()) {
+        if (-not $Snapshot.Contains($e.Key)) { [Environment]::SetEnvironmentVariable($e.Key, $null) }
+    }
+    foreach ($e in $Snapshot.GetEnumerator()) {
+        if ([Environment]::GetEnvironmentVariable($e.Key) -cne $e.Value) { [Environment]::SetEnvironmentVariable($e.Key, $e.Value) }
+    }
+}
+
+function Invoke-HookInProcess([string]$Path, [string]$InputJson) {
+    # hook 의 `[Console]::InputEncoding` setter 는 `Console.In` 을 OS 표준입력 핸들에서 다시 만들어
+    #   `[Console]::SetIn` 으로 넣은 입력을 버린다(.NET 동작). 그래서 표준입력 핸들 자체를 바꾼다.
+    if (-not ('KarinaEval.StdHandle' -as [type])) {
+        Add-Type -Namespace KarinaEval -Name StdHandle -MemberDefinition @'
+[DllImport("kernel32.dll", SetLastError = true)] public static extern IntPtr GetStdHandle(int nStdHandle);
+[DllImport("kernel32.dll", SetLastError = true)] public static extern bool SetStdHandle(int nStdHandle, IntPtr hHandle);
+'@
+    }
+    $stdInput = -10
+    $rs = Get-EvalHookRunspace
+    $location = (Get-Location).ProviderPath
+    $envSnapshot = [Environment]::GetEnvironmentVariables()
+    $cwdSnapshot = [Environment]::CurrentDirectory
+    $outSnapshot = [Console]::Out
+    $errSnapshot = [Console]::Error
+    $inEncSnapshot = [Console]::InputEncoding
+    $outEncSnapshot = [Console]::OutputEncoding
+    $stdinSnapshot = [KarinaEval.StdHandle]::GetStdHandle($stdInput)
+
+    $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes([string]$InputJson)
+    $server = [System.IO.Pipes.AnonymousPipeServerStream]::new([System.IO.Pipes.PipeDirection]::Out, [System.IO.HandleInheritability]::None, $bytes.Length + 4096)
+    $client = [System.IO.Pipes.AnonymousPipeClientStream]::new([System.IO.Pipes.PipeDirection]::In, $server.ClientSafePipeHandle)
+    $server.Write($bytes, 0, $bytes.Length)
+    $server.Dispose()
+
+    $captured = [System.Text.StringBuilder]::new()
+    $writer = [System.IO.StringWriter]::new($captured)
+    $ps = [powershell]::Create()
+    $ps.Runspace = $rs
+    $res = @()
+    try {
+        [Console]::SetOut($writer)
+        [Console]::SetError($writer)
+        $null = [KarinaEval.StdHandle]::SetStdHandle($stdInput, $client.SafePipeHandle.DangerousGetHandle())
+        [Environment]::CurrentDirectory = $location
+        $null = $ps.AddScript($script:HookInvokeScript).AddArgument($Path).AddArgument($location)
+        $res = @($ps.Invoke())
+    } finally {
+        $null = [KarinaEval.StdHandle]::SetStdHandle($stdInput, $stdinSnapshot)
+        [Console]::SetOut($outSnapshot)
+        [Console]::SetError($errSnapshot)
+        try { [Console]::InputEncoding = $inEncSnapshot } catch {}
+        try { [Console]::OutputEncoding = $outEncSnapshot } catch {}
+        [Environment]::CurrentDirectory = $cwdSnapshot
+        Restore-EvalEnvironment $envSnapshot
+        $ps.Dispose()
+        $client.Dispose()
+        $writer.Dispose()
+    }
+    $code = 1
+    $pipelineText = ''
+    if ($res.Count -gt 0 -and $res[-1] -is [int]) {
+        $code = $res[-1]
+        $pipelineText = ($res | Select-Object -SkipLast 1 | ForEach-Object { [string]$_ }) -join ''
+    }
+    return @{ code = $code; out = ($captured.ToString() + $pipelineText).Trim() }
 }
 
 function Assert-Case {

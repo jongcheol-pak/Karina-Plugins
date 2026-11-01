@@ -96,7 +96,7 @@ try {
     Add-EvalResult $false "[FAIL] run-scenario($($Names -join '+')) 예외 — $($_.Exception.Message)" "run-scenario:exception"
     $exitCode = 1
 } finally {
-    # 격리 원복 + 자기 폴더만 정리 — 다른 그룹의 폴더는 건드리지 않는다(병렬 안전).
+    Close-EvalHookRunspace
     $env:USERPROFILE = $realHome
     Set-Location $env:TEMP
     Remove-Item -Recurse -Force $EvalIso -ErrorAction SilentlyContinue
