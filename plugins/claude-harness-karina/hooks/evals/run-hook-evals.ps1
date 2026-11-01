@@ -123,17 +123,18 @@ $scenarioGroups = @(
 # 오래 걸리는 그룹이 늦게 뜨면 그 그룹 하나가 전체 종료 시각을 정한다 — 2026-10-08 실측에서
 #   session-context(144초)가 191초에야 떠 끝 시각이 335초였다. 그래서 병렬 경로는 아래 비용표의
 #   큰 순서로 띄운다. **결과 취합·출력 순서는 위 $scenarioGroups 그대로다**(순차 경로와 형식 등가).
-# 값은 그룹별 소요 초(2026-10-08 실측)이고, 병렬 실행 끝의 `[TIMING-GROUPS]` 줄로 다시 맞춘다.
+# 값은 그룹별 소요 초(2026-11-01 실측 — hook in-process 전환 뒤)이고, 병렬 실행 끝의 `[TIMING-GROUPS]` 줄로 다시 맞춘다.
 #   stateless 샤드는 케이스 번호 나머지로 나눈 같은 단위라 평균 한 값을 같이 쓴다 — 샤드별 값
-#   (121~172초)은 실행마다 갈리는 측정 잡음이라 그대로 적으면 순서가 잡음을 따른다.
+#   (22~26초)은 실행마다 갈리는 측정 잡음이라 그대로 적으면 순서가 잡음을 따른다.
 #   표에 없는 그룹은 맨 앞에 띄운다 — 비용을 모르는 큰 그룹이 마지막에 떠 임계 경로가 되지 않게.
 #   비용이 같으면 $scenarioGroups 순서를 따른다.
-$statelessCostSec = 143
+$statelessCostSec = 25
 $groupCostSec = @{
-    'guard-write' = 192; 'guard-harness' = 170; 'warn-commit-secrets' = 168; 'session-context' = 144
-    'guard-bash' = 125; 'post-write-checks' = 69; 'guard-stale-docs' = 55; 'suggest-agents-record' = 42
-    'guard-harness-content' = 40; 'loop-continue' = 29; 'guard-harness-installed+hook-event-log' = 21
-    'warn-version-drift' = 16; 'session-end-cleanup' = 8
+    'check-plan' = 184; 'warn-commit-secrets' = 167; 'screen-cover' = 103; 'guard-bash' = 92
+    'session-context' = 76; 'post-write-checks' = 50; 'guard-harness' = 47; 'guard-write' = 41
+    'guard-stale-docs' = 34; 'warn-version-drift' = 29; 'work-clock' = 17; 'loop-continue' = 12
+    'guard-harness-content' = 10; 'guard-harness-installed+hook-event-log' = 10; 'suggest-agents-record' = 8
+    'session-end-cleanup' = 8; 'record-work-start' = 5; 'inject-reply-language' = 4
 }
 $launchGroups = @(
     for ($i = 0; $i -lt $scenarioGroups.Count; $i++) {
@@ -216,6 +217,7 @@ if ($Sequential) {
             }
         }
     } finally {
+        Close-EvalHookRunspace
         $env:USERPROFILE = $realHome
         Set-Location $env:TEMP
         Remove-Item -Recurse -Force $EvalIso -ErrorAction SilentlyContinue
