@@ -95,6 +95,24 @@ $pwposPath = Join-Path $pw 'pw-pos.md'
 [System.IO.File]::WriteAllText($pwposPath, 'password = "hunter2fake"', [System.Text.UTF8Encoding]::new($false))
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $pwposPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: password 평문 값 경고 유지 (P1T2 양성)" -R $r -ExpectExit 0 -ExpectContains 'password'
+# ---- 코드 식 대입은 값이 아니다 (password·한글 비밀번호·API key 세 패턴 공통) ----
+# `let is_password = read_or(...)`·`unsafe { … }` 처럼 식별자 뒤에 ( · { 가 오는 코드 식까지 값으로 읽어 경고하던 오탐의 회귀 가드.
+$pwexprPath = Join-Path $pw 'pw-expr.md'
+$pwexprBody = @(
+    'let is_password = unsafe { element.CurrentIsPassword() }',
+    'let is_password = read_or(',
+    'let access_token = fetch_access_token(&client)?;',
+    'api_key = load_from_vault(name)',
+    'let 비밀번호 = read_or(x)'
+) -join "`n"
+[System.IO.File]::WriteAllText($pwexprPath, $pwexprBody, [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $pwexprPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 코드 식 대입 무경고 (password·비밀번호·API key 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+# 인용된 값은 ( 를 담아도 경고 유지 — 코드 식 제외가 따옴표 안 실값을 놓치지 않는지(양성 유지 가드)
+$pwparenPath = Join-Path $pw 'pw-paren.md'
+[System.IO.File]::WriteAllText($pwparenPath, 'password = "Abc12(xy"', [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $pwparenPath } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 인용 값의 ( 는 경고 유지 (코드 식 제외 양성)" -R $r -ExpectExit 0 -ExpectContains 'password'
 
 # ---- [P1T2] IP 전체 매치 순회 (first-match-only 양방향 결함 수정, v1.98.0) ----
 # 첫 매치가 예약 IP(127.0.0.1)여도 뒤따르는 공인 IP를 검출한다(종전엔 검사가 통째로 끝나던 미탐).
