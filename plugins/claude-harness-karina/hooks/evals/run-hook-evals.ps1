@@ -194,6 +194,8 @@ if ($Sequential) {
         foreach ($g in $scenarioGroups) {
             foreach ($n in $g) {
                 $script:EvalCurrentScenario = $n
+                $env:USERPROFILE = $EvalIso
+                Set-Location $EvalWork
                 $sh = Resolve-ScenarioShard $n
                 $script:ShardIndex = $sh.Index; $script:ShardCount = $sh.Count
                 . (Join-Path $evalsDirTop ('scenarios/' + $sh.File + '.ps1'))
