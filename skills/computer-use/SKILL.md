@@ -7,7 +7,7 @@ description: >-
   (shell, filesystem, git, HTTP, existing CLIs) whenever it can complete the task.
   Use only when a visible window needs GUI control those cannot reach. Do not use
   for Karina's browser tabs (`karina-browser-use`).
-version: 1.3.3
+version: 1.4.0
 ---
 
 # Computer Use (Windows)
