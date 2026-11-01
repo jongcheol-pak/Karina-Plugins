@@ -443,7 +443,7 @@ if ($gitOk) {
     Assert-Case -Name "commit-secrets: HEAD 없는 저장소 무해 내용 무차단(h2, 폴백 오차단 0)" -R $r -ExpectExit 0
 
     # ---- [v1.182.0 T6 ⓑ] 폴백 경고의 1회 억제·리셋 ----
-    # h1/h2로는 **구조상 검증할 수 없다** — 케이스마다 별도 pwsh 프로세스라 `$script:diffHeadFailNotified`가
+    # h1/h2로는 **구조상 검증할 수 없다** — hook 호출마다 새 script scope 라 `$script:diffHeadFailNotified`가
     #   매번 새로 초기화되고, 그래서 리셋을 지워도 두 케이스 다 green이 된다(가드가 아니었다).
     # 한 프로세스에서 `Invoke-WarnCommitSecrets`를 2회 부르고 stderr를 StringWriter로 가로채 센다 —
     #   프로세스 밖으로 내보내지 않으므로 콘솔 인코딩이 판정에 끼어들지 않는다.
