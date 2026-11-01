@@ -55,7 +55,7 @@ param(
     # 케이스 줄을 전부 낸다 — 기본은 [PASS] 줄을 생략한다(위 「-Full 계약」)
     [switch]$Full,
     # 동시에 띄울 자식 프로세스 상한. 기본은 **논리 코어 수의 절반**(최소 4·최대 12)이다 —
-    # 케이스마다 pwsh를 새로 띄우므로(케이스당 약 600ms 중 285ms가 콜드스타트) CPU가 놀면
+    # 그룹 자식은 hook 을 in-process 로 돌리고 hook 이 띄우는 git 을 기다리므로 CPU가 놀면
     # 그만큼 wall-clock이 길어지고, 코어 수를 넘겨 띄우면 경합으로 케이스당 시간이 늘어난다.
     [int]$MaxParallel = [Math]::Max(4, [Math]::Min(12, [int]([Environment]::ProcessorCount / 2))),
     # 그룹별 판정 JSON을 둘 디렉터리. 기본은 임시 폴더 하위(실행 간 재사용 = -Resume의 입력).
@@ -209,7 +209,7 @@ if ($Sequential) {
             foreach ($n in $g) {
                 $script:EvalCurrentScenario = $n
                 # 무상태 그룹은 `stateless-<N>` 이름으로 샤딩된다 — 그 313케이스가 한 자식에서
-                #   순차로 돌면 전체 wall-clock을 혼자 결정하기 때문이다(케이스당 약 600ms 실측).
+                #   순차로 돌면 전체 wall-clock을 혼자 결정하기 때문이다.
                 #   상태가 없어 샤드끼리 간섭하지 않는다.
                 $sh = Resolve-ScenarioShard $n
                 $script:ShardIndex = $sh.Index; $script:ShardCount = $sh.Count
