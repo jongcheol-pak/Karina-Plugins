@@ -25,7 +25,7 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 
 | 사실 종류 | 대상 섹션 |
 |---|---|
-| 빌드·실행 명령 · 테스트·검증 명령(task 대상 지정 형식 `Test (task)`·검증 worktree 빌드 캐시 `Build cache` 포함) · 앱 조작 검증 스킬 경로(`Verify (앱 조작)` 항목 — `/karina:create-verification-skill` 이 실행 증명 뒤 넘긴 `.claude/skills/verify-앱이름/`) · 형식 검증 스킬 경로(`Verify (형식 검증)` 항목 — `/karina:create-formal-verification-skill` 이 실행 증명 뒤 넘긴 `.claude/skills/formal-영역/` · 여럿이면 ` · ` 로 잇는다) | `## Build & Test` |
+| 빌드·실행 명령 · 테스트·검증 명령(task 대상 지정 형식 `Test (task)`·소스 감사 `Test (감사)`·검증 worktree 빌드 캐시 `Build cache` 포함) · 앱 조작 검증 스킬 경로(`Verify (앱 조작)` 항목 — `/karina:create-verification-skill` 이 실행 증명 뒤 넘긴 `.claude/skills/verify-앱이름/`) · 형식 검증 스킬 경로(`Verify (형식 검증)` 항목 — `/karina:create-formal-verification-skill` 이 실행 증명 뒤 넘긴 `.claude/skills/formal-영역/` · 여럿이면 ` · ` 로 잇는다) | `## Build & Test` |
 | 배포·릴리즈 규약 | `## Build & Test`의 `Release` 항목 (절을 새로 만들지 않는다) |
 | 변경 파일 패턴 → 필수 검증 매핑 | `## Build & Test`의 검증 매핑 표 (**여기 있어야 `karina:implement`의 게이트가 켜진다**) |
 | DB 접근 방법 | `## 데이터 접근` |
