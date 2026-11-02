@@ -47,7 +47,7 @@ function Find-TaskAuditAgents([string]$Dir) {
 }
 
 function Test-TaskAuditCommandInMessage([string]$Message, [string]$Command) {
-    $msg = $Message -replace '[ \t]+', ' '
+    $msg = ($Message -replace '\r', '') -replace '[ \t]+', ' '
     $cmd = ($Command -replace '\s+', ' ').Trim()
     $rx = [regex]::Escape($cmd) + '(?=$|[`"'']| (?:\d?>|\||;|&&|→))'
     return [regex]::IsMatch($msg, $rx, [System.Text.RegularExpressions.RegexOptions]::Multiline)

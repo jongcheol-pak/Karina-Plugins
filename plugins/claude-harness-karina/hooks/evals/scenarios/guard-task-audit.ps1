@@ -57,6 +57,9 @@ try {
 
     $r = Invoke-TaCase ('git commit -m "' + $taTitle + '" -m "' + $taCmd + ' → ok"')
     Assert-Case -Name 'task-audit: 두 번째 -m 의 명령도 읽는다 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+    [System.IO.File]::WriteAllText((Join-Path $taRoot 'msg.txt'), ($taTitle + "`r`n`r`n- " + $taCmd + "`r`n"), [System.Text.UTF8Encoding]::new($false))
+    $r = Invoke-TaCase 'git commit -F msg.txt'
+    Assert-Case -Name 'task-audit: -F 파일의 CRLF 줄 끝 명령도 읽는다 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
 
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $taBodyNone)
     Assert-Case -Name 'task-audit: 걸리지 않은 규칙의 명령은 지목하지 않는다' -R $r -ExpectExit 0 -ExpectContains $taCmd -ExpectNotContains 'md-audit-run'
@@ -88,6 +91,8 @@ try {
     'pub fn fresh() {}' | Set-Content (Join-Path $taRoot 'src/new.rs')
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $taBodyNone 'git add src/new.rs && ')
     Assert-Case -Name 'task-audit: add && commit 의 미추적 새 파일 → 경고' -R $r -ExpectExit 0 -ExpectContains $taCmd
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $taBodyNone)
+    Assert-Case -Name 'task-audit: 선행 add 없는 미추적 새 파일은 세지 않는다 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
 
     Reset-TaRepo
     ('pub fn old() {}' + $nl + 'pub fn added() {}') | Set-Content (Join-Path $taRoot 'src/lib.rs')
