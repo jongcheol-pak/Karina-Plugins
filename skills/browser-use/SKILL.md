@@ -12,7 +12,7 @@ description: >-
   Use karina-computer-use only when a visible window outside Karina needs GUI
   control that a CLI, filesystem, or API cannot do, and use karina-orchestration
   for coordinating work between agent terminals.
-version: 1.13.5
+version: 1.14.0
 ---
 
 # Karina Browser Use (Windows)
