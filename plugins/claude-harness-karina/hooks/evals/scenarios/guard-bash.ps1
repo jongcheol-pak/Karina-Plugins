@@ -57,6 +57,26 @@ $o = (New-CommitJson $stubLib 'x') | pwsh -NoProfile -ExecutionPolicy Bypass -Fi
 $r = @{ code = @($stubMarks | Where-Object { Test-Path -LiteralPath $_ }).Count; out = (($o | Out-String)).Trim() }
 Assert-Case -Name "guard-bash: 커밋 명령은 커밋 판정 라이브러리 셋을 dot-source 한다 (LZ2 — 표식 파일 3개)" -R $r -ExpectExit 3 -ExpectNotContains '로드 실패'
 
+function Get-CommitLibRedefinitions([string]$Dir) {
+    $isFn = { $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] }
+    $owned = @(foreach ($f in @('guard-bash.ps1', 'git-commit-match.ps1')) {
+        [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $Dir $f), [ref]$null, [ref]$null).FindAll($isFn, $true) | ForEach-Object Name
+    })
+    $dups = @(foreach ($lib in @('guard-commit-secrets.ps1', 'guard-stale-docs.ps1', 'guard-task-audit.ps1')) {
+        [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $Dir $lib), [ref]$null, [ref]$null).FindAll($isFn, $true) |
+            Where-Object { $owned -contains $_.Name } | ForEach-Object { $lib + ':' + $_.Name }
+    })
+    if ($dups.Count) { return 'dup=' + ($dups -join ',') }
+    return 'dup=none'
+}
+$r = @{ code = 0; out = (Get-CommitLibRedefinitions $scriptsDir) }
+Assert-Case -Name "guard-bash: 커밋 시점 라이브러리 셋은 디스패처·커밋 판정 함수를 다시 정의하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'dup=none'
+$redefLib = Join-Path $work 'dispatch-redef'; New-Item -ItemType Directory $redefLib -Force | Out-Null
+foreach ($f in @('guard-bash.ps1', 'git-commit-match.ps1', 'guard-commit-secrets.ps1', 'guard-stale-docs.ps1')) { Copy-Item (Join-Path $scriptsDir $f) $redefLib -Force }
+('function New-HookResult { param() }' + [Environment]::NewLine + (Get-Content -LiteralPath (Join-Path $scriptsDir 'guard-task-audit.ps1') -Raw)) | Set-Content (Join-Path $redefLib 'guard-task-audit.ps1')
+$r = @{ code = 0; out = (Get-CommitLibRedefinitions $redefLib) }
+Assert-Case -Name "guard-bash: 라이브러리가 디스패처 함수를 다시 정의하면 그 이름을 짚는다" -R $r -ExpectExit 0 -ExpectContains 'guard-task-audit.ps1:New-HookResult'
+
 $noMatch = Join-Path $work 'dispatch-nomatch'; New-Item -ItemType Directory $noMatch -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noMatch -Force
 $noMatchExe = Join-Path $noMatch 'guard-bash.ps1'

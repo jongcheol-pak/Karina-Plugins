@@ -22,7 +22,7 @@
 
 **로드 가드는 세 파일(`guard-commit-secrets.ps1`·`guard-stale-docs.ps1`·`guard-task-audit.ps1`)을 한 루프로 돈다.** lib 로드 실패(파일 누락·손상)가 침묵 fail-open 되는 것을 가시화하는 자리이고 — `guard-bash.ps1` 에는 차단 게이트(`require-task-checkbox`)까지 실려 있어 경고 없이 통과시키면 안 된다 — 같은 판정을 두 벌 쓰면 한쪽만 고쳐 갈린다. **존재는 매 호출 확인하고 dot-source 는 명령에 `commit` 이 있을 때만 한다** — 커밋 시점 라이브러리는 합쳐 3만 B 를 넘어(2026-11-02 셋째 `guard-task-audit.ps1` 를 더해 39,161 B) 매 Bash 호출에 dot-source 하면 약 30ms 가 붙는데(2026-10-12 프로세스 안 실측 27~40ms — hook 은 호출마다 새 프로세스라 첫 회 값이 실제 비용이다), 세 검사의 커밋 판정이 참이면 명령에 `commit` 이 반드시 있어 이 조건은 그 판정의 상위 집합이다. 존재 확인까지 커밋 때로 미루면 파일이 사라진 고장이 커밋 전까지 숨는다. **어느 파일이 없어도 그 검사만 빠지고 나머지는 돈다** — 종전에는 `New-HookResult` 가 `guard-commit-secrets.ps1` 에 있어 그 파일이 없으면 `exit 0` 으로 차단 게이트까지 껐다.
 
-**`New-HookResult`·`Remove-HeredocBodyForJudge` 는 디스패처(`guard-bash.ps1`)에 두고 여기서 다시 정의하지 않는다** — 커밋 판정 라이브러리는 커밋 명령에서만 불러오므로 거기 두면 나머지 검사가 돌 수 없다. 둘로 두면 어느 쪽이 이겼는지 갈리고, 그 차이는 로드 순서를 바꾸는 순간 조용히 뒤집힌다. 라이브러리를 단독 dot-source 하는 골든 프로브는 `New-HookResult` 정의를 직접 둔다.
+**`New-HookResult`·`Remove-HeredocBodyForJudge` 는 디스패처(`guard-bash.ps1`)에 두고 여기서 다시 정의하지 않는다** — 커밋 판정 라이브러리는 커밋 명령에서만 불러오므로 거기 두면 나머지 검사가 돌 수 없다. 둘로 두면 어느 쪽이 이겼는지 갈리고, 그 차이는 로드 순서를 바꾸는 순간 조용히 뒤집힌다. 라이브러리를 단독 dot-source 하는 골든 프로브는 `New-HookResult` 정의를 직접 둔다. 커밋 시점 라이브러리 셋이 `guard-bash.ps1`·`git-commit-match.ps1` 의 함수를 다시 정의하지 않는다는 것은 골든 `guard-bash` 시나리오의 「디스패처·커밋 판정 함수를 다시 정의하지 않는다」 케이스가 잰다.
 
 ## §3 층 1 은 왜 파일 패턴에 묶이지 않는가
 
