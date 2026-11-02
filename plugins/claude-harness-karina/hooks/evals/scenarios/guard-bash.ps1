@@ -77,6 +77,14 @@ foreach ($f in @('guard-bash.ps1', 'git-commit-match.ps1', 'guard-commit-secrets
 $r = @{ code = 0; out = (Get-CommitLibRedefinitions $redefLib) }
 Assert-Case -Name "guard-bash: 라이브러리가 디스패처 함수를 다시 정의하면 그 이름을 짚는다" -R $r -ExpectExit 0 -ExpectContains 'guard-task-audit.ps1:New-HookResult'
 
+$bsJson = @{ tool_name = 'Bash'; cwd = $work; tool_input = @{ command = "python - <<'PY'`nx = 'C:\\'`nprint(len(x))`nPY" } } | ConvertTo-Json -Compress
+$bsOs = $env:OS
+try {
+    $env:OS = 'Linux'
+    $r = Invoke-Hook 'guard-bash.ps1' $bsJson
+} finally { $env:OS = $bsOs }
+Assert-Case -Name "guard-bash: Windows 가 아니면 역슬래시 축소 경고를 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'BASH BACKSLASH WARNING'
+
 $noMatch = Join-Path $work 'dispatch-nomatch'; New-Item -ItemType Directory $noMatch -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noMatch -Force
 $noMatchExe = Join-Path $noMatch 'guard-bash.ps1'

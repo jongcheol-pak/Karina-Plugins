@@ -1345,6 +1345,70 @@
     },
     {
       "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: 따옴표 heredoc 본문의 역슬래시 둘 경고",
+      "command": "python - <<'PY'\nx = 'C:\\\\'\nprint(len(x))\nPY",
+      "expect_exit": 0,
+      "expect_contains": "BASH BACKSLASH WARNING"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: 작은따옴표 안 역슬래시 둘 경고",
+      "command": "python -c 'print(\"a\\\\b\")'",
+      "expect_exit": 0,
+      "expect_contains": "BASH BACKSLASH WARNING"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: 따옴표 없는 heredoc 본문의 역슬래시 둘 경고",
+      "command": "cat <<EOF\na\\\\b\nEOF",
+      "expect_exit": 0,
+      "expect_contains": "BASH BACKSLASH WARNING"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: 큰따옴표 안 역슬래시 넷 경고",
+      "command": "echo \"a\\\\\\\\b\"",
+      "expect_exit": 0,
+      "expect_contains": "BASH BACKSLASH WARNING"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: PowerShell 도구는 경고하지 않는다",
+      "tool_name": "PowerShell",
+      "command": "python -c \"x = 'C:\\\\'\"; Write-Output 'a\\\\b'",
+      "expect_exit": 0,
+      "expect_not_contains": "BASH BACKSLASH WARNING"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: 큰따옴표 안 역슬래시 둘은 경고하지 않는다",
+      "command": "echo \"a\\\\b\"",
+      "expect_exit": 0,
+      "expect_not_contains": "BASH BACKSLASH WARNING"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: heredoc 본문의 역슬래시 하나는 경고하지 않는다",
+      "command": "python - <<'PY'\nprint('a\\nb')\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "BASH BACKSLASH WARNING"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: 역슬래시 없는 heredoc 은 경고하지 않는다",
+      "command": "python - <<'PY'\nprint(1)\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "BASH BACKSLASH WARNING"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: 작은따옴표 안 역슬래시 하나는 경고하지 않는다",
+      "command": "printf '%s\\n' x",
+      "expect_exit": 0,
+      "expect_not_contains": "BASH BACKSLASH WARNING"
+    },
+    {
+      "hook": "guard-bash.ps1",
       "name": "전역 탐색: && 뒤 세그먼트 경고",
       "command": "cd /tmp && find / -name x",
       "expect_exit": 0,
