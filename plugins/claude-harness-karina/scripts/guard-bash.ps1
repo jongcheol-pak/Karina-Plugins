@@ -333,7 +333,6 @@ function Get-CommitMessage([string]$cmd, [string]$baseDir) {
     try { return [string](Get-Content -LiteralPath $path -Raw -Encoding UTF8) } catch { return $false }
 }
 
-# ---- require-task-checkbox: 'T<N>' 완료 커밋(제목 `{유형}: T<N> — …` 또는 구형 `T<N>: …`)인데 plan의 해당 체크박스가 미완료면 차단(exit 2) ----
 function Invoke-RequireTaskCheckbox {
     param($data)
     $cmd = $data.tool_input.command

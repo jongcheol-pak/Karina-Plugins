@@ -1,7 +1,4 @@
-﻿# scenarios/guard-task-audit.ps1 — warn-task-audit 시나리오 (task 완료 커밋의 소스 감사 누락 경고) (dot-source 전용, 단독 실행 금지)
-# 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook)와 공유 변수($work·$gitOk)를 쓴다.
-# 검사 대상은 `guard-bash.ps1` 이다 — `guard-task-audit.ps1` 은 dot-source 되는 구현이라 디스패처를 통해 판정한다.
-if (Test-HookSelected @('guard-bash', 'guard-task-audit')) {
+﻿if (Test-HookSelected @('guard-bash', 'guard-task-audit')) {
 if (-not $gitOk) {
     Write-Host '[SKIP] guard-task-audit: git 없음 — 변경 판정이 성립하지 않는다'
 } else {

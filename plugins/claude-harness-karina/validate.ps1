@@ -135,7 +135,6 @@ foreach ($a in $actualAgents) {
 }
 Write-Host ""
 
-# 5. Hooks (expected 목록 존재 + BOM + 미등록 탐지)
 $hooks = @('block-destructive.ps1', 'guard-bash.ps1', 'guard-write.ps1', 'guard-harness.ps1', 'post-write-checks.ps1', 'suggest-agents-record.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1', 'loop-continue.ps1', 'record-work-start.ps1', 'inject-reply-language.ps1')
 $knownHelpers = @('secret-patterns.ps1', 'git-commit-match.ps1', 'guard-commit-secrets.ps1', 'guard-stale-docs.ps1', 'guard-task-audit.ps1', 'hook-event-log.ps1', 'write-gate-trivial.ps1', 'write-gate-exempt.ps1', 'session-end-cleanup-lib.ps1', 'session-wiki-signals.ps1', 'session-ledger-signal.ps1', 'harness-root.ps1')
 Write-Host "5. Hooks $($hooks.Count)개" -ForegroundColor Yellow

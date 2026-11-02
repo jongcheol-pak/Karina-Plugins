@@ -40,7 +40,6 @@ $o = (New-CommitJson $lzOk 'T3: 검색 요약') | pwsh -NoProfile -ExecutionPoli
 $r = @{ code = $LASTEXITCODE; out = (($o | Out-String)).Trim() }
 Assert-Case -Name "guard-bash: 라이브러리 부재 + 완료 [x] T 커밋은 통과 (LZ6)" -R $r -ExpectExit 0 -ExpectContains '로드 실패'
 
-# LZ1·LZ2: 지연 로드 실증 — dot-source 될 때 표식 파일을 쓰는 가짜 라이브러리 셋을 둔 사본.
 $stubLib = Join-Path $work 'dispatch-stublib'; New-Item -ItemType Directory $stubLib -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $stubLib -Force
 Copy-Item (Join-Path $scriptsDir 'git-commit-match.ps1') $stubLib -Force

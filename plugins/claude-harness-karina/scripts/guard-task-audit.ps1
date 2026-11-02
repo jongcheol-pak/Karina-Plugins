@@ -1,7 +1,4 @@
 ﻿# guard-task-audit.ps1 — PreToolUse/Bash: task 완료 커밋의 소스 감사 누락 경고 (비차단) — 근거는 `rules/task-audit-rationale.md`
-#
-# `guard-bash.ps1` 이 dot-source 한다. `New-HookResult`·`Get-CommitMessage`·`Remove-HeredocBodyForJudge` 는 디스패처에,
-#   `$script:GitCommitRx`·`$script:GitAddRx`·`Resolve-GitCommitDir` 는 `git-commit-match.ps1` 에 있다 — 여기서 다시 정의하지 않는다.
 
 $script:TaskAuditLineRx = '^- \*\*Test \(감사\)\*\*: `(?<cmd>[^`]+)`(?<rest>.*)$'
 $script:TaskAuditUntrackedMax = 50
