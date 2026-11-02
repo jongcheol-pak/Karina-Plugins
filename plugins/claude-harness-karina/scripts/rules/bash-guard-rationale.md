@@ -3,13 +3,13 @@
 > `guard-bash.ps1`의 주석에서 옮긴 판정 근거다. 스크립트에는 각 자리에 이 문서의 절을 가리키는 1줄만 남겼다.
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 
-## §1 검사 8종을 한 프로세스에서 수행하는 이유
+## §1 검사 9종을 한 프로세스에서 수행하는 이유
 
 ```
-# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 8종 검사를 한 프로세스에서 수행
+# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 9종 검사를 한 프로세스에서 수행
 #
 # 담당 조항(정본: `skills/DESIGN.md`의 hook 담당 조항 표):
-#   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신.
+#   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신 · E18 Windows Bash 도구 역슬래시 축소 경고 · E19 task 완료 커밋의 소스 감사 누락 경고.
 #   부수 경고 둘(전역 탐색·위험값 대입)은 대응하는 독립 hook이 없고 이 파일이 유일한 실행 경로다.
 #
 # block-destructive는 여기 합치지 않는다 — 끌 수 없는 마지막 방어선이라 이 파일의 로드 실패가
@@ -24,9 +24,9 @@
 #   미수행된다(fail-open). 커밋 판정 라이브러리 둘의 부재는 그 검사만 빼고 stderr 로 가시화한다.
 ```
 
-**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 아래 검사 함수 7종(2026-11-02 에 더한 `Invoke-WarnTaskAudit` 은 `task-audit-rationale.md`)의 판정 근거는 이 문서가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
+**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 아래 검사 함수 8종(2026-11-02 에 더한 `Invoke-WarnTaskAudit` 은 `task-audit-rationale.md`, `Invoke-WarnBashBackslash` 는 이 문서 §21)의 판정 근거는 이 문서가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
-## §2 검사 8종을 한 프로세스에 담는 구조
+## §2 검사 9종을 한 프로세스에 담는 구조
 
 v1.225.0이 Bash 계열 hook 을 `guard-bash.ps1` 하나로 통폐합하며 공유 모듈 `bash-hook-lib.ps1` 을 삭제했다.
 종전에는 검사 로직을 그 모듈에 두고 ① 검사마다 standalone 래퍼 ② 단일 디스패처
@@ -35,8 +35,8 @@ dot-source 는 셋 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 
 현행 구조:
 
-- **검사 8종 중 5종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
-  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-WarnGlobalFind` · `Invoke-WarnDangerousAssignment`.
+- **검사 9종 중 6종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
+  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-WarnGlobalFind` · `Invoke-WarnBashBackslash` · `Invoke-WarnDangerousAssignment`.
   **나머지 셋 — `Invoke-WarnCommitSecrets`(`guard-commit-secrets.ps1`) · `Invoke-WarnStaleDocs`
   (`guard-stale-docs.ps1`) · `Invoke-WarnTaskAudit`(`guard-task-audit.ps1`) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
   우회 변수·시크릿 패턴 연동을 담아 크기가 따로 놀고, 분리해 두어야 골든이 그 파일만 단독
@@ -52,13 +52,13 @@ dot-source 는 셋 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
   **`Block = $true`(exit 2)를 내는 경로는 넷이다** — `guard-bash.ps1` 2곳(`block-plan-write` 의
   plan.md 스크립트 쓰기 · `require-task-checkbox`) + `warn-commit-secrets` 2곳(`guard-commit-secrets.ps1`
   의 시크릿 검출·스캔 캡 초과). `check-block-coverage.py` 가 세는 「guard-bash 경로 2 ·
-  guard-commit-secrets 경로 2」가 그 넷이다. 7검사 중 차단하는 것은 이 3종이고, 나머지 경고 전용 4종은
+  guard-commit-secrets 경로 2」가 그 넷이다. 9검사 중 차단하는 것은 이 3종이고, 나머지 경고 전용 6종은
   `Block` 을 세우지 않는다.
   출력·exit 번역은 파일 하단의 단일 caller 가 하고, 각 함수는 「판정 → 결과」만 낸다.
 - **한 검사의 예외는 나머지를 막지 않는다** — `foreach` 안에서 `try/catch` 로 격리하고
-  안전측으로 통과시킨다. 일곱 중 하나가 깨져 전체가 침묵하는 것을 막는다.
+  안전측으로 통과시킨다. 아홉 중 하나가 깨져 전체가 침묵하는 것을 막는다.
 - **`New-HookResult` 생성기는 `guard-bash.ps1` 에 있다** — 커밋 판정 라이브러리는 커밋 명령에서만
-  불러오므로 거기 두면 나머지 다섯 검사가 돌 수 없다. 라이브러리를 단독 dot-source 하는 골든
+  불러오므로 거기 두면 나머지 여섯 검사가 돌 수 없다. 라이브러리를 단독 dot-source 하는 골든
   프로브는 같은 정의를 직접 둔다.
 - **`block-destructive.ps1` 은 여기 합치지 않는다** — 「끌 수 없는 마지막 방어선」이라
   공유 로드 실패에 결합시키지 않고 `hooks.json` 독립 엔트리로 직접 실행한다(결정 B).
@@ -131,7 +131,7 @@ dot-source 는 셋 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 
 ```
 # 순서: 원 hooks.json 순서에서 block-destructive(독립)만 앞으로 뺀 나머지 3종 + warn-global-find(v1.183.0 신설)
-#   + warn-dangerous-assignment(v1.199.0 신설). 뒤 둘은 대응하는 독립 hook 스크립트가 없고 이 디스패처가
+#   + warn-bash-backslash(v2.72.0 신설 — warn-global-find 바로 뒤) + warn-dangerous-assignment(v1.199.0 신설). 뒤 셋은 대응하는 독립 hook 스크립트가 없고 이 디스패처가
 #   유일한 실행 경로다. **새 검사는 경고 출력 순서를 지키는 자리에 넣는다** — 경고를 내는 검사 사이에 끼우면 기존 출력 순서가 바뀐다. `block-plan-write` 는 차단 전용(경고를 내지 않는다)이라 `require-task-checkbox` 뒤에 두어도 순서가 움직이지 않는다.
 ```
 
@@ -293,3 +293,13 @@ dot-source 는 셋 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 **경계로 보는 것은 첫 줄이 `gitdir:` 이고 경로에 `/worktrees/` 가 든 파일뿐이다.** 서브모듈 루트도 `.git` 파일(`gitdir: ../.git/modules/<이름>`)을 갖는데, 서브모듈에서 연 세션은 지금까지 상위 레포 plan 으로 판정돼 왔다. 그 동작은 바꿀 근거가 없어 그대로 둔다.
 
 같은 판정이 `guard-write.ps1` 에도 있다(`write-gate-rationale.md` §25) — 두 파일의 상향 탐색이 갈리면 쓰기는 통과하고 커밋은 막히는 조합이 생긴다.
+
+## §21 Windows Bash 도구의 역슬래시 축소
+
+**Windows 의 Bash 도구는 명령 문자열의 역슬래시 둘(`\\`)을 bash 에 넘기기 전에 하나로 줄인다 — 작은따옴표·따옴표 heredoc 안에서도 그렇다.** 실측(2026-11-02, win32): `printf '%s\n' 'a\\b'` → `a\b`(bash 원래 동작이면 `a\\b`) · `python - <<'PY'` 안 `x = 'C:\\'` → `SyntaxError: unterminated string literal … perhaps you escaped the end quote?`. hook 이 받는 `tool_input.command` 에는 줄기 전의 `\\` 가 그대로 있어(이벤트 로그 대조) 실행 전에 그 자리를 짚을 수 있다. PowerShell 도구는 보존한다(`'a\\b' | Format-Hex` → `61 5C 5C 62`).
+
+**트리거는 셋이다** — ① heredoc 본문(따옴표 유무 무관)의 역슬래시 둘 ② heredoc 본문을 걷은 나머지의 작은따옴표 문자열 안 역슬래시 둘 ③ 같은 나머지의 큰따옴표 문자열 안 역슬래시 넷 이상. **큰따옴표 안 둘은 대상이 아니다** — 도구가 하나로 줄인 뒤에도 bash 큰따옴표 규칙의 결과가 원래와 같다(`echo "a\\b"`·`echo "C:\\"` 실측 — 각각 `a\b`·`C:\`). 넷은 원래 둘로 남을 것이 하나가 된다.
+
+**Windows(`$env:OS -eq 'Windows_NT'`)에서만 낸다** — macOS·Linux 는 실측하지 않았고, 축소가 도구 자체인지 Windows 의 인자 전달층인지 갈리지 않았다. `$IsWindows` 를 쓰지 않는 이유는 PowerShell 5.1 에 그 자동 변수가 없어(폴백 경로) 경고가 조용히 꺼지기 때문이다.
+
+**경고(비차단)이고 차단하지 않는다** — 하니스 규약이 새 차단을 금지하고(AGENTS.md DO NOT), 처방(Write 로 스크립트 파일을 만들어 실행하거나 PowerShell 도구로 보낸다)이 정해져 있어 그 호출에 원인과 처방을 붙이면 된다. 문면 규칙이 3개 파일 6자리에 있었는데도 재발해(사용자 보고 — 워커 4회) 문면을 경고 hook 으로 올렸다(`skills/DESIGN.md` §5 E18).
