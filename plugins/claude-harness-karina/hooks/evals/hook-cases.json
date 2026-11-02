@@ -1367,7 +1367,7 @@
     {
       "hook": "guard-bash.ps1",
       "name": "역슬래시 축소: 큰따옴표 안 역슬래시 넷 경고",
-      "command": "python -c \"print(len('C:\\\\\\\\'))\"",
+      "command": "echo \"a\\\\\\\\b\"",
       "expect_exit": 0,
       "expect_contains": "BASH BACKSLASH WARNING"
     },
