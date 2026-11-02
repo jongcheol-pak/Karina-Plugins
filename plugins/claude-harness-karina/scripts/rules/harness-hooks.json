@@ -6,6 +6,7 @@
     "guard-commit-secrets",
     "guard-harness",
     "guard-stale-docs",
+    "guard-task-audit",
     "guard-write",
     "git-commit-match",
     "harness-root",
