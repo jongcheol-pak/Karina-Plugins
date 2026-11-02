@@ -1,4 +1,4 @@
-﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 7종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
+﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 8종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
 
 # 공용 헬퍼 New-HookResult·Remove-HeredocBodyForJudge 는 여기 둔다 — 근거는 `rules/bash-guard-rationale.md` §2
 function New-HookResult {
@@ -305,14 +305,16 @@ function Get-CommitMessage([string]$cmd, [string]$baseDir) {
     $hs = [regex]::Match($cmd, '(?s)@([''"])[ \t]*\r?\n(?<body>.*?)\r?\n\1@')
     $hereStrBody = if ($hs.Success) { $hs.Groups['body'].Value } else { $null }
 
-    $mm = [regex]::Match($seg, '(?i)(?:^|\s)(?:-[a-z]*m|--message)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
-    if ($mm.Success) {
-        if ($mm.Groups[2].Success) { return $mm.Groups[2].Value }
-        $val = if ($mm.Groups[1].Success) { $mm.Groups[1].Value } else { $mm.Groups[3].Value }
-        if ($val -match '^\s*\$\(\s*cat\s+<<') { if ($null -ne $hereDocBody) { return $hereDocBody } else { return $false } }
-        if ($val -match '^@[''"]') { if ($null -ne $hereStrBody) { return $hereStrBody } else { return $false } }
-        if ($val -match '^\$(\{|[A-Za-z_])') { return $false }
-        return $val
+    $mms = [regex]::Matches($seg, '(?i)(?:^|\s)(?:-[a-z]*m|--message)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
+    if ($mms.Count) {
+        $vals = @($mms | ForEach-Object { if ($_.Groups[2].Success) { $_.Groups[2].Value } elseif ($_.Groups[1].Success) { $_.Groups[1].Value } else { $_.Groups[3].Value } })
+        if (-not $mms[0].Groups[2].Success) {
+            $val = $vals[0]
+            if ($val -match '^\s*\$\(\s*cat\s+<<') { if ($null -ne $hereDocBody) { return $hereDocBody } else { return $false } }
+            if ($val -match '^@[''"]') { if ($null -ne $hereStrBody) { return $hereStrBody } else { return $false } }
+            if ($val -match '^\$(\{|[A-Za-z_])') { return $false }
+        }
+        return ($vals -join "`n`n")
     }
     $fm = [regex]::Match($seg, '(?:^|\s)(?:-F|--file)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
     if (-not $fm.Success) { return $null }
@@ -450,10 +452,11 @@ if (-not $script:GitCommitRx) {
     $script:GitCommitRx = '(?!)'
 }
 
-# 커밋 시점 검사 둘은 별도 파일이고 로드 실패를 침묵시키지 않는다 — 근거는 `rules/stale-docs-rationale.md` §2
+# 커밋 시점 검사 셋은 별도 파일이고 로드 실패를 침묵시키지 않는다 — 근거는 `rules/stale-docs-rationale.md` §2
 $loadCommitLibs = $cmdText -match 'commit'
 foreach ($lib in @(@('guard-commit-secrets.ps1', 'Invoke-WarnCommitSecrets'),
-                   @('guard-stale-docs.ps1', 'Invoke-WarnStaleDocs'))) {
+                   @('guard-stale-docs.ps1', 'Invoke-WarnStaleDocs'),
+                   @('guard-task-audit.ps1', 'Invoke-WarnTaskAudit'))) {
     $libPath = Join-Path $PSScriptRoot $lib[0]
     if (Test-Path -LiteralPath $libPath) {
         if (-not $loadCommitLibs) { continue }
@@ -475,7 +478,7 @@ function Write-DispatchEvent {
     } catch {}
 }
 
-# 검사 7종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
+# 검사 8종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
 # 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md` §8
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },
@@ -484,7 +487,8 @@ $checks = @(
     @{ fn = 'Invoke-WarnCommitSecrets';   name = 'warn-commit-secrets' },
     @{ fn = 'Invoke-WarnGlobalFind';      name = 'warn-global-find' },
     @{ fn = 'Invoke-WarnDangerousAssignment'; name = 'warn-dangerous-assignment' },
-    @{ fn = 'Invoke-WarnStaleDocs';       name = 'warn-stale-docs' }
+    @{ fn = 'Invoke-WarnStaleDocs';       name = 'warn-stale-docs' },
+    @{ fn = 'Invoke-WarnTaskAudit';       name = 'warn-task-audit' }
 )
 $results = New-Object System.Collections.Generic.List[object]
 foreach ($c in $checks) {

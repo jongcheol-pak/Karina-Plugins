@@ -3,10 +3,10 @@
 > `guard-bash.ps1`의 주석에서 옮긴 판정 근거다. 스크립트에는 각 자리에 이 문서의 절을 가리키는 1줄만 남겼다.
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 
-## §1 검사 7종을 한 프로세스에서 수행하는 이유
+## §1 검사 8종을 한 프로세스에서 수행하는 이유
 
 ```
-# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 7종 검사를 한 프로세스에서 수행
+# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 8종 검사를 한 프로세스에서 수행
 #
 # 담당 조항(정본: `skills/DESIGN.md`의 hook 담당 조항 표):
 #   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신.
@@ -24,21 +24,21 @@
 #   미수행된다(fail-open). 커밋 판정 라이브러리 둘의 부재는 그 검사만 빼고 stderr 로 가시화한다.
 ```
 
-**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 아래 검사 함수 7종의 판정 근거는 이 문서가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
+**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 아래 검사 함수 7종(2026-11-02 에 더한 `Invoke-WarnTaskAudit` 은 `task-audit-rationale.md`)의 판정 근거는 이 문서가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
-## §2 검사 7종을 한 프로세스에 담는 구조
+## §2 검사 8종을 한 프로세스에 담는 구조
 
 v1.225.0이 Bash 계열 hook 을 `guard-bash.ps1` 하나로 통폐합하며 공유 모듈 `bash-hook-lib.ps1` 을 삭제했다.
 종전에는 검사 로직을 그 모듈에 두고 ① 검사마다 standalone 래퍼 ② 단일 디스패처
 두 경로가 그것을 dot-source 했는데, **지금은 실행 경로가 하나뿐이라 그 이중화가 필요 없다.**
-dot-source 는 둘 남아 있다 — 커밋 시점 검사인 `guard-commit-secrets.ps1`·`guard-stale-docs.ps1`(아래).
+dot-source 는 셋 남아 있다 — 커밋 시점 검사인 `guard-commit-secrets.ps1`·`guard-stale-docs.ps1`·`guard-task-audit.ps1`(아래).
 
 현행 구조:
 
-- **검사 7종 중 5종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
+- **검사 8종 중 5종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
   `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-WarnGlobalFind` · `Invoke-WarnDangerousAssignment`.
-  **나머지 둘 — `Invoke-WarnCommitSecrets`(`guard-commit-secrets.ps1`) · `Invoke-WarnStaleDocs`
-  (`guard-stale-docs.ps1`) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
+  **나머지 셋 — `Invoke-WarnCommitSecrets`(`guard-commit-secrets.ps1`) · `Invoke-WarnStaleDocs`
+  (`guard-stale-docs.ps1`) · `Invoke-WarnTaskAudit`(`guard-task-audit.ps1`) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
   우회 변수·시크릿 패턴 연동을 담아 크기가 따로 놀고, 분리해 두어야 골든이 그 파일만 단독
   프로브할 수 있다. **dot-source 는 명령에 `commit` 이 있을 때만 하고 존재는 매 호출 확인한다** —
   근거는 `stale-docs-rationale.md` §2. 로드 실패는 침묵하지 않는다 — `guard-bash.ps1` 이

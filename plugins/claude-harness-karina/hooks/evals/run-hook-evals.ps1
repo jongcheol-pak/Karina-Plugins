@@ -106,6 +106,7 @@ $scenarioGroups = @(
     @('guard-harness-content'),
     @('session-end-cleanup'),
     @('guard-stale-docs'),
+    @('guard-task-audit'),
     @('loop-continue'),
     @('work-clock'),
     @('screen-cover'),
@@ -118,7 +119,7 @@ $statelessCostSec = 25
 $groupCostSec = @{
     'check-plan' = 184; 'warn-commit-secrets' = 167; 'screen-cover' = 103; 'guard-bash' = 92
     'session-context' = 76; 'post-write-checks' = 50; 'guard-harness' = 47; 'guard-write' = 41
-    'guard-stale-docs' = 34; 'warn-version-drift' = 29; 'work-clock' = 17; 'loop-continue' = 12
+    'guard-stale-docs' = 34; 'guard-task-audit' = 15; 'warn-version-drift' = 29; 'work-clock' = 17; 'loop-continue' = 12
     'guard-harness-content' = 10; 'guard-harness-installed+hook-event-log' = 10; 'suggest-agents-record' = 8
     'session-end-cleanup' = 8; 'record-work-start' = 5; 'inject-reply-language' = 4
 }
@@ -479,7 +480,7 @@ if ($deadGroups.Count) {
 Write-Host ("결과: {0}/{1} OK (FAIL {2}){3}" -f ($total - $failCount), $total, $failCount, $deadSuffix)
 Write-TimingLine -Total $total
 
-$GoldenTotalBaseline = 1365
+$GoldenTotalBaseline = 1382
 if (-not $deadGroups.Count -and -not $Filter -and $total -ne $GoldenTotalBaseline) {
     Write-Host ("[WARN] 총계가 기준선과 다릅니다: {0} != {1} (`$GoldenTotalBaseline`)." -f $total, $GoldenTotalBaseline)
     Write-Host '        합산 규칙: 선언형(hook-cases.json) + 러너 내장 시나리오. guard-bash 무상태 케이스는 dispatch 에코를 함께 돌아 1건이 2로 셉니다.'

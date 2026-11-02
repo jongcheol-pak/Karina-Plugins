@@ -40,7 +40,7 @@ $o = (New-CommitJson $lzOk 'T3: 검색 요약') | pwsh -NoProfile -ExecutionPoli
 $r = @{ code = $LASTEXITCODE; out = (($o | Out-String)).Trim() }
 Assert-Case -Name "guard-bash: 라이브러리 부재 + 완료 [x] T 커밋은 통과 (LZ6)" -R $r -ExpectExit 0 -ExpectContains '로드 실패'
 
-# LZ1·LZ2: 지연 로드 실증 — dot-source 될 때 표식 파일을 쓰는 가짜 라이브러리 둘을 둔 사본.
+# LZ1·LZ2: 지연 로드 실증 — dot-source 될 때 표식 파일을 쓰는 가짜 라이브러리 셋을 둔 사본.
 $stubLib = Join-Path $work 'dispatch-stublib'; New-Item -ItemType Directory $stubLib -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $stubLib -Force
 Copy-Item (Join-Path $scriptsDir 'git-commit-match.ps1') $stubLib -Force
@@ -48,14 +48,15 @@ New-Item -ItemType Directory (Join-Path $stubLib 'rules') -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'rules/*.json') (Join-Path $stubLib 'rules') -Force
 'Set-Content -LiteralPath (Join-Path $PSScriptRoot ''loaded-cs.txt'') x; function Invoke-WarnCommitSecrets { param($data) New-HookResult }' | Set-Content (Join-Path $stubLib 'guard-commit-secrets.ps1')
 'Set-Content -LiteralPath (Join-Path $PSScriptRoot ''loaded-sd.txt'') x; function Invoke-WarnStaleDocs { param($data) New-HookResult }' | Set-Content (Join-Path $stubLib 'guard-stale-docs.ps1')
-$stubMarks = @((Join-Path $stubLib 'loaded-cs.txt'), (Join-Path $stubLib 'loaded-sd.txt'))
+'Set-Content -LiteralPath (Join-Path $PSScriptRoot ''loaded-ta.txt'') x; function Invoke-WarnTaskAudit { param($data) New-HookResult }' | Set-Content (Join-Path $stubLib 'guard-task-audit.ps1')
+$stubMarks = @((Join-Path $stubLib 'loaded-cs.txt'), (Join-Path $stubLib 'loaded-sd.txt'), (Join-Path $stubLib 'loaded-ta.txt'))
 $lz = @{ tool_name = 'Bash'; cwd = $stubLib; tool_input = @{ command = 'ls -la' } } | ConvertTo-Json -Compress
 $o = $lz | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $stubLib 'guard-bash.ps1') 2>&1
 $r = @{ code = $(if (@($stubMarks | Where-Object { Test-Path -LiteralPath $_ }).Count) { 1 } else { $LASTEXITCODE }); out = (($o | Out-String)).Trim() }
 Assert-Case -Name "guard-bash: 비커밋 명령은 커밋 판정 라이브러리를 dot-source 하지 않는다 (LZ1 — 표식 파일 0개)" -R $r -ExpectExit 0 -ExpectNotContains '로드 실패'
 $o = (New-CommitJson $stubLib 'x') | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $stubLib 'guard-bash.ps1') 2>&1
 $r = @{ code = @($stubMarks | Where-Object { Test-Path -LiteralPath $_ }).Count; out = (($o | Out-String)).Trim() }
-Assert-Case -Name "guard-bash: 커밋 명령은 커밋 판정 라이브러리 둘을 dot-source 한다 (LZ2 — 표식 파일 2개)" -R $r -ExpectExit 2 -ExpectNotContains '로드 실패'
+Assert-Case -Name "guard-bash: 커밋 명령은 커밋 판정 라이브러리 셋을 dot-source 한다 (LZ2 — 표식 파일 3개)" -R $r -ExpectExit 3 -ExpectNotContains '로드 실패'
 
 $noMatch = Join-Path $work 'dispatch-nomatch'; New-Item -ItemType Directory $noMatch -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noMatch -Force
