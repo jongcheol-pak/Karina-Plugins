@@ -292,34 +292,34 @@ function Invoke-WarnExternalOps {
     return New-HookResult -Block $false -Stderr @($msg) -Context $msg
 }
 
-# 커밋 제목 읽기 — 근거는 `rules/bash-guard-rationale.md` §14
-function Get-CommitTitle([string]$cmd, [string]$baseDir) {
+# 커밋 메시지 읽기(전문 — 제목은 첫 줄) — 근거는 `rules/bash-guard-rationale.md` §14
+function Get-CommitMessage([string]$cmd, [string]$baseDir) {
     $judge = [regex]::Replace((Remove-HeredocBodyForJudge $cmd), '(?s)@([''"])[ \t]*\r?\n.*?\r?\n\1@', { param($m) '@' + $m.Groups[1].Value + ' ' + $m.Groups[1].Value + '@' })
     $cm = [regex]::Match($judge, $script:GitCommitRx)
     if (-not $cm.Success) { return $null }
     $seg = @(Split-TopLevel $judge.Substring($cm.Index) $script:IsPsTool)[0]
-    $hereDocFirst = $null
+    $hereDocBody = $null
     foreach ($hm in [regex]::Matches($cmd, $script:HeredocBlockRx)) {
-        if ($hm.Groups['line'].Value -match $script:GitCommitRx) { $hereDocFirst = @($hm.Groups['body'].Value -split '\r?\n')[0]; break }
+        if ($hm.Groups['line'].Value -match $script:GitCommitRx) { $hereDocBody = $hm.Groups['body'].Value; break }
     }
     $hs = [regex]::Match($cmd, '(?s)@([''"])[ \t]*\r?\n(?<body>.*?)\r?\n\1@')
-    $hereStrFirst = if ($hs.Success) { @($hs.Groups['body'].Value -split '\r?\n')[0] } else { $null }
+    $hereStrBody = if ($hs.Success) { $hs.Groups['body'].Value } else { $null }
 
     $mm = [regex]::Match($seg, '(?i)(?:^|\s)(?:-[a-z]*m|--message)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
     if ($mm.Success) {
-        if ($mm.Groups[2].Success) { return @($mm.Groups[2].Value -split '\r?\n')[0] }
+        if ($mm.Groups[2].Success) { return $mm.Groups[2].Value }
         $val = if ($mm.Groups[1].Success) { $mm.Groups[1].Value } else { $mm.Groups[3].Value }
-        if ($val -match '^\s*\$\(\s*cat\s+<<') { if ($null -ne $hereDocFirst) { return $hereDocFirst } else { return $false } }
-        if ($val -match '^@[''"]') { if ($null -ne $hereStrFirst) { return $hereStrFirst } else { return $false } }
+        if ($val -match '^\s*\$\(\s*cat\s+<<') { if ($null -ne $hereDocBody) { return $hereDocBody } else { return $false } }
+        if ($val -match '^@[''"]') { if ($null -ne $hereStrBody) { return $hereStrBody } else { return $false } }
         if ($val -match '^\$(\{|[A-Za-z_])') { return $false }
-        return @($val -split '\r?\n')[0]
+        return $val
     }
     $fm = [regex]::Match($seg, '(?:^|\s)(?:-F|--file)(?:=|\s+)(?:"([^"]*)"|''([^'']*)''|(\S+))')
     if (-not $fm.Success) { return $null }
     $path = @($fm.Groups[1], $fm.Groups[2], $fm.Groups[3] | Where-Object { $_.Success })[0].Value
     if ($path -eq '-') {
-        if ($null -ne $hereDocFirst) { return $hereDocFirst }
-        if ($null -ne $hereStrFirst) { return $hereStrFirst }
+        if ($null -ne $hereDocBody) { return $hereDocBody }
+        if ($null -ne $hereStrBody) { return $hereStrBody }
         return $false
     }
     if ($path -match '^/tmp(/.*)?$') { $path = $env:TEMP + ($Matches[1] -replace '/', '\') }
@@ -328,7 +328,7 @@ function Get-CommitTitle([string]$cmd, [string]$baseDir) {
         $path = Join-Path $baseDir $path
     }
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $false }
-    try { return [string](@(Get-Content -LiteralPath $path -TotalCount 1 -Encoding UTF8)[0]) } catch { return $false }
+    try { return [string](Get-Content -LiteralPath $path -Raw -Encoding UTF8) } catch { return $false }
 }
 
 # ---- require-task-checkbox: 'T<N>' 완료 커밋(제목 `{유형}: T<N> — …` 또는 구형 `T<N>: …`)인데 plan의 해당 체크박스가 미완료면 차단(exit 2) ----
@@ -347,8 +347,9 @@ function Invoke-RequireTaskCheckbox {
     $startDir = Resolve-GitCommitDir (Remove-HeredocBodyForJudge $cmd) $startDir
 
     # 완료 커밋 제목 판정 — 근거는 `rules/bash-guard-rationale.md` §14
-    $msgTitle = Get-CommitTitle $cmd $startDir
+    $msgTitle = Get-CommitMessage $cmd $startDir
     if ($null -eq $msgTitle) { return New-HookResult }
+    if ($msgTitle -isnot [bool]) { $msgTitle = @($msgTitle -split '\r?\n')[0] }
     if ($msgTitle -is [bool]) {
         if ($env:CLAUDE_HARNESS_QUICK -eq '1' -or -not (Find-SinglePlanUpwards -StartDir $startDir)) { return New-HookResult }
         $w = '[HARNESS] 커밋 제목을 읽지 못해 task 체크박스 검사를 건너뜁니다 — heredoc -m 을 쓰세요(변수 -m · 본문 없는 -F - · 없는 -F 파일).'
