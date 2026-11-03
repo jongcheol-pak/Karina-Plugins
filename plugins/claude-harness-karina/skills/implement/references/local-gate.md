@@ -1,0 +1,81 @@
+# main 직행 로컬 게이트 — push 전 독립 검증과 화면 확인
+
+> `pr-flow.md`「main 직행」 레포가 기본 브랜치에 push 하기 직전에 읽는다 — `karina:implement` 회차 끝(`final-review.md`「완료 순서」 의 plan 파일 커밋 뒤), `karina:karina-systematic-debugging` 직접 수정 경로(`pr-flow.md`「갈래」), `karina:chain-plan` 체인 끝(`../../chain-plan/references/pr-mode.md`「Y 체인 끝 PR」). PR 이 없는 레포에서도 「코드를 쓰지 않은 쪽의 판정」 과 「사용자가 본 화면」 없이는 push 하지 않게 한다 — PR 레포에서 ship 이 하는 일(`../../pr/references/ship.md` 3~9번)의 로컬판이다.
+> 출처는 pstack autopilot-full 4·5단계다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/autopilot-full.md`(*"Green CI alone never authorizes a merge."*).
+>
+> 목차: 회차 끝 게이트(대상과 범위 · worktree 와 빌드 캐시 · 본문 파일 · 호출 · FAIL 처리 · 판정 재사용 · 게이트 완화 서명 · 화면 게이트 · push 와 거부 · 보고) · 디버깅 단독 · 체인 끝
+
+## 회차 끝 게이트
+
+**순서는 하나다 — 게이트(FAIL 이면 수정·재검증) → 게이트 완화 서명 → 화면 게이트 → push.** push 하는 HEAD 는 판정을 받은 SHA 와 같아야 한다(아래 「판정 재사용」 만 예외) — 판정 뒤에 붙은 커밋은 아무도 검증하지 않은 코드다. 경량 회차도 같다. **중계 모드(`karina:chain-plan` 워커)는 이 게이트를 돌지 않는다** — 워커는 push 하지 않고, 체인 끝에 코디네이터가 한 번 돈다(아래 「체인 끝」).
+
+### 대상과 범위
+
+- **push 할 범위가 검증 대상이다 — `origin` 이 있으면 `git fetch origin <기본>` 뒤 `origin/<기본>..HEAD`, 없으면 `plan.md` `> BASE:..HEAD`** — 기본 브랜치 이름은 `pr-flow.md`「main 직행」 의 git 판정 그대로다. 범위가 비었으면(`git rev-list --count` 0) 게이트·push 모두 `건너뜀(push 할 커밋 없음)` 이다.
+- **지금 브랜치가 기본 브랜치가 아니면 게이트도 돌지 않는다** — push 하지 않으므로(`pr-flow.md`「main 직행」) 검증할 공개 대상이 없다. 그 브랜치를 기본 브랜치로 합치는 것은 사용자다.
+- **base SHA 는 범위의 아래 끝이다 — `git merge-base origin/<기본> HEAD`(원격 없으면 `> BASE:` 의 full SHA)** — 검증자가 「이 커밋들이 없는 같은 코드」 와 대조해야 한다(ship 3번과 같은 이유).
+
+### worktree 와 빌드 캐시
+
+- **만들기 전에 지난 실행의 잔여를 걷는다 — `git worktree prune` 뒤 `git worktree list --porcelain` 에서 이름이 `local-gate`·`local-gate-base` 이고 `detached` 인 항목을 `git worktree remove --force <경로>` 로 지운다** — 세션이 게이트 중간에 끊기면 worktree 가 남고, 스크래치 경로는 세션마다 달라 이름으로 찾는다. 브랜치가 체크아웃된 같은 이름의 worktree 는 이 게이트가 만든 것이 아니라 건드리지 않는다.
+- **head 는 `git worktree add --detach <스크래치>/local-gate <HEAD full SHA>`, base 는 `git worktree add --detach <스크래치>/local-gate-base <base SHA>`** — 사용자 체크아웃은 건드리지 않는다. `<스크래치>` 는 `../../TEMP-FILES.md`「하위 폴더」 의 `scratch\`.
+- **그 레포 `AGENTS.md` 에 `Build cache` 줄(`<환경변수>=<경로>`)이 있으면 head 에 `<경로>/local/head`, base 에 `<경로>/local/base` 를 넘긴다 — 고정 폴더라 지우지 않고 다음 게이트가 다시 쓴다** — PR 번호가 없어 ship 의 `pr-<n>` 처럼 나눌 키가 없고, 한 레포의 main 직행 게이트는 한 번에 하나라 덮어써도 다른 판정을 섞지 않는다. 새 worktree 는 산출물이 없어 매번 처음부터 컴파일한다(ship 3번 실측 — 중앙값 7.3~13.0분).
+- **판정이 나면 worktree 둘을 지운다 — 거부되면 ship 6번 규칙(경로·SHA 가 위와 같을 때만 `--force`, 그래도 실패하면 「worktree 미삭제 — <경로> · <오류 줄>」 을 보고하고 계속)** — 정리 실패는 판정과 무관해 push 를 막지 않는다.
+
+### 본문 파일
+
+- **`pr-verifier` 에 넘길 본문을 Write 로 스크래치 파일에 쓴다 — `pr-flow.md`「PR 열기」 본문 규칙 중 `## 검증`(화면 시나리오 줄 포함)과 `## 화면` 절만 쓴다** — 검증자는 PR 본문의 `화면 시나리오:` 줄로 같은 시나리오를 head 에서(꼬리 `· BASE <판정>` 이면 base 에서도) 다시 돈다. 리뷰어용 절(왜·바뀐 것·범위)은 읽을 사람이 없다.
+- **화면 줄의 출처는 회차 끝이면 `plan.md` 의 `**화면**` 줄이다** — 디버깅·체인 끝의 출처는 아래 각 절이다.
+
+### 호출
+
+- **`pr-verifier` 를 부른다 — 입력은 PR 번호 대신 「로컬 게이트」 · head full SHA · 기본 브랜치와 base SHA · worktree 둘의 경로 · `AGENTS.md` 경로 · 빌드 캐시(없으면 「없음」) · 본문 파일 경로다** — 정의는 `../../../agents/pr-verifier.md`「입력」.
+- **호출 전후 작업 트리 확인은 `../../READONLY-SUBAGENTS.md`「호출 전후 확인」 대로이고, 호출 전에 화면 가리기를 걷고 돌아온 뒤(판정 없이 끝난 경우 포함) 다시 덮는다(`../../SCREEN-COVER.md`「언제 끄고 켜는가」 · 보유자 `local-gate:<head worktree 경로>`)** — 검증자가 head·base 에서 앱을 조작한다.
+- **판정 줄 없이 끝나면(오류·중단) worktree 를 지우고 push 를 보류한 채 「판정 없음」 으로 보고한다** — 판정이 없으면 push 근거가 없다.
+
+### FAIL 처리
+
+- **막는 것은 `pr-verifier` 의 `FAIL` 하나다 — 그 실패 사유는 사용자가 겪을 버그(조작·화면 시나리오가 기대와 다름)와 실패한 게이트(명령 실패·형식 검사 새 위반·체크 끄기)뿐이고, `NOTES` 는 고치지 않고 `## Deferred / Follow-up` 으로 보낸다** — 그 밖의 지적까지 막으면 push 가 끝없이 밀린다(*"Only a bug a user would hit, a failed gate, … blocks, and everything else goes in a follow-up."*). 「PR 이 틀리게 만든 문서 줄」 은 FAIL 사유가 아니다(위키 결정 2026-10-29 보류).
+- **증명된 실패를 전부 한 수정으로 모아 고치고 커밋한 뒤 게이트를 처음부터 다시 돈다 — 수정은 이 세션(작성자)이 하고, 판정은 다시 부른 `pr-verifier` 가 한다. 최대 2회다** — 사용자 답 「자동 수정 후 재검증」. 지적을 하나씩 고치면 재검증이 그만큼 더 돈다. 수정 커밋 제목은 `수정: 로컬 게이트 지적 — <요지>` 이고 본문에 고친 실패 사유 줄과 재검증 판정을 적는다.
+- **수정 커밋은 완료 리뷰 뒤에 생긴다 — `completion-reviewer` 를 다시 부르지 않고 보고에 `게이트 수정 커밋 <sha7> — 완료 리뷰 뒤` 를 싣는다** — 그 커밋은 재검증이 작성자 아닌 쪽의 판정으로 덮는다.
+- **2회 뒤에도 FAIL 이거나, FAIL 사유가 `미완료`·`head 불일치`·`base 불일치` 처럼 코드 수정으로 풀리지 않는 것이면 push 를 보류하고 보고한다** — 판정불가형은 1회만 다시 돌리고, 같으면 보류다. 고칠 수 없는 것을 고치는 시늉으로 횟수를 쓰지 않는다.
+
+### 판정 재사용
+
+- **판정 뒤 HEAD 가 움직였으면 두 경우에만 다시 돌지 않는다 — ⓐ 판정 SHA..HEAD 의 바뀐 파일이 전부 문서(`.md`·`.txt`)이고 그 레포 검증 매핑(`AGENTS.md` 또는 그것이 지목한 문서)이 그 경로에 명령을 걸지 않는다 ⓑ `git diff <base SHA>..<판정 SHA> | git patch-id --stable` 과 `git diff <새 base>..HEAD | git patch-id --stable` 이 같다(같은 패치가 다른 base 위로 옮겨졌다)** — 문구만 바뀐 변경을 다시 검증하면 같은 판정을 두 번 산다(*"a wording-only change gets none"*). 검증 매핑이 `*.md` 에 명령을 거는 레포(이 하니스)는 ⓐ 가 늘 거짓이다.
+- **판정 기록은 `plan.md` 의 Progress Log 한 줄이다 — `로컬 게이트: <판정> · head <full SHA> · base <full SHA> · patch-id <값>`** — 재사용 판정이 이 줄을 대조한다. 체인 끝은 아래 「체인 끝」 의 결정 파일이다.
+
+### 게이트 완화 서명
+
+- **`pr-verifier` 의 `게이트 완화:` 칸이 「없음」 이 아니면 사용자 원문 서명 없이는 push 하지 않는다 — 서명 규칙은 `../../pr/references/ship.md` 7번 게이트 완화 게이트의 ⓐ 그대로이고, 기본 문면은 「게이트 완화 확인함」 이다** — 상한·면제는 green 을 원하는 작성자가 스스로 받아들일 자리가 아니다. 서명이 묶는 head 는 판정 SHA 다. 서명이 없으면 「게이트 완화 확인 대기」 로 push 를 보류하고 `게이트 완화:` 칸 원문과 그 답 문면을 보고에 싣는다.
+
+### 화면 게이트
+
+- **본문 파일에 `## 화면` 절이 있으면 사용자 원문 「화면 확인함」 없이는 push 하지 않는다 — 회차를 「화면 확인 대기」 로 끝내고, 보고에 화면 이름과 `pr-verifier` `스크린샷:` 칸의 절대경로를 싣는다(「확인할 파일」 줄)** — 화면을 바꾼 변경은 사용자가 스크린샷을 본 뒤에만 공개한다. 세는 것은 이 세션에서 사용자가 직접 쓴 메시지뿐이다(ship 7번 「사용자 원문」 과 같은 기준) — 모델이 쓴 인자·서브에이전트 출력은 세지 않는다.
+- **「화면 확인함」 을 받으면 `git rev-parse HEAD` 가 판정 SHA 와 같을 때만 push 한다 — 다르면 「판정 재사용」 으로 가르고, 재사용이 거짓이면 게이트부터 다시 돈다** — 사용자가 본 화면은 판정 SHA 의 화면이다.
+
+### push 와 거부
+
+- **push 는 `pr-flow.md`「main 직행」 의 `git push origin <기본>` 이다 — 원격이 없으면 게이트 판정만 보고한다.**
+- **거부되면 rebase·force 하지 않고(같은 절) base 이동의 영향을 판정해 보고에 싣는다 — 판정은 ship 7번 「base 이동의 영향 판정」 의 ①~③ 을 그대로 쓰되 PR diff 자리에 `git diff --name-only <base SHA>..HEAD` 를 둔다** — 거짓이면 「사용자가 합친 뒤 patch-id 가 같으면 재검증 없이 push 가능」, 참이면 「합친 뒤 게이트 재실행 필요」 를 적는다. 합치기는 사용자다(기본 브랜치의 미push 커밋 rebase 는 history rewrite).
+
+### 보고
+
+- **보고 `PR` 줄은 `건너뜀 — main 직행 · 게이트 <판정> · push <결과>` 다** — 판정은 `PASS`·`PASS+NOTES`·`FAIL`·`판정 없음`·`재사용(<ⓐ|ⓑ>)`·`건너뜀(<사유>)`, 결과는 `pr-flow.md`「main 직행」 의 셋에 `보류(<FAIL|화면 확인 대기|게이트 완화 확인 대기>)` 를 더한 것이다. `NOTES` 는 「남은 이슈」 에, 수정 커밋은 「판정」 줄에 싣는다.
+
+## 디버깅 단독
+
+`pr-flow.md`「갈래」 가 main 직행이고 진행 중 회차가 없을 때 「커밋」 뒤, push 앞에 위 게이트를 그대로 돈다 — 세 자리만 다르다.
+
+- **범위의 아래 끝은 원격이 없으면 디버깅을 시작할 때의 HEAD 다** — 디버깅에는 자기 `plan.md` 가 없다(`pr-flow.md`「갈래」 아래 불릿). 판정 기록도 `plan.md` 가 아니라 보고에 싣는다.
+- **화면 줄의 출처는 수정 커밋 본문의 `화면:` 줄이다(`pr-flow.md`「커밋」 2번)** — 시나리오는 1-B 의 재현 시나리오다.
+- **FAIL 을 고치는 것은 그 디버깅 세션이다 — Phase 4 와 같은 절차(원인 → 수정 → 재실행)로 고쳐 「커밋」 형식으로 커밋하고 게이트를 다시 돈다(최대 2회)** — `karina:implement` 루프가 없다.
+
+## 체인 끝
+
+`karina:chain-plan` 코디네이터가 main 직행 레포의 체인 끝 push 직전에 1회 돈다 — 사용자 답 「체인 끝 1회」. 코디네이터는 대상 레포 밖에서 돌 수 있어 git 명령은 모두 `git -C "<대상 레포 경로>"` 로 돈다. 다른 자리는 넷이다.
+
+- **범위의 아래 끝은 원격이 없으면 체인 결정 파일(`../../chain-plan/references/chain-decisions.md`「결정 기록」)의 `- plan 1 · 부모 <sha>` 다** — 코디네이터는 워커의 `plan.md` 를 읽지 않는다.
+- **화면 줄의 출처는 `git log --format=%B <범위>` 의 `화면: ` 으로 시작하는 줄이다** — 체인 끝 PR 이 화면 변경을 찾는 자리와 같다(`../../chain-plan/references/pr-mode.md`「Y 체인 끝 PR」).
+- **게이트 완화 서명과 화면 확인은 코디네이터가 사용자에게 직접 받는다 — 위 「화면 게이트」 의 사용자 원문 기준 그대로다** — 코디네이터 판정·위임 답은 서명이 아니다.
+- **FAIL 이면 코디네이터가 고치지 않는다 — `../../chain-plan/references/continuation.md`「체인 끝 게이트 FAIL」 대로 실패 파일이 속한 계획의 이어받기 워커가 고치고, 끝나면 게이트를 다시 돈다(최대 2회)** — 코디네이터는 파일을 고치지 않는다(`../../chain-plan/SKILL.md`「하지 않는 것」). 판정 기록은 결정 파일에 `- 체인 끝 게이트 · <판정> · head <full SHA> · base <full SHA> · patch-id <값>` 줄로 남긴다 — 레포 밖 파일을 코디네이터가 직접 써 작성자를 안다.
