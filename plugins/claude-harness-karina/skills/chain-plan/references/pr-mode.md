@@ -1,7 +1,7 @@
 # PR 모드 (`karina:chain-plan` — 계획마다 PR 을 merge 까지)
 
 > `../SKILL.md` 「체인 승인」이 승인 화면의 `PR 모드:` 줄을 채울 때(「켜기」), 체인이 `P` 로 승인돼 워커가 spec 의 `PR 모드: 켬` 줄을 받았을 때(「워커」), 코디네이터가 PR 모드 체인의 계획을 잇거나 병렬 그룹을 다룰 때(「직렬」·「병렬」) 이 파일을 연다. `Y` 로 승인한 체인은 계획 사이를 로컬 병합으로 잇고, 체인이 끝나면 「Y 체인 끝 PR」 하나만 쓴다(`report.md`「인계 파일 정리」 뒤). `P` 체인이 끝나면 「P 체인 끝 PR」 이 체인 브랜치를 기본 브랜치로 올린다. `T` 는 체인 브랜치·끝 PR 없이 `stack-mode.md` 를 따른다.
-> 출처는 Cursor pstack 의 autopilot-full 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 계획마다 한 주인이 빌드에서 merge 까지 PR 을 맡는다(*"One owner carries each PR from build to merge"*). 스택 PR 은 `stack-mode.md` 에서만 쓰고 Graphite 는 들이지 않았다 — 앞선 base 는 merge 로 합친다(rebase 는 history rewrite 라 karina 에서 별도 승인이고, 스택 착지는 `stack-mode.md`「착지」 의 자기 `karina/` 브랜치 rebase 만 예외다).
+> 출처는 Cursor pstack 의 autopilot-full 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 계획마다 한 주인이 빌드에서 merge 까지 PR 을 맡는다(*"One owner carries each PR from build to merge"*). 앞선 base 는 merge 로 합친다(rebase 는 history rewrite 라 별도 승인).
 >
 > 목차: 켜기(출발 브랜치 · 체인 브랜치 만들기) · 워커(마무리 순서 · 화면 줄 task 직렬 예외 · base 합치기 · 멈춘 자리 표) · 직렬 · 병렬 · Y 체인 끝 PR · P 체인 끝 PR
 
@@ -53,7 +53,7 @@
   | merge-ready | ship 으로 간다 |
   | 충돌 · 낡은 base(`../../pr/references/babysit.md`「1. 충돌」·「3. CI」) | 위 base 합치기 뒤 babysit 부터 다시 |
   | ship 「base 합치기 필요」(`../../pr/references/ship.md` 7번 영향 판정 참) | 위 base 합치기 뒤 babysit 부터 다시 |
-  | `pr-verifier` FAIL · 게이트 완화 서명 거부 | 지적한 결함을 고쳐 커밋·push 한 뒤 babysit 부터 다시 — 지적은 하나의 수정으로 모은다(*"Send every proven finding … to the owner in one fix-forward"*) |
+  | `pr-verifier` FAIL · 게이트 완화 서명 거부 | 지적한 결함을 고쳐 커밋·push 한 뒤 babysit 부터 다시 — 지적은 하나의 수정으로 모은다(*"Batch every known fix into one push wave."* — pstack babysit 5 · `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/babysit.md`) |
   | head 가 바뀌어 merge 거부(`--match-head-commit`) | ship 1번부터 다시 |
   | 화면 확인 대기(`../../pr/references/ship.md` 7번 화면 게이트) | PR 을 열어 둔 채 작업 트리가 깨끗하면 `git switch <base>`(병렬 워커는 건너뛴다) 뒤 `--outcome succeeded` 로 보고한다 — `PR:` 필드는 `열림 — <URL> · 화면 확인 대기`, `남은 일` 에 `PR <URL> 화면 확인 대기 — 사용자가 스크린샷을 보고 「화면 확인함」(게이트 완화가 있었으면 「PR <n> 게이트 완화 확인함」 도) 으로 karina:pr ship 을 요청`. 질문이 아니라 보고다 — 사용자 몫으로 넘기지 않는다 |
   | 사람 판단 대기(`CHANGES_REQUESTED`·`REVIEW_REQUIRED`·보고만 한 스레드) · 브랜치 보호 등 그 밖의 merge 거부 | 곧바로 정지 — 사람이 정할 자리이고 체인은 그것을 대신 정하지 못한다 |
@@ -91,7 +91,7 @@
 **`Y` 로 승인한 체인이 끝까지 성공했을 때(`report.md`「인계 파일 정리」 의 성공 조건과 같다) 그 정리 커밋 뒤, 보고 전에 1회 한다.** pstack 은 모든 playbook 끝에 PR 을 연다(*"Invoked at the end of every other playbook."* — `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/opening-a-pr.md`). 끝 PR 이 없으면 체인 커밋이 로컬에만 남는다(2026-10-18 PR #3 이 그 뒤 손으로 열려 제목 유형이 빠진 채 main 커밋이 됐다).
 
 - **계획마다의 대상 레포 가운데 아래 셋이 참인 레포마다 한다** — 대상 레포 경로가 세션 시작 때 주입된 위키 vault 경로와 같지 않다(vault 는 `karina:llm-wiki` 가 직접 push 한다) · `../../implement/references/pr-flow.md`「적용 판정」 의 앞 두 조건(GitHub 원격 · `gh auth status` exit 0)이 참이다 · `git -C "<대상 레포 경로>" rev-list --count origin/<기본 브랜치>..HEAD` 가 0 이 아니다. 거짓인 레포는 보고의 `PR:` 줄에 `건너뜀 — <거짓인 조건>` 으로 싣는다.
-- **main 직행 레포는 위 셋을 보지 않고 PR 대신 `pr-flow.md`「main 직행」 의 push 를 하고 `PR:` 줄에 `건너뜀 — main 직행 · push <결과>` 를 싣는다** — 체인 끝 push 가 그 레포의 회차 끝 push 다. 기본 브랜치 판정·지금 브랜치 확인·push 는 모두 `git -C "<대상 레포 경로>"` 로 돈다 — 코디네이터의 폴더는 대상 레포가 아닐 수 있어, 생략하면 엉뚱한 레포의 기본 브랜치가 push 된다.
+- **main 직행 레포는 위 셋을 보지 않고 PR 대신 `../../implement/references/local-gate.md`「체인 끝」 게이트를 거쳐 `pr-flow.md`「main 직행」 의 push 를 하고 `PR:` 줄에 `건너뜀 — main 직행 · 게이트 <판정> · push <결과>` 를 싣는다** — 체인 끝 push 가 그 레포의 회차 끝 push 다. git 명령은 모두 `git -C "<대상 레포 경로>"` 로 돈다(`pr-flow.md`「main 직행」 의 경로 규칙).
 - **`pr-flow.md`「브랜치」 의 표와 「merge 된 브랜치에서 시작할 때」 를 체인 브랜치에 그대로 적용한 뒤 「PR 열기」 1~4 를 따른다** — 같은 절차를 두 곳에 두면 한쪽만 고쳐진다. 그 절차가 `plan.md` 에 적게 한 것(슬러그·`> BASE:` 이동)은 이 세션이 `plan.md` 를 쓰지 않으므로 보고에 싣는다.
   - **슬러그는 `chain-<Run id 의 run_ 뒤 앞 8자>` 다** — 끝 PR 은 체인 끝에 1회만 열리고, 압축 뒤에도 `run-current` 로 같은 id 를 얻는다.
   - **제목은 `<유형>: <계획 제목들을 · 로 이은 한 줄>` 이다** — 유형은 `git log --format=%s origin/<기본 브랜치>..HEAD` 의 유형 접두 중 가장 많은 것이고 같으면 `기능` 이다. 길면 앞 계획부터 줄인다.
