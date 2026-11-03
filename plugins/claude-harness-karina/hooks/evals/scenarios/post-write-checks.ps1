@@ -210,7 +210,6 @@ if ($gitOk) {
 
 }
 
-# =====================================================================
 # 7) impact-warn 시나리오 (git 필요 — caller 경고 양성·음성. §6과 같은 post-write-checks
 #    게이트 안 — $gitOk는 top-level 정의라 필터 조합과 무관하게 항상 판정됨)
 # =====================================================================
@@ -311,7 +310,6 @@ Pop-Location
 # EOL1 (양성): 추적 파일이 LF 면 경고한다.
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-a'; tool_input = @{ file_path = $eolLf } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 추적 파일이 LF 면 경고 (EOL1)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
-# 이 hook 은 모든 레포에서 돈다 — 문구가 하네스 레포 문서를 가리키면 다른 레포에서 틀린 지시가 된다(2026-10-08 Karina 앱).
 Assert-Case -Name "post-write: EOL 경고 문구에 하네스 레포 참조가 없다 (EOL1)" -R $r -ExpectExit 0 -ExpectNotContains 'AGENTS.md'
 Assert-Case -Name "post-write: LF 파일 계수 (LF 2 / CRLF 0) (EOL1c)" -R $r -ExpectExit 0 -ExpectContains '(LF 2 / CRLF 0)'
 Assert-Case -Name "post-write: EOL 경고는 Write 도구만 LF 로 쓴다고 알린다 (Edit 는 줄바꿈 보존)" -R $r -ExpectExit 0 -ExpectContains '— Write 도구는 LF 로 씁니다'

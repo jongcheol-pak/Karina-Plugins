@@ -426,7 +426,7 @@ $outEojB = $eojBlock | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path 
 $rEojB = @{ code = $LASTEXITCODE; out = (($outEojB | Out-String)).Trim() }
 Assert-Case -Name "eoj: json 부재여도 block-plan-write 차단은 유지 (EOJ2)" -R $rEojB -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
 
-}   # ---- §8 게이트 끝 (guard-bash) ----
+}
 
 if ((Test-HookSelected @('guard-bash')) -and $gitOk) {
 $ccRoot = Join-Path $work 'ccrepos'; New-Item -ItemType Directory $ccRoot -Force | Out-Null

@@ -101,7 +101,6 @@ if (Get-Command Invoke-GuardComment -ErrorAction SilentlyContinue) {
     [Console]::Error.WriteLine('guard-harness: guard-comment.ps1 로드 실패 — 새 주석 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.')
 }
 
-# ---- 게이트 ② AGENTS.md 내용 경계 ----
 if ($env:CLAUDE_HARNESS_QUICK -eq '1') { exit 0 }
 
 # 대상 판정 — 파일명이 정확히 AGENTS.md 일 때만
