@@ -1,7 +1,7 @@
 # 초안 모드 · 진행 모드
 
 > `../SKILL.md` 머리의 표지 판정이 맞을 때만 **Step 1 전에** 읽는다 — 사용자가 부른 `karina:plan-draft` 에서만 걸리는 예외라 일반 세션이 읽는 본문에 두지 않는다.
-> **이 두 모드는 스킬 본문 머리의 산출물 문장(plan.md 와 AGENTS.md 뿐)과 `../SKILL.md` 「Step 5. plan.md 작성」 의 루트 plan.md 하나 규칙의 예외다** — 초안 모드는 `plan.md` 대신 초안 파일을 쓰고, 진행 모드는 `plan.md` 를 쓴 뒤 초안을 지운다. 그 밖의 Step 은 일반 경로 그대로다.
+> **이 두 모드는 스킬 본문 머리의 산출물 문장(plan.md 와 AGENTS.md 뿐)과 `../SKILL.md` 「Step 5. plan.md 작성」 의 루트 plan.md 하나 규칙의 예외다** — 초안 모드는 `plan.md` 대신 초안 파일을 쓰고, 진행 모드는 `plan.md` 를 쓴 뒤 초안을 지운다. 초안 모드는 Step 6 의 `check-plan`·`plan-reviewer` 도 돌리지 않는다(아래 「초안 모드」). 그 밖의 Step 은 일반 경로 그대로다.
 
 ## 초안 모드
 
