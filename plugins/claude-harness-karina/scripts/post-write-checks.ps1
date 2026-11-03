@@ -188,43 +188,10 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
 
 # H4: 새 주석 경고 — 근거는 `rules/post-write-rationale.md` §22
 try {
-    $extH4 = [System.IO.Path]::GetExtension($file).ToLower()
-    $slashExtsH4 = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift')
-    $hashExtsH4 = @('.py', '.ps1', '.sh')
-    $isSlashH4 = $slashExtsH4 -contains $extH4
-    if (($isSlashH4 -or ($hashExtsH4 -contains $extH4)) -and $data.tool_name -ne 'NotebookEdit') {
-        $exemptH4 = '(?i)^(eslint-|prettier-ignore|@ts-|noqa|type:\s*ignore|pylint:|pyright:|mypy:|nolint|istanbul ignore|c8 ignore|biome-ignore|resharper|fmt:\s*(off|on)\b|isort:|<reference|spdx-license-identifier|copyright|@license|-\*-\s*coding)'
-        $rawExemptH4 = if ($isSlashH4) { '^//(go:|\s*#(end)?region\b)' } elseif ($extH4 -eq '.ps1') { '(?i)^#(requires|(end)?region)\b' } else { '(?!)' }
-
-        function Get-CommentBodies([string[]]$Lines) {
-            $bodies = New-Object System.Collections.Generic.List[string]
-            $inBlock = $false
-            foreach ($line in $Lines) {
-                $t = ([string]$line).Trim()
-                $body = $null
-                if ($inBlock) {
-                    $body = $t -replace '^\*+(?!/)', ''
-                    if ($t -match '\*/|#>') { $inBlock = $false }
-                } elseif ($isSlashH4 -and $t.StartsWith('//')) {
-                    $body = $t -replace '^/{2,}!?', ''
-                } elseif ($isSlashH4 -and $t.StartsWith('/*')) {
-                    $body = $t -replace '^/\*+!?', ''
-                    $inBlock = -not ($body -match '\*/')
-                } elseif ((-not $isSlashH4) -and $extH4 -eq '.ps1' -and $t.StartsWith('<#')) {
-                    $body = $t.Substring(2)
-                    $inBlock = -not ($body -match '#>')
-                } elseif ((-not $isSlashH4) -and $t.StartsWith('#') -and -not $t.StartsWith('#!')) {
-                    $body = $t -replace '^#+', ''
-                }
-                if ($null -eq $body) { continue }
-                $body = ($body -replace '(\*/|#>)\s*$', '').Trim()
-                if ($body -eq '' -or $body -match $exemptH4 -or $t -match $rawExemptH4) { continue }
-                $bodies.Add($t)
-            }
-            return , $bodies
-        }
-
-        $addedH4 = New-Object System.Collections.Generic.List[string]
+    . (Join-Path $PSScriptRoot 'comment-lines.ps1')
+    if (-not (Get-Command Get-AddedCommentBodies -ErrorAction SilentlyContinue)) {
+        [Console]::Error.WriteLine('post-write-checks: comment-lines.ps1 로드 실패 — 새 주석 경고 미수행. 플러그인 재설치를 권장합니다.')
+    } elseif ((Test-CommentTarget $file) -and $data.tool_name -ne 'NotebookEdit') {
         $pairsH4 = @()
         if ($data.tool_input.edits) {
             $pairsH4 = @($data.tool_input.edits | ForEach-Object { , @([string]$_.old_string, [string]$_.new_string) })
@@ -232,20 +199,12 @@ try {
             $pairsH4 = @(, @([string]$data.tool_input.old_string, [string]$data.tool_input.new_string))
         }
         if ($pairsH4.Count -gt 0) {
-            foreach ($pair in $pairsH4) {
-                $oldSet = New-Object System.Collections.Generic.HashSet[string]
-                foreach ($o in ($pair[0] -split '\r?\n')) { [void]$oldSet.Add($o.Trim()) }
-                foreach ($c in (Get-CommentBodies ($pair[1] -split '\r?\n'))) {
-                    if (-not $oldSet.Contains($c)) { $addedH4.Add($c) }
-                }
-            }
+            $addedH4 = Get-AddedCommentBodies $file $pairsH4
         } else {
             $writeLines = if ($sharedDiffOk) {
                 @($sharedDiffLines | Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') } | ForEach-Object { $_.Substring(1) })
             } else { $content }
-            if ($null -ne $writeLines) {
-                foreach ($c in (Get-CommentBodies $writeLines)) { $addedH4.Add($c) }
-            }
+            $addedH4 = Get-CommentBodies $file $writeLines
         }
 
         if ($addedH4.Count -gt 0) {
