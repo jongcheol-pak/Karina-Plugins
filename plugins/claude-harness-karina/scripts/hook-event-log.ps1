@@ -3,7 +3,7 @@
 function Write-HookEvent {
     param(
         [string]$Hook,          # hook 이름 (예: 'block-destructive')
-        [string]$Decision,      # 'block' | 'warn' | 'allow'(게이트를 여는 판정 — guard-write 의 PLAN-EXEMPT 면제) | 'cleanup'(고아 프로세스 회수 — session-end-cleanup-lib)
+        [string]$Decision,      # 'block' | 'warn' | 'allow'(게이트를 여는 판정 — guard-write 의 PLAN-EXEMPT 면제) | 'cleanup'(고아 프로세스 회수 — session-end-cleanup-lib) | 'slow'(hook 소요가 기준 이상 — Write-HookSlowEvent)
         [string]$Rule,          # 발동 규칙 키워드 (오탐 리뷰 시 어떤 검사가 발동했는지 식별용)
         [string]$CommandText = ''   # 명령/대상 원문 (시크릿 검사 후 앞 200자만 기록, 없으면 생략)
     )
@@ -53,4 +53,16 @@ function Write-HookEvent {
     } catch {
         # 로깅 실패는 항상 무시 — hook 본연 동작(차단/경고)에 절대 영향 금지 (안전 계약 ①)
     }
+}
+
+# 느린 실행 기록 — 근거는 `rules/event-log-rationale.md` §2
+function Write-HookSlowEvent {
+    param([string]$Hook, [string]$CommandText = '')
+    try {
+        $limitMs = [long]5000
+        $parsed = [long]0
+        if ([long]::TryParse([string]$env:KARINA_HOOK_SLOW_MS, [ref]$parsed) -and $parsed -ge 0) { $limitMs = $parsed }
+        $elapsedMs = [long]([DateTime]::Now - [System.Diagnostics.Process]::GetCurrentProcess().StartTime).TotalMilliseconds
+        if ($elapsedMs -ge $limitMs) { Write-HookEvent $Hook 'slow' "elapsed_ms=$elapsedMs" $CommandText }
+    } catch {}
 }

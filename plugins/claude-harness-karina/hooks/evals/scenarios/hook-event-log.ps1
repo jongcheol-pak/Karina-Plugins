@@ -48,6 +48,28 @@ if (($r.code -eq 0) -and ($evText2 -match '"hook":"warn-external-ops"') -and ($e
 $elTarget = (Join-Path $vdCache 'hook-event-log.ps1') -replace '\\', '/'
 $r = Invoke-Hook 'guard-harness.ps1' (@{ tool_name = 'Write'; tool_input = @{ file_path = $elTarget; content = 'x' } } | ConvertTo-Json -Compress)
 Assert-Case -Name "guard-harness: 설치본 hook-event-log 개조 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+function Get-EvLines {
+    try { return @(Get-ChildItem -LiteralPath $evDir -Filter '*.jsonl' -ErrorAction Stop | ForEach-Object { Get-Content -LiteralPath $_.FullName }) } catch { return @() }
+}
+function Test-SlowDelta {
+    param([string]$Name, [string]$Hook, [string]$Command, [int]$ExpectExit, [string]$SlowMs, [bool]$ExpectSlow)
+    $before = (Get-EvLines).Count
+    $prevSlow = $env:KARINA_HOOK_SLOW_MS
+    $env:KARINA_HOOK_SLOW_MS = $SlowMs
+    try { $r = Invoke-Hook $Hook (@{ tool_name = 'Bash'; tool_input = @{ command = $Command } } | ConvertTo-Json -Compress) }
+    finally { $env:KARINA_HOOK_SLOW_MS = $prevSlow }
+    $hookName = $Hook -replace '\.ps1$', ''
+    $new = @(Get-EvLines | Select-Object -Skip $before)
+    $slow = @($new | Where-Object { $_ -match ('"hook":"' + [regex]::Escape($hookName) + '"') -and $_ -match '"decision":"slow"' -and $_ -match '"rule":"elapsed_ms=\d+"' })
+    $ok = ($r.code -eq $ExpectExit) -and ((($slow.Count -eq 1) -and $ExpectSlow) -or (($slow.Count -eq 0) -and -not $ExpectSlow))
+    $tag = if ($ok) { 'PASS' } else { 'FAIL' }
+    $script:results.Add(@{ ok = $ok; line = "[$tag] event-log slow: $Name (exit=$($r.code), 새 slow 줄 $($slow.Count))" })
+}
+Test-SlowDelta -Name 'guard-bash 통과 경로가 기준 이상이면 slow 1줄' -Hook 'guard-bash.ps1' -Command 'ls -la' -ExpectExit 0 -SlowMs '0' -ExpectSlow $true
+Test-SlowDelta -Name 'guard-bash 차단 경로도 slow 1줄 · 차단 유지' -Hook 'guard-bash.ps1' -Command 'cp notes.md plan.md' -ExpectExit 2 -SlowMs '0' -ExpectSlow $true
+Test-SlowDelta -Name 'block-destructive 통과 경로가 기준 이상이면 slow 1줄' -Hook 'block-destructive.ps1' -Command 'ls -la' -ExpectExit 0 -SlowMs '0' -ExpectSlow $true
+Test-SlowDelta -Name 'block-destructive 차단 경로도 slow 1줄 · 차단 유지' -Hook 'block-destructive.ps1' -Command 'rm -rf /' -ExpectExit 2 -SlowMs '0' -ExpectSlow $true
+Test-SlowDelta -Name '기준 밑이면 slow 줄 없음 (음성 짝)' -Hook 'guard-bash.ps1' -Command 'ls -la' -ExpectExit 0 -SlowMs '86400000' -ExpectSlow $false
 }   # ---- §11 게이트 끝 (hook-event-log 외) ----
 # 12) report-hook-events 스모크는 v1.225.0에 삭제했다 — 그 수동 도구를 제거했기 때문이다.
 #    이벤트 집계는 jsonl 을 직접 읽으면 되고(파이썬 6줄), 전용 스크립트를 유지할 근거가 없었다.

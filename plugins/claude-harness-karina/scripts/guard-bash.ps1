@@ -502,6 +502,11 @@ function Write-DispatchEvent {
         }
     } catch {}
 }
+function Write-GbSlowEvent {
+    try {
+        if (Get-Command Write-HookSlowEvent -ErrorAction SilentlyContinue) { Write-HookSlowEvent 'guard-bash' $script:cmdText }
+    } catch {}
+}
 
 # 검사 9종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
 # 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md` §8
@@ -532,6 +537,7 @@ if ($blocked.Count -gt 0) {
         foreach ($l in $b.Stderr) { [Console]::Error.WriteLine($l) }
         Write-DispatchEvent $b['Name'] 'block' $b
     }
+    Write-GbSlowEvent
     exit 2
 }
 
@@ -546,4 +552,5 @@ if ($contexts.Count -gt 0) {
     $payload = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = $merged } } | ConvertTo-Json -Compress -Depth 5
     [Console]::Out.WriteLine($payload)
 }
+Write-GbSlowEvent
 exit 0

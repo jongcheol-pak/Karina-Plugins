@@ -40,6 +40,9 @@ $env:CLAUDE_HARNESS_ALLOW_SECRET = $null
 # 회수 로직 자체는 그대로 검증된다.
 $env:CLAUDE_HARNESS_NO_PROC_CLEANUP = '1'
 
+# in-process hook 의 프로세스 시작 시각은 러너의 것이라 기본 기준이면 모든 호출이 slow 를 쓴다 — 근거는 `scripts/rules/event-log-rationale.md` §2
+$env:KARINA_HOOK_SLOW_MS = '86400000'
+
 # ---- 격리 환경 구성 ----
 # 홈 격리($EvalIso)는 임시 폴더에 둬도 되지만, 시나리오 프로젝트($EvalWork)는 반드시 임시 폴더 '밖'이어야
 # 한다 — guard-write가 시스템 임시 폴더 하위를 무조건 통과시키므로(H3 의도된 완화),

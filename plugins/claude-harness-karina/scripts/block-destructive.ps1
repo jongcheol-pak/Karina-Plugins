@@ -52,12 +52,18 @@ function Write-BdEvent {
         }
     } catch {}
 }
+function Write-BdSlowEvent {
+    try {
+        if (Get-Command Write-HookSlowEvent -ErrorAction SilentlyContinue) { Write-HookSlowEvent 'block-destructive' $script:cmd }
+    } catch {}
+}
 function Deny {
     param([string]$Reason, [string]$Rule, [string]$Shown)
     [Console]::Error.WriteLine("BLOCKED: $Reason")
     [Console]::Error.WriteLine("Command: $Shown")
     [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
     Write-BdEvent $Rule $Shown
+    Write-BdSlowEvent
     exit 2
 }
 
@@ -231,4 +237,5 @@ foreach ($sub in $subs) {
     }
 }
 
+Write-BdSlowEvent
 exit 0
