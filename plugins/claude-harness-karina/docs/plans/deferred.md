@@ -13,7 +13,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 13 / 종결 119
+**▶ 현행 잔량(기계 대조 대상)**: 대기 12 / 종결 119
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -39,8 +39,6 @@
 ### hook · 안전망 (차단·경고·골든 러너)
 
 - [2026-11-01] **운영 hook 의 이벤트당 다중 pwsh 기동 통합** — `hooks/hooks.json` 이 도구 호출마다 hook 별로 pwsh 를 띄운다(PreToolUse `Bash|PowerShell` 2 + PostToolUse 1 · `Write|Edit` 2+1 · `Skill` 3). 이벤트·matcher 별 디스패처 하나로 묶되 안전 임계 hook 의 exit 2 합성과 골든 실증이 필요하다. 위키 decisions 2026-10-24 가 문구를 두 곳으로 가르는 안을 기각했으니 문구는 한 곳에 둔다 (출처: hook 골든 in-process 회차 후보 — 사용자 「대장에 등재」) (실해: 2026-11-01 빈 pwsh 기동 약 290ms · guard-bash 단독 약 790ms 가 도구 호출마다 든다 — 사용자 결정 예외)
-
-- [2026-11-03] **부하 시 guard-bash timeout 차단** — `hooks/hooks.json` 이 `guard-bash.ps1` 에 `timeout 15`·`onFailure: block` 을 걸어, hook 이 부하로 15초를 넘기면 Bash·PowerShell 호출이 차단된다(`block-destructive.ps1` 도 10초로 같은 노출). 평시 실측 884ms~1.7s 라 재현되지 않았다. 재현 조건(동시 세션·pwsh 기동 지연)을 잰 뒤 timeout 상향과 위 pwsh 기동 통합 중 처방을 정한다 — fail-open 은 DO NOT (출처: 2026-11-03 디버깅 세션 — 사용자 「Deferred 에 등재」) (실해: 2026-11-03 computer_guard 작업 세션이 Bash·PowerShell·Monitor 셋 모두 hook 시간 초과 차단을 보고 — 부하 의존 산발 실패)
 
 - [2026-10-23] **chain-plan 코디네이터 검증 명령을 `run-verify.py` 밖에서 띄우면 guard-bash 가 경고** — `continuation.md`「코디네이터 검증」 은 명령마다 래퍼로 띄우라고 하지만 코디네이터가 어기면 감시가 빠진다. 명령줄로 잴 수 있는 것은 「래퍼를 거쳤는가」뿐이다(규칙대로면 `cargo` 는 스크립트 파일 안에 있다). 체인 실행 중 판정·`run_in_background` 판정과 골든 실증이 필요하다 (출처: 2026-10-23 karina-ea 요청 ④ — 사용자 「4는 대장」) (실해: 2026-10-23 run_34c092d3 plan 6 검증이 정리 명령과 검증 셋을 시한 없이 한 백그라운드에 묶어 80분 넘게 섰다)
 
