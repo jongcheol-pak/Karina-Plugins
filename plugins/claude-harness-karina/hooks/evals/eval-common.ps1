@@ -38,7 +38,6 @@ $env:CLAUDE_HARNESS_NO_PROC_CLEANUP = '1'
 
 $env:KARINA_HOOK_SLOW_MS = [string][long][TimeSpan]::FromDays(1).TotalMilliseconds
 
-#
 # 실행마다 만드는 폴더는 `<베이스>\karina-hook-evals\run\<접미>` 아래로 모은다 — 최상위에 평면으로
 # 흩어지면 중단된 실행의 잔여물이 사용자 눈에 그대로 쌓인다(2026-08-20 실측 80개·9.7MB).
 # 경로 계산·정리 규칙의 정본은 `eval-paths.ps1`이며 코디네이터도 같은 파일을 읽는다.
@@ -51,6 +50,10 @@ $EvalIso = Join-Path $EvalRunTemp ("karina-hook-evals-" + $suffix)
 $EvalWork = Join-Path $EvalRunWork ("karina-hook-evals-" + $suffix)
 New-Item -ItemType Directory -Path $EvalIso -Force | Out-Null
 New-Item -ItemType Directory -Path $EvalWork -Force | Out-Null
+$evalTempRoot = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '/', '\'
+if ((($EvalWork -replace '/', '\') + '\').StartsWith($evalTempRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "시나리오 프로젝트(`$EvalWork)가 시스템 임시 폴더 아래입니다 — guard-write 가 임시 폴더 하위를 통과시켜 차단 시나리오가 무력화됩니다: $EvalWork"
+}
 $env:USERPROFILE = $EvalIso        # 자식 hook 프로세스가 이 격리 홈의 .claude를 보게 함(.state 마커 등)
 $env:CLAUDE_PROJECT_DIR = $null
 Set-Location $EvalWork             # 중립 cwd — hook의 (Get-Location) 폴백이 레포 plan.md를 줍지 않게
