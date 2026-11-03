@@ -81,7 +81,7 @@ def golden_text():
 
 # dot-source 헬퍼 -> 그를 호출하는 진입점. 헬퍼는 골든이 직접 부르지 않고 진입점을 통해 돌므로
 #   통과(델타 음성) 케이스도 진입점 이름으로 기록된다.
-HELPER_ENTRY = {'guard-commit-secrets': 'guard-bash', 'write-gate-trivial': 'guard-write',
+HELPER_ENTRY = {'guard-commit-secrets': 'guard-bash', 'guard-commit-comments': 'guard-bash','write-gate-trivial': 'guard-write',
                 'secret-patterns': 'guard-bash', 'session-end-cleanup-lib': 'session-end-cleanup',
                 'session-wiki-signals': 'session-context', 'session-ledger-signal': 'session-context',
                 'harness-root': 'guard-bash'}

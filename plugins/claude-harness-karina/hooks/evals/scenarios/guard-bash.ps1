@@ -48,21 +48,22 @@ Copy-Item (Join-Path $scriptsDir 'rules/*.json') (Join-Path $stubLib 'rules') -F
 'Set-Content -LiteralPath (Join-Path $PSScriptRoot ''loaded-cs.txt'') x; function Invoke-WarnCommitSecrets { param($data) New-HookResult }' | Set-Content (Join-Path $stubLib 'guard-commit-secrets.ps1')
 'Set-Content -LiteralPath (Join-Path $PSScriptRoot ''loaded-sd.txt'') x; function Invoke-WarnStaleDocs { param($data) New-HookResult }' | Set-Content (Join-Path $stubLib 'guard-stale-docs.ps1')
 'Set-Content -LiteralPath (Join-Path $PSScriptRoot ''loaded-ta.txt'') x; function Invoke-WarnTaskAudit { param($data) New-HookResult }' | Set-Content (Join-Path $stubLib 'guard-task-audit.ps1')
-$stubMarks = @((Join-Path $stubLib 'loaded-cs.txt'), (Join-Path $stubLib 'loaded-sd.txt'), (Join-Path $stubLib 'loaded-ta.txt'))
+'Set-Content -LiteralPath (Join-Path $PSScriptRoot ''loaded-cc.txt'') x; function Invoke-BlockCommitComments { param($data) New-HookResult }' | Set-Content (Join-Path $stubLib 'guard-commit-comments.ps1')
+$stubMarks = @((Join-Path $stubLib 'loaded-cs.txt'), (Join-Path $stubLib 'loaded-sd.txt'), (Join-Path $stubLib 'loaded-ta.txt'), (Join-Path $stubLib 'loaded-cc.txt'))
 $lz = @{ tool_name = 'Bash'; cwd = $stubLib; tool_input = @{ command = 'ls -la' } } | ConvertTo-Json -Compress
 $o = $lz | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $stubLib 'guard-bash.ps1') 2>&1
 $r = @{ code = $(if (@($stubMarks | Where-Object { Test-Path -LiteralPath $_ }).Count) { 1 } else { $LASTEXITCODE }); out = (($o | Out-String)).Trim() }
 Assert-Case -Name "guard-bash: 비커밋 명령은 커밋 판정 라이브러리를 dot-source 하지 않는다 (LZ1 — 표식 파일 0개)" -R $r -ExpectExit 0 -ExpectNotContains '로드 실패'
 $o = (New-CommitJson $stubLib 'x') | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $stubLib 'guard-bash.ps1') 2>&1
 $r = @{ code = @($stubMarks | Where-Object { Test-Path -LiteralPath $_ }).Count; out = (($o | Out-String)).Trim() }
-Assert-Case -Name "guard-bash: 커밋 명령은 커밋 판정 라이브러리 셋을 dot-source 한다 (LZ2 — 표식 파일 3개)" -R $r -ExpectExit 3 -ExpectNotContains '로드 실패'
+Assert-Case -Name "guard-bash: 커밋 명령은 커밋 판정 라이브러리 넷을 dot-source 한다 (LZ2 — 표식 파일 4개)" -R $r -ExpectExit 4 -ExpectNotContains '로드 실패'
 
 function Get-CommitLibRedefinitions([string]$Dir) {
     $isFn = { $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] }
     $owned = @(foreach ($f in @('guard-bash.ps1', 'git-commit-match.ps1')) {
         [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $Dir $f), [ref]$null, [ref]$null).FindAll($isFn, $true) | ForEach-Object Name
     })
-    $dups = @(foreach ($lib in @('guard-commit-secrets.ps1', 'guard-stale-docs.ps1', 'guard-task-audit.ps1')) {
+    $dups = @(foreach ($lib in @('guard-commit-secrets.ps1', 'guard-stale-docs.ps1', 'guard-task-audit.ps1', 'guard-commit-comments.ps1', 'comment-lines.ps1')) {
         [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $Dir $lib), [ref]$null, [ref]$null).FindAll($isFn, $true) |
             Where-Object { $owned -contains $_.Name } | ForEach-Object { $lib + ':' + $_.Name }
     })
@@ -70,9 +71,9 @@ function Get-CommitLibRedefinitions([string]$Dir) {
     return 'dup=none'
 }
 $r = @{ code = 0; out = (Get-CommitLibRedefinitions $scriptsDir) }
-Assert-Case -Name "guard-bash: 커밋 시점 라이브러리 셋은 디스패처·커밋 판정 함수를 다시 정의하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'dup=none'
+Assert-Case -Name "guard-bash: 커밋 시점 라이브러리는 디스패처·커밋 판정 함수를 다시 정의하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'dup=none'
 $redefLib = Join-Path $work 'dispatch-redef'; New-Item -ItemType Directory $redefLib -Force | Out-Null
-foreach ($f in @('guard-bash.ps1', 'git-commit-match.ps1', 'guard-commit-secrets.ps1', 'guard-stale-docs.ps1')) { Copy-Item (Join-Path $scriptsDir $f) $redefLib -Force }
+foreach ($f in @('guard-bash.ps1', 'git-commit-match.ps1', 'guard-commit-secrets.ps1', 'guard-stale-docs.ps1', 'guard-commit-comments.ps1', 'comment-lines.ps1')) { Copy-Item (Join-Path $scriptsDir $f) $redefLib -Force }
 ('function New-HookResult { param() }' + [Environment]::NewLine + (Get-Content -LiteralPath (Join-Path $scriptsDir 'guard-task-audit.ps1') -Raw)) | Set-Content (Join-Path $redefLib 'guard-task-audit.ps1')
 $r = @{ code = 0; out = (Get-CommitLibRedefinitions $redefLib) }
 Assert-Case -Name "guard-bash: 라이브러리가 디스패처 함수를 다시 정의하면 그 이름을 짚는다" -R $r -ExpectExit 0 -ExpectContains 'guard-task-audit.ps1:New-HookResult'
@@ -426,4 +427,104 @@ $rEojB = @{ code = $LASTEXITCODE; out = (($outEojB | Out-String)).Trim() }
 Assert-Case -Name "eoj: json 부재여도 block-plan-write 차단은 유지 (EOJ2)" -R $rEojB -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
 
 }   # ---- §8 게이트 끝 (guard-bash) ----
+
+if ((Test-HookSelected @('guard-bash')) -and $gitOk) {
+$ccRoot = Join-Path $work 'ccrepos'; New-Item -ItemType Directory $ccRoot -Force | Out-Null
+$ccSeq = 0
+function New-CcRepo {
+    $script:ccSeq++
+    $d = Join-Path $ccRoot "r$($script:ccSeq)"; New-Item -ItemType Directory $d -Force | Out-Null
+    Push-Location $d
+    git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
+    [System.IO.File]::WriteAllText((Join-Path $d 'a.cs'), "// 기존 설명`nint a;`n")
+    [System.IO.File]::WriteAllText((Join-Path $d 'b.cs'), "int b;`n")
+    [System.IO.File]::WriteAllText((Join-Path $d 'doc.md'), "# 문서`n")
+    git add .; git commit -qm base
+    Pop-Location
+    return $d
+}
+function Invoke-CcCommit([string]$Dir, [string]$Command, [string]$Session) {
+    return (Invoke-Hook 'guard-bash.ps1' (@{ session_id = $Session; tool_name = 'Bash'; cwd = $Dir; tool_input = @{ command = $Command } } | ConvertTo-Json -Compress))
+}
+function Set-CcFile([string]$Dir, [string]$Name, [string]$Text) { [System.IO.File]::WriteAllText((Join-Path $Dir $Name), $Text) }
+$ccBlock = '[HARNESS] BLOCKED: 커밋에 새 주석이 있습니다 — 첫 시도를 막습니다 (주석'
+
+$d = New-CcRepo
+Set-CcFile $d 'a.cs' "// 기존 설명`n// 새 설명`nint a;`n"; git -C $d add a.cs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-retry'
+Assert-Case -Name "commit-comments: staged 새 주석이 있는 커밋 첫 시도는 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+Assert-Case -Name "commit-comments: 차단 사유가 재시도 안내를 낸다" -R $r -ExpectExit 2 -ExpectContains '같은 커밋 명령을 그대로 다시 실행하세요'
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-retry'
+Assert-Case -Name "commit-comments: 같은 주석 집합 재시도는 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Set-CcFile $d 'a.cs' "// 기존 설명`n// 바꾼 설명`nint a;`n"; git -C $d add a.cs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-retry'
+Assert-Case -Name "commit-comments: 주석 집합이 바뀌면 다시 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+
+$d = New-CcRepo
+Set-CcFile $d 'b.cs' "// 경로 커밋 설명`nint b;`n"
+$r = Invoke-CcCommit $d 'git commit -m x -- b.cs' 'cc-path'
+Assert-Case -Name "commit-comments: git commit -- <경로> 의 add 안 한 추적 파일 새 주석도 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+$r = Invoke-CcCommit $d 'git commit -am x' 'cc-am'
+Assert-Case -Name "commit-comments: git commit -am 의 추적 파일 새 주석도 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+$r = Invoke-CcCommit $d 'git add b.cs && git commit -m x' 'cc-add'
+Assert-Case -Name "commit-comments: 같은 명령 앞선 git add <추적 파일> 의 새 주석도 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+
+$d = New-CcRepo
+Set-CcFile $d 'new.py' "# 새 파일 설명`nx = 1`n"
+$r = Invoke-CcCommit $d 'git add new.py && git commit -m x' 'cc-new'
+Assert-Case -Name "commit-comments: 같은 명령 앞선 git add <untracked 새 파일> 의 주석도 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+
+$d = New-CcRepo
+$ccEditJson = @{ session_id = 'cc-approved'; tool_name = 'Edit'; cwd = $d; tool_input = @{ file_path = (Join-Path $d 'b.cs'); old_string = 'int b;'; new_string = "// 편집 때 남긴 설명`nint b;" } } | ConvertTo-Json -Compress -Depth 5
+$null = Invoke-Hook 'guard-harness.ps1' $ccEditJson
+$null = Invoke-Hook 'guard-harness.ps1' $ccEditJson
+Set-CcFile $d 'b.cs' "// 편집 때 남긴 설명`nint b;`n"; git -C $d add b.cs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-approved'
+Assert-Case -Name "commit-comments: 편집 게이트가 승인한 주석만 있으면 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+
+$d = New-CcRepo
+Set-CcFile $d 'a.cs' "int a;`n"; Set-CcFile $d 'b.cs' "// 기존 설명`nint b;`n"; git -C $d add a.cs b.cs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-move'
+Assert-Case -Name "commit-comments: 주석을 파일 사이로 옮긴 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+
+$d = New-CcRepo
+Set-CcFile $d 'a.cs' "// 기존 설명`n// 남의 staged 설명`nint a;`n"; git -C $d add a.cs
+Set-CcFile $d 'b.cs' "int b;`nint c;`n"
+$r = Invoke-CcCommit $d 'git commit -m x -- b.cs' 'cc-only'
+Assert-Case -Name "commit-comments: 다른 파일에 주석이 staged 돼도 git commit -- <주석 없는 경로> 는 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+
+$d = New-CcRepo
+Set-CcFile $d 'a.cs' "// 기존 설명`n// 병합으로 온 설명`nint a;`n"; git -C $d add a.cs
+Set-Content -LiteralPath (Join-Path $d '.git/MERGE_HEAD') -Value (git -C $d rev-parse HEAD)
+$r = Invoke-CcCommit $d 'git commit --no-edit' 'cc-merge'
+Assert-Case -Name "commit-comments: MERGE_HEAD 가 있는 커밋은 검사하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+
+$d = New-CcRepo
+Set-CcFile $d 'b.cs' "int b;`nint c;`n"; git -C $d add b.cs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-code'
+Assert-Case -Name "commit-comments: 주석 없는 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Set-CcFile $d 'a.cs' "int a;`n"; git -C $d add a.cs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-del'
+Assert-Case -Name "commit-comments: 주석을 지우기만 한 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Set-CcFile $d 'doc.md' "# 문서`n<!-- 메모 -->`n"; git -C $d add doc.md
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-md'
+Assert-Case -Name "commit-comments: .md 만 담은 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+
+$d = New-CcRepo
+Set-CcFile $d 'a.cs' "// 기존 설명`n// 드라이런 설명`nint a;`n"; git -C $d add a.cs
+$r = Invoke-CcCommit $d 'git commit --dry-run -m x' 'cc-dry'
+Assert-Case -Name "commit-comments: --dry-run 은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-CcCommit $d "git commit -m `"`$(cat <<'MSG'`n# 제목처럼 보이는 줄`nMSG`n)`" -- doc.md" 'cc-heredoc'
+Assert-Case -Name "commit-comments: heredoc 메시지 본문의 # 줄은 주석으로 세지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+
+$ccOut = Join-Path $ccRoot 'nogit'; New-Item -ItemType Directory $ccOut -Force | Out-Null
+$r = Invoke-CcCommit $ccOut 'git commit -m x' 'cc-nogit'
+Assert-Case -Name "commit-comments: 레포 밖(git 실패)은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+
+$d = New-CcRepo
+for ($i = 0; $i -lt 201; $i++) { Set-CcFile $d "f$i.cs" "// 대량 설명 $i`nint v$i;`n" }
+git -C $d add .
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-cap'
+Assert-Case -Name "commit-comments: 수집 상한을 넘으면 알리고 통과" -R $r -ExpectExit 0 -ExpectContains '상한'
+}
 

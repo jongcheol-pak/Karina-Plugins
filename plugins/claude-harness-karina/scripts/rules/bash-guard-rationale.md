@@ -3,10 +3,10 @@
 > `guard-bash.ps1`의 주석에서 옮긴 판정 근거다. 스크립트에는 각 자리에 이 문서의 절을 가리키는 1줄만 남겼다.
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 
-## §1 검사 9종을 한 프로세스에서 수행하는 이유
+## §1 검사 10종을 한 프로세스에서 수행하는 이유
 
 ```
-# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 9종 검사를 한 프로세스에서 수행
+# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 10종 검사를 한 프로세스에서 수행
 #
 # 담당 조항(정본: `skills/DESIGN.md`의 hook 담당 조항 표):
 #   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신 · E18 Windows Bash 도구 역슬래시 축소 경고 · E19 task 완료 커밋의 소스 감사 누락 경고.
@@ -26,19 +26,19 @@
 
 **코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 아래 검사 함수 8종(2026-11-02 에 더한 `Invoke-WarnTaskAudit` 은 `task-audit-rationale.md`, `Invoke-WarnBashBackslash` 는 이 문서 §21)의 판정 근거는 이 문서가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
-## §2 검사 9종을 한 프로세스에 담는 구조
+## §2 검사 10종을 한 프로세스에 담는 구조
 
 v1.225.0이 Bash 계열 hook 을 `guard-bash.ps1` 하나로 통폐합하며 공유 모듈 `bash-hook-lib.ps1` 을 삭제했다.
 종전에는 검사 로직을 그 모듈에 두고 ① 검사마다 standalone 래퍼 ② 단일 디스패처
 두 경로가 그것을 dot-source 했는데, **지금은 실행 경로가 하나뿐이라 그 이중화가 필요 없다.**
-dot-source 는 셋 남아 있다 — 커밋 시점 검사인 `guard-commit-secrets.ps1`·`guard-stale-docs.ps1`·`guard-task-audit.ps1`(아래).
+dot-source 는 넷 남아 있다 — 커밋 시점 검사인 `guard-commit-secrets.ps1`·`guard-stale-docs.ps1`·`guard-task-audit.ps1`·`guard-commit-comments.ps1`(아래).
 
 현행 구조:
 
-- **검사 9종 중 6종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
+- **검사 10종 중 6종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
   `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-WarnGlobalFind` · `Invoke-WarnBashBackslash` · `Invoke-WarnDangerousAssignment`.
-  **나머지 셋 — `Invoke-WarnCommitSecrets`(`guard-commit-secrets.ps1`) · `Invoke-WarnStaleDocs`
-  (`guard-stale-docs.ps1`) · `Invoke-WarnTaskAudit`(`guard-task-audit.ps1`) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
+  **나머지 넷 — `Invoke-WarnCommitSecrets`(`guard-commit-secrets.ps1`) · `Invoke-WarnStaleDocs`
+  (`guard-stale-docs.ps1`) · `Invoke-WarnTaskAudit`(`guard-task-audit.ps1`) · `Invoke-BlockCommitComments`(`guard-commit-comments.ps1` — 근거는 `post-write-rationale.md` §22) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
   우회 변수·시크릿 패턴 연동을 담아 크기가 따로 놀고, 분리해 두어야 골든이 그 파일만 단독
   프로브할 수 있다. **dot-source 는 명령에 `commit` 이 있을 때만 하고 존재는 매 호출 확인한다** —
   근거는 `stale-docs-rationale.md` §2. 로드 실패는 침묵하지 않는다 — `guard-bash.ps1` 이
@@ -49,14 +49,14 @@ dot-source 는 셋 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
   오인하지 말 것**(`evals/check-stale-refs.py` 의 DEAD 목록이 이 다섯을 뺀 이유).
 - **함수 계약**: 파싱된 `$data`(hook stdin JSON) → 결과 객체
   `@{ Block = [bool]; Stderr = [string[]]; Context = [string] }`.
-  **`Block = $true`(exit 2)를 내는 경로는 넷이다** — `guard-bash.ps1` 2곳(`block-plan-write` 의
+  **`Block = $true`(exit 2)를 내는 경로는 다섯이다** — `guard-bash.ps1` 2곳(`block-plan-write` 의
   plan.md 스크립트 쓰기 · `require-task-checkbox`) + `warn-commit-secrets` 2곳(`guard-commit-secrets.ps1`
-  의 시크릿 검출·스캔 캡 초과). `check-block-coverage.py` 가 세는 「guard-bash 경로 2 ·
-  guard-commit-secrets 경로 2」가 그 넷이다. 9검사 중 차단하는 것은 이 3종이고, 나머지 경고 전용 6종은
-  `Block` 을 세우지 않는다.
+  의 시크릿 검출·스캔 캡 초과) + `block-commit-comments` 1곳(`guard-commit-comments.ps1` 의 새 주석 첫 시도).
+  `check-block-coverage.py` 가 세는 「guard-bash 경로 2 · guard-commit-secrets 경로 2 · guard-commit-comments 경로 1」이
+  그 다섯이다. 10검사 중 차단하는 것은 이 4종이고, 나머지 경고 전용 6종은 `Block` 을 세우지 않는다.
   출력·exit 번역은 파일 하단의 단일 caller 가 하고, 각 함수는 「판정 → 결과」만 낸다.
 - **한 검사의 예외는 나머지를 막지 않는다** — `foreach` 안에서 `try/catch` 로 격리하고
-  안전측으로 통과시킨다. 아홉 중 하나가 깨져 전체가 침묵하는 것을 막는다.
+  안전측으로 통과시킨다. 열 중 하나가 깨져 전체가 침묵하는 것을 막는다.
 - **`New-HookResult` 생성기는 `guard-bash.ps1` 에 있다** — 커밋 판정 라이브러리는 커밋 명령에서만
   불러오므로 거기 두면 나머지 여섯 검사가 돌 수 없다. 라이브러리를 단독 dot-source 하는 골든
   프로브는 같은 정의를 직접 둔다.

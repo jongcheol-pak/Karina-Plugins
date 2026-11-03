@@ -1,4 +1,4 @@
-﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 9종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
+﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 10종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
 
 # 공용 헬퍼 New-HookResult·Remove-HeredocBodyForJudge 는 여기 둔다 — 근거는 `rules/bash-guard-rationale.md` §2
 function New-HookResult {
@@ -477,11 +477,12 @@ if (-not $script:GitCommitRx) {
     $script:GitCommitRx = '(?!)'
 }
 
-# 커밋 시점 검사 셋은 별도 파일이고 로드 실패를 침묵시키지 않는다 — 근거는 `rules/stale-docs-rationale.md` §2
+# 커밋 시점 검사는 별도 파일이고 로드 실패를 침묵시키지 않는다 — 근거는 `rules/stale-docs-rationale.md` §2
 $loadCommitLibs = $cmdText -match 'commit'
 foreach ($lib in @(@('guard-commit-secrets.ps1', 'Invoke-WarnCommitSecrets'),
                    @('guard-stale-docs.ps1', 'Invoke-WarnStaleDocs'),
-                   @('guard-task-audit.ps1', 'Invoke-WarnTaskAudit'))) {
+                   @('guard-task-audit.ps1', 'Invoke-WarnTaskAudit'),
+                   @('guard-commit-comments.ps1', 'Invoke-BlockCommitComments'))) {
     $libPath = Join-Path $PSScriptRoot $lib[0]
     if (Test-Path -LiteralPath $libPath) {
         if (-not $loadCommitLibs) { continue }
@@ -508,7 +509,7 @@ function Write-GbSlowEvent {
     } catch {}
 }
 
-# 검사 9종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
+# 검사 10종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
 # 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md` §8
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },
@@ -519,7 +520,8 @@ $checks = @(
     @{ fn = 'Invoke-WarnBashBackslash';   name = 'warn-bash-backslash' },
     @{ fn = 'Invoke-WarnDangerousAssignment'; name = 'warn-dangerous-assignment' },
     @{ fn = 'Invoke-WarnStaleDocs';       name = 'warn-stale-docs' },
-    @{ fn = 'Invoke-WarnTaskAudit';       name = 'warn-task-audit' }
+    @{ fn = 'Invoke-WarnTaskAudit';       name = 'warn-task-audit' },
+    @{ fn = 'Invoke-BlockCommitComments'; name = 'block-commit-comments' }
 )
 $results = New-Object System.Collections.Generic.List[object]
 foreach ($c in $checks) {

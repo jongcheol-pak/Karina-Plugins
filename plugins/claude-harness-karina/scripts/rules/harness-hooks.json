@@ -5,6 +5,7 @@
     "comment-lines",
     "guard-bash",
     "guard-comment",
+    "guard-commit-comments",
     "guard-commit-secrets",
     "guard-harness",
     "guard-stale-docs",
