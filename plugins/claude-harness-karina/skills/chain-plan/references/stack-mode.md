@@ -1,7 +1,7 @@
 # 스택 모드 (`karina:chain-plan` — 계획 PR 을 앞 PR 위에 쌓고 끝에 착지)
 
 > `../SKILL.md` 「체인 승인」이 승인 화면을 낼 때(「켜기」), 체인이 `T` 로 승인돼 워커가 spec 줄 끝 `· 스택` 을 받았을 때(「워커」), 코디네이터가 스택 체인의 계획을 잇거나(「코디네이터」) 끝낼 때(「착지」), 스택 체인을 재개·복원할 때(「재개·압축」) 이 파일을 연다.
-> 출처는 Cursor pstack 의 autopilot-stack 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/autopilot-stack.md`. 주인은 스택을 맡고 착지는 맡지 않는다(*"You own the stack, never the landing."*). Graphite 는 들이지 않았다 — 워커는 부모 브랜치를 merge 로 합치고, 착지는 pstack shipping 대로 아래 PR 부터 기본 브랜치에 squash merge 한 뒤 위 PR 을 `rebase --onto`·`--force-with-lease` 로 옮긴다(「착지」).
+> 출처는 Cursor pstack 의 autopilot-stack 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/autopilot-stack.md`. 주인은 스택을 맡고 착지는 맡지 않는다(*"Run the Autopilot-full playbook, but do not merge."* — 검증된 PR 을 사람에게 넘긴다). Graphite 는 들이지 않았다 — 워커는 부모 브랜치를 merge 로 합치고, 착지는 pstack shipping 대로 아래 PR 부터 기본 브랜치에 squash merge 한 뒤 위 PR 을 `rebase --onto`·`--force-with-lease` 로 옮긴다(「착지」).
 >
 > 목차: 켜기 · 워커 · 코디네이터 · 착지 · 재개·압축
 
@@ -10,7 +10,7 @@
 **`P` 와 같은 자리에서 1회 판정한다 — `T` 는 `P` 의 위임과 켜기 조건을 쓰고, 기본 브랜치에서 시작해 계획 PR 을 앞 PR 위에 쌓은 뒤 착지가 아래부터 기본 브랜치로 merge 한다. `P` 의 중간 브랜치와 끝 PR 은 없다.**
 
 - **조건은 `pr-mode.md`「켜기」 의 셋에 하나를 더한다 — 병렬 그룹이 없다. 그 절 첫 줄의 main 직행 레포는 셋을 재기 전에 불가라 `T` 도 고를 수 없다** — 대기 스크립트의 `--pr` base 가 dispatch 하나에 하나라 병렬 워커마다 다른 부모를 줄 수 없다. 병렬 그룹이 있으면 선택지에서 `[T]` 를 빼고 `PR 모드:` 줄에 그 사유를 적는다.
-- **선택지의 권장 표기는 `Y` 하나다(`approval-screen.md`「체인 승인 화면」) — T 는 pstack 의 선택 기준대로 착지 전에 계획마다 리뷰하려 하거나, 계획이 차례로 얽혀 있거나, merge 권한을 보류할 때 사용자가 고른다** — *"the operator wants review before landing, the work is sequenced or coupled, or merge authority is withheld"*(autopilot-stack 「Choosing between the autopilots」). 그 밖이면 Y 가 끝 PR 검증 한 번으로 끝나 계획마다 PR 검증·착지를 치르지 않는다. 화면을 바꾸는 계획에 뒤 계획이 의존하면(인터뷰 「근거로 정한 것」 ①) `P` 는 화면 확인 대기 PR 이 merge 되지 않아 멈추므로(`continuation.md`「남은 일 판정」) 그 사실을 `PR 모드:` 줄에 한 구로 싣는다.
+- **선택지의 권장 표기는 `Y` 하나다(`approval-screen.md`「체인 승인 화면」) — T 는 착지 전에 계획마다 리뷰하려 하거나, 계획이 차례로 얽혀 있거나, merge 권한을 보류할 때 사용자가 고른다** — 이 선택 기준은 karina 판단이고(upstream 은 선택 기준 절을 지웠다), 쌓는 조건만 autopilot-stack 의 *"Stack a PR only when it builds on another PR."* 를 따른다. 그 밖이면 Y 가 끝 PR 검증 한 번으로 끝나 계획마다 PR 검증·착지를 치르지 않는다. 화면을 바꾸는 계획에 뒤 계획이 의존하면(인터뷰 「근거로 정한 것」 ①) `P` 는 화면 확인 대기 PR 이 merge 되지 않아 멈추므로(`continuation.md`「남은 일 판정」) 그 사실을 `PR 모드:` 줄에 한 구로 싣는다.
 - **run-create 뒤 task-create 전에 기본 브랜치로 옮긴다 — `pr-mode.md`「켜기」 의 미커밋 줄을 다시 잰 뒤 `git -C "<대상 레포 경로>" switch <기본>` → `git -C "<대상 레포 경로>" pull --ff-only` 다. 실패 처리는 `P` 순서 넷과 같고, objective `[체인 승인: …]` 이 `T` 를 담는다** — 이 단계가 없으면 plan 1 이 지금 체크아웃 브랜치에서 갈라진다(`../../implement/references/pr-flow.md`「브랜치」 의 「그 밖」 행). 압축 뒤에도 objective 로 모드를 되찾는다.
 - **spec 줄은 plan 1 이 `PR 모드: 켬 — base <기본> · 스택` 이고 plan 1 의 대기 명령은 `--pr <기본>` 이다. plan N(N>1)은 task 를 만들 때 부모가 아직 없어 `PR 모드: 켬 — base 인계 · 스택` 으로 싣는다 — 워커가 인계 파일에서 부모를 읽는다(아래 「워커」)** — spec 은 만든 뒤 고칠 수 없다. `PR 모드: 켬` 머리를 지켜 워커의 `../../implement/references/pr-flow.md`「적용 판정」 이 그대로 브랜치를 바꾸고 PR 을 연다.
 
@@ -29,13 +29,13 @@
 ## 코디네이터
 
 - **`스택 대기` 로 `succeeded` 를 받으면 `release.md`「닫기」 뒤 그 PR 을 독립 검증한다 — `../../pr/references/ship.md` 3~6번(worktree 둘 · `pr-verifier` · 판정 코멘트 · 정리)을 이 세션이 그대로 돌리고 merge(7번 이후)는 하지 않는다. 판정은 `chain-decisions.md`「결정 기록」 의 판정 줄(head·부모·patch-id)로 남기고 `continuation.md`「코디네이터 검증」 은 돌리지 않는다** — 워커 ship 의 `pr-verifier` 가 없어 다음 계획이 검증 안 된 브랜치 위에서 시작하지 않게 하고, 계획마다 독립 검증이 한 번이어야 착지가 patch-id 로 그 판정을 다시 쓴다(pstack autopilot-full *"You own the verdicts"* · shipping *"A verdict covers a patch"*). 워커 검증과 같은 커밋을 코디네이터 검증이 다시 재고 착지가 또 재면 같은 커밋이 세 번 검증된다(2026-10-26 run_c891dfde). `FAIL` 이거나 판정이 없으면 `continuation.md`「이어받기」 로 가고 실패 사유를 이어받을 항목에 싣는다. `PASS`·`PASS+NOTES` 면 `continuation.md`「남은 일 판정」 이다.
-- **다음 계획을 띄우기 전에 `git -C "<대상 레포 경로>" branch --show-current` 가 직전 워커 PR 의 head 브랜치(`gh pr view <URL> --json headRefName -q .headRefName`)와 같은지 보고, 대기 명령에 `--pr <그 브랜치>` 를 준다 — 다르면 띄우지 않고 멈춰 보고한다** — 워커는 지금 HEAD 와 인계 파일로 부모를 정하므로, 어긋난 채 띄우면 엉뚱한 브랜치 위에 쌓인다. 브랜치·base 를 고치는 것은 코디네이터의 착지뿐이다(*"Give the topology one writer."*).
+- **다음 계획을 띄우기 전에 `git -C "<대상 레포 경로>" branch --show-current` 가 직전 워커 PR 의 head 브랜치(`gh pr view <URL> --json headRefName -q .headRefName`)와 같은지 보고, 대기 명령에 `--pr <그 브랜치>` 를 준다 — 다르면 띄우지 않고 멈춰 보고한다** — 워커는 지금 HEAD 와 인계 파일로 부모를 정하므로, 어긋난 채 띄우면 엉뚱한 브랜치 위에 쌓인다. 브랜치·base 를 고치는 것은 코디네이터의 착지뿐이다(babysit *"Never mutate stack topology."* — `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/babysit.md`).
 - **화면 확인 대기는 정지 사유가 아니다 — 뒤 계획이 의존해도 그 PR 브랜치 위에서 시작하므로 변경을 본다** — `continuation.md`「남은 일 판정」 의 화면 대기 항목 판정을 건너뛴다.
 - **보고의 `PR:` 줄에는 계획마다 `plan N: <URL> · 부모 <브랜치> · 스택 대기` 를 아래부터 싣는다(`report.md`「보고 서식」).**
 
 ## 착지
 
-**체인이 끝까지 성공하면(`report.md`「인계 파일 정리」 의 성공 조건 — 남은 일이 스택 대기 PR 뿐인 것 포함) 보고 대신 착지 보고를 먼저 낸다. 체인 끝 PR 은 없다 — 계획 PR 을 아래부터 하나씩 기본 브랜치에 squash merge 하고, 위 PR 은 기본 브랜치 위로 옮긴다.** 출처는 pstack shipping 2~4단계다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/shipping.md`.
+**체인이 끝까지 성공하면(`report.md`「인계 파일 정리」 의 성공 조건 — 남은 일이 스택 대기 PR 뿐인 것 포함) 보고 대신 착지 보고를 먼저 낸다. 체인 끝 PR 은 없다 — 계획 PR 을 아래부터 하나씩 기본 브랜치에 squash merge 하고, 위 PR 은 기본 브랜치 위로 옮긴다.** 출처는 pstack shipping 2~4단계다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/shipping.md`.
 
 - **착지 보고는 스택을 아래부터 나열한다 — PR 마다 URL · 검증 결과 · `## 화면` 의 스크린샷 이름과 `코디네이터 판정 … · 기각 변형 …` 줄 · `확인할 파일: 스크린샷: <절대경로, …>`(결정 기록 판정 줄의 `스크린샷 <이름 — 경로>` 를 실재 확인 뒤 옮긴다 — 서식 `../../implement/references/report-format.md`「보고 형식」) — 끝에 「확인했으면 `스택 화면 확인함` 으로 답하면 아래부터 merge 한다」 를 싣는다** — `PushNotification`(`status: "proactive"`, 메시지 `스택 착지 확인 필요 — PR <수>개`) 뒤 사용자 답을 기다린다. 이 답이 나열한 PR 모두의 화면 확인이다(`../../pr/references/ship.md` 7번의 묶음 확인).
 - **사용자가 확인하면 첫 merge 전에 모든 계획 PR 의 지금 head 를 결정 기록에 PR 마다 한 줄 `- 착지 시작 · plan <N> · PR <URL> · head <full SHA>` 로 남긴다 — 이 줄이 없으면 착지를 시작하지 않고 이 단계부터 다시 한다. 멈춘 착지를 다시 부를 때는 앞 줄을 그대로 쓴다** — 위 PR 브랜치가 품은 것은 아래 PR 의 rebase 전 커밋이라, 아래 PR 을 옮긴 뒤의 head 를 `--onto` 기준으로 쓰면 옛 커밋이 위 PR 에 다시 얹힌다.

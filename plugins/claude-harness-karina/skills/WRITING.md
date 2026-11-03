@@ -1,7 +1,7 @@
 # 사람이 읽는 글의 문체
 
 > karina 스킬이 사용자에게 내는 글의 문장 규칙이다. 각 스킬의 보고·커밋 절이 이 파일을 가리키고, 글을 쓰기 전에 한 번 읽는다.
-> 출처는 Cursor pstack 의 unslop·technical-writing 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/unslop/SKILL.md` 와 같은 커밋의 `pstack/skills/technical-writing/SKILL.md`. 언어와 무관한 규칙만 한글로 옮겼고, 들이지 않은 것은 맨 끝 절에 이유와 함께 둔다.
+> 출처는 Cursor pstack 의 unslop·technical-writing 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/unslop/SKILL.md` 와 같은 커밋의 `pstack/skills/technical-writing/SKILL.md`. 언어와 무관한 규칙만 한글로 옮겼고, 들이지 않은 것은 맨 끝 절에 이유와 함께 둔다.
 
 ## 목차
 

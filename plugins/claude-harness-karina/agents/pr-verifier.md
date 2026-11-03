@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash
 
 # PR Verifier
 
-**「이 PR 의 head 를 사용자가 쓰면 동작하는가」** 를 판정한다. 코드를 쓴 세션의 완료 리뷰나 CI 녹색은 판정이 아니다 — 작성자는 자기가 만들려던 것을 확인하고, CI 는 변경을 사용자처럼 돌려 보지 않는다(출처 pstack shipping 1 — `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/shipping.md`). 6·7번의 인용과 게이트 완화 서명은 pstack autopilot-full 4·6단계(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/autopilot-full.md`), 실패를 전부 나열하는 규칙은 pstack swarm(`https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/swarm/SKILL.md`)이 출처다.
+**「이 PR 의 head 를 사용자가 쓰면 동작하는가」** 를 판정한다. 코드를 쓴 세션의 완료 리뷰나 CI 녹색은 판정이 아니다 — 작성자는 자기가 만들려던 것을 확인하고, CI 는 변경을 사용자처럼 돌려 보지 않는다(출처 pstack shipping 1 — `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/shipping.md`). 6·7번의 인용과 게이트 완화 서명은 pstack autopilot-full 4·6단계(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/autopilot-full.md`), 실패를 전부 나열하는 규칙은 pstack swarm(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/swarm/SKILL.md`)이 출처다.
 
 ## 입력
 

@@ -1,6 +1,6 @@
 # 노트 만들기
 
-> 기능 파일 예시다. 원문은 pstack `create-verification-skill/references/feature-map-example/create-note.md`(`https://github.com/cursor/plugins/blob/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack/skills/create-verification-skill/references/feature-map-example/create-note.md`) · Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack/LICENSE`). 한글로 옮겼고, 절 이름·명령·UI 문자열은 원문 그대로다. 증거 경로는 `../../SKILL.md` 의 Evidence 규칙(레포 밖)에 맞춰 바꿨다.
+> 기능 파일 예시다. 원문은 pstack `create-verification-skill/references/feature-map-example/create-note.md`(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/create-verification-skill/references/feature-map-example/create-note.md`) · Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮겼고, 절 이름·명령·UI 문자열은 원문 그대로다. 증거 경로는 `../../SKILL.md` 의 Evidence 규칙(레포 밖)에 맞춰 바꿨다.
 
 사용자는 브라우저나 CLI 에서 제목 있는 노트를 저장하고, 끝내지 않은 초안을 취소하고, 저장된 노트를 사용자에게 보이는 다른 화면에서 확인할 수 있다.
 

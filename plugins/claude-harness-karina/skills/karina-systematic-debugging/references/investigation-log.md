@@ -70,7 +70,7 @@
 
 ## 화면 증거 (UI 재현)
 
-1-B 재현이 앱 화면 조작일 때(검증 스킬이든 수동이든) 수정 전후의 같은 화면을 스크린샷 짝으로 남긴다. 단위 테스트·CLI·로그로 재현한 버그는 대상이 아니다 — 판정 줄 원문이 이미 증거다. `karina:implement` 루프 안이면 대상이 아니다 — 그 task 의 `**화면**` 줄이 맡는다. Cursor pstack benny 의 reproduce-and-fix-issues 를 들였다(`https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md` — *"Only after before-and-after proof:"*).
+1-B 재현이 앱 화면 조작일 때(검증 스킬이든 수동이든) 수정 전후의 같은 화면을 스크린샷 짝으로 남긴다. 단위 테스트·CLI·로그로 재현한 버그는 대상이 아니다 — 판정 줄 원문이 이미 증거다. `karina:implement` 루프 안이면 대상이 아니다 — 그 task 의 `**화면**` 줄이 맡는다. Cursor pstack benny 의 reproduce-and-fix-issues 를 들였다(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md` — *"Only after before-and-after proof:"*).
 
 - **수정 전 — 1-B 재현의 깨진 최종 상태를 `AGENTS.md` `Verify (앱 조작)` 검증 스킬의 Evidence 로 `base-<이름>.png` 에 남긴다. `<이름>` 은 증상을 가리키는 영문 kebab-case 다** — 수정한 뒤에는 깨진 화면을 다시 얻을 수 없다.
 - **수정 후 — 4-D 재실행에서 같은 시나리오의 끝 상태를 `<이름>.png` 에 남긴다. 판정은 수정 전 거짓·수정 후 참일 때만 통과다(판정 표 `../../implement/references/report-format.md`「화면 시나리오 실행」)** — 수정 전에도 참인 화면은 이 수정을 재지 않는다. 이름을 그 절과 맞춰야 `pr-verifier` 와 ship 화면 게이트가 디버깅 PR 에서도 읽는다.
@@ -79,7 +79,7 @@
 
 ## 덤프·프로파일·트레이스 판독 (1-A)
 
-크래시 덤프·프로파일·힙 스냅샷·트레이스처럼 이미 캡처된 아티팩트가 증거일 때 읽는 법이다. Cursor pstack 의 trace-forensics 를 들였다(`https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/skills/poteto-mode/playbooks/trace-forensics.md`).
+크래시 덤프·프로파일·힙 스냅샷·트레이스처럼 이미 캡처된 아티팩트가 증거일 때 읽는 법이다. Cursor pstack 의 trace-forensics 를 들였다(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/trace-forensics.md`).
 
 - **캡처는 고정된 데이터다 — 다시 돌리지 않고 읽는다** — 같은 조건이 다시 나온다는 보장이 없고, 다시 돌린 결과는 다른 캡처다.
 - **큰 캡처는 쿼리할 수 있는 형태(표·sqlite·도구의 요약 출력)로 바꾼 뒤 읽는다** — 원본을 훑으면 시간이 가장 많이 든 프레임이나 객체를 붙잡는 유지 경로를 순서 없이 본다.

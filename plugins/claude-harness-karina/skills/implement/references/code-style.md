@@ -28,7 +28,7 @@
 
 ## 테스트 케이스를 쓸 때
 
-> 출처는 Cursor pstack 의 principle-test-behavior-not-implementation·tdd 다 — 고정 위치 `https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-test-behavior-not-implementation/SKILL.md` 와 같은 커밋의 `pstack/skills/tdd/SKILL.md` · MIT.
+> 출처는 Cursor pstack 의 principle-test-behavior-not-implementation·tdd 다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/principle-test-behavior-not-implementation/SKILL.md` 와 같은 커밋의 `pstack/skills/tdd/SKILL.md` · MIT.
 
 - **케이스마다 두 편집을 떠올린다 — 동작을 깨는 편집(틀린 값을 낸다·효과를 빠뜨린다·효과를 두 번 낸다)에는 실패하고, 관측 결과를 그대로 둔 채 내부만 바꾸는 편집에는 통과해야 한다. 앞의 편집에도 통과하게 만드는 원인 넷 — 계약보다 느슨한 단언 · 대상 코드가 계산한 기대값(`../../plan/references/plan-template.md`「작업 단계」 의 「구현과 다른 축」 불릿) · 코드가 읽지 않는 상수·문구를 테스트에 다시 적은 단언 · 테스트가 직접 만든 데이터를 되읽는 단언 — 을 쓰지 않는다** — 그런 케이스는 RED→GREEN 기록을 남기고도 재는 것이 없어, 동작이 깨져도 계속 통과한다.
 - **오류는 호출자가 분기하는 오류 유형(예외 타입·오류 코드)을 단언하고, 문구는 그 문구가 계약일 때(사용자에게 보이는 메시지·다른 프로그램이 파싱하는 출력)만 단언한다** — 아무도 읽지 않는 문구를 단언하면 표현만 고쳐도 깨지고, 호출자가 기대는 유형이 바뀌어도 문구가 같으면 통과한다.
@@ -49,7 +49,7 @@
 - **주석의 언어는 그 파일의 기존 주석을 따른다** — 한 파일 안에서 언어가 섞이면 뒤에 오는 세션의 grep 대상이 갈린다.
 - **이 절은 코드 주석을 잰다 — 문서 파일(`*.md` 등)의 HTML 주석(`<!-- -->`)은 대상이 아니다** — 문서 속 메타 표기(`verified` 날짜 등)는 사람이 읽는 본문의 일부다.
 - **같은 파일·레포의 다른 주석이 그렇게 쓰였다는 것(관례·일관성)은 남길 근거가 아니다 — 다른 주석의 판정도 같은 기준으로 잰다** — 다른 주석이 예외에 드는지는 그 주석의 일이라, 그것에 기대면 근거 없는 주석 하나가 같은 꼴의 주석을 모두 살린다(2026-10-27 자동 모드 회차가 출처 URL 주석 6건을 이렇게 남겼다).
-- **테스트·검증 스크립트에 `// Phase 1: add cards` 같은 단계 서술 주석을 쓰지 않는다 — 단언 메시지와 로그 문자열이 단계를 말한다** — 원문 pstack poteto-mode「Comments」 *"A verify or test script gets no phase-narrating comments … The assertion or log string documents the step"*(`https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/skills/poteto-mode/SKILL.md`). 단언 메시지는 실패할 때 출력돼 어느 단계가 깨졌는지 알려 주고, 주석은 아무것도 출력하지 않는다.
+- **테스트·검증 스크립트에 `// Phase 1: add cards` 같은 단계 서술 주석을 쓰지 않는다 — 단언 메시지와 로그 문자열이 단계를 말한다** — 원문 pstack poteto-mode「Comments」 *"A verify or test script gets no phase-narrating comments … The assertion or log string documents the step"*(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/SKILL.md`). 단언 메시지는 실패할 때 출력돼 어느 단계가 깨졌는지 알려 주고, 주석은 아무것도 출력하지 않는다.
 - **「do not remove」「IMPORTANT」 같은 주석은 근거가 아니라 단서로 읽는다 — 근처 코드와 커밋 이력으로 외부 제약이 지금도 참인지 확인되면 예외로 남기고, 확인되지 않으면 지운다** — 강조 문구는 그 주장이 참이라는 증거가 아니다.
 - **보존 대상은 지우지 않고 필요하면 새로 쓰거나 고친다 — 검사기가 파싱하거나 앵커로 잡는 주석, 프로젝트 규약 문서가 정본·예외로 지정한 주석(머리 주석·모듈 docstring·상수 주석 등), 형식 검증 모델이 가드마다 다는 코드 대응 주석(`파일:줄` — `create-formal-verification-skill` 이 지정)이다** — 지우면 그 검사가 꺼지거나 규약이 가리키는 정본이 사라진다.
 - **프로젝트 규약(`AGENTS.md` 등)이나 린터가 요구하는 주석은 그쪽이 이긴다 — `AGENTS.md` 가 지목한 doc 감사(doc 이 없는 항목을 세어 실패하는 검사)가 요구하는 doc 주석도 같다** — 저장 관례와 같은 원칙이고, 그 프로젝트의 판단이 이 하니스의 기본값보다 먼저다. doc 감사는 주석 규약 문장이 아니라 테스트로 요구해, 규약 문장만 보면 그 doc 주석을 지우고 감사가 깨진다(2026-10-29 Karina 정리 커밋 9e799c1).

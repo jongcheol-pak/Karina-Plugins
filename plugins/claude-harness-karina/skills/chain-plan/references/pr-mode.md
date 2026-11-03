@@ -1,7 +1,7 @@
 # PR 모드 (`karina:chain-plan` — 계획마다 PR 을 merge 까지)
 
 > `../SKILL.md` 「체인 승인」이 승인 화면의 `PR 모드:` 줄을 채울 때(「켜기」), 체인이 `P` 로 승인돼 워커가 spec 의 `PR 모드: 켬` 줄을 받았을 때(「워커」), 코디네이터가 PR 모드 체인의 계획을 잇거나 병렬 그룹을 다룰 때(「직렬」·「병렬」) 이 파일을 연다. `Y` 로 승인한 체인은 계획 사이를 로컬 병합으로 잇고, 체인이 끝나면 「Y 체인 끝 PR」 하나만 쓴다(`report.md`「인계 파일 정리」 뒤). `P` 체인이 끝나면 「P 체인 끝 PR」 이 체인 브랜치를 기본 브랜치로 올린다. `T` 는 체인 브랜치·끝 PR 없이 `stack-mode.md` 를 따른다.
-> 출처는 Cursor pstack 의 autopilot-full 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 계획마다 한 주인이 빌드에서 merge 까지 PR 을 맡는다(*"One owner carries each PR from build to merge"*). 앞선 base 는 merge 로 합친다(rebase 는 history rewrite 라 별도 승인).
+> 출처는 Cursor pstack 의 autopilot-full 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 계획마다 한 주인이 빌드에서 merge 까지 PR 을 맡는다(*"One owner carries each PR from build to merge"*). 앞선 base 는 merge 로 합친다(rebase 는 history rewrite 라 별도 승인).
 >
 > 목차: 켜기(출발 브랜치 · 체인 브랜치 만들기) · 워커(마무리 순서 · 화면 줄 task 직렬 예외 · base 합치기 · 멈춘 자리 표) · 직렬 · 병렬 · Y 체인 끝 PR · P 체인 끝 PR
 
@@ -88,7 +88,7 @@
 
 ## Y 체인 끝 PR
 
-**`Y` 로 승인한 체인이 끝까지 성공했을 때(`report.md`「인계 파일 정리」 의 성공 조건과 같다) 그 정리 커밋 뒤, 보고 전에 1회 한다.** pstack 은 모든 playbook 끝에 PR 을 연다(*"Invoked at the end of every other playbook."* — `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/opening-a-pr.md`). 끝 PR 이 없으면 체인 커밋이 로컬에만 남는다(2026-10-18 PR #3 이 그 뒤 손으로 열려 제목 유형이 빠진 채 main 커밋이 됐다).
+**`Y` 로 승인한 체인이 끝까지 성공했을 때(`report.md`「인계 파일 정리」 의 성공 조건과 같다) 그 정리 커밋 뒤, 보고 전에 1회 한다.** pstack 은 모든 playbook 끝에 PR 을 연다(*"Invoked at the end of every other playbook."* — `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/opening-a-pr.md`). 끝 PR 이 없으면 체인 커밋이 로컬에만 남는다(2026-10-18 PR #3 이 그 뒤 손으로 열려 제목 유형이 빠진 채 main 커밋이 됐다).
 
 - **계획마다의 대상 레포 가운데 아래 셋이 참인 레포마다 한다** — 대상 레포 경로가 세션 시작 때 주입된 위키 vault 경로와 같지 않다(vault 는 `karina:llm-wiki` 가 직접 push 한다) · `../../implement/references/pr-flow.md`「적용 판정」 의 앞 두 조건(GitHub 원격 · `gh auth status` exit 0)이 참이다 · `git -C "<대상 레포 경로>" rev-list --count origin/<기본 브랜치>..HEAD` 가 0 이 아니다. 거짓인 레포는 보고의 `PR:` 줄에 `건너뜀 — <거짓인 조건>` 으로 싣는다.
 - **main 직행 레포는 위 셋을 보지 않고 PR 대신 `../../implement/references/local-gate.md`「체인 끝」 게이트를 거쳐 `pr-flow.md`「main 직행」 의 push 를 하고 `PR:` 줄에 `건너뜀 — main 직행 · 게이트 <판정> · push <결과>` 를 싣는다** — 체인 끝 push 가 그 레포의 회차 끝 push 다. git 명령은 모두 `git -C "<대상 레포 경로>"` 로 돈다(`pr-flow.md`「main 직행」 의 경로 규칙).

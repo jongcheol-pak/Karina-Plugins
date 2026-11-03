@@ -18,7 +18,7 @@
 
 ## 절차
 
-- **리뷰어를 부르기 전에 증거 대조를 1회 돌린다 — `"<skill>/../plan/scripts/check-plan.ps1" "<plan.md>" -Base <BASE>` 를 work-clock 과 같은 호출형(`report-format.md`「소요 기록」)으로 부르고, `<BASE>` 는 아래 BASE SHA 와 같은 값이다** — `[x]` 는 완료 커밋보다 먼저 바뀌어(`../SKILL.md`「자율 루프」 4번) 커밋도 검증 기록도 없이 닫힌 task 가 리뷰까지 기계 검사 없이 온다. 커밋 본문을 증거 자리로 정한 것은 pstack multi-phase-plan 의 *"Check a box only when its evidence exists"* 를 들인 것이다(`https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/multi-phase-plan.md`).
+- **리뷰어를 부르기 전에 증거 대조를 1회 돌린다 — `"<skill>/../plan/scripts/check-plan.ps1" "<plan.md>" -Base <BASE>` 를 work-clock 과 같은 호출형(`report-format.md`「소요 기록」)으로 부르고, `<BASE>` 는 아래 BASE SHA 와 같은 값이다** — `[x]` 는 완료 커밋보다 먼저 바뀌어(`../SKILL.md`「자율 루프」 4번) 커밋도 검증 기록도 없이 닫힌 task 가 리뷰까지 기계 검사 없이 온다. 커밋 본문을 증거 자리로 정한 것은 pstack multi-phase-plan 의 *"Check a box only when its evidence exists"* 를 들인 것이다(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/multi-phase-plan.md`).
   - **exit 1 이면 걸린 task 마다 그 task 의 검증 명령을 다시 돌려 `git commit --allow-empty` 로 보충 커밋(제목 `{유형}: T<N> — 검증 기록 보충` · 본문에 검증 결과)을 남기고 다시 돌린다** — 이력을 고치는(rebase·amend) 대신 증거를 더한다. 체크박스는 이미 `[x]` 라 보충 커밋은 체크박스 갱신과 따로 부른다.
   - **exit 2 나 출력이 없으면 `증거 대조 미실행 — <사유>` 줄을 만든다.** 대조 출력이나 그 줄을 리뷰어 전달물에 싣는다 — 미실행이면 리뷰어가 커밋 본문을 직접 대조한다.
 - **리뷰어를 부를 때마다(재호출 포함) 그 직전에 이 세션 전사 요약을 만든다 — `python "<skill>/../reflect/scripts/digest_transcript.py" --audit --out <스크래치 경로>/completion-digest.txt`(`<skill>` 은 `../SKILL.md` 의 폴더). exit 2·3 이면 `전사 요약 미실행 — <출력 원문 요지>` 줄을 만들고 리뷰는 그대로 부른다. 아래 경량 plan 으로 리뷰어를 부르지 않으면 만들지 않는다** — 판정 줄 없이 고른 갈림길은 git·plan 어디에도 흔적이 없어 전사가 유일한 재료이고, 재호출 전 수정 구간은 옛 요약에 없다. 요약 실패로 리뷰를 막으면 나머지 검사 항목까지 잃는다.
@@ -27,9 +27,9 @@
 - **리뷰어는 백그라운드로 띄우고, 완료 통지를 기다리는 동안 레포 파일을 고치지 않는 일(`report-format.md` Read · 최종 보고·PR 본문 초안)만 한다** — 리뷰 대기 중 다른 파일을 만지면 다음 커밋이 그것을 함께 담아 커밋 단위가 엉킨다(하니스 레포 관측 2026-09-02 — 한 회차에 3회).
 - **결과를 받아 판정한 뒤에 완료 선언으로 간다** — 호출만 하고 다음으로 넘어가면 리뷰가 없는 것과 같다.
 - **BLOCKER·MAJOR는 고치고 다시 호출한다** — 지적이 남은 산출물을 통과시키면 그 결함이 다음 회차로 간다. MINOR 는 아래 「필터 패스」가 가른다. (중계 모드 예외는 `../../plan/references/relay-mode.md`「중계 모드」)
-  - **완료 리뷰 지적은 고치기 전에 지적의 명령을 다시 돌린다 — 같은 실패가 나오면 고치고, 나오지 않으면 재실행 출력으로 기각한다(`기각 — <요지> — <재실행 명령·출력 요지>`)** — 리뷰어는 diff 와 문서만 보고 호출 사슬 전체를 보지 못해, 「여기 X 가 올 수 있다」 같은 가정 경로를 그대로 고치면 증거 없는 가드가 늘고 범위가 번진다. 증명 책임을 지적한 쪽에 두는 것은 pstack interrogate 의 *"A finding survives only when a run proves it."* · *"Keep a finding when the output shows the failure and the failure breaks the intent. Drop the rest."* 를 들인 것이다(`https://github.com/cursor/plugins/blob/ab1f702ce8e8b6557edb56b09f52cde8bfb83f17/pstack/skills/interrogate/SKILL.md`).
+  - **완료 리뷰 지적은 고치기 전에 지적의 명령을 다시 돌린다 — 같은 실패가 나오면 고치고, 나오지 않으면 재실행 출력으로 기각한다(`기각 — <요지> — <재실행 명령·출력 요지>`)** — 리뷰어는 diff 와 문서만 보고 호출 사슬 전체를 보지 못해, 「여기 X 가 올 수 있다」 같은 가정 경로를 그대로 고치면 증거 없는 가드가 늘고 범위가 번진다. 증명 책임을 지적한 쪽에 두는 것은 pstack interrogate 의 *"A finding survives only when a run proves it."* · *"Keep a finding when the output shows the failure and the failure breaks the intent. Drop the rest."* 를 들인 것이다(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/interrogate/SKILL.md`).
   - **근거에 실패를 보이는 출력이 없는 완료 리뷰 BLOCKER·MAJOR(줄이 있다는 출력·파일:라인 인용뿐인 것)는 MINOR 로 내려 아래 「필터 패스」로 보낸다 — 보안 지적만 예외로 등급을 유지한다** — 전달한 검증 출력·커밋 본문의 실패 출력 인용은 실패를 보이는 출력이다. 이 둘(재실행·강등)은 완료 리뷰에만 걸린다 — `plan-reviewer` 는 명령을 돌리지 못해 아래 기준 넷만 쓴다.
-  - **계획 리뷰 지적과 재현된 완료 리뷰 지적은 반증 출력이 있는 오탐만 기각한다.** 기준은 넷이다(pstack interrogate 의 lead-judgment 를 들인 것 — `https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/skills/interrogate/references/lead-judgment.md` · upstream 은 `ab1f702c` 에서 이 파일을 지웠다).
+  - **계획 리뷰 지적과 재현된 완료 리뷰 지적은 반증 출력이 있는 오탐만 기각한다.** 기준은 넷이다 — 원칙은 위 interrogate 인용이고, ⓐ~ⓓ 세부는 karina 기준이다(출처였던 interrogate 참조 문서는 upstream `ab1f702c` 에서 지워졌다).
     - ⓐ 「X 가 올 수 있다」 류는 호출부를 추적해 상위에서 이미 막혀 있음을 보이는 명령 출력(반증 출력)이 있으면 기각한다.
     - ⓑ 「나라면 다르게 했다」·조기 추상화 권유처럼 현재 방식의 구체적 문제를 보이지 않는 지적은 출력 없이 기각한다.
     - ⓒ 이번 회차가 쓰지 않은 코드를 겨누거나 레포 전체 관례와 같은 패턴을 지적하는 것(맥락 부족)은 그 관례를 보이는 출력으로 기각한다.
@@ -39,7 +39,7 @@
 
 ## 전사 대조
 
-`completion-reviewer` 가 전사 요약 경로를 받았을 때 이 절대로 본다. 출처는 pstack show-me-your-work 「Audit the log against the transcript」 다 — 고정 위치 `https://github.com/cursor/plugins/blob/ce649c03ac3b75b6ae80cbd15b7e2c536caedb5a/pstack/skills/show-me-your-work/SKILL.md` · *"A fork, pivot, or abandoned approach that shaped the work but isn't logged is a gap. Add it."*
+`completion-reviewer` 가 전사 요약 경로를 받았을 때 이 절대로 본다. 출처는 pstack show-me-your-work 「Audit the log against the transcript」 다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/show-me-your-work/SKILL.md` · *"A fork, pivot, or abandoned approach that shaped the work but isn't logged is a gap. Add it."*
 
 - **대조 범위는 요약의 마지막 plan 진입 표지 뒤에 오는 첫 implement 진입 표지 뒤다 — plan 표지가 없으면 첫 implement 표지 뒤, 둘 다 없으면 전체** — 표지는 `T: Skill karina:<이름>` 줄과 `<command-name>/karina:<이름>` 이 든 `U:` 줄이다. 그 앞의 인터뷰 결정은 plan Decisions·인터뷰 줄이 담고, 마지막 implement 표지에서 자르면 정지 뒤 재발동한 회차의 앞 구간이 빠진다.
 - **지적 대상은 `A:` 줄의 갈림길 선택·방향 전환·버린 접근과 `T: Bash` 의 되돌림 명령(`git restore`·`git checkout --`·`git revert`·`git reset`) 가운데 Progress Log `판정:`·`판정(정정):` 줄이나 plan Decisions 에 짝이 없는 것이다** — plan task 를 그대로 수행한 단계·기계적 재시도·이미 판정 줄이 있는 것은 대상이 아니다. 판정 줄은 실행 세션만 쓰고 최종 보고가 그 줄을 옮겨 실으므로, 짝이 없는 결정은 리뷰도 보고도 지나지 않고 사라진다.

@@ -1,7 +1,7 @@
 # 작업 브랜치와 회차 PR
 
 > `karina:implement` 가 **루프 진입 전 1회**(「브랜치」)와 **회차 끝 1회**(「PR 열기」) 읽는다. 시작과 끝에만 쓰이는 절차라 `../SKILL.md` 본문에 두지 않는다.
-> 출처는 Cursor pstack 의 opening-a-pr 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/opening-a-pr.md`. 다른 playbook 이 끝날 때마다 PR 을 연다(*"Invoked at the end of every other playbook."*)는 규칙을 karina 의 회차 끝으로 옮겼다.
+> 출처는 Cursor pstack 의 opening-a-pr 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/opening-a-pr.md`. 다른 playbook 이 끝날 때마다 PR 을 연다(*"Invoked at the end of every other playbook."*)는 규칙을 karina 의 회차 끝으로 옮겼다.
 >
 > 목차: main 직행 · 적용 판정 · 브랜치(merge 된 브랜치에서 시작할 때) · PR 열기 · PR 을 연 뒤 · 디버깅 단독 경로(갈래 · 커밋 · PR · 돌아가기)
 

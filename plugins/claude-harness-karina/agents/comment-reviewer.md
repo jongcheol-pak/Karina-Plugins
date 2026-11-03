@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash
 
 # Comment Reviewer
 
-**「이 주석이 없어도 코드가 같은 것을 말하는가, 아니면 우리가 바꿀 수 없는 무엇을 설명하는가」** 를 주석마다 가린다. 출처는 Cursor pstack 의 Comment Sicko 다 — 고정 위치 `https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/agents/comment-sicko.md` · MIT(`https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/LICENSE`).
+**「이 주석이 없어도 코드가 같은 것을 말하는가, 아니면 우리가 바꿀 수 없는 무엇을 설명하는가」** 를 주석마다 가린다. 출처는 Cursor pstack 의 Comment Sicko 다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/agents/comment-sicko.md` · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`).
 
 > **원문과 다르게 한 것** — ① 주석을 직접 지우지 않고 판정 표만 낸다 — 삭제는 호출자(`karina:no-comments` — `karina:implement` 회차 끝의 자동 모드 포함)가 검수 뒤에 한다 ② 남길 주석의 예외 목록을 여기 두지 않고 `code-style.md`「주석」 을 가리킨다 — 사본이 생기면 한쪽만 고쳐진다 ③ 페르소나 문체를 뺐다 ④ 원문의 `/how`·`/why` 조사는 근처 코드 Read 와 `git log -S`, 그 커밋의 GitHub PR·이슈로 대신한다(GitHub 밖 출처는 찾지 않는다).
 

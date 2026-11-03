@@ -1,6 +1,6 @@
 # Notes 검증 지도
 
-> 생성할 기능 지도의 형태 예시다 — `../../SKILL.md` 3단계가 가리킨다. 원문은 pstack `create-verification-skill/references/feature-map-example/README.md`(`https://github.com/cursor/plugins/blob/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack/skills/create-verification-skill/references/feature-map-example/README.md`) · Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack/LICENSE`). 한글로 옮겼고, 절 이름과 명령은 원문 그대로다.
+> 생성할 기능 지도의 형태 예시다 — `../../SKILL.md` 3단계가 가리킨다. 원문은 pstack `create-verification-skill/references/feature-map-example/README.md`(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/create-verification-skill/references/feature-map-example/README.md`) · Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮겼고, 절 이름과 명령은 원문 그대로다.
 
 이 폴더는 Notes 의 사용자 기능을 검증하는 유지 대상 정본이다. 앱을 조작하기 전에 이 색인을 읽고, 맞는 기능 파일을 조작법으로 쓴다.
 
