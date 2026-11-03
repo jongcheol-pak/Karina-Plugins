@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash
 
 ## 입력
 
-호출자(`karina:pr` ship · 코디네이터의 계획별 검증 · main 직행 로컬 게이트)가 준다: PR 번호(로컬 게이트는 없음) · head full SHA · base 브랜치와 base full SHA · head worktree 경로 · base worktree 경로와 그 SHA(PR 의 부모 — `<스크래치>/pr-<n>-base`) · 그 레포의 `AGENTS.md` 경로 · 빌드 캐시(있으면 worktree 마다 받은 `<변수>=<경로>` 를 명령 묶음 전체에 건다 — `export`·`$env:`) · PR 본문(로컬 게이트는 호출자가 쓴 본문 파일 경로).
+호출자(`karina:pr` ship · 코디네이터의 계획별 검증 · main 직행 로컬 게이트)가 준다: PR 번호(로컬 게이트는 없음) · head full SHA · base 브랜치와 base full SHA · head worktree 경로 · base worktree 경로와 그 SHA(검증 범위의 부모) · 그 레포의 `AGENTS.md` 경로 · 빌드 캐시(있으면 worktree 마다 받은 `<변수>=<경로>` 를 명령 묶음 전체에 건다 — `export`·`$env:`) · PR 본문(로컬 게이트는 호출자가 쓴 본문 파일 경로).
 
 - **명령은 전부 worktree 안에서 돌린다** — 호출자의 체크아웃은 다른 브랜치일 수 있다. 시작할 때 `git -C <head worktree> rev-parse HEAD` 가 입력의 head SHA 와, `git -C <base worktree> rev-parse HEAD` 가 부모 SHA 와 같은지 보고, 다르면 아무것도 돌리지 않고 `FAIL — head 불일치`(또는 `base 불일치`)를 낸다.
 

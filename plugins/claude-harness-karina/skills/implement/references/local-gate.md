@@ -17,7 +17,7 @@
 
 ### worktree 와 빌드 캐시
 
-- **만들기 전에 지난 실행의 잔여를 걷는다 — `git worktree prune` 뒤 `git worktree list --porcelain` 에서 이름이 `local-gate`·`local-gate-base` 이고 `detached` 인 항목을 `git worktree remove --force <경로>` 로 지운다** — 세션이 게이트 중간에 끊기면 worktree 가 남고, 스크래치 경로는 세션마다 달라 이름으로 찾는다. 브랜치가 체크아웃된 같은 이름의 worktree 는 이 게이트가 만든 것이 아니라 건드리지 않는다.
+- **만들기 전에 지난 실행의 잔여를 걷는다 — `git worktree prune` 뒤 `git worktree list --porcelain` 에서 `worktree <경로>` 줄의 경로 끝 폴더가 `local-gate`·`local-gate-base` 이고 `detached` 인 항목을 `git worktree remove --force <경로>` 로 지운다** — 세션이 게이트 중간에 끊기면 worktree 가 남고, 스크래치 경로는 세션마다 달라 경로 끝 폴더로 찾는다(porcelain 출력에는 이름 필드가 없다). 브랜치가 체크아웃된 같은 끝 폴더의 worktree 는 이 게이트가 만든 것이 아니라 건드리지 않는다.
 - **head 는 `git worktree add --detach <스크래치>/local-gate <HEAD full SHA>`, base 는 `git worktree add --detach <스크래치>/local-gate-base <base SHA>`** — 사용자 체크아웃은 건드리지 않는다. `<스크래치>` 는 `../../TEMP-FILES.md`「하위 폴더」 의 `scratch\`.
 - **그 레포 `AGENTS.md` 에 `Build cache` 줄(`<환경변수>=<경로>`)이 있으면 head 에 `<경로>/local/head`, base 에 `<경로>/local/base` 를 넘긴다 — 고정 폴더라 지우지 않고 다음 게이트가 다시 쓴다** — PR 번호가 없어 ship 의 `pr-<n>` 처럼 나눌 키가 없고, 한 레포의 main 직행 게이트는 한 번에 하나라 덮어써도 다른 판정을 섞지 않는다. 새 worktree 는 산출물이 없어 매번 처음부터 컴파일한다(ship 3번 실측 — 중앙값 7.3~13.0분).
 - **판정이 나면 worktree 둘을 지운다 — 거부되면 ship 6번 규칙(경로·SHA 가 위와 같을 때만 `--force`, 그래도 실패하면 「worktree 미삭제 — <경로> · <오류 줄>」 을 보고하고 계속)** — 정리 실패는 판정과 무관해 push 를 막지 않는다.
