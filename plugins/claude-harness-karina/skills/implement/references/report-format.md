@@ -24,19 +24,19 @@
 - **HUMAN-VERIFY**: <기계로 확인 못 한 항목 — `AGENTS.md` 의 `Verify (앱 조작)` 줄이 없거나 "없음"이면 사용자가 `/karina:create-verification-skill` 을 돌려 검증 스킬을 만들도록 한 구로 권한다 — 항목이 없으면 줄 생략>
 - **확인할 파일**: <사용자가 열어 볼 파일을 종류마다 「<종류>: <절대경로>, …」 로 묶는다 — 스크린샷 · 문서 · 보고서 · 백업 · 남은 worktree — 없는 경로는 「<종류>: 없음 — <사유>」 — 대상이 없으면 줄 생략>
 - **판정**: <plan과 달라 스스로 정한 것 — 없으면 줄 생략>
-- **PR**: <URL | 건너뜀 — 사유(`pr-flow.md`「적용 판정」) | 건너뜀 — main 직행 · push <결과>(`pr-flow.md`「main 직행」) — 브랜치를 옮겼으면 옮긴 사실과 원격보다 앞서 있던 커밋 수>
+- **PR**: <URL | 건너뜀 — 사유(`pr-flow.md`「적용 판정」) | 건너뜀 — main 직행 · 게이트 <판정> · push <결과>(`local-gate.md`「보고」) — 브랜치를 옮겼으면 옮긴 사실과 원격보다 앞서 있던 커밋 수>
 - **남은 이슈**: <없으면 줄 생략>
 - **승인 필요 항목**: <사용자 결정 N건 — 위험 높은 순으로 항목마다 「<항목> — 권장: <안>(이유 한 구) — 근거: <권장을 받치는 사실> — 위험: <고르면 무엇이 잘못될 수 있는가 · 낮아도 적는다> — 답이 없으면: <무엇이 그대로 남는가>」 · 태그·릴리즈·배포 등 — 없으면 줄 생략>
 ```
 
-- **「수정 내용」은 영향부터 쓴다 — 누구에게(사용자·호출자) 무엇이 바뀌는가, 이 코드를 다음에 맡는 사람이 무엇을 물려받는가를 쓰고 그다음에 구현을 쓴다. 바뀌는 것·물려받는 것이 없는 회차(내부 정리)는 지어내지 않고 「없음」 한 구로 적는다** — 구현부터 쓰면 사용자가 자기에게 무엇이 바뀌었는지를 구현에서 거꾸로 추론해야 한다. 출처 `https://github.com/cursor/plugins/blob/eb4db2b55b2b7dec3d9282754cddf0a56bf4ff10/pstack/skills/poteto-mode/SKILL.md`(*"Frame impact for the consumer and the maintainer."*).
+- **「수정 내용」은 영향부터 쓴다 — 누구에게(사용자·호출자) 무엇이 바뀌는가, 이 코드를 다음에 맡는 사람이 무엇을 물려받는가를 쓰고 그다음에 구현을 쓴다. 바뀌는 것·물려받는 것이 없는 회차(내부 정리)는 지어내지 않고 「없음」 한 구로 적는다** — 구현부터 쓰면 사용자가 자기에게 무엇이 바뀌었는지를 구현에서 거꾸로 추론해야 한다. 출처 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/SKILL.md`(*"Frame impact for the consumer and the maintainer."*).
 - **검증 출력은 판정에 쓴 연속 줄을 고치지 않고 옮기고, 잘라 낸 자리는 `…(N줄 생략)` 으로 표시한다** — "테스트 통과"라는 요약은 판정에 쓸 수 없다. 사용자가 확인할 수 있는 것은 실제 출력뿐이다.
 - **예산은 보고에 싣지 않는다** — 등급을 가리지 않는다. 정본은 `skills/BUDGET.md` 「초과했을 때」이고, 처방으로 닫지 못한 경우의 1줄 예외도 그 파일이 정한다.
 - **보고 길이는 내용에 맞춘다** — 없는 항목의 줄·채울 것이 없는 절·배경 설명·앞에서 말한 것의 재요약·맺음 문단은 판정에 쓰이지 않는다. **「검증 결과」는 이 규칙의 대상이 아니다**(출처: Opus 5 가이드 「작성된 산출물의 길이」).
 - **보고 문장은 `../../WRITING.md` 의 한글 문체 규칙을 따른다** — 사용자는 이 보고로 판단하므로 번역투·피동 남용·과압축이 든 문장은 읽는 수고를 더하고 뜻을 흐린다. 서식이 정한 머리와 구분 기호는 그 규칙의 대상이 아니다.
 - **승인 필요 항목은 건수로 시작하고 항목마다 권장안과 답이 없을 때 그대로 남는 것을 적는다 — 권장을 고를 근거가 없으면 `권장: 모름 — <무엇을 몰라서>`** — 나열만 하면 사용자는 답하지 않았을 때 무엇이 남는지 모른 채 결정을 미룬다. 예: 버전 커밋을 미루면 그 사이 `plugins/` 변경이 미배포로 남는다.
-- **항목마다 근거와 위험도 적고, 위험 높은 순으로 쓴다 — 위험은 낮아도 적고(「낮음 — 색만 바뀐다」) 모르는 사실은 `모름` 으로 둔다. 건수는 머리에만 쓰고 항목을 대신하지 않는다. 답이 없으면 칸은 그대로 둔다** — 권장만 있으면 사용자는 항목마다 근거와 위험을 다시 확인하러 가야 하고, 위험이 큰 결정이 목록 뒤에 묻힌다. Cursor pstack ketchup 의 *"collect its link, what it changes for users, the evidence behind your pick, its risk"* · *"riskiest first"* · *"no count in place of a list"* 를 들였다(`https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/skills/ketchup/SKILL.md`). 원문은 기다리는 비용을 단순 지연을 넘을 때만 적게 했지만, 답하지 않을 때 남는 것을 보여야 결정을 미루지 않아 답이 없으면 칸을 남겼다.
-- **「기다리는 것」은 항목 이름만 싣고 건수·권장·근거는 싣지 않는다** — 그 내용과 건수의 정본은 「승인 필요 항목」 하나다. 사용자가 할 일이 보고 맨 끝에 묻히지 않게 첫 줄에 이름만 올린다(*"Open with one short sentence that names what waits on the user, or says nothing does."* — `https://github.com/cursor/plugins/blob/ab69380dd50ee47d426b35cb8369cffdddafc218/pstack/skills/ketchup/SKILL.md`).
+- **항목마다 근거와 위험도 적고, 위험 높은 순으로 쓴다 — 위험은 낮아도 적고(「낮음 — 색만 바뀐다」) 모르는 사실은 `모름` 으로 둔다. 건수는 머리에만 쓰고 항목을 대신하지 않는다. 답이 없으면 칸은 그대로 둔다** — 권장만 있으면 사용자는 항목마다 근거와 위험을 다시 확인하러 가야 하고, 위험이 큰 결정이 목록 뒤에 묻힌다. Cursor pstack ketchup 의 *"collect its link, what it changes for users, the evidence behind your pick, its risk"* · *"riskiest first"* · *"no count in place of a list"* 를 들였다(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/ketchup/SKILL.md`). 원문은 기다리는 비용을 단순 지연을 넘을 때만 적게 했지만, 답하지 않을 때 남는 것을 보여야 결정을 미루지 않아 답이 없으면 칸을 남겼다.
+- **「기다리는 것」은 항목 이름만 싣고 건수·권장·근거는 싣지 않는다** — 그 내용과 건수의 정본은 「승인 필요 항목」 하나다. 사용자가 할 일이 보고 맨 끝에 묻히지 않게 첫 줄에 이름만 올린다(*"Open with one short sentence that names what waits on the user, or says nothing does."* — `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/ketchup/SKILL.md`).
 - **「확인할 파일」은 이번 회차가 만들었거나 사용자에게 열어 보라고 하는 파일만 싣고, 싣기 전에 경로마다 실재를 한 번의 셸 호출(`ls -d <경로…>` · `Test-Path`)로 잰다 — 없는 경로는 싣지 않고 `<종류>: 없음 — <사유>` 로 바꾼다. 스크린샷은 Progress Log 의 `화면 경로:` 줄을 절대경로로 펼쳐 옮긴다(아래 「화면 시나리오 실행」)** — 「스크린샷을 확인하라」 는 말만 있고 경로가 없으면 사용자가 증거 폴더를 직접 뒤져야 하고, 없는 경로를 실으면 확인할 것이 없는데도 확인을 요구한다(*"Link only artifacts that exist."* — 위 ketchup). 이 줄은 로컬 화면에만 남아 절대경로를 그대로 쓴다 — PR 본문의 환경변수 치환(`pr-flow.md`「PR 열기」)은 PR 본문에만 건다.
 - **「판정」은 `plan.md`의 `## Progress Log`에 남긴 `판정:`·`판정(정정):` 줄을 전량 옮긴다** — 골라 실으면 사용자가 되돌릴 기회를 못 가진 결정이 남고, `plan.md`는 다음 회차에 교체돼 그 줄이 달리 남는 곳이 없다.
 
@@ -84,6 +84,7 @@ PowerShell: & "<스크립트>" -Since '<시작>'
 - **검증 스킬을 Launch 하기 전마다 화면 가리기를 걷는다 — `../../SCREEN-COVER.md`「언제 끄고 켜는가」(보유자 `implement:<레포 루트>`). 다시 덮는 것은 task 마다가 아니라 회차 끝 「소요 기록」 과, 회차 중간에 멈추는 보고 직전이다** — 가리기가 켜진 모니터는 마우스 입력이 막혀 조작이 실패하고, task 사이에 덮으면 다음 task 의 조작이 다시 막힌다.
 - **검증 스킬이 없으면(`Verify (앱 조작)` 줄이 없거나 「없음」) 화면 줄을 그대로 HUMAN-VERIFY 로 옮기고, 커밋 본문에 `화면: 미촬영(HUMAN-VERIFY) · 스크린샷 <이름>` 줄을 남긴다** — 시나리오·스크린샷 이름·통과 조건을 그대로 적어야 사용자가 같은 것을 돌린다. 커밋 줄이 없으면 체인 끝 PR 이 화면 task 를 찾지 못해 ship 의 화면 게이트가 걸리지 않는다(`../../chain-plan/references/pr-mode.md`「Y 체인 끝 PR」).
 - **`(BASE 대조)` 가 붙은 줄은 BASE 에서도 같은 시나리오를 돌린다** — `git worktree add --detach <스크래치>/base-<sha7> <plan.md 의 > BASE:>` 로 BASE 를 받고, 검증 스킬의 Launch 를 그 worktree 경로에서 돌린 뒤 같은 Drive·Evidence(스크린샷 이름 앞에 `base-`)·Cleanup 을 거쳐 `git worktree remove <경로>` 로 지운다. 사용자의 체크아웃은 건드리지 않는다(선례 `../../pr/references/ship.md` 3·6번). **같은 경로가 이미 등록돼 있으면(지난 실행이 중간에 끊긴 것) 만들기 전에, 삭제가 거부되면 그 자리에서 ship 6번과 같은 기준으로 지운다 — `detached` 이고 HEAD 가 `<plan.md 의 > BASE:>` 와 같을 때만 `--force`, 그 밖이거나 실패하면 「worktree 미삭제 — <경로> · <오류 줄>」 을 최종 보고에 싣고 계속한다** — 남은 worktree 가 있으면 `git worktree add` 가 같은 경로에서 실패하고, 판정은 이미 끝나 정리 실패가 결과를 바꾸지 않는다.
+- **참/거짓을 적기 전에 남긴 스크린샷(`base-` 짝 포함)을 Read 로 열어 통과 조건과 대조한다 — 검증 스킬 출력·로그 문구만으로 판정하지 않는다** — 스킬이 「성공」 을 내도 화면이 통과 조건과 다를 수 있고, 이미지를 직접 보는 것만 그 차이를 잡는다(pstack guide 06 *"Ask for the proof as an artifact you can inspect yourself"* — `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/docs/guide/06-verify-and-ship.md`).
 - **판정은 넷으로 갈린다 — 「BASE 에서 거짓·HEAD 에서 참」 만 통과다** — 변경 전에도 참인 시나리오는 이 변경을 재지 않는다.
 
   | HEAD | BASE | 판정 | 처리 |

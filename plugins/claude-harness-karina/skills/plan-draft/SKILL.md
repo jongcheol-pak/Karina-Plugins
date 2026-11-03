@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 사용자가 `/karina:plan-draft` 로 부를 때만 돈다. 루트 `plan.md` 는 레포에 하나라, 다른 세션이 그 파일로 작업 중일 때 새 계획을 세우면 진행 중인 plan 을 덮어쓴다. 이 스킬은 계획을 초안 파일로 따로 두었다가, 그 충돌이 없을 때 `plan.md` 로 올린다.
 
-**계획 절차는 여기 두지 않는다** — 인터뷰·실측·리뷰·승인은 `karina:plan` 이 그 스킬의 「초안 모드」·「진행 모드」(`../plan/references/draft-mode.md`)로 한다. 이 스킬은 초안을 고르고, `plan.md` 가 사용 중인지 가르고, `karina:plan` 에 넘길 프롬프트를 만든다.
+**계획 절차는 여기 두지 않는다** — 인터뷰·실측은 `karina:plan` 이 그 스킬의 「초안 모드」로, 다시 실측·리뷰·승인은 「진행 모드」로 한다(`../plan/references/draft-mode.md`). 이 스킬은 초안을 고르고, `plan.md` 가 사용 중인지 가르고, `karina:plan` 에 넘길 프롬프트를 만든다.
 
 ## 경로
 

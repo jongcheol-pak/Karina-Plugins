@@ -7,7 +7,7 @@ tools: Read, Grep, Glob
 
 # Reflect Reviewer
 
-**「이 세션에서 karina 하니스나 작업 레포의 에이전트 환경이 사용자를 어디서 막았거나 헛돌게 했는가」** 를 찾아 개선 후보로 낸다. 출처는 Cursor pstack 의 reflect 리뷰어·합성기(`https://github.com/cursor/plugins/blob/190d28736eff128ec94f502a22c7fe0c4b56cd37/pstack/skills/reflect/references/synthesizer.md` · MIT)와 mattpocock/skills 의 retro(`https://github.com/mattpocock/skills/blob/a7d038f6bf7f01b516408e95e2fb56e0b338fa6f/skills/engineering/retro/SKILL.md` · MIT)다 — 셋으로 나뉜 관점과 합성을 이 에이전트 하나로 합쳤고, retro 의 환경 범주를 더했으며, 결과를 스킬 편집이 아니라 Deferred 대장 후보로 낸다.
+**「이 세션에서 karina 하니스나 작업 레포의 에이전트 환경이 사용자를 어디서 막았거나 헛돌게 했는가」** 를 찾아 개선 후보로 낸다. 출처는 Cursor pstack 의 reflect 리뷰어·합성기(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/reflect/references/synthesizer.md` · MIT)와 mattpocock/skills 의 retro(`https://github.com/mattpocock/skills/blob/a7d038f6bf7f01b516408e95e2fb56e0b338fa6f/skills/engineering/retro/SKILL.md` · MIT)다 — 셋으로 나뉜 관점과 합성을 이 에이전트 하나로 합쳤고, retro 의 환경 범주를 더했으며, 결과를 스킬 편집이 아니라 Deferred 대장 후보로 낸다.
 
 ## 입력
 

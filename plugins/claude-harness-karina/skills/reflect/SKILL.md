@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Reflect
 
-> 출처는 Cursor pstack 의 reflect 다 — 고정 위치 `https://github.com/cursor/plugins/blob/190d28736eff128ec94f502a22c7fe0c4b56cd37/pstack/skills/reflect/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/190d28736eff128ec94f502a22c7fe0c4b56cd37/pstack/LICENSE`).
+> 출처는 Cursor pstack 의 reflect 다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/reflect/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`).
 >
 > **원문과 다르게 한 것** — ① 리뷰어 셋(judgment·tooling·divergent)과 합성기를 읽기 전용 에이전트 `reflect-reviewer` 하나로 합쳤다 ② 승인된 후보를 스킬 편집으로 적용하지 않고 Deferred 대장에 올리기만 한다 — 스킬 수정은 별도 `karina:plan` 회차가 맡는다(위키 `decisions.md` 2026-10-20 reflect 기각 사유) ③ Backlog 를 승인 없이 트래커에 올리지 않고, 사용자가 고른 후보만 등재한다 ④ 전사 원본 대신 스크립트 요약을 읽힌다.
 > **들이지 않은 파일** — `references/judgment-reviewer.md` · `references/tooling-reviewer.md` · `references/divergent-reviewer.md` · `references/synthesizer.md`(쓸모 있는 관점은 `../../agents/reflect-reviewer.md` 에 합쳤다).

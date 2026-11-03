@@ -48,9 +48,6 @@ try {
     $r = Invoke-Hook 'warn-version-drift.ps1' $vdJson
     Assert-Case -Name "version-drift: CLAUDE_PLUGIN_ROOT 부재 무출력(fail-open)" -R $r -ExpectExit 0 -ExpectSilent $true
 
-    # ---- 릴리즈 누락 감지 (v1.158.0) ----
-    # 규약("merge 뒤 버전 커밋 push 뒤 곧바로 릴리즈")을 기계가 보게 한 검사. 판정 기준은 워킹트리가 아니라
-    # **origin/main에 올라간 plugin.json 버전**이라, 픽스처도 git 저장소 + origin/main ref로 만든다.
     if ($gitOk) {
         $vdGit = Join-Path $work 'vd-gitrepo'
         New-Item -ItemType Directory (Join-Path $vdGit '.claude-plugin') -Force | Out-Null
@@ -152,17 +149,10 @@ try {
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
         Assert-Case -Name "version-drift: 로컬·원격 모두 태그 없음 → 릴리즈 누락 발화" -R $r -ExpectExit 0 -ExpectContains '릴리즈 누락'
         Assert-Case -Name "version-drift: 릴리즈 누락 문구에 버전 실림" -R $r -ExpectExit 0 -ExpectContains 'v3.4.5'
-        # 문면 고정 — v1.205.0이 판정 소스를 둘로 늘리며 문구를 「로컬·원격 어디에서도 찾지 못했다」로 좁혔다.
-        # 이 어서션이 없으면 문면이 옛 표현(「태그가 없습니다」)으로 되돌아가도 골든이 green이다.
-        # v1.204.0 F-7이 같은 형태를 지적해 SC33d(잔량 단독 문구 고정)를 더한 선례가 있다.
         Assert-Case -Name "version-drift: 릴리즈 누락 문구가 두 소스를 밝힌다" -R $r -ExpectExit 0 -ExpectContains '로컬·원격'
-        # 문면 고정 — v2.15.0 이 Release 를 merge 뒤 버전 커밋으로 바꿨다. 옛 규약(「버전 업 커밋 push 뒤」)으로
-        # 되돌아가면 경고가 사용자를 옛 절차로 안내하므로 새 규약 낱말을 단언한다.
-        Assert-Case -Name "version-drift: 릴리즈 누락 문구가 merge 뒤 버전 커밋을 밝힌다" -R $r -ExpectExit 0 -ExpectContains 'merge 뒤 버전 커밋'
+        Assert-Case -Name "version-drift: 릴리즈 누락 문구가 main 직행 버전 커밋을 밝힌다" -R $r -ExpectExit 0 -ExpectContains 'main 직행'
+        Assert-Case -Name "version-drift: 릴리즈 누락 문구에 옛 merge 뒤 절차가 없다" -R $r -ExpectExit 0 -ExpectNotContains 'merge 뒤'
 
-        # 8-1) [회차 3 T7] ①과 ② 사이 — 확인된 태그 캐시가 있으면 원격을 보지 않는다
-        #     원격에는 아직 태그가 없으므로, 원격을 조회하면 위 ①처럼 발화한다. 무출력이면 원격을 보지
-        #     않았다는 증거다. 캐시는 손으로 심고 확인 뒤 지운다 — ②·③ 이 캐시 없는 상태에서 돌아야 한다.
         $vdCacheDir = Join-Path $env:USERPROFILE '.claude/.state/version-drift'
         New-Item -ItemType Directory $vdCacheDir -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $vdCacheDir 'released-karina-v3.4.5') -Value ''
@@ -215,9 +205,8 @@ try {
         & $vdPushCommit 'skills/b.md' 'plugins 변경'
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
         Assert-Case -Name "version-drift: 미배포 — 태그 뒤 plugins/ 커밋이 있으면 발화" -R $r -ExpectExit 0 -ExpectContains '미배포'
+        Assert-Case -Name "version-drift: 미배포 문구에 옛 merge 뒤 절차가 없다" -R $r -ExpectExit 0 -ExpectNotContains 'merge 뒤'
 
-        # 13) 원격 태그를 HEAD 로 옮겨도(주석 달린 태그) 캐시에 옛 sha 가 있으면 캐시를 쓴다 → 발화
-        #     원격을 다시 물었다면 HEAD 를 기준으로 삼아 조용했을 것이다 — 캐시를 썼다는 증거다.
         Push-Location -LiteralPath $vdWork
         try { & git tag -a -m 'karina-v3.4.5' karina-v3.4.5 HEAD 2>$null; & git push -q -f origin karina-v3.4.5 2>$null; & git tag -d karina-v3.4.5 2>$null } finally { Pop-Location }
         $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson

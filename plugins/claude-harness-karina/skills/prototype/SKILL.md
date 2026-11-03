@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 **정하는 것은 설계이고 코드가 아니다. 시안은 결정을 내리고 버리는 도구다.** 실제 구현은 고른 방향으로 `karina:plan` 이 맡는다.
 
-> 출처는 Cursor pstack 의 poteto-mode Prototype 플레이북과 원칙 exhaust-the-design-space 다 — 고정 위치 `https://github.com/cursor/plugins/blob/519d36aa98955bf680db01bcde5fdfba686dc901/pstack/skills/poteto-mode/playbooks/prototype.md` 와 같은 커밋의 `pstack/skills/principle-exhaust-the-design-space/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/519d36aa98955bf680db01bcde5fdfba686dc901/pstack/LICENSE`).
+> 출처는 Cursor pstack 의 poteto-mode Prototype 플레이북과 원칙 exhaust-the-design-space 다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/prototype.md` 와 같은 커밋의 `pstack/skills/principle-exhaust-the-design-space/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`).
 >
 > **원문과 다르게 한 것** — ① 원문의 dev server hot reload 는 들이지 않는다. 패키지를 설치하지 않으려고 `file://` 로 열거나 설치가 필요 없는 `python -m http.server` 로 띄운다 ② 고르는 것은 사용자다. 모델은 권장안만 낸다 ③ 원문의 Feature 플레이북 인계는 `karina:plan` 시작 제안으로 바꿨다 ④ 원문이 구조 설계로 넘기는 `architect` 스킬은 들이지 않았다. 아키텍처 결정은 아래 「시안 만들기」의 스케치로 정한다 ⑤ 원문의 *"Speed over polish … no planning"* 은 그대로다 — 시안 코드의 품질·테스트·추상화는 보지 않는다 ⑥ 임시 폴더 자리는 `../TEMP-FILES.md` 를 따른다.
 

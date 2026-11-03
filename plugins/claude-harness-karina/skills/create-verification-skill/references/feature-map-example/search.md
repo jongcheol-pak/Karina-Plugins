@@ -1,6 +1,6 @@
 # 노트 검색
 
-> 기능 파일 예시다. 원문은 pstack `create-verification-skill/references/feature-map-example/search.md`(`https://github.com/cursor/plugins/blob/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack/skills/create-verification-skill/references/feature-map-example/search.md`) · Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack/LICENSE`). 한글로 옮겼고, 절 이름·명령·UI 문자열은 원문 그대로다. 증거 경로는 `../../SKILL.md` 의 Evidence 규칙(레포 밖)에 맞춰 바꿨다.
+> 기능 파일 예시다. 원문은 pstack `create-verification-skill/references/feature-map-example/search.md`(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/create-verification-skill/references/feature-map-example/search.md`) · Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮겼고, 절 이름·명령·UI 문자열은 원문 그대로다. 증거 경로는 `../../SKILL.md` 의 Evidence 규칙(레포 밖)에 맞춰 바꿨다.
 
 사용자는 제목이나 본문 텍스트로 노트를 찾고, 매치된 노트를 열어 보고, 매치 없음과 검색 불가를 구별할 수 있다.
 

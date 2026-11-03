@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # No comments
 
-> 출처는 Cursor pstack 의 no-comments 다 — 고정 위치 `https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/skills/no-comments/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/LICENSE`).
+> 출처는 Cursor pstack 의 no-comments 다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/no-comments/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`).
 >
 > **원문과 다르게 한 것** — ① 리뷰어 `comment-reviewer` 는 읽기 전용이고 주석 삭제는 이 세션이 검수 뒤에 한다 ② 원문의 `/architect` 스케치 대신 설계를 보고에 싣고 바로 고친다 — 승인은 원문처럼 제약 인코딩만 받는다 ③ 직접 호출은 커밋하지 않는다 — diff 모드는 사용자의 미커밋 변경 위에서 돌아, 커밋하면 그 변경이 함께 들어간다(자동 모드는 이번 plan 의 커밋만 범위라 별도 커밋을 남긴다) ④ 남길 주석의 기준은 `../implement/references/code-style.md`「주석」 하나다 ⑤ 편집 전 빌드·테스트 기준선을 둔다.
 > **들이지 않은 파일** — 없다(원문 폴더는 SKILL.md 하나). 리뷰어는 `../../agents/comment-reviewer.md` 로 번안했다.
@@ -43,7 +43,7 @@ disable-model-invocation: true
 
 ## 자동 모드
 
-`karina:implement` 가 전 task 완료 뒤 4번 검증 앞에서 이 절을 읽고 따른다. 원문 pstack 이 리뷰 전에 이 스킬을 돌리는 것(`https://github.com/cursor/plugins/blob/8b3326d99fd4b993cb33a24dad8af03175c642c5/pstack/skills/poteto-mode/SKILL.md` *"Before review → the **no-comments** skill"*)을 들였다 — 주석을 쓴 세션은 자기 주석을 변호해(guide 05 *"An author defends its comments the way you'd defend yours."*) 쓰지 않은 쪽이 판정해야 한다.
+`karina:implement` 가 전 task 완료 뒤 4번 검증 앞에서 이 절을 읽고 따른다. 원문 pstack 이 리뷰 전에 이 스킬을 돌리는 것(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/SKILL.md` *"Before review → the **no-comments** skill"*)을 들였다 — 주석을 쓴 세션은 자기 주석을 변호해(guide 05 *"An author defends its comments the way you'd defend yours."* — `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/docs/guide/05-build-and-clean.md`) 쓰지 않은 쪽이 판정해야 한다.
 
 - **회차마다 1회 돈다 — 시작 전에 `plan.md` `## Progress Log` 에 `주석 정리:` 로 시작하는 줄이 있으면 돌지 않는다** — 압축 뒤 재개·「계속」·4번 검증 실패나 `completion-reviewer` 지적을 고친 뒤 4번을 다시 돌 때도 같고, 그때의 수정 커밋은 다음 회차 범위다. 끝나면 건너뛰었거나 못 돌았어도 아래 표지 줄 하나를 Progress Log 에 남긴다 — 그 줄이 실행 표지다.
 - **`../implement/references/final-review.md`「절차」 가 `completion-reviewer` 를 부르지 않는 경량 조건이면 이 리뷰어도 부르지 않는다** — 세션이 `code-style.md`「주석」 으로 범위 안 주석을 재서 직접 지우고, 남기는 주석은 `../../agents/comment-reviewer.md` 할 일 2번 범위(hunk 밖이어도 대조하는 doc 주석 포함)와 3번 `유지` 의 내용 대조대로 코드와 맞춰 어긋나면 고친다. 표지는 `주석 정리: 세션 판정(경량) — 삭제 <n> · 불일치 고침 <u> · 작성 위반 <w>` 이다. 조건을 여기 다시 적지 않는다 — 두 곳에 두면 한쪽만 고쳐진다.

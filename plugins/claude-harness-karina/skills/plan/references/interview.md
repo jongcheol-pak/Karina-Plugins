@@ -77,7 +77,7 @@ GUESS: <내 가설과 그렇게 생각하는 근거>
 
 ### 2-6. 의도 재진술과 확인
 
-**인터뷰가 끝나면 아래를 채워 보이되 동의는 기다리지 않고 Step 3 실측으로 간다 — 동의는 실측 뒤 첫 확인 화면(아래 「후보 라운드」, 그 화면이 열리지 않으면 「승인 제시」, 회차 체인이면 `round-split.md`「회차 분할」 의 체인 질문)이 함께 받는다** — 재진술에 따로 동의를 받으면 그 뒤 화면이 또 답을 기다려 같은 왕복이 두 번이 된다(pstack poteto-mode *"Don't wait for confirmation."* — `https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/poteto-mode/SKILL.md`).
+**인터뷰가 끝나면 아래를 채워 보이되 동의는 기다리지 않고 Step 3 실측으로 간다 — 동의는 실측 뒤 첫 확인 화면(아래 「후보 라운드」, 그 화면이 열리지 않으면 「승인 제시」, 회차 체인이면 `round-split.md`「회차 분할」 의 체인 질문)이 함께 받는다** — 재진술에 따로 동의를 받으면 그 뒤 화면이 또 답을 기다려 같은 왕복이 두 번이 된다(pstack poteto-mode *"Don't wait for confirmation."* — `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/SKILL.md`).
 
 ```
 - 결과:        <무엇이 만들어지는가>

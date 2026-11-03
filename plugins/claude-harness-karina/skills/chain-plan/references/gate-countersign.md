@@ -1,6 +1,6 @@
 # 게이트 완화 서명 (`karina:chain-plan`)
 
-> `../SKILL.md`「답하는 기준」 이 `[게이트 완화 서명]` 질문을 받을 때와 `stack-mode.md`「착지」 의 ship 이 게이트 완화 게이트에 닿을 때(`../../pr/references/ship.md` 7번 ⓒ) 이 파일을 연다. 출처는 Cursor pstack 의 autopilot-full 6단계다 — 고정 위치 `https://github.com/cursor/plugins/blob/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 상한 인상·화이트리스트·면제 추가는 green 을 원하는 작성자(워커)가 스스로 받아들일 수 없어, 코드를 쓰지 않은 코디네이터가 서명한다(*"needs a verifier's proof and then your fresh countersign, because the owner is the one who wants green"*). 체인 승인 `P`·`T` 가 그 위임이다(*"Under a grant that covers approvals, that countersign is the approval"*).
+> `../SKILL.md`「답하는 기준」 이 `[게이트 완화 서명]` 질문을 받을 때와 `stack-mode.md`「착지」 의 ship 이 게이트 완화 게이트에 닿을 때(`../../pr/references/ship.md` 7번 ⓒ) 이 파일을 연다. 출처는 Cursor pstack 의 autopilot-full 6단계다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/autopilot-full.md`. 상한 인상·화이트리스트·면제 추가는 green 을 원하는 작성자(워커)가 스스로 받아들일 수 없어, 코드를 쓰지 않은 코디네이터가 서명한다(*"needs a verifier's proof and then your fresh countersign, because the owner is the one who wants green"*). 체인 승인 `P`·`T` 가 그 위임이다(*"Under a grant that covers approvals, that countersign is the approval"*).
 
 ## 서명 요청
 
