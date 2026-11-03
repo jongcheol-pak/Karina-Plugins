@@ -151,6 +151,7 @@ try {
         Assert-Case -Name "version-drift: 릴리즈 누락 문구에 버전 실림" -R $r -ExpectExit 0 -ExpectContains 'v3.4.5'
         Assert-Case -Name "version-drift: 릴리즈 누락 문구가 두 소스를 밝힌다" -R $r -ExpectExit 0 -ExpectContains '로컬·원격'
         Assert-Case -Name "version-drift: 릴리즈 누락 문구가 main 직행 버전 커밋을 밝힌다" -R $r -ExpectExit 0 -ExpectContains 'main 직행'
+        Assert-Case -Name "version-drift: 릴리즈 누락 문구의 --target 은 push 한 HEAD(origin/main HEAD)다" -R $r -ExpectExit 0 -ExpectContains 'origin/main HEAD'
         Assert-Case -Name "version-drift: 릴리즈 누락 문구에 옛 merge 뒤 절차가 없다" -R $r -ExpectExit 0 -ExpectNotContains 'merge 뒤'
 
         $vdCacheDir = Join-Path $env:USERPROFILE '.claude/.state/version-drift'
