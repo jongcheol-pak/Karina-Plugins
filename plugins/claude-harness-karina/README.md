@@ -437,7 +437,7 @@ claude plugin marketplace remove karina-plugins
 
 ```powershell
 # 배포 (개발 PC에서 수정 후) — main 직행: 회차 끝 버전 커밋을 로컬 게이트(pr-verifier)가 검증한 뒤 main 에 push 한다
-# 그 버전 커밋으로 릴리즈 발행(별도 승인): gh release create karina-v<버전> --target <버전 커밋 full-sha>
+# push 한 HEAD 로 릴리즈 발행(별도 승인): gh release create karina-v<버전> --target <push 한 HEAD full-sha>
 # → 사용 PC에서 위의 "업데이트" 명령 실행
 ```
 
