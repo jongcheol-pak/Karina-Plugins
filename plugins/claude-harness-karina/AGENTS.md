@@ -57,7 +57,7 @@
   python evals/check-stale-refs.py
   ```
 - **트리거 러너 종료 코드** (`skills/evals/trigger_eval.py` 수정 시 필수 · 모델 호출 없음): `python skills/evals/test_exit_code.py`
-- **스킬 트리거 eval** (`skills/*/SKILL.md` frontmatter `description` 수정 시 필수(`disable-model-invocation: true` 스킬 제외) — **실제 모델 호출이라 비용이 크다**):
+- **스킬 트리거 eval** (`skills/*/SKILL.md` frontmatter `description` 수정 시 필수(`disable-model-invocation: true` 스킬 제외) — **실제 모델 호출이라 비용이 크다** · `[독립 검증 제외]`):
   ```
   python skills/evals/trigger_eval.py --filter <plan|impl|rec|wiki|dbg|chain|pr|wt>
   ```
