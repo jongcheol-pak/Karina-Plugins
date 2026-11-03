@@ -9,7 +9,7 @@
             "type": "command",
             "shell": "powershell",
             "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/block-destructive.ps1\"; exit $LASTEXITCODE",
-            "timeout": 10,
+            "timeout": 60,
             "onFailure": "block"
           }
         ]
@@ -21,7 +21,7 @@
             "type": "command",
             "shell": "powershell",
             "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-bash.ps1\"; exit $LASTEXITCODE",
-            "timeout": 15,
+            "timeout": 60,
             "onFailure": "block"
           }
         ]
@@ -33,7 +33,7 @@
             "type": "command",
             "shell": "powershell",
             "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-write.ps1\"; exit $LASTEXITCODE",
-            "timeout": 10,
+            "timeout": 60,
             "onFailure": "block"
           }
         ]
@@ -45,7 +45,7 @@
             "type": "command",
             "shell": "powershell",
             "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-harness.ps1\"; exit $LASTEXITCODE",
-            "timeout": 10,
+            "timeout": 60,
             "onFailure": "block"
           }
         ]
