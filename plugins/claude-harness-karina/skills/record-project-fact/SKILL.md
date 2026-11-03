@@ -31,7 +31,7 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 | DB 접근 방법 | `## 데이터 접근` |
 | 파일·산출물 관리 | `## 산출물·파일 관리` |
 | 테스트 비대상 계층·의도된 제약 | `## Conventions` |
-| Git 흐름(main 직행 — 브랜치·PR·worktree 생략) | `## Conventions` 의 `- **Git 흐름**: main 직행 — …` 한 줄 (판정 정본 `../implement/references/pr-flow.md`「main 직행」 — 줄 머리를 바꾸면 판정이 꺼진다) |
+| Git 흐름(main 직행 — 브랜치·PR·worktree 생략, 회차 끝 로컬 게이트 뒤 push) | `## Conventions` 의 `- **Git 흐름**: main 직행 — …` 한 줄 (판정 정본 `../implement/references/pr-flow.md`「main 직행」 — 줄 머리를 바꾸면 판정이 꺼진다) |
 | 작업 함정·작업 규약(사용자 「기억해둬」 — 명령이 아닌 것) | `AGENTS.md` 가 아니라 레포 `docs/conventions.md` — 항목 형식·절 선택은 `../REPO-CONVENTIONS.md` 「항목 형식」·「쓰기」, 파일이 없으면 만든다 |
 
 **섹션이 없으면 신설한다.** 위치는 `../AGENTS-BOUNDARY.md`의 **「생성물 골격」 뼈대 순서**가 정본이다 — 그 문서가 절 구성과 배치 순서를 함께 정하므로, 새 절은 뼈대 순서 자리(뼈대에서 그 절보다 앞에 오는 절 가운데 파일에 있는 마지막 절 바로 뒤)에 넣는다. 기존 파일의 순서가 뼈대와 달라도 기존 절은 옮기지 않는다 — Step 4 의 「다른 섹션 불변」이다(근거 `references/record-fact-rationale.md` §9). 섹션이 이미 있으면 그 안에 항목을 추가·갱신한다.
