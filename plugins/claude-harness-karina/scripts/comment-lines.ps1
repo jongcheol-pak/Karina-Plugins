@@ -1,4 +1,4 @@
-﻿# comment-lines.ps1 — 새 주석 줄 판별 (dot-source 전용) — 근거는 `rules/post-write-rationale.md` §22
+﻿# comment-lines.ps1 — 새 주석 줄 판별 (dot-source 전용) — 근거는 `rules/comment-gate-rationale.md` §2
 
 $script:CommentSlashExts = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift')
 $script:CommentHashExts = @('.py', '.ps1', '.sh')

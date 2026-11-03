@@ -387,7 +387,7 @@ try {
                 if ($allMsgs.Count -gt 0) { $allMsgs.Add("") }
                 $allMsgs.Add("[EOL WARNING] ${nm}: 워킹트리 줄바꿈이 LF 입니다 (LF $lf / CRLF $crlf).")
                 $why = if ($repoTotal -gt 0) { "이 레포 추적 파일의 워킹트리 줄바꿈은 대부분 CRLF 입니다 (CRLF $repoCrlf / 전체 $repoTotal)" } else { "이 파일의 .gitattributes 속성은 eol=crlf 입니다" }
-                $allMsgs.Add("$why — Write·Edit 도구는 LF 로 씁니다.")
+                $allMsgs.Add("$why — Write 도구는 LF 로 씁니다.")
                 $allMsgs.Add("``git ls-files --eol`` 로 확인하고 CRLF 로 되돌리세요. 이 경고는 차단이 아닙니다.")
             }
         }

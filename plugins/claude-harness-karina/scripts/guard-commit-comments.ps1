@@ -1,4 +1,4 @@
-﻿# guard-commit-comments.ps1 — git commit 직전 새 주석 첫 시도 차단 (dot-source 전용, hook 아님) — 근거는 `rules/post-write-rationale.md` §22
+﻿# guard-commit-comments.ps1 — git commit 직전 새 주석 첫 시도 차단 (dot-source 전용, hook 아님) — 근거는 `rules/comment-gate-rationale.md` §4
 
 . (Join-Path $PSScriptRoot 'git-commit-match.ps1')
 . (Join-Path $PSScriptRoot 'comment-lines.ps1')

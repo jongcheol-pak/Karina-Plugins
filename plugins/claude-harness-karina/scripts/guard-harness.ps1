@@ -86,7 +86,7 @@ if ($isHookScript -or $suspect83) {
     exit 2
 }
 
-# ---- 새 주석 첫 시도 차단 (비안전 · 판정 실패는 통과) — 근거는 `rules/post-write-rationale.md` §22
+# ---- 새 주석 첫 시도 차단 (비안전 · 판정 실패는 통과) — 근거는 `rules/comment-gate-rationale.md` §1
 try { . (Join-Path $PSScriptRoot 'guard-comment.ps1') } catch {}
 if (Get-Command Invoke-GuardComment -ErrorAction SilentlyContinue) {
     $gcResult = $null

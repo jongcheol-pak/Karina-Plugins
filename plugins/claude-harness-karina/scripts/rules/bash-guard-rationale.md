@@ -38,7 +38,7 @@ dot-source 는 넷 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 - **검사 10종 중 6종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
   `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-WarnGlobalFind` · `Invoke-WarnBashBackslash` · `Invoke-WarnDangerousAssignment`.
   **나머지 넷 — `Invoke-WarnCommitSecrets`(`guard-commit-secrets.ps1`) · `Invoke-WarnStaleDocs`
-  (`guard-stale-docs.ps1`) · `Invoke-WarnTaskAudit`(`guard-task-audit.ps1`) · `Invoke-BlockCommitComments`(`guard-commit-comments.ps1` — 근거는 `post-write-rationale.md` §22) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
+  (`guard-stale-docs.ps1`) · `Invoke-WarnTaskAudit`(`guard-task-audit.ps1`) · `Invoke-BlockCommitComments`(`guard-commit-comments.ps1` — 근거는 `comment-gate-rationale.md` §4) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
   우회 변수·시크릿 패턴 연동을 담아 크기가 따로 놀고, 분리해 두어야 골든이 그 파일만 단독
   프로브할 수 있다. **dot-source 는 명령에 `commit` 이 있을 때만 하고 존재는 매 호출 확인한다** —
   근거는 `stale-docs-rationale.md` §2. 로드 실패는 침묵하지 않는다 — `guard-bash.ps1` 이

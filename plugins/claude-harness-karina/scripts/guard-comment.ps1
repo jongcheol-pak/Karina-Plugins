@@ -1,4 +1,4 @@
-﻿# guard-comment.ps1 — guard-harness 가 dot-source 하는 새 주석 첫 시도 판정 — 근거는 `rules/post-write-rationale.md` §22
+﻿# guard-comment.ps1 — guard-harness 가 dot-source 하는 새 주석 첫 시도 판정 — 근거는 `rules/comment-gate-rationale.md` §3
 
 function Invoke-GuardComment($Data, [string]$File) {
     $pass = @{ Block = $false; Lines = @() }

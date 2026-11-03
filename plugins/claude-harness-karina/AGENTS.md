@@ -88,7 +88,7 @@
 - **Git 흐름**: main 직행 — 혼자 쓰는 하니스 레포라 브랜치·PR 없이 main 에 커밋하고 회차 끝 로컬 게이트(`skills/implement/references/local-gate.md`) 뒤 push 한다.
 - **아키텍처**: 계층 없음 — 실행 단위가 hook 스크립트와 Markdown 지침이라 도메인/UI/인프라로 가를 대상이 없다(글로벌 「단순 스크립트·유틸리티는 대상이 아니다」).
 - **인코딩**: `.ps1` 은 **UTF-8 BOM 필수**(PS 5.1 한글 호환), 그 외는 **BOM 없음**.
-- **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. ⚠ **`sed -i` 도 `Edit` 도구도 python 텍스트 쓰기(`open(p,'w')`)도 파일 전체를 LF 로 바꿔 놓는다** — 편집 후 `git ls-files --eol` 로 확인(정본은 `docs/harness-conventions.md` 의 「편집 스크립트 사고」).
+- **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. `Edit` 도구는 CRLF·BOM 을 지킨다. ⚠ **`Write` 도구·`sed -i`·python 텍스트 쓰기(`open(p,'w')`)는 파일 전체를 LF 로 바꿔 놓는다** — 편집 후 `git ls-files --eol` 로 확인(정본은 `docs/harness-conventions.md` 의 「편집 스크립트 사고」).
 - **주석**: 한글 · 무엇을 남기는가는 `skills/implement/references/code-style.md` 「주석」, 근거를 어디로 내리는가는 `skills/BUDGET.md` 「처방 ④의 단서 셋」. **보존 대상**(지우지 않는다): 문서가 정본으로 지정한 스크립트의 모듈 docstring·머리 주석·함수 주석·상수 주석(찾기: `git grep -n -E '모듈 docstring|머리 주석|주석이 정본|상수 주석'`)과 `scripts/*.ps1`·`skills/*/scripts/*` 의 rationale 포인터 주석 — `comment-reviewer` 가 이 줄을 판정 기준으로 읽는다.
 - **명령 출력 예산**: 판정용 명령은 **최소 형식**으로 낸다(정본은 `docs/harness-conventions.md` 「명령 출력 예산」).
 - **파일 크기**: 상한 표·초과 처방은 `skills/BUDGET.md`「예산 표」, 참조 깊이·목차 규칙은 `skills/BUDGET.md`「나눈 뒤에 지킬 것」이 정본. **처방은 묻지 않고 적용하고, 상한을 올리는 것은 처방이 아니다.**
@@ -103,7 +103,7 @@
 ## DO NOT
 
 - **실제 자격증명을 코드·문서·notes·plan 에 기록** — 환경변수 이름만 적고 값은 `.env` 에 둔다. 종류는 `docs/harness-conventions.md` 「자격증명 취급」.
-- **`exit 2` 를 내는 넷의 차단 동작 변경** — `block-destructive.ps1`·`guard-harness.ps1`·`guard-bash.ps1`(**dot-source 하는 `git-commit-match`·`guard-commit-secrets`·`guard-stale-docs` 의 커밋 판정 포함**)·`guard-write.ps1`. 안전 임계 hook(끌 수 없는 마지막 방어선)이고 차단 대상은 `scripts/rules/` 가 정본이다. **넷 전부에 오탐 수정·미탐 보완·사용자 지시의 범위 축소·사용자 지시의 이름 교체만 허용되며 골든 실증이 붙는다**(`docs/harness-conventions.md` 「안전 임계 hook 의 차단 동작 변경」).
+- **`exit 2` 를 내는 넷의 차단 동작 변경** — `block-destructive.ps1`·`guard-harness.ps1`·`guard-bash.ps1`(**dot-source 하는 `git-commit-match`·`guard-commit-secrets`·`guard-stale-docs`·`guard-commit-comments` 의 커밋 판정 포함**)·`guard-write.ps1`. 안전 임계 hook(끌 수 없는 마지막 방어선)이고 차단 대상은 `scripts/rules/` 가 정본이다. **넷 전부에 오탐 수정·미탐 보완·사용자 지시의 범위 축소·사용자 지시의 이름 교체·사용자 지시의 비안전 차단 신설만 허용되며 골든 실증이 붙는다**(`docs/harness-conventions.md` 「안전 임계 hook 의 차단 동작 변경」).
 - **검증·테스트 스크립트에 평문 자격증명·창 숨김·과도한 실행정책 완화**(사유는 같은 절).
 
 ## Plan Location

@@ -291,11 +291,6 @@ $preBody = @('#region Helpers', '#if DEBUG', '#pragma warning disable', '// one'
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; session_id = 'pre-sess'; tool_input = @{ file_path = $prePath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: C# 전처리 지시문 영문주석 오집계 제외 (P1T4 — //3줄뿐이라 >5 미달로 영문주석 경고 없음)" -R $r -ExpectExit 0 -ExpectNotContains '영문'
 
-# ---- [회차 51] H3 저장 직후 줄바꿈 경고 ----
-#   워킹트리 규약은 CRLF 인데 Write·Edit 도구는 LF 로 쓴다. AGENTS.md 「줄바꿈」이 확인을 요구하지만
-#   회차 50 이 intent/ 를 쓰고 확인하지 않아 「줄바꿈 정합」 축이 red 를 냈다 — 저장한 자리에서 알린다.
-#   ⚠ 차단이 아니라 경고다(exit 0 유지). 그리고 **git 추적 파일만** 본다 — plan.md·notes.md 는
-#     gitignore 라 규약 대상이 아니고, 경고하면 편집마다 발화한다.
 $eolRepo = Join-Path $work 'eolrepo'; New-Item -ItemType Directory $eolRepo -Force | Out-Null
 Push-Location $eolRepo
 git init -q; git config user.email t@t; git config user.name t
@@ -319,6 +314,7 @@ Assert-Case -Name "post-write: 추적 파일이 LF 면 경고 (EOL1)" -R $r -Exp
 # 이 hook 은 모든 레포에서 돈다 — 문구가 하네스 레포 문서를 가리키면 다른 레포에서 틀린 지시가 된다(2026-10-08 Karina 앱).
 Assert-Case -Name "post-write: EOL 경고 문구에 하네스 레포 참조가 없다 (EOL1)" -R $r -ExpectExit 0 -ExpectNotContains 'AGENTS.md'
 Assert-Case -Name "post-write: LF 파일 계수 (LF 2 / CRLF 0) (EOL1c)" -R $r -ExpectExit 0 -ExpectContains '(LF 2 / CRLF 0)'
+Assert-Case -Name "post-write: EOL 경고는 Write 도구만 LF 로 쓴다고 알린다 (Edit 는 줄바꿈 보존)" -R $r -ExpectExit 0 -ExpectContains '— Write 도구는 LF 로 씁니다'
 $eolMix = Join-Path $eolRepo 'mixed.md'
 [System.IO.File]::WriteAllText($eolMix, "가`r`n나`r`n다`r`n라`n마`n")
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-m'; tool_input = @{ file_path = $eolMix } } | ConvertTo-Json -Compress)
