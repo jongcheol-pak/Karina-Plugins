@@ -186,38 +186,6 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
         }
     } catch {}
 
-# H4: 새 주석 경고 — 근거는 `rules/post-write-rationale.md` §22
-try {
-    . (Join-Path $PSScriptRoot 'comment-lines.ps1')
-    if (-not (Get-Command Get-AddedCommentBodies -ErrorAction SilentlyContinue)) {
-        [Console]::Error.WriteLine('post-write-checks: comment-lines.ps1 로드 실패 — 새 주석 경고 미수행. 플러그인 재설치를 권장합니다.')
-    } elseif ((Test-CommentTarget $file) -and $data.tool_name -ne 'NotebookEdit') {
-        $pairsH4 = @()
-        if ($data.tool_input.edits) {
-            $pairsH4 = @($data.tool_input.edits | ForEach-Object { , @([string]$_.old_string, [string]$_.new_string) })
-        } elseif ($null -ne $data.tool_input.new_string) {
-            $pairsH4 = @(, @([string]$data.tool_input.old_string, [string]$data.tool_input.new_string))
-        }
-        if ($pairsH4.Count -gt 0) {
-            $addedH4 = Get-AddedCommentBodies $file $pairsH4
-        } else {
-            $writeLines = if ($sharedDiffOk) {
-                @($sharedDiffLines | Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') } | ForEach-Object { $_.Substring(1) })
-            } else { $content }
-            $addedH4 = Get-CommentBodies $file $writeLines
-        }
-
-        if ($addedH4.Count -gt 0) {
-            if ($allMsgs.Count -gt 0) { $allMsgs.Add("") }
-            $allMsgs.Add("[COMMENT] ${file}: 이번 편집이 주석 $($addedH4.Count)줄을 더했습니다")
-            foreach ($c in ($addedH4 | Select-Object -First 3)) {
-                $allMsgs.Add("  | " + $(if ($c.Length -gt 100) { $c.Substring(0, 100) + '…' } else { $c }))
-            }
-            $allMsgs.Add("  남길 수 있는 것은 라이선스 고지·바꿀 수 없는 외부 제약·린트/포매터 지시문·공개 API 계약 doc·이슈/RFC 링크와 프로젝트 규약이 요구하는 주석뿐입니다 — 아니면 지우고 이유는 커밋 본문에 적으세요 (code-style.md「주석」 · 차단 아님)")
-        }
-    }
-} catch {}
-
 # ============================================================ — 근거는 `rules/post-write-rationale.md` §10
     try {
         if ($data.cwd -and (Test-Path -LiteralPath $data.cwd -PathType Container)) {

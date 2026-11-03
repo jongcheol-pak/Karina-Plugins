@@ -4,6 +4,7 @@
     "block-destructive",
     "comment-lines",
     "guard-bash",
+    "guard-comment",
     "guard-commit-secrets",
     "guard-harness",
     "guard-stale-docs",
