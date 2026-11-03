@@ -70,7 +70,5 @@ Test-SlowDelta -Name 'guard-bash 차단 경로도 slow 1줄 · 차단 유지' -H
 Test-SlowDelta -Name 'block-destructive 통과 경로가 기준 이상이면 slow 1줄' -Hook 'block-destructive.ps1' -Command 'ls -la' -ExpectExit 0 -SlowMs '0' -ExpectSlow $true
 Test-SlowDelta -Name 'block-destructive 차단 경로도 slow 1줄 · 차단 유지' -Hook 'block-destructive.ps1' -Command 'rm -rf /' -ExpectExit 2 -SlowMs '0' -ExpectSlow $true
 Test-SlowDelta -Name '기준 밑이면 slow 줄 없음 (음성 짝)' -Hook 'guard-bash.ps1' -Command 'ls -la' -ExpectExit 0 -SlowMs '86400000' -ExpectSlow $false
-}   # ---- §11 게이트 끝 (hook-event-log 외) ----
-# 12) report-hook-events 스모크는 v1.225.0에 삭제했다 — 그 수동 도구를 제거했기 때문이다.
-#    이벤트 집계는 jsonl 을 직접 읽으면 되고(파이썬 6줄), 전용 스크립트를 유지할 근거가 없었다.
+}
 

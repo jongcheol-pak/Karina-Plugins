@@ -34,20 +34,10 @@ $realHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env
 # 상속하므로 병렬화로 상속 경로가 넓어졌다 — 여기서 한 번 지워 모든 경로를 닫는다.
 $env:CLAUDE_HARNESS_ALLOW_SECRET = $null
 
-# 고아 프로세스 회수의 **실기계 수집 경로**를 끈다(D11). 골든은 hook .ps1을 실기계에서 돌리는데
-# 프로세스는 격리 대상이 아니라(위 홈 격리는 USERPROFILE만 바꾼다) 억제가 없으면 스위트가 실제
-# 프로세스를 죽이고 그 상태 변화가 판정에 섞인다. 목 레코드 주입(-Records)은 억제 대상이 아니므로
-# 회수 로직 자체는 그대로 검증된다.
 $env:CLAUDE_HARNESS_NO_PROC_CLEANUP = '1'
 
-# in-process hook 의 프로세스 시작 시각은 러너의 것이라 기본 기준이면 모든 호출이 slow 를 쓴다 — 근거는 `scripts/rules/event-log-rationale.md` §2
-$env:KARINA_HOOK_SLOW_MS = '86400000'
+$env:KARINA_HOOK_SLOW_MS = [string][long][TimeSpan]::FromDays(1).TotalMilliseconds
 
-# ---- 격리 환경 구성 ----
-# 홈 격리($EvalIso)는 임시 폴더에 둬도 되지만, 시나리오 프로젝트($EvalWork)는 반드시 임시 폴더 '밖'이어야
-# 한다 — guard-write가 시스템 임시 폴더 하위를 무조건 통과시키므로(H3 의도된 완화),
-# 픽스처가 temp 안에 있으면 차단 시나리오 전체가 우회로 무력화된다. temp 판정은 prefix 비교라
-# 부모 폴더로 한 단계 감싸도 그 성질은 그대로다(`guard-write.ps1`의 tempRoot StartsWith).
 #
 # 실행마다 만드는 폴더는 `<베이스>\karina-hook-evals\run\<접미>` 아래로 모은다 — 최상위에 평면으로
 # 흩어지면 중단된 실행의 잔여물이 사용자 눈에 그대로 쌓인다(2026-08-20 실측 80개·9.7MB).
