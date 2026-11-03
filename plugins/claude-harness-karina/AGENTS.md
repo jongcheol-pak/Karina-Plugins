@@ -1,17 +1,16 @@
 # AGENTS.md — Agent Guide
 
-> karina 하니스 플러그인 — 모노레포 jongcheol-pak/Karina-Plugins 의 plugins/claude-harness-karina/ 가 **하니스 루트**다(세션도 이 폴더에서 연다 — 레포 루트에서 열면 하니스 판정 hook 이 꺼진다). 표준 build/test 가 없어 아래 **워킹트리 정적 검증**이 `karina:implement` 의 빌드·테스트 단계다.
-> **이 파일의 내용 경계**(무엇을 담고 무엇을 담지 않는가)는 `skills/AGENTS-BOUNDARY.md`의 「AGENTS.md 내용 경계」가 정본이다.
+> karina 하니스 플러그인 — 모노레포 jongcheol-pak/Karina-Plugins 의 plugins/claude-harness-karina/ 가 **하니스 루트**다(세션도 이 폴더에서 연다 — 레포 루트에서 열면 하니스 판정 hook 이 꺼진다). 아래 **워킹트리 정적 검증**이 `karina:implement` 의 빌드·테스트 단계다.
 
 ## 위키
 
 - **프로젝트 페이지**: 20_projects/personal/claude-harness-karina.md (LLM WIKI vault)
-- 프로젝트 성격·기술 스택·구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다(단 `## Conventions` 의 아키텍처 선언 1줄은 남는다).
+- 프로젝트 성격·기술 스택·구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다.
 - 작업 함정: 레포 `docs/conventions.md` (규약 `skills/REPO-CONVENTIONS.md`)
 
 ## Build & Test
 
-모든 명령은 **하니스 루트(plugins/claude-harness-karina/)에서** 실행한다. **각 명령이 무엇을 대조하는지·함정·소요 시간·케이스 수 기준선은 `docs/harness-conventions.md`의 「검증 명령 상세」가 정본**이다 — 여기에는 명령과 트리거만 둔다.
+모든 명령은 **하니스 루트(plugins/claude-harness-karina/)에서** 실행한다 — 무엇을 대조하는지·함정·기준선은 `docs/harness-conventions.md` 「검증 명령 상세」.
 
 - **Build (전 ps1 구문 검사)**:
   ```
@@ -21,58 +20,11 @@
   ```
   pwsh -NoProfile -Command '@(".claude-plugin/plugin.json","hooks/hooks.json","../../.claude-plugin/marketplace.json") | ForEach-Object { $c = Get-Content -LiteralPath $_ -Raw -ErrorAction Stop; $null = $c | ConvertFrom-Json; Write-Host ($_ + " OK") }'
   ```
-- **플러그인 매니페스트·frontmatter 검사** (`.claude-plugin/**`·`hooks/hooks.json`·`agents/*.md`·`skills/*/SKILL.md` frontmatter 수정 시 필수 · 인증 불요): `claude plugin validate --strict .` · `claude plugin validate --strict ../..`
 - **Plan check**: `python evals/check-harness-consistency.py --plan` — 계획 단계 검사(`karina:plan` Step 6 의 `check-plan` 이 승인 전에 돌린다)
-- **Hook 골든 회귀** (hook 스크립트·골든 케이스 수정 시 필수):
-  ```
-  pwsh -NoProfile -ExecutionPolicy Bypass -File hooks/evals/run-hook-evals.ps1
-  ```
-- **차단 경로 커버리지** (차단 hook·골든 케이스 수정 시 필수): `python hooks/evals/check-block-coverage.py`
-- **llm-wiki 상수·배치 정합** (`skills/llm-wiki/**` 수정 시 필수): `python skills/llm-wiki/evals/check_consistency.py`
-- **llm-wiki lint 골든 회귀** (`lint.py`·골든 케이스·픽스처 수정 시 필수):
-  ```
-  python skills/llm-wiki/evals/run_lint_evals.py
-  ```
-- **AGENTS.md 이관 골든** (`relocate-agents.py` 수정 시 필수): `python skills/record-project-fact/evals/run_relocation_evals.py`
-- **chain-plan 대기 스크립트 골든** (`chain-plan/scripts/wait-worker.py` 수정 시 필수): `python skills/chain-plan/evals/run_wait_evals.py`
-- **chain-plan 검증 래퍼 골든** (`chain-plan/scripts/run-verify.py` 수정 시 필수): `python skills/chain-plan/evals/run_verify_evals.py`
-- **reflect 스크립트 골든** (`skills/reflect/scripts/**`·`skills/reflect/evals/**` 수정 시 필수): `python skills/reflect/evals/run_digest_evals.py`
-- **worktree-cleanup 스크립트 골든** (`skills/worktree-cleanup/scripts/**`·`skills/worktree-cleanup/evals/**` 수정 시 필수): `python skills/worktree-cleanup/evals/run_cleanup_evals.py`
-- **temp-cleanup 스크립트 골든** (`skills/temp-cleanup/scripts/**`·`skills/temp-cleanup/evals/**` 수정 시 필수): `python skills/temp-cleanup/evals/run_temp_cleanup_evals.py`
-- **하니스 정합 셀프체크** (`evals/**`·**대장 2파일**·`agents/*.md`·`*.md` 수정 시 필수 · **골든 케이스 수를 바꿨으면 매니페스트 무관하게 필수**):
-  ```
-  python evals/check-harness-consistency.py
-  python evals/check-harness-consistency.py --fix [--dry-run]
-  ```
-- **evals 골든 회귀** (`evals/**` 수정 시 필수):
-  ```
-  python evals/run-evals.py
-  ```
-- **잘린 주석 검사** (`scripts/*.ps1`·`scripts/rules/*-rationale.md` 수정 시 필수):
-  ```
-  python evals/check-comment-truncation.py
-  ```
-- **삭제 자산 참조 검사** (`skills/**`·`scripts/**`·`hooks/**`·`agents/**`·`evals/**`·`docs/**`·**하니스 루트 `*.ps1`·`*.md`**·레포 루트 `.github/**` 수정 시 필수):
-  ```
-  python evals/check-stale-refs.py
-  ```
-- **트리거 러너 종료 코드** (`skills/evals/trigger_eval.py` 수정 시 필수 · 모델 호출 없음): `python skills/evals/test_exit_code.py`
-- **스킬 트리거 eval** (`skills/*/SKILL.md` frontmatter `description` 수정 시 필수(`disable-model-invocation: true` 스킬 제외) — **실제 모델 호출이라 비용이 크다** · `[독립 검증 제외]`):
-  ```
-  python skills/evals/trigger_eval.py --filter <plan|impl|rec|wiki|dbg|chain|pr|wt>
-  ```
-- **위키 회로 검사** (`implement/SKILL.md`·`WIKI.md`·`REPO-CONVENTIONS.md`·`plan/SKILL.md`·`agents/completion-reviewer.md`·`skills/llm-wiki/**` 수정 시 필수):
-  ```
-  python skills/evals/check_wiki_circuit.py
-  ```
+- **조건부 검증**: 변경 파일 패턴별 명령(합집합)은 `docs/harness-conventions.md` 「검증 매핑 (task 검증 선택)」 — 「줄바꿈 정합」 축은 모든 task. `docs/harness-conventions.md` 「골든 부분 실행의 판정 자격」·`[면제 ⑤]` 대상도 함께 읽는다.
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 보므로 재설치 후에만 반영된다.
-- **Release**: 버전 정본은 `plugin.json` 하나, `README.md` 상단 `**버전**:` 줄은 함께 올리는 파생. **main 직행 회차 끝 버전 커밋** → 로컬 게이트 → push → **곧바로 릴리즈 발행**. ⚠ 태그는 원격에만 생겨 확인은 `gh release list`. 정본은 `docs/harness-conventions.md` 「Release (배포·릴리즈 발행)」이고 **릴리즈 발행은 별도 승인**이다(버전 커밋 push 는 승인된 plan·스킬 안이면 무승인).
-  - **⚠ 발행 여부는 버전 상승이 아니라 「마지막 `karina-v<버전>` 태그 이후 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`)에 변경이 있는가」로 판정한다** — 명령과 판정 시점은 정본의 「판정 시점」.
+- **Release**: 버전 정본은 `plugin.json`(`README.md` 상단 `**버전**:` 은 파생) · main 직행 회차 끝 버전 커밋 → 로컬 게이트 → push → 발행 · 발행 여부는 마지막 `karina-v<버전>` 태그 이후 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`) 변경으로 판정 · **릴리즈 발행은 별도 승인** · ⚠ 태그는 원격에만 생겨 확인은 `gh release list`. 정본은 `docs/harness-conventions.md` 「Release (배포·릴리즈 발행)」.
 - **⚠ 검증 배치에 `Remove-Item` 인라인 금지** — 도구 경로 보호가 오차단한다(회피법은 정본).
-
-### 검증 매핑 (task 검증 선택)
-
-**표 정본은 `docs/harness-conventions.md`의 「검증 매핑 (task 검증 선택)」이다** — 변경 파일 패턴 → 필수 검증(합집합). **「줄바꿈 정합」 축만은 모든 task가 대상**이다. 같은 문서의 **「골든 부분 실행의 판정 자격」**·**「조건부 참조 문서 크기 임계」**·**`[면제 ⑤]` 대상**도 함께 읽는다.
 
 ## 데이터 접근
 
@@ -81,7 +33,7 @@
 ## 산출물·파일 관리
 
 - 캐시 __pycache__/·`.state` 는 커밋 금지.
-- 설치본: `~/.claude/plugins/cache/karina-plugins/` (`validate.ps1` 이 검사하는 대상) — **규약 조회는 레포의 하니스 루트를 읽는다**(설치본은 낡는다 · 근거 `docs/harness-conventions.md` 「검증 명령 상세 (무엇을 대조하는가 · 함정)」)
+- 설치본: `~/.claude/plugins/cache/karina-plugins/` (`validate.ps1` 이 검사하는 대상) — **규약 조회는 레포의 하니스 루트를 읽는다**(설치본은 낡는다)
 
 ## Conventions
 
@@ -94,7 +46,7 @@
 - **파일 크기**: 상한 표·초과 처방은 `skills/BUDGET.md`「예산 표」, 참조 깊이·목차 규칙은 `skills/BUDGET.md`「나눈 뒤에 지킬 것」이 정본. **처방은 묻지 않고 적용하고, 상한을 올리는 것은 처방이 아니다.**
 - **병행 세션의 커밋은 `git commit -- <경로…>` 다** — 순서는 `git commit -m "$(cat <<'MSG' … MSG)" -- <경로…>`(`-m` 을 `--` 뒤에 두면 경로로 읽혀 실패), 명령에 `2>&1`. 근거·주의는 `docs/harness-conventions.md` 「병행 세션의 커밋」.
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext, **차단은 `exit 2` 하나**(hook 넷) · 우회 변수 둘 · `guard-write` 게이트 2종의 정규식 공유 — hook 수정 전 `docs/harness-conventions.md` 「자격증명 취급」·「`guard-write`의 PLAN-EXEMPT 면제 경로」와 `scripts/rules/write-gate-rationale.md` 를 읽는다.
-- **⚠ `llm-wiki` 의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md` 의 vault 예외를 함께 확인**한다 — repo 밖이라 검사기가 못 잡는다(정본은 `docs/harness-conventions.md` 「llm-wiki ↔ 글로벌 지침 결합」).
+- **⚠ `llm-wiki` 의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md` 의 vault 예외를 함께 확인**한다(검사기 밖 — 정본 `docs/harness-conventions.md` 「llm-wiki ↔ 글로벌 지침 결합」).
 - **SKILL 문서**: 형식은 `skills/AUTHORING.md`, **설계 원칙은 `skills/DESIGN.md` 가 정본**이다.
 - **위키 연동**: `skills/WIKI.md` 가 정본.
 - **README.md 갱신 규약**: changelog 기재 **금지**(현재 기능 설명만) · 버전 표기는 상단 1곳. 정본은 `docs/harness-conventions.md` 「README.md 갱신 규약」.
@@ -108,11 +60,11 @@
 
 ## Plan Location
 
-- **plan은 루트 `plan.md` 하나**다(덮어쓰기). 선택지가 없어 `Plan Location:` 선언을 두지 않는다.
+- **plan은 루트 `plan.md` 하나**다(덮어쓰기).
 - **`plan.md`·`notes.md`·notes-archive/는 `.gitignore`(옛 `intent/`는 추적)** — **영구 기록은 git 커밋**이고 미처리 Deferred 는 **대장 2파일**이 담는다(`docs/plans/deferred.md` 대기 · `deferred-closed.md` 종결 — 둘 다 `docs/plans/` · 연산 규칙은 그 머리말이 정본).
 - **PRD는 쓰지 않는다** — 요구는 `plan.md`, 결정은 위키 `decisions.md`, 미착수는 대장이 담는다.
 
 ## OS/플랫폼
 
 - Windows 검증 · macOS/Linux 실험적(hooks 는 pwsh 7 cross-platform 의도).
-- **Claude Code**: **v2.1.312 이상만 지원한다** — 그 아래 판은 고려하지 않는다(PowerShell hook 의 `exit 2` 차단은 v2.1.309, hooks.json `onFailure` 는 v2.1.295 부터다). <!-- verified: 2026-10-30 -->
+- **Claude Code**: **v2.1.312 이상만 지원한다** — 그 아래 판은 고려하지 않는다. <!-- verified: 2026-10-30 -->

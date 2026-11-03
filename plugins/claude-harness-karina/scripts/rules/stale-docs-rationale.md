@@ -28,7 +28,7 @@
 
 `Get-CountMismatchLines` 는 스테이징 경로를 보지 않고 **매니페스트 전수**로 돈다.
 
-`AGENTS.md` 「검증 매핑」이 축 ⑰(계수·버전 정합)을 부르는 행은 `hook-cases.json`·`cases.json` 둘뿐이고, **`lint-cases.json`·`relocation-cases.json`·`trigger-cases.json` 세 행은 안 부른다**(회차 55 실측). 이 자리가 파일 패턴에 묶이면 그 3종의 드리프트가 task 단위 조기 검증도, 커밋 직전 고지도 통과한다.
+`docs/harness-conventions.md` 「검증 매핑」이 축 ⑰(계수·버전 정합)을 부르는 행은 `hook-cases.json`·`cases.json` 둘뿐이고, **`lint-cases.json`·`relocation-cases.json`·`trigger-cases.json` 세 행은 안 부른다**(회차 55 실측). 이 자리가 파일 패턴에 묶이면 그 3종의 드리프트가 task 단위 조기 검증도, 커밋 직전 고지도 통과한다.
 
 같은 회차의 T7-4 가 그 매핑 갭을 메우지만 **그것은 조기 검출이고 이쪽은 안전망이다** — 둘의 사정거리를 같게 만들면 안전망이 아니게 된다.
 
