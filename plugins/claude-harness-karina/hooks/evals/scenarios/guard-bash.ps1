@@ -480,7 +480,7 @@ $null = Invoke-Hook 'guard-harness.ps1' $ccEditJson
 $null = Invoke-Hook 'guard-harness.ps1' $ccEditJson
 Set-CcFile $d 'b.cs' "// 편집 때 남긴 설명`nint b;`n"; git -C $d add b.cs
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-approved'
-Assert-Case -Name "commit-comments: 편집 게이트가 승인한 주석만 있으면 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Assert-Case -Name "commit-comments: 편집 게이트에 두 번 낸 주석도 커밋에서 차단" -R $r -ExpectExit 2 -ExpectContains '[HARNESS] BLOCKED: 커밋에 새 주석이 있습니다'
 
 $d = New-CcRepo
 Set-CcFile $d 'a.cs' "int a;`n"; Set-CcFile $d 'b.cs' "// 기존 설명`nint b;`n"; git -C $d add a.cs b.cs

@@ -1,4 +1,4 @@
-﻿# guard-comment.ps1 — guard-harness 가 dot-source 하는 새 주석 첫 시도 판정 — 근거는 `rules/comment-gate-rationale.md` §3
+﻿# guard-comment.ps1 — guard-harness 가 dot-source 하는 새 주석 차단 판정 — 근거는 `rules/comment-gate-rationale.md` §3
 
 function Invoke-GuardComment($Data, [string]$File) {
     $pass = @{ Block = $false; Lines = @() }
@@ -26,21 +26,14 @@ function Invoke-GuardComment($Data, [string]$File) {
     }
     $added = Get-AddedCommentBodies $File $pairs
     if ($added.Count -eq 0) { return $pass }
-
-    $session = Get-CommentGateSession $Data
-    $key = Get-CommentGateKey $session ('edit|' + $fullPath.ToLowerInvariant()) $added
-    if (Test-CommentGateRetry $key) {
-        Add-CommentGateApproved $session $added
-        Write-GuardCommentEvent 'allow' $File
-        return $pass
-    }
-    if (-not (Set-CommentGateRetry $key)) { return $pass }
+    $blocked = Get-BlockedCommentBodies $File $added (Get-CommentPostImage $File $Data)
+    if ($blocked.Count -eq 0) { return $pass }
 
     Write-GuardCommentEvent 'block' $File
-    $lines = @("$File : 주석 $($added.Count)줄") + @(Format-CommentGatePreview $added) + @(
+    $lines = @("$File : 주석 $($blocked.Count)줄") + @(Format-CommentGatePreview $blocked) + @(
         $script:CommentGateRule,
-        '  - 그중 하나면 같은 편집을 그대로 다시 내세요 — 통과합니다.',
-        '  - 아니면 주석 없이 다시 쓰고, 남길 이유는 커밋 본문에 적으세요.')
+        '  - 같은 편집을 다시 내도 통과하지 않습니다. 주석 없이 다시 쓰고, 남길 이유는 커밋 본문에 적으세요.',
+        '  - 위 예외에 드는데 막혔으면 멈추고 사용자에게 보고하세요.')
     return @{ Block = $true; Lines = $lines }
 }
 

@@ -86,13 +86,13 @@ if ($isHookScript -or $suspect83) {
     exit 2
 }
 
-# ---- 새 주석 첫 시도 차단 (비안전 · 판정 실패는 통과) — 근거는 `rules/comment-gate-rationale.md` §1
+# ---- 새 주석 차단 (비안전 · 판정 실패는 통과) — 근거는 `rules/comment-gate-rationale.md` §1
 try { . (Join-Path $PSScriptRoot 'guard-comment.ps1') } catch {}
 if (Get-Command Invoke-GuardComment -ErrorAction SilentlyContinue) {
     $gcResult = $null
     try { $gcResult = Invoke-GuardComment $script:data ([string]$targetPath) } catch {}
     if ($gcResult -and $gcResult.Block) {
-        [Console]::Error.WriteLine("[HARNESS] BLOCKED: 새 주석을 더하는 편집은 첫 시도를 막습니다 — " + $gcResult.Lines[0])
+        [Console]::Error.WriteLine("[HARNESS] BLOCKED: 새 주석을 더하는 편집을 막습니다 — " + $gcResult.Lines[0])
         foreach ($l in @($gcResult.Lines | Select-Object -Skip 1)) { [Console]::Error.WriteLine($l) }
         exit 2
     }

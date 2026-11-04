@@ -122,7 +122,7 @@ $groupCostSec = @{
     'session-context' = 76; 'post-write-checks' = 50; 'guard-harness' = 47; 'guard-write' = 41
     'guard-stale-docs' = 34; 'guard-task-audit' = 15; 'warn-version-drift' = 29; 'work-clock' = 17; 'loop-continue' = 12
     'guard-harness-content' = 10; 'guard-harness-installed+hook-event-log' = 10; 'suggest-agents-record' = 8
-    'session-end-cleanup' = 8; 'record-work-start' = 5; 'inject-reply-language' = 4; 'guard-comment' = 23
+    'session-end-cleanup' = 8; 'record-work-start' = 5; 'inject-reply-language' = 4; 'guard-comment' = 13
 }
 $launchGroups = @(
     for ($i = 0; $i -lt $scenarioGroups.Count; $i++) {
