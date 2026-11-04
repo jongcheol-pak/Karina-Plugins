@@ -541,6 +541,18 @@ $r = Invoke-CcCommit $d 'git commit -m x' 'cc-move'
 Assert-Case -Name "commit-comments: 주석을 파일 사이로 옮긴 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 $d = New-CcRepo
+Set-CcFile $d 'q.rs' "/// 화면에 보이는 줄 범위를 센다.`nfn rows() {}`n"; git -C $d add q.rs; git -C $d commit -qm doc
+$ccBase = (git -C $d rev-parse --short HEAD).Trim()
+Set-CcFile $d 'q.rs' "fn rows() {}`n"; git -C $d commit -qam drop
+Set-CcFile $d 'plan.md' "# plan`n`n## Goal`n`n> BASE: $ccBase`n"
+Set-CcFile $d 'q.rs' "/// 화면에 보이는 줄 범위를 센다.`nfn rows() {}`n"; git -C $d add q.rs
+$r = Invoke-CcCommit $d 'git commit -m x -- q.rs' 'cc-base-restore'
+Assert-Case -Name "commit-comments: 앞 커밋에서 지운 plan BASE doc 을 되살린 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Set-CcFile $d 'q.rs' "/// BASE 에 없던 새 설명.`nfn rows() {}`n"; git -C $d add q.rs
+$r = Invoke-CcCommit $d 'git commit -m x -- q.rs' 'cc-base-new'
+Assert-Case -Name "commit-comments: plan BASE 에 없던 doc 커밋은 같은 레포에서도 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+
+$d = New-CcRepo
 Set-CcFile $d 'a.cs' "// 기존 설명`n// 남의 staged 설명`nint a;`n"; git -C $d add a.cs
 Set-CcFile $d 'b.cs' "int b;`nint c;`n"
 $r = Invoke-CcCommit $d 'git commit -m x -- b.cs' 'cc-only'

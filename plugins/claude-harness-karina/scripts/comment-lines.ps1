@@ -51,11 +51,12 @@ function Format-CommentGatePreview($Bodies) {
     return @($Bodies | Select-Object -First 3 | ForEach-Object { '  | ' + $(if ($_.Length -gt 100) { $_.Substring(0, 100) + '…' } else { $_ }) })
 }
 
-$script:CommentGateRule = '  통과하는 주석은 라이선스·린트 지시문 · 이슈/RFC 링크·트래커 키·실재하는 레포 .md 경로가 든 줄 · .rs SAFETY: · 레포 감사(Test (감사))가 요구하거나 라이브러리 공개 항목 위의 doc · AGENTS.md Comment (보존) 선언 · 기존 주석의 문구 수정뿐입니다 (code-style.md「주석」).'
+$script:CommentGateRule = '  통과하는 주석은 라이선스·린트 지시문 · 이슈/RFC 링크·트래커 키·실재하는 레포 .md 경로가 든 줄 · .rs SAFETY: · 레포 감사(Test (감사))가 요구하거나 라이브러리 공개 항목 위의 doc · AGENTS.md Comment (보존) 선언 · 기존 주석의 문구 수정 · 그 회차 plan.md BASE 커밋에 있던 주석 줄(복원)뿐입니다 (code-style.md「주석」).'
 $script:CommentLinkRx = '(?i)https?://\S*(/issues/\d+|/pull/\d+|/-/issues/\d+|rfc-editor\.org)|\bRFC ?\d{3,4}\b|\b(issue|PR|GH)[ -]?#\d+|이슈 ?#\d+'
 $script:CommentTrackerRx = '\b(?!(UTF|SHA|ISO|CP|IEC|IEEE|ECMA|ANSI|CRC|AES|RSA|TLS|HTTP|MD|BASE)[A-Z0-9]*-)[A-Z]{2,}[A-Z0-9]*-\d+\b'
 $script:CommentTodoRx = '\b(TODO|FIXME|XXX)\b'
-$script:CommentKeepLineRx = '^- \*\*Comment \(보존\)\*\*: `(?<rx>[^`]+)` · 경로: `(?<paths>[^`]+)`'
+$script:CommentBaseBudgetMs = 10000
+$script:CommentKeepLineRx ='^- \*\*Comment \(보존\)\*\*: `(?<rx>[^`]+)` · 경로: `(?<paths>[^`]+)`'
 
 function Get-AddedCommentBodies([string]$Path, $Pairs) {
     $added = New-Object System.Collections.Generic.List[object]
@@ -209,7 +210,40 @@ function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index) {
     return $null
 }
 
-function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines) {
+function New-CommentBaseBudget { return @{ Deadline = [DateTime]::UtcNow.AddMilliseconds($script:CommentBaseBudgetMs) } }
+
+function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budget) {
+    try {
+        if (-not $Root -or -not $File.StartsWith($Root, [System.StringComparison]::OrdinalIgnoreCase)) { return @() }
+        $plan = $null
+        foreach ($d in (Get-CommentSearchDirs $Dir $Root)) {
+            $cand = Join-Path $d 'plan.md'
+            if (Test-Path -LiteralPath $cand -PathType Leaf) { $plan = $cand; break }
+        }
+        if (-not $plan) { return @() }
+        $m = [regex]::Match([System.IO.File]::ReadAllText($plan), '(?m)^> BASE: ([0-9a-f]{7,40})\b')
+        if (-not $m.Success) { return @() }
+        $left = [int]($Budget.Deadline - [DateTime]::UtcNow).TotalMilliseconds
+        if ($left -le 0) { return @() }
+        $rel = $File.Substring($Root.Length).TrimStart('\', '/') -replace '\\', '/'
+        $psi = New-Object System.Diagnostics.ProcessStartInfo 'git'
+        $psi.Arguments = "-C `"$Root`" -c core.quotepath=off show `"$($m.Groups[1].Value):$rel`""
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardInput = $true
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding($false)
+        $p = [System.Diagnostics.Process]::Start($psi)
+        $p.StandardInput.Close()
+        $out = $p.StandardOutput.ReadToEndAsync()
+        $null = $p.StandardError.ReadToEndAsync()
+        if (-not $p.WaitForExit($left)) { try { $p.Kill() } catch {}; return @() }
+        if ($p.ExitCode -ne 0) { return @() }
+        return @($out.Result -split '\r?\n')
+    } catch { return @() }
+}
+
+function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines, $Budget = $null) {
     $blocked = New-Object System.Collections.Generic.List[string]
     if ($Added.Count -eq 0) { return , $blocked }
     $ctx = Get-CommentRepoContext $Path
@@ -239,7 +273,14 @@ function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines) {
         }
         $blocked.Add($c)
     }
-    return , $blocked
+    if ($blocked.Count -eq 0) { return , $blocked }
+    if ($null -eq $Budget) { $Budget = New-CommentBaseBudget }
+    $baseSet = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($b in (Get-CommentBodies $Path (Get-CommentBaseLines $ctx.File $ctx.Dir $ctx.Root $Budget))) { [void]$baseSet.Add($b) }
+    if ($baseSet.Count -eq 0) { return , $blocked }
+    $kept = New-Object System.Collections.Generic.List[string]
+    foreach ($c in $blocked) { if (-not $baseSet.Contains($c)) { $kept.Add($c) } }
+    return , $kept
 }
 
 function Get-CommentPostImage([string]$File, $Data, $Added) {

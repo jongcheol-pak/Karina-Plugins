@@ -146,6 +146,7 @@ function Invoke-BlockCommitComments {
         $top = [string](& git rev-parse --show-toplevel 2>$null)
         $found = New-Object System.Collections.Generic.List[string]
         $perFile = New-Object System.Collections.Generic.List[string]
+        $baseBudget = New-CommentBaseBudget
         foreach ($k in ($targets | Sort-Object)) {
             $full = if ($top) { [System.IO.Path]::GetFullPath((Join-Path $top $k)) } else { [System.IO.Path]::GetFullPath($k) }
             $entry = $files[$k]
@@ -166,7 +167,7 @@ function Invoke-BlockCommitComments {
                 $post = @($entry.Plus)
                 foreach ($a in $added) { $a.Indexes = @($a.Line) }
             }
-            $blocked = Get-BlockedCommentBodies $full $added $post
+            $blocked = Get-BlockedCommentBodies $full $added $post $baseBudget
             foreach ($c in $blocked) { $found.Add($c) }
             if ($blocked.Count -gt 0) { $perFile.Add("  $k : 주석 $($blocked.Count)줄") }
         }

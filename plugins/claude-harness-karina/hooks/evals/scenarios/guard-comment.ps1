@@ -193,4 +193,36 @@ Assert-Case -Name "guard-comment: 별도 hook 없이 guard-harness(Write·Edit·
 $r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'gc-nb'; tool_name = 'NotebookEdit'; cwd = $gc; tool_input = @{ notebook_path = (Join-Path $gc 'nb.py'); new_source = "# 셀 설명`nx = 1" } } | ConvertTo-Json -Compress -Depth 5)
 Assert-Case -Name "guard-comment: NotebookEdit 는 검사하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
+if ($gitOk) {
+$gb = Join-Path $gc 'basegit'; New-Item -ItemType Directory -Force -Path (Join-Path $gb 'src') | Out-Null
+$gbFile = Join-Path $gb 'src/e.rs'
+[System.IO.File]::WriteAllText($gbFile, "/// 화면에 보이는 줄 범위를 센다.`nfn rows() {}`n", [System.Text.UTF8Encoding]::new($false))
+git -C $gb init -q; git -C $gb config user.email t@t; git -C $gb config user.name t; git -C $gb config core.autocrlf false
+git -C $gb add .; git -C $gb commit -qm base
+$gbBase = (git -C $gb rev-parse --short HEAD).Trim()
+[System.IO.File]::WriteAllText($gbFile, "fn rows() {}`n", [System.Text.UTF8Encoding]::new($false))
+git -C $gb commit -qam drop
+$gbPlan = Join-Path $gb 'plan.md'
+function Set-GbPlan([string]$Head) { [System.IO.File]::WriteAllText($gbPlan, "# plan`n`n## Goal`n`n$Head`n", [System.Text.UTF8Encoding]::new($false)) }
+$gbRestore = "/// 화면에 보이는 줄 범위를 센다.`nfn rows() {}"
+
+Set-GbPlan "> BASE: $gbBase`n> 승인: 2026-11-05 · 화면 Y"
+$r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
+Assert-Case -Name "guard-comment: plan BASE 에 있던 비공개 fn doc 을 되살리는 Edit 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Set-GbPlan "> BASE: $gbBase`n> 승인: 2026-11-05 · 화면 Y`n> 완료: 2026-11-05 10:00 · 소요 1시간"
+$r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
+Assert-Case -Name "guard-comment: 완료 기록이 있는 plan 의 BASE doc 복원도 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-GcEditAt $gbFile 'fn rows() {}' "/// BASE 에 없던 새 설명.`nfn rows() {}"
+Assert-Case -Name "guard-comment: plan BASE 에 없던 doc 은 같은 레포에서도 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+Set-GbPlan '> BASE: <승인 시점 HEAD 의 SHA>'
+$r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
+Assert-Case -Name "guard-comment: BASE 가 자리표시인 plan 이면 복원 Edit 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+Set-GbPlan '> BASE: 0123456789abcdef0123'
+$r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
+Assert-Case -Name "guard-comment: 레포에 없는 BASE 면 복원 Edit 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+[System.IO.File]::Delete($gbPlan)
+$r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
+Assert-Case -Name "guard-comment: plan.md 가 없으면 복원 Edit 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+}
+
 }
