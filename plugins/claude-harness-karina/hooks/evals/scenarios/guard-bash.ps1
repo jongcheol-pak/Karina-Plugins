@@ -466,10 +466,45 @@ $r = Invoke-CcCommit $d 'git commit -m x' 'cc-audit'
 Assert-Case -Name "commit-comments: 기존 pub 항목 위에 /// 만 더한 커밋(감사 레포)은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 Set-CcFile $d 'q.rs' "fn x() {}`n/// 감사가 요구하는 계약.`n#[a]`n#[b]`n#[c]`n#[d]`npub enum E {}`n"; git -C $d add q.rs
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-attr'
-Assert-Case -Name "commit-comments: 속성 4줄 뒤 pub 항목은 작업 트리에서 읽어 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Assert-Case -Name "commit-comments: 속성 4줄 뒤 pub 항목은 커밋 대상 내용에서 읽어 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 Set-CcFile $d 'q.rs' "/// 감사 대상이 아닌 비공개 함수.`nfn x() {}`n/// 감사가 요구하는 계약.`n#[a]`n#[b]`n#[c]`n#[d]`npub enum E {}`n"; git -C $d add q.rs
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-audit-neg'
-Assert-Case -Name "commit-comments: 감사 레포 비공개 fn 위 /// 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+Assert-Case -Name "commit-comments: 감사 레포 비공개 fn 위 /// 차단" -R $r -ExpectExit 2 -ExpectContains '(주석 1줄)'
+
+function New-CcAuditRepo([string]$Name, [string]$Base) {
+    $a = New-CcRepo
+    [System.IO.File]::WriteAllText((Join-Path $a 'AGENTS.md'), "# A`n`n- **Test (감사)**: ``cargo test`` · 증가: ``^\s*pub\s+(fn|enum|struct)\b`` · 경로: ``*.rs```n")
+    [System.IO.File]::WriteAllText((Join-Path $a $Name), $Base)
+    git -C $a add .; git -C $a commit -qm rs
+    return $a
+}
+$d = New-CcAuditRepo 'dup.rs' "/// # Errors`npub fn a() {}`nfn helper() {}`n"
+Set-CcFile $d 'dup.rs' "/// # Errors`npub fn a() {}`n/// # Errors`nfn helper() {}`n"; git -C $d add dup.rs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-dup'
+Assert-Case -Name "commit-comments: 같은 문구 사본: 비공개 fn 위 /// 를 더한 커밋 차단(첫 사본은 pub fn 위)" -R $r -ExpectExit 2 -ExpectContains '(주석 1줄)'
+$d = New-CcAuditRepo 'dup2.rs' "/// 내부 설명`nfn first() {}`npub fn api() {}`n"
+Set-CcFile $d 'dup2.rs' "/// 내부 설명`nfn first() {}`n/// 내부 설명`npub fn api() {}`n"; git -C $d add dup2.rs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-dup2'
+Assert-Case -Name "commit-comments: 같은 문구 사본: pub fn 위 /// 커밋 통과(첫 사본은 비공개 fn 위)" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$d = New-CcAuditRepo 's1.rs' "fn x() {}`n"
+Set-CcFile $d 's1.rs' "/// 설명.`nfn x() {}`n"; git -C $d add s1.rs
+Set-CcFile $d 's1.rs' "/// 설명.`npub fn x() {}`n"
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-stage-priv'
+Assert-Case -Name "commit-comments: staged 는 비공개 fn 위 ///, 작업 트리만 pub 으로 바꾼 커밋 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+$d = New-CcAuditRepo 's2.rs' "pub fn y() {}`n"
+Set-CcFile $d 's2.rs' "/// 설명.`npub fn y() {}`n"; git -C $d add s2.rs
+Set-CcFile $d 's2.rs' "/// 설명.`nfn y() {}`n"
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-stage-pub'
+Assert-Case -Name "commit-comments: staged 는 pub 위 ///, 작업 트리만 비공개로 바꾼 커밋 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$d = New-CcAuditRepo 'ma.rs' "pub struct S;`n"
+Set-CcFile $d 'ma.rs' "/// 계약.`n#[derive(`n    Debug,`n)]`npub struct S;`n"; git -C $d add ma.rs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-mattr'
+Assert-Case -Name "commit-comments: 여러 줄 속성 뒤 pub 항목 위 /// 커밋 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$d = New-CcAuditRepo 'z.rs' "fn z() {}`n"
+Set-CcFile $d 'z.rs' "/// 설명.`nfn z() {}`n"; git -C $d add z.rs
+Set-CcFile $d 'z.rs' "/// 설명.`npub fn z() {}`n"
+$r = Invoke-CcCommit $d 'git add z.rs && git commit -m x' 'cc-two-src'
+Assert-Case -Name "commit-comments: git add x && git commit: staged 는 비공개 fn 위, 작업 트리는 pub 위 /// 이면 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 $d = New-CcRepo
 [System.IO.File]::WriteAllText((Join-Path $d 'h.ps1'), "$([char]0xFEFF)# h.ps1 — 옛 머리 설명`n`$h = 1`n")

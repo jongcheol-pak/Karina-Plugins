@@ -12,22 +12,46 @@ function Get-CommitCommentDiff([string[]]$GitArgs) {
     return $out
 }
 
-function Add-CommitCommentDiff($Files, $Lines) {
-    $path = $null
+function New-CommitCommentEntry([string]$Source) {
+    return @{ Plus = New-Object System.Collections.Generic.List[string]; PlusLine = New-Object System.Collections.Generic.List[int]; Minus = New-Object System.Collections.Generic.List[string]; Source = $Source }
+}
+
+function Get-CommitCommentEntry($Files, [string]$Path, [string]$Source) {
+    if ($Files.ContainsKey($Path)) {
+        $e = $Files[$Path]
+        if ($e.Source -eq $Source) { return $e }
+        if ($e.Source -eq 'worktree') { return $null }
+    }
+    $Files[$Path] = New-CommitCommentEntry $Source
+    return $Files[$Path]
+}
+
+function Add-CommitCommentDiff($Files, $Lines, [string]$Source) {
+    $entry = $null
     $inHeader = $false
+    $next = 0
+    $seen = @{}
     foreach ($l in $Lines) {
-        if ($l.StartsWith('diff --git ')) { $inHeader = $true; $path = $null; continue }
+        if ($l.StartsWith('diff --git ')) { $inHeader = $true; $entry = $null; continue }
         if ($inHeader) {
             if ($l.StartsWith('+++ ')) {
                 $inHeader = $false
                 $path = if ($l -eq '+++ /dev/null') { $null } else { $l.Substring(4) -replace '^b/', '' }
+                if ($null -ne $path) {
+                    if ($seen.ContainsKey($path)) { $entry = $Files[$path] }
+                    else { $entry = Get-CommitCommentEntry $Files $path $Source; $seen[$path] = $true }
+                }
             }
             continue
         }
-        if ($null -eq $path -or $l.StartsWith('@@')) { continue }
-        if (-not $Files.ContainsKey($path)) { $Files[$path] = @{ Plus = New-Object System.Collections.Generic.List[string]; Minus = New-Object System.Collections.Generic.List[string] } }
-        if ($l.StartsWith('+')) { $Files[$path].Plus.Add($l.Substring(1)) }
-        elseif ($l.StartsWith('-')) { $Files[$path].Minus.Add($l.Substring(1)) }
+        if ($null -eq $entry) { continue }
+        if ($l.StartsWith('@@')) {
+            $m = [regex]::Match($l, '\+(\d+)')
+            $next = if ($m.Success) { [int]$m.Groups[1].Value } else { 0 }
+            continue
+        }
+        if ($l.StartsWith('+')) { $entry.Plus.Add($l.Substring(1)); $entry.PlusLine.Add($next); $next++ }
+        elseif ($l.StartsWith('-')) { $entry.Minus.Add($l.Substring(1)) }
     }
 }
 
@@ -57,13 +81,13 @@ function Add-CommitCommentPreAdd($Files, [string]$PreText) {
     foreach ($m in [regex]::Matches($PreText, '(?i)' + $script:GitAddRx + '\s+(?<args>[^&;|\r\n]*)')) {
         $argsText = $m.Groups['args'].Value.Trim()
         if ($argsText -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
-            $d = Get-CommitCommentDiff @('HEAD'); if ($null -ne $d) { Add-CommitCommentDiff $Files $d }
+            $d = Get-CommitCommentDiff @('HEAD'); if ($null -ne $d) { Add-CommitCommentDiff $Files $d 'worktree' }
             foreach ($u in @(& git -c core.quotepath=off ls-files --others --exclude-standard 2>$null)) { Add-CommitCommentNewFile $Files $u }
             continue
         }
         foreach ($t in @($argsText -split '\s+' | Where-Object { $_ -and -not $_.StartsWith('-') } | ForEach-Object { $_.Trim('"', "'") })) {
             if (@(& git ls-files -- $t 2>$null).Count -gt 0) {
-                $d = Get-CommitCommentDiff @('HEAD', '--', $t); if ($null -ne $d) { Add-CommitCommentDiff $Files $d }
+                $d = Get-CommitCommentDiff @('HEAD', '--', $t); if ($null -ne $d) { Add-CommitCommentDiff $Files $d 'worktree' }
             } else {
                 foreach ($u in @(& git -c core.quotepath=off ls-files --others --exclude-standard -- $t 2>$null)) { Add-CommitCommentNewFile $Files $u }
             }
@@ -73,8 +97,9 @@ function Add-CommitCommentPreAdd($Files, [string]$PreText) {
 
 function Add-CommitCommentNewFile($Files, [string]$Path) {
     if (-not (Test-CommentTarget $Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
-    if (-not $Files.ContainsKey($Path)) { $Files[$Path] = @{ Plus = New-Object System.Collections.Generic.List[string]; Minus = New-Object System.Collections.Generic.List[string] } }
-    foreach ($l in @(Get-Content -LiteralPath $Path -Encoding UTF8 -TotalCount ($script:CommitCommentLineMax + 1))) { $Files[$Path].Plus.Add([string]$l) }
+    $Files[$Path] = New-CommitCommentEntry 'worktree'
+    $n = 1
+    foreach ($l in @(Get-Content -LiteralPath $Path -Encoding UTF8 -TotalCount ($script:CommitCommentLineMax + 1))) { $Files[$Path].Plus.Add([string]$l); $Files[$Path].PlusLine.Add($n); $n++ }
 }
 
 function Invoke-BlockCommitComments {
@@ -100,12 +125,12 @@ function Invoke-BlockCommitComments {
         $opt = Get-CommitCommentArgs $segment
         $files = @{}
         if ($opt.Paths.Count -gt 0) {
-            $d = Get-CommitCommentDiff (@('HEAD', '--') + @($opt.Paths)); if ($null -ne $d) { Add-CommitCommentDiff $files $d }
-            if ($opt.Include) { $d = Get-CommitCommentDiff @('--cached'); if ($null -ne $d) { Add-CommitCommentDiff $files $d } }
+            $d = Get-CommitCommentDiff (@('HEAD', '--') + @($opt.Paths)); if ($null -ne $d) { Add-CommitCommentDiff $files $d 'worktree' }
+            if ($opt.Include) { $d = Get-CommitCommentDiff @('--cached'); if ($null -ne $d) { Add-CommitCommentDiff $files $d 'index' } }
         } elseif ($opt.All) {
-            $d = Get-CommitCommentDiff @('HEAD'); if ($null -ne $d) { Add-CommitCommentDiff $files $d }
+            $d = Get-CommitCommentDiff @('HEAD'); if ($null -ne $d) { Add-CommitCommentDiff $files $d 'worktree' }
         } else {
-            $d = Get-CommitCommentDiff @('--cached'); if ($null -ne $d) { Add-CommitCommentDiff $files $d }
+            $d = Get-CommitCommentDiff @('--cached'); if ($null -ne $d) { Add-CommitCommentDiff $files $d 'index' }
         }
         Add-CommitCommentPreAdd $files $judge.Substring(0, $cm.Index)
 
@@ -123,10 +148,24 @@ function Invoke-BlockCommitComments {
         $perFile = New-Object System.Collections.Generic.List[string]
         foreach ($k in ($targets | Sort-Object)) {
             $full = if ($top) { [System.IO.Path]::GetFullPath((Join-Path $top $k)) } else { [System.IO.Path]::GetFullPath($k) }
-            $pair = @(, @(($files[$k].Minus -join "`n"), ($files[$k].Plus -join "`n")))
-            $added = New-Object System.Collections.Generic.List[string]
-            foreach ($c in (Get-AddedCommentBodies $k $pair)) { if (-not $moved.Contains($c)) { $added.Add($c) } }
-            $post = if (Test-Path -LiteralPath $full -PathType Leaf) { @([System.IO.File]::ReadAllText($full) -split '\r?\n') } else { @($files[$k].Plus) }
+            $entry = $files[$k]
+            $pair = @(, @(($entry.Minus -join "`n"), ($entry.Plus -join "`n")))
+            $added = New-Object System.Collections.Generic.List[object]
+            foreach ($c in (Get-AddedCommentBodies $k $pair)) { if (-not $moved.Contains($c.Body)) { $added.Add($c) } }
+            $text = $null
+            if ($entry.Source -eq 'index') {
+                $shown = @(& git -c core.quotepath=off show ":$k" 2>$null)
+                if ($LASTEXITCODE -eq 0) { $text = $shown -join "`n" }
+            } elseif (Test-Path -LiteralPath $full -PathType Leaf) {
+                $text = [System.IO.File]::ReadAllText($full)
+            }
+            if ($null -ne $text) {
+                $post = @($text -split '\r?\n')
+                foreach ($a in $added) { $a.Indexes = @([int]$entry.PlusLine[$a.Line] - 1) }
+            } else {
+                $post = @($entry.Plus)
+                foreach ($a in $added) { $a.Indexes = @($a.Line) }
+            }
             $blocked = Get-BlockedCommentBodies $full $added $post
             foreach ($c in $blocked) { $found.Add($c) }
             if ($blocked.Count -gt 0) { $perFile.Add("  $k : 주석 $($blocked.Count)줄") }
