@@ -1,4 +1,4 @@
-﻿# inject-reply-language.ps1 — 매 사용자 턴과 스킬 발동 때 「사용자 보고는 한글」 한 줄을 컨텍스트에 주입한다 — 근거는 `rules/reply-language-rationale.md` §1
+﻿# inject-reply-language.ps1 — 스킬 발동 때 「사용자 보고는 한글」 한 줄을 컨텍스트에 주입한다 — 근거는 `rules/reply-language-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -10,11 +10,9 @@ $Line = '[karina 응답 언어] 사용자에게 하는 답·진행 안내·질�
 try { $data = [Console]::In.ReadToEnd() | ConvertFrom-Json -ErrorAction Stop } catch { exit 0 }
 if (-not $data) { exit 0 }
 
-# 두 이벤트 — 스킬 이름은 거르지 않는다 — 근거는 `rules/reply-language-rationale.md` §2
+# Skill 도구 발동 하나 — 스킬 이름은 거르지 않는다 — 근거는 `rules/reply-language-rationale.md` §2
 $hookEvent = [string]$data.hook_event_name
-if ($hookEvent -eq 'PreToolUse') {
-    if ([string]$data.tool_name -ne 'Skill') { exit 0 }
-} elseif ($hookEvent -ne 'UserPromptSubmit') { exit 0 }
+if ($hookEvent -ne 'PreToolUse' -or [string]$data.tool_name -ne 'Skill') { exit 0 }
 
 $out = @{ hookSpecificOutput = @{ hookEventName = $hookEvent; additionalContext = $Line } }
 Write-Output ($out | ConvertTo-Json -Compress -Depth 4)

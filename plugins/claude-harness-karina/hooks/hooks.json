@@ -84,18 +84,6 @@
         ]
       }
     ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/inject-reply-language.ps1\"; exit $LASTEXITCODE",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Bash|PowerShell",
