@@ -12,7 +12,7 @@ description: >-
   Use karina-computer-use only when a visible window outside Karina needs GUI
   control that a CLI, filesystem, or API cannot do, and use karina-orchestration
   for coordinating work between agent terminals.
-version: 1.14.0
+version: 1.15.0
 ---
 
 # Karina Browser Use (Windows)
@@ -64,7 +64,7 @@ This provider is **Windows-only**.
 
 Like `karina-orchestration` and unlike `karina-computer-use`, these commands do not act alone —
 the tabs live inside the Karina app and the CLI reaches it over a named pipe. **The app must
-be running and "Agent 브라우저 사용" must be on** (Settings → Browser). If it is not, every
+be running and "에이전트 브라우저 사용" must be on** (Settings → AI 기능 → 브라우저 사용). If it is not, every
 command answers with a JSON error saying so; the CLI will not launch the app for you,
 because that would tie the app's lifetime to a single command.
 

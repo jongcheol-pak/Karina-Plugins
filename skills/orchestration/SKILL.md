@@ -9,7 +9,7 @@ description: >-
   loops. Use whenever work is split across agent terminals and someone must
   track which task runs where and who reported what. Use plain terminal
   commands for ordinary shell work that needs no coordination state.
-version: 1.4.0
+version: 1.5.0
 ---
 
 # Inter-Agent Orchestration (Windows)
