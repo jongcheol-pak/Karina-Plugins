@@ -11,7 +11,7 @@
       / 본문 코드 경로(§7-40 — project·feature·decision-log 본문의 `a/b.ext` 백틱 토큰. 각주 정의 줄·펜스·허브 경로 줄·URL·아카이브 포인터 제외)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
       / 큐 잔량 집계(INFO — 절차 K 큐 `pending.md`, §7-25)
-        · pending.md: [DECISION]/[SYMPTOM] 태그별
+        · pending.md: [DECISION]
         + 형식 위반(WARN — 태그는 있으나 날짜 선두가 아니라 집계에서 누락되는 줄, §7-25)
       / decision-log 정합(§7-24 — '## 아카이브' 포인터 ↔ 실파일 양방향 + 항목 결정 어휘)
       / log 아카이브 인덱스 정합
@@ -23,7 +23,7 @@
       / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
       / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트·decision-log 제외)
       / 이동·분리 도달 경로 정합(§7-30 — ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향)
-      / 폐지 타입·태그 보유(§7-41 — 옛 작업 규약 타입 페이지·pending.md 의 [PROJECT-FACT] 항목 줄 WARN)
+      / 폐지 타입·태그 보유(§7-41 — 옛 작업 규약 타입 페이지·pending.md 의 [PROJECT-FACT]·[SYMPTOM] 항목 줄 WARN)
       / 섹션 구역화 권장(§7-32 — feature의 한 섹션이 SECTION_H3_CHARS를 초과하면서 '### ' 0개면 INFO).
       / decision-log 방향 미기재(§7-33 — 기각·보류 항목의 판정 직후 ': {실제 방향}' 부재).
       / patterns 관측 폭 집계(INFO — '## 프로젝트 사례' 절 미보유 건수 / 전체, §7-35).
@@ -153,7 +153,11 @@ PATTERNS_DIR = "30_knowledge/patterns/"
 # §7-41 폐지 타입·태그 — 작업 규약은 레포 docs/conventions.md 로 옮겼다(2026-10-20). 타입·태그를
 #  걷으면 lint 에 알 수 없는 타입 검사가 없어 새로 생긴 것이 아무 검사에도 안 걸린다.
 RETIRED_PAGE_TYPES = ("convention",)
-RETIRED_QUEUE_TAG_RX = re.compile(r"^- \[\d{4}-\d{2}-\d{2}\] \[PROJECT-FACT\]")
+RETIRED_QUEUE_TAG_RX = re.compile(r"^- \[\d{4}-\d{2}-\d{2}\] \[(PROJECT-FACT|SYMPTOM)\]")
+RETIRED_QUEUE_TAG_HINT = {
+    "PROJECT-FACT": "작업 함정은 그 레포 docs/conventions.md 로 옮기고 큐에서 지운다",
+    "SYMPTOM": "증상 큐는 폐지됐다 — 디버깅 사례는 레포 docs/conventions.md 몫이고 큐에서 지운다",
+}
 # §7-39 상대 참조 고정 표현 — 표현을 넓게 잡으면 「위 절차」 같은 정상 문장이 오탐하므로 고정 목록만 쓴다.
 RELATIVE_REFS = ("위 절", "아래 절", "앞 절", "위 표", "아래 표", "앞 회차", "이전 회차")
 # 본문 릴리즈 마커 (§7-28 — §5 "changelog 미러링 금지"의 기계 신호). v접두 3필드 semver만 —
@@ -391,7 +395,7 @@ def strip_scaffold(text, probe=None):
 
 def _section_rx(heading):
     """'## {heading}' 섹션(헤딩 줄~다음 '## ' 또는 \\Z)의 경계 정규식 — `section()`·
-    `without_section()`·`section_span()` 공용. 셋이 경계를 따로 들면 읽기·제거·쓰기가 서로
+    `section_span()` 공용. 둘이 경계를 따로 들면 읽기·쓰기가 서로
     다른 절을 보게 된다(`section_span`만 옛 `\\b` 경계로 남아 `## 아카이브`가 `## 아카이브 인덱스`를
     물었던 것이 실제 사례다).
 
@@ -431,23 +435,6 @@ def section(text, heading, probe=None):
     # 경계 규칙(헤딩 끝 고정·괄호 부기·CRLF)의 근거는 `_section_rx` docstring.
     m = _section_rx(heading).search(probe)
     return text[m.start():m.end()] if m else None
-
-
-def without_section(text, heading, probe=None):
-    """'## {heading}' 섹션(헤딩~다음 '## ' 또는 \\Z)을 제거한 사본. section()의 역(逆).
-    증상별 인덱스(§6)는 행 형상이 기능별 인덱스와 겹치지만(첫 컬럼 평문 + feat/recipe 링크,
-    is_feat_recipe_row가 True) 의미가 달라(첫 컬럼이 '증상' 관찰 표현) 한/영 병기(§7-16)·등록
-    (§7-6) 검사 대상이 아니다 — 스캔 텍스트에서 이 섹션을 뺀다. §7-14 행수는 section('기능별
-    인덱스')로 이미 스코프돼 영향 없고, 행 wikilink의 깨진 링크는 §7-1이 전 페이지에서 잡는다.
-
-    **역함수이므로 경계 판정도 section()과 같아야 한다** — 한쪽만 펜스를 세면 「뽑은 절」과
-    「뺀 나머지」가 서로의 여집합이 아니게 되고, 그 차이가 §7-6·§7-16 스코프에 조용히 남는다.
-    제거는 **뒤에서부터** 한다 — 앞을 먼저 지우면 뒤 매치의 오프셋이 밀린다."""
-    if probe is None:
-        probe = strip_code(text)
-    for m in reversed(list(_section_rx(heading).finditer(probe))):
-        text = text[:m.start()] + text[m.end():]
-    return text
 
 
 def section_span(raw, heading, probe=None):
@@ -746,7 +733,7 @@ def cleanup_backups(vault, today):
 
 # --- 인덱스 생성 (--build-index) ------------------------------------------
 # index.md는 손으로 유지하기에는 원천이 너무 흩어져 있다(수백 페이지의 frontmatter). 생성 마커
-# 사이만 파생으로 채우고 밖은 손대지 않는다 -- 증상별 인덱스·참조처럼 판단이 들어가는 섹션은
+# 사이만 파생으로 채우고 밖은 손대지 않는다 -- 참조처럼 판단이 들어가는 섹션은
 # 사람이 쓰는 자리로 남긴다(wiki-schema §6 「생성 마커」).
 AUTO_INDEX_BEGIN = "<!-- AUTO-INDEX:BEGIN -->"
 AUTO_INDEX_END = "<!-- AUTO-INDEX:END -->"
@@ -1031,7 +1018,7 @@ def build_index(vault, dry_run, report=None):
         print("  도입하려면 생성 대상 구역(프로젝트 테이블~미해결 질문)을 다음 두 줄로 감싸세요:")
         print("    %s" % AUTO_INDEX_BEGIN)
         print("    %s" % AUTO_INDEX_END)
-        print("  마커 밖(증상별 인덱스·참조·머리말)은 생성이 건드리지 않습니다.")
+        print("  마커 밖(참조·머리말)은 생성이 건드리지 않습니다.")
         return 1
 
     head, _sep, rest = cur_n.partition(AUTO_INDEX_BEGIN)
@@ -1114,7 +1101,7 @@ def build_index(vault, dry_run, report=None):
     #  이하가 되면 멈춘다 -- 더 덜어내도 조회 홉만 늘고 이득이 없다. 덜어낸 자리에는 목록 줄
     #  하나를 두고, 섹션 이름으로 찾는 검사(§7-23 등)는 index.md+sub-index 합본을 보므로
     #  구역이 옮겨가도 계속 찾는다.
-    # 마커 밖(머리말·증상별 인덱스·참조)도 파일 줄 수에 포함된다 — §7-14가 재는 단위가
+    # 마커 밖(머리말·참조)도 파일 줄 수에 포함된다 — §7-14가 재는 단위가
     #  「본문(frontmatter 포함 전체)」이라 생성 구역만 세면 임계를 넘긴 채 멈춘다.
     outside = head.count("\n") + tail.count("\n") + 2   # 마커 두 줄
     moved = []
@@ -3367,10 +3354,7 @@ def main():
 
         # 분할 신호 (schema-budget §4) — sub 합치기 전 index.md 본체로 측정
         idx_lines = itext.count("\n") + 1
-        #  행수는 증상별 인덱스를 뺀 본문으로 잰다 -- 그 섹션 행은 첫 컬럼이 평문이고 해법
-        #  컬럼이 `40_guides/`를 가리켜 is_feat_recipe_row에 걸리는데, 기능 등재가 아니라
-        #  증상->해법 매핑이라 분할 판정의 분모가 아니다(§7-6·§7-16이 쓰는 제외와 같은 이유).
-        feat_rows = feature_index_rows(without_section(itext, "증상별 인덱스"))
+        feat_rows = feature_index_rows(itext)
         if idx_lines > INDEX_BODY_LINES or feat_rows > INDEX_FEAT_ROWS:
             infos.append(f"index.md 분할 대상: 본문 {idx_lines}줄(임계 {INDEX_BODY_LINES}), "
                          f"기능별 인덱스 {feat_rows}행(임계 {INDEX_FEAT_ROWS}) — B/F 세션이 "
@@ -3439,12 +3423,8 @@ def main():
                 warn(f"해결된 질문이 index 미해결 목록에 잔존: {qr} "
                      f"(index에서 제거 — 페이지는 보존, B-2 3-1, schema §7-23)", qr)
 
-        # 증상별 인덱스(§6)는 행 형상이 기능별 인덱스와 겹치나 의미가 달라 등록(§7-6)·한/영(§7-16)
-        #  검사에서 제외한다(증상 행이 feature를 '등록됨'으로 마스킹하거나, 증상 관찰 표현에 한/영을
-        #  요구하는 오탐 방지). 깨진 링크는 §7-1이 전 페이지에서 잡으므로 이 제외로 놓치지 않는다.
-        itext_feat = without_section(itext, "증상별 인덱스")
         # 코드펜스/인라인코드 제외 후 feature 링크 추출 — wikilink_targets(메인 루프 파싱과 공용)
-        for t in wikilink_targets(itext_feat):
+        for t in wikilink_targets(itext):
             if "/feat-" in t:
                 # M-3: '.md' 확장자를 벗겨 feat_files(무확장)와 동일 형태로 맞춘다 —
                 #   '[[…/feat-x.md]]' 링크를 '인덱스 누락'으로 오판하지 않게(깨진링크·고아와 함께 3중 오탐 제거).
@@ -3455,9 +3435,8 @@ def main():
         # 인덱스 등록 (§7-30 ⓒ): guide·entity·concept이 어느 인덱스에도 안 실렸는가.
         #  §7-6이 feature에 하는 일을 나머지 타입으로 넓힌 것이다 — 종전에는 이 셋에 대응 검사가
         #  없어, 분할·신설한 페이지가 등록에서 빠져도 기계가 침묵했다(§7-8 고아 검사는 위키 어디서든
-        #  링크되면 통과하므로 "인덱스 밖" 상태를 잡지 못한다). 증상별 인덱스 제외본(itext_feat)을
-        #  쓰는 이유는 §7-6과 같다 — 증상 행의 해법 링크가 그 페이지를 "등록됨"으로 마스킹한다.
-        idx_links = {t[:-3] if t.endswith(".md") else t for t in wikilink_targets(itext_feat)}
+        #  링크되면 통과하므로 "인덱스 밖" 상태를 잡지 못한다).
+        idx_links = {t[:-3] if t.endswith(".md") else t for t in wikilink_targets(itext)}
         for typ_name in sorted(indexed_files):
             for f in sorted(indexed_files[typ_name] - idx_links):
                 warn(f"인덱스 등록 누락: {f} ({typ_name}인데 index·sub-index 어디에도 미등록 "
@@ -3475,7 +3454,7 @@ def main():
         for f in indexed_files.get("guide", ()):
             guide_stems.setdefault(f.split("/")[-1], []).append(f)
         guide_stems = {k: v[0] for k, v in guide_stems.items() if len(v) == 1}
-        for line in itext_feat.splitlines():   # 증상별 인덱스 섹션 제외본(위 §7-6) — 증상 관찰 표현 오탐 차단
+        for line in itext.splitlines():
             name = feat_row_name(line, guide_stems)
             if name is None:
                 continue
@@ -3532,24 +3511,17 @@ def main():
                  f"롤오버가 훑지 않는 구역이라 아카이브로 넘어가지 않는다('## 최근 변경'으로 이동)",
                  "log.md")
 
-    # pending.md 미처리 잔량 집계 (절차 K 큐 — K 5-2/K 5-5/B-1 0): 잔량이 있으면 INFO로 알려
+    # pending.md 미처리 잔량 집계 (절차 K 큐 — K 5-2/B-1 0): 잔량이 있으면 INFO로 알려
     #  다음 소비 세션이 소비하게 한다 (0건·파일 없음이면 생략). 소비 주체는 ingest/lint 세션이고,
     #  [DECISION]은 사용자 요청으로 도는 절차 M(큐 소비 경량)도 소비 주체다
-    #  — 한 번의 소비는 그 요청이 지목한 범위만 닿으므로 이 INFO가 0이 되지 않는 것은 정상. 태그별 분리 —
-    #  [DECISION]은 해당 프로젝트 decisions.md에 추가 후 제거(자가 소비),
-    #  [SYMPTOM]은 증상별 인덱스(§6)에 등재 게이트 검증 후 반영 또는 보류(해법 페이지 부재)·기각(미검증 원인) 후 제거.
+    #  — 한 번의 소비는 그 요청이 지목한 범위만 닿으므로 이 INFO가 0이 되지 않는 것은 정상.
+    #  [DECISION]은 해당 프로젝트 decisions.md에 추가 후 제거(자가 소비).
     #  (보고됨 ...) 표식 줄도 잔량이므로 집계에 포함.
-    # **이 빈 줄은 서식이 아니라 판정 장치다** — 축 ㉑ 의 블록 게이트가 빈 줄로 블록을 끊고
-    #  길이가 30줄보다 긴 블록은 오탐 방지로 통째로 건너뛴다. 주석과 집계 코드가 한 덩어리면
-    #  31줄이 되면 **태그 목록이 낡아도 축이 못 잡는다**(2026-09-16 실측).
-    #  끊어 두면 위 주석 덩어리와 아래 pend_tags 가 **각각** 두 태그를 담아 둘 다 검사 대상이 된다.
-
     if "pending.md" in pages:
         pend_text = pages["pending.md"][2]
         # 태그 목록은 아래 잔량 집계와 형식 위반 검사가 공유한다 — 한쪽만 태그를 추가하면
         #  새 태그가 집계되지 않거나 위반 검출에서 빠져 조용히 사각지대가 생긴다(단일 출처).
-        pend_tags = (("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트분만 즉시 소비, 타 프로젝트분은 lint F-2·큐 정리 M 승인 시 소비)"),
-                     ("SYMPTOM", "SYMPTOM {n}건(증상→검증된 원인→해법 — 증상별 인덱스 §6 반영, 게이트 미충족 시 보류)"))
+        pend_tags = (("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트분만 즉시 소비, 타 프로젝트분은 lint F-2·큐 정리 M 승인 시 소비)"),)
         parts = []
         for tag, label in pend_tags:
             n = sum(1 for line in pend_text.splitlines()
@@ -3588,10 +3560,11 @@ def main():
             warn(f"pending.md 형식 위반 {malformed}건 — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두 형식이 "
                  f"아니라 위 잔량 집계에서 누락됨(K 5 큐 형식 규약, 정규화 필요)", "pending.md")
         # §7-41 폐지 태그 — 항목 줄만 센다(머리 인용 주석 속 문자열은 항목이 아니다).
-        retired_tag = sum(1 for line in pend_text.splitlines() if RETIRED_QUEUE_TAG_RX.match(line))
-        if retired_tag:
-            warn(f"폐지 타입·태그 보유: pending.md [PROJECT-FACT] 항목 {retired_tag}건 — 작업 함정은 "
-                 f"그 레포 docs/conventions.md 로 옮기고 큐에서 지운다(schema §7-41)", "pending.md")
+        retired = collections.Counter(m.group(1) for line in pend_text.splitlines()
+                                      if (m := RETIRED_QUEUE_TAG_RX.match(line)))
+        for tag, n in sorted(retired.items()):
+            warn(f"폐지 타입·태그 보유: pending.md [{tag}] 항목 {n}건 — {RETIRED_QUEUE_TAG_HINT[tag]}"
+                 f"(schema §7-41)", "pending.md")
 
     # decision-log 정합 (§7-24): ⓐ '## 아카이브' 포인터 ↔ 실파일 양방향 ⓑ 항목 결정 어휘.
     #  포인터는 wikilink가 아닌 평문 경로라 §7-1 깨진 링크 검사에 안 잡힘 — 누락·오기 시

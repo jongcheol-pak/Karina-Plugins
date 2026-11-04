@@ -9,9 +9,9 @@
 > 포인터는 정합 검사의 포인터 도달성 축이 잰다. **`.py` 주석의 「…」 포인터와 `### 축` 헤딩은 짝 검사 밖**이라
 > 사람이 맞춘다.
 >
-> 축 ①·㉑ 의 상세 절은 `harness-consistency-pointer-rationale.md`·`harness-consistency-tagenum-rationale.md` 로 갈랐다 — 그 축을 고칠 때 연다.
+> 축 ① 의 상세 절은 `harness-consistency-pointer-rationale.md` 로 갈랐다 — 그 축을 고칠 때 연다. 축 ㉑(큐 태그 열거 정합)은 큐 태그가 `[DECISION]` 하나로 줄어 2026-11-04 폐지했다.
 
-하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합 · 종결 사유 명시 · 핵심 포인터 실재 · 등재 마커 실재 · 폐기 식별자 실재 · 등재 근거 실측 · 복제 사본 동기 · 계수·버전 정합 · 규칙 근거 보유 · 영향 검토 3축 · README 행 동반 · 큐 태그 열거 정합 · 큐 태그 수 표현 · 참조 문서 목차.
+하니스 전역 정합 셀프체크 — 포인터 도달성 · Deferred 집계 · 볼드 마커 짝 · 한 줄 문장 중복 · 추출 앵커 도달성 · 문서 예산 · 줄바꿈 정합 · 종결 사유 명시 · 핵심 포인터 실재 · 등재 마커 실재 · 폐기 식별자 실재 · 등재 근거 실측 · 복제 사본 동기 · 계수·버전 정합 · 규칙 근거 보유 · 영향 검토 3축 · README 행 동반 · 참조 문서 목차.
 
 무엇을: 이 repo는 마크다운이 곧 실행 규칙이라, 문서가 서로 어긋나면 그것이 곧 동작 결함이다.
 아래 축들은 사람이 손으로 맞춰 온 지점들이며 실제로 어긋난 전례가 있다.
@@ -248,7 +248,7 @@ AGENTS.md 목표선 — 상한(16,384B, `session-context.ps1`이 정본)과 **�
 - **형식 위반이면 폴더 불일치는 따로 내지 않는다** — 형식이 틀린 이름은 어떤 폴더와도 같을 수 없어, 둘을 함께 내면 한 결함이 두 줄로 보인다. 골든도 둘을 가른다(`harness-fm-name-format` · `harness-fm-name-folder-mismatch`).
 - **README 대조는 표 첫 칸만 본다** — 「Skills」 는 첫 칸의 `karina:<id>`, 「Subagents」 는 첫 칸 이름이다. 다른 칸은 설명문이라 다른 스킬 이름이 정당하게 들어간다(「PR 운영」 행 셋째 칸의 `karina:pr` 처럼).
 - **모집단은 frontmatter 가 있는 스킬 폴더와 `agents/*.md` 파일 이름이다 — frontmatter 없는 `SKILL.md` 는 frontmatter 축 전체(길이·예약어·XML·이름·YAML)가 스킵한다** — 픽스처의 `sample/SKILL.md` 가 그 형태이고 정상 케이스(`harness-ok`)의 픽스처라, 에러로 처리하면 그 케이스가 깨진다. 스킬이 아닌 마크다운이 그 경로에 놓일 수도 있어 관용이 안전측이다.
-- **`plugin.json`·`README.md` 가 있는데 절이 없으면 통과가 아니라 issue 다** — 버전 축이 README 의 `**버전**:` 줄을 못 읽으면 issue 를 내는 것과 같다. 절 제목만 바뀌어도 검사가 조용히 꺼지는 길을 막는다(`harness-readme-*-section-missing`). 그래서 이 축을 도는 픽스처 셋(`minimal-repo`·`tagenum-ok`·`tagenum-count-bad`)의 README 는 정상 표를 담는다.
+- **`plugin.json`·`README.md` 가 있는데 절이 없으면 통과가 아니라 issue 다** — 버전 축이 README 의 `**버전**:` 줄을 못 읽으면 issue 를 내는 것과 같다. 절 제목만 바뀌어도 검사가 조용히 꺼지는 길을 막는다(`harness-readme-*-section-missing`). 그래서 이 축을 도는 픽스처(`minimal-repo`)의 README 는 정상 표를 담는다.
 - **에이전트 `name` 형식은 재지 않는다** — 근거 규격(Agent Skills)이 스킬만 다룬다. 위 「사정거리」 불릿과 같은 설계상 제외다.
 
 ### 축 ⑱ — 규칙 근거 보유

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 19개로 잰다.
+r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것을 축 18개로 잰다.
 
 사용법: python evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
        python evals/check-harness-consistency.py --fix [--dry-run]
@@ -8,13 +8,13 @@ r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것�
 축: ① 포인터 도달성(+하위 통지 「줄이 지워진 절」) ② Deferred 집계 ③ 볼드 마커 짝 ④ 한 줄 문장 중복 ⑤ (폐지 — 소진 batch 회고 대장 삭제로 대상 소멸)
     ⑥ 추출 앵커 도달성 ⑦ 문서 예산 ⑧ 줄바꿈 정합 ⑨ 종결 사유 명시 ⑩ 핵심 포인터 실재
     ⑪ 등재 마커 실재 ⑭ 폐기 식별자 실재 ⑮ 등재 근거 실측 ⑯ 복제 사본 동기 ⑰ 계수·버전 정합 ⑱ 규칙 근거 보유
-    ⑲ 영향 검토 3축 ⑳ (폐지 — 관련 파일 절 폐지로 대상 소멸) ㉑ 큐 태그 열거 정합(+하위 「수 표현」) ㉒ README 행 동반
+    ⑲ 영향 검토 3축 ⑳ (폐지 — 관련 파일 절 폐지로 대상 소멸) ㉑ (폐지 — 큐 태그가 하나로 줄어 대상 소멸) ㉒ README 행 동반
     ㉓ 참조 문서 목차
     (**⑫⑬ 은 결번이다** — v1.224.0 이 지운 옛 축 둘을 대장 대기 항목이 아직 그 번호로
      가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.)
 
 **각 축이 왜 필요한가 · 무엇을 못 잡는가 · 축을 지운 이력은 `harness-consistency-rationale.md`
-가 정본이다(축 ①·㉑ 상세는 `harness-consistency-pointer-rationale.md`·`harness-consistency-tagenum-rationale.md`).** 여기 복제하지 않는다 — 그 문서를 안 읽고 축을 고치면 폐지 근거를 모른 채
+가 정본이다(축 ① 상세는 `harness-consistency-pointer-rationale.md`).** 여기 복제하지 않는다 — 그 문서를 안 읽고 축을 고치면 폐지 근거를 모른 채
 되살리게 된다.
 """
 import glob
@@ -1971,218 +1971,6 @@ def run_fix(dry_run):
     return 1 if edits else 0
 
 
-# ── 축 ㉑ 「큐 태그 열거 정합」 ────────────────────────
-# 왜 필요한가·무엇을 못 잡는가는 `harness-consistency-tagenum-rationale.md` 의 「축 ㉑ — 큐 태그
-#  열거 정합」이 정본이다. 여기 복제하지 않는다.
-#
-# 큐는 `pending.md` 한 파일 두 태그다(2026-10-20 — [PROJECT-FACT] 폐지. 그 전 2026-09-19 에 하니스 자기개선 큐 넷 폐지로 셋).
-#  종전에는 정본 집합이 셋이었다(pending 여섯 + skill-feedback 하나 + 전체 일곱).
-# **이 선언은 한 줄을 유지한다** — 줄 게이트가 먼저 걸리므로 여러 줄로 나누면 첫 줄이
-#  부분 집합으로 잡혀 자기 자신이 불일치가 된다(2026-09-16 실측).
-QUEUE_TAGS_PENDING = frozenset({"DECISION", "SYMPTOM"})
-QUEUE_TAGS_ALL = QUEUE_TAGS_PENDING
-_QUEUE_TAG_CANON = (
-    ("pending", QUEUE_TAGS_PENDING),
-)
-
-# 대괄호형(`[DECISION]`)과 맨이름형(`DECISION·SYMPTOM`)을 함께 잡는다 —
-#  대괄호 없이 열거하는 자리가 있어 대괄호형만 보면 그 줄이 잘못 세어져 **오탐**이 된다.
-# **대소문자를 구분한다** — `re.IGNORECASE` 를 붙이면 `decision-log`(64파일 196회)가
-#  통째로 `DECISION` 으로 잡혀 축이 무의미해진다.
-_RX_QUEUE_TAG = re.compile(
-    r"(?<![\w-])\[?(" + "|".join(sorted(QUEUE_TAGS_ALL, key=len, reverse=True)) + r")\]?(?![\w-])"
-)
-# 면제 표식. **사유가 없으면 면제로 치지 않는다** — 사유 없는 면제는 판정을 지우기만 한다.
-#  꼬리의 `-->` 는 표식을 감싼 주석의 것이라 사유에서 떼어내고, **길이를 120자로 끊는다** —
-#  주석이 아닌 자리(JSON 문자열 등)에는 닫는 기호가 없어 줄 끝까지 빨려 들어간다.
-_RX_TAG_ENUM_EXEMPT = re.compile(r"tag-enum:\s*exempt\s+(\S.{0,119}?)\s*(?:-->|$)")
-
-# 게이트 임계. **태그가 둘로 줄어 2 가 곧 전체 집합이다**(2026-10-20 [PROJECT-FACT] 폐지 — 그 전은 3).
-#  종전 값을 유지하면 어떤 열거도 게이트를 넘지 못해 축이 죽는다.
-# **전체 집합 크기가 게이트인 구간에서 이 축은 양성을 낼 수 없다** — 열거가 정본과 어긋나려면 태그 이름이
-#  틀려야 하는데, 틀린 이름은 정규식(정본 집합으로 만든다)이 아예 못 잡아 2종으로
-#  세어지고 게이트에 걸리지 않는다. 2 로 내리는 것은 실측 기각이다 — 정당한 부분 열거
-#  17자리가 전부 red 가 된다. 그래서 **양성 골든을 두지 않고 음성(tagenum-ok)만 남긴다** —
-#  태그가 4종 이상으로 늘면 이 축은 저절로 되살아나고, 그때 양성 골든을 함께 세운다.
-_QUEUE_TAG_GATE = 2
-# 블록 길이 상한. 빈 줄이 없는 `lint-cases.json`(1,721줄)이 통째로 한 블록이 되는 것을 막는다.
-#  이 상한으로 빠지는 진짜 열거는 없다 — 초과 블록 둘은 줄 게이트가 덮는다(정본의 실측).
-_QUEUE_TAG_BLOCK_MAX = 30
-_QUEUE_TAG_EXTS = (".md", ".py", ".ps1", ".json")
-# 회차 기록은 대상이 아니다 — `plan.md`·`notes.md`·`intent/` 는 **그 시점의 기록**이지
-#  태그 집합을 따라가야 하는 사본이 아니다. 특히 `intent/` 는 폐지 전 회차의 요구를 얼려 둔
-#  기록이라, 태그가 늘 때마다 과거 요구를 고치는 것은 그 파일의 존재 이유를 깬다.
-_QUEUE_TAG_SKIP_RELS = {"plan.md", "notes.md"}
-_QUEUE_TAG_SKIP_PREFIXES = ("intent/",)
-
-
-def _scan_files(exts):
-    """`_md_files()` 와 **같은 제외 집합**으로 훑되 확장자만 넓힌다.
-
-    제외 목록을 복사하면 축마다 다른 것을 보게 되므로 `_SCAN_SKIP_DIRS` 를 공유한다.
-    """
-    for base, dirs, names in os.walk(ROOT):
-        dirs[:] = [d for d in dirs if d not in _SCAN_SKIP_DIRS]
-        for n in names:
-            if n.endswith(exts):
-                yield os.path.join(base, n)
-
-
-def _queue_tags_of(line):
-    """그 줄의 태그 집합. **면제 표식 구간은 빼고 센다.**
-
-    면제 사유를 쓰는 가장 자연스러운 방식이 「빠진 태그 이름을 대는 것」인데, 그대로
-    세면 그 단위가 스스로 완전해져 **표식을 떼어도 불일치가 안 난다** — D9 의 「사유 없는
-    면제는 면제가 아니다」 게이트가 그 자리에서 무력해진다(회차 72 완료 리뷰 실측).
-    """
-    m = _RX_TAG_ENUM_EXEMPT.search(line)
-    if m:
-        line = line[:m.start()] + line[m.end():]
-    return set(_RX_QUEUE_TAG.findall(line))
-
-
-def _queue_tag_blocks(lines):
-    """빈 줄로 끊은 블록을 `(시작줄(1-based), 줄 목록)` 으로 낸다."""
-    cur, start = [], 1
-    for i, line in enumerate(lines + [""], 1):
-        if not line.strip():
-            if cur:
-                yield start, cur
-            cur, start = [], i + 1
-        else:
-            if not cur:
-                start = i
-            cur.append(line)
-
-
-def check_queue_tag_enum():
-    """큐 태그 집합을 열거한 자리가 정본 집합 셋 중 하나와 정확히 같은지 본다.
-
-    게이트 단위는 **줄 ∪ 블록**이다 — 줄만 보면 한 줄에 하나씩 나열하는 형태를
-    원리상 못 보고(`README.md`·`lint.py` 실측), 블록만 보면 거대 블록이 오탐이 된다.
-    """
-    issues, partials, exempts, n = [], [], [], 0
-    for path in _scan_files(_QUEUE_TAG_EXTS):
-        rel = os.path.relpath(path, ROOT).replace("\\", "/")
-        if rel in _QUEUE_TAG_SKIP_RELS or rel.startswith(_QUEUE_TAG_SKIP_PREFIXES):
-            continue
-        try:
-            with open(path, encoding="utf-8") as f:
-                lines = f.read().split("\n")
-        except (OSError, UnicodeDecodeError):
-            continue
-        gated_lines = set()
-        units = []
-        seen_partials = set()
-        for i, line in enumerate(lines, 1):
-            found = _queue_tags_of(line)
-            if len(found) >= _QUEUE_TAG_GATE:
-                units.append((i, found, [line]))
-                gated_lines.add(i)
-            elif 2 <= len(found) <= _QUEUE_TAG_GATE - 1:
-                partials.append("%s:%d(%d종)" % (rel, i, len(found)))
-                seen_partials.add(i)
-        for start, block in _queue_tag_blocks(lines):
-            if len(block) > _QUEUE_TAG_BLOCK_MAX:
-                continue
-            if any(start <= x < start + len(block) for x in gated_lines):
-                continue
-            found = set()
-            for line in block:
-                found |= _queue_tags_of(line)
-            if len(found) >= _QUEUE_TAG_GATE:
-                units.append((start, found, block))
-            # **부분 열거도 블록 단위로 모은다** — 줄만 모으면 게이트가 D8 로 막은 사각이
-            #  조회 목록 쪽에 그대로 남는다. 「한 줄에 하나씩」 나열한 2~3종 자리는 어느
-            #  줄도 2종에 닿지 않아 줄 루프로는 원리상 안 잡힌다(실측 3자리).
-            elif 2 <= len(found) <= _QUEUE_TAG_GATE - 1 and not (seen_partials
-                                                                & set(range(start, start + len(block)))):
-                partials.append("%s:%d(%d종 · 블록)" % (rel, start, len(found)))
-        for line_no, found, body in units:
-            # 면제한 단위도 **분모에는 남긴다** — 분모에서 빼면 면제를 늘릴수록 축이
-            #  조용해져 면제가 곧 은폐가 된다.
-            n += 1
-            exempt = None
-            for line in body:
-                m = _RX_TAG_ENUM_EXEMPT.search(line)
-                if m:
-                    exempt = m.group(1).strip()
-                    break
-            if exempt:
-                exempts.append("%s:%d(%s)" % (rel, line_no, exempt))
-                continue
-            if any(found == canon for _, canon in _QUEUE_TAG_CANON):
-                continue
-            names = ["%s(%d)" % (label, len(canon)) for label, canon in _QUEUE_TAG_CANON]
-            issues.append(
-                "큐 태그 열거 불일치: %s:%d 이 %d종 %s 를 열거하는데 정본 집합 %s 어느 것과도 다르다 "
-                "— 태그를 더했으면 이 자리도 함께 고치고, 의도적 부분 열거면 "
-                "`tag-enum: exempt <사유>` 를 같은 자리에 적는다"
-                % (rel, line_no, len(found), "·".join(sorted(found)), " / ".join(names))
-            )
-    # 통지는 **집계 1줄씩**으로 낸다 — 자리마다 한 줄을 내면 부분 열거만 17줄이 되어
-    #  정작 게이트가 낸 불일치가 그 더미에 묻힌다(「명령 출력 예산」).
-    notices = []
-    if exempts:
-        notices.append("큐 태그 열거 면제 %d건(분모에는 남는다) — %s"
-                       % (len(exempts), " / ".join(sorted(exempts))))
-    if partials:
-        notices.append("큐 태그 부분 열거 %d자리 — 게이트가 아니라 **태그를 늘리는 회차의 조회 목록**이다: %s"
-                       % (len(partials), " / ".join(sorted(partials))))
-    return issues, n, notices
-
-
-# ── 축 ㉑ 하위 「큐 태그 수 표현」 ────────────────────
-# 위 축과 **서로 다른 자리를 덮는다** — `queue-consume-rules.md:16` 은 태그 리터럴이
-#  둘이라 위 게이트를 빠지지만 「세 태그」류 수 표현을 담아 이 축이 잡는다. 한쪽을 지우면 그
-#  자리가 사각이 된다(중복이 아니라 분담이다).
-# **한 음절 수사(한·두·세·네)와 아라비아 숫자는 쓰지 않는다** — 전자는 「선**두 태그**」처럼
-#  낱말 안에서 잘려 붙고, 후자는 「v3.**4.5 태그**」(git 태그)를 잡는다. 둘 다 실측된 오탐이다.
-_QUEUE_COUNT_WORDS = {"하나": 1, "둘": 2, "셋": 3, "넷": 4, "다섯": 5, "여섯": 6, "일곱": 7}
-_RX_QUEUE_COUNT = re.compile(
-    r"(?<![\w가-힣])(" + "|".join(sorted(_QUEUE_COUNT_WORDS, key=len, reverse=True)) + r")\s*개?\s*태그"
-)
-# 그 줄이 **큐 이야기인지**를 함께 본다 — 수사 하나만으로는 무관한 「태그」와 갈리지 않는다.
-#  큐 파일 이름·「큐」만으로 좁히면 `check_wiki_circuit.py` 처럼 **태그 리터럴만 든 줄**이
-#  빠지므로 리터럴도 문맥으로 인정한다(실측 — 그 한 줄이 미검출로 남았다).
-_RX_QUEUE_CONTEXT = re.compile(r"pending\.md|큐|"
-                               + "|".join(sorted(QUEUE_TAGS_ALL, key=len, reverse=True)))
-
-
-def check_queue_tag_count_words():
-    """「세 태그」류 수 표현이 그 줄이 지목한 큐 파일의 정본 크기와 맞는지 본다.
-
-    지목이 없으면 전체(3)와 견준다 — 파일을 안 적은 열거는 집합 전체를 뜻한다.
-    """
-    issues, n = [], 0
-    for path in _scan_files(_QUEUE_TAG_EXTS):
-        rel = os.path.relpath(path, ROOT).replace("\\", "/")
-        if rel in _QUEUE_TAG_SKIP_RELS or rel.startswith(_QUEUE_TAG_SKIP_PREFIXES):
-            continue
-        try:
-            with open(path, encoding="utf-8") as f:
-                lines = f.read().split("\n")
-        except (OSError, UnicodeDecodeError):
-            continue
-        for i, line in enumerate(lines, 1):
-            m = _RX_QUEUE_COUNT.search(line)
-            if not m or not _RX_QUEUE_CONTEXT.search(line):
-                continue
-            n += 1
-            said = _QUEUE_COUNT_WORDS[m.group(1)]
-            # **정본 크기와 안 맞을 때만** 잡는다. 태그가 늘면 그 크기가 함께 움직이므로,
-            #  낡은 수는 여전히 「안 맞음」으로 걸린다.
-            if said in {len(canon) for _, canon in _QUEUE_TAG_CANON}:
-                continue
-            sizes = ", ".join("%s %d" % (label, len(canon)) for label, canon in _QUEUE_TAG_CANON)
-            issues.append(
-                "큐 태그 수 표현 불일치: %s:%d 이 「%s 태그」(%d)라 적는데 정본 집합 크기 어느 것과도 "
-                "다르다(%s) — 태그를 더했으면 이 수 표현도 함께 고친다"
-                % (rel, i, m.group(1), said, sizes)
-            )
-    return issues, n
-
-
 def main():
 
     # Windows 기본 콘솔은 cp949라 출력의 `—`(em dash)·한글 기호가 UnicodeEncodeError를 낸다.
@@ -2219,7 +2007,6 @@ def main():
     close_issues, close_n, close_notices = check_close_reasons()
     ledger_issues, ledger_n, ledger_notices = check_deferred_stats(ledger, ledger_closed)
     rule_issues, rule_n, rule_notices = check_rule_rationale()
-    tagenum_issues, tagenum_n, tagenum_notices = check_queue_tag_enum()
     count_issues, count_n, count_notices = check_count_and_version(conv)
     axes = [
         ("포인터 도달성", check_pointer_reachability()),
@@ -2239,12 +2026,10 @@ def main():
         ("규칙 근거 보유", (rule_issues, rule_n)),
         ("영향 검토 3축", check_impact_axes()),
         ("README 행 동반", check_readme_companion()),
-        ("큐 태그 열거 정합", (tagenum_issues, tagenum_n)),
-        ("큐 태그 수 표현", check_queue_tag_count_words()),
         ("참조 문서 목차", check_reference_toc()),
     ]
     sys.exit(report(axes, check_agents_target() + check_deleted_section_pointers() + budget_notices
-                    + close_notices + ledger_notices + rule_notices + tagenum_notices + count_notices))
+                    + close_notices + ledger_notices + rule_notices + count_notices))
 
 
 def report(axes, notices):

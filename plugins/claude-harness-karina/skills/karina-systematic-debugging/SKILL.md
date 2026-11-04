@@ -145,7 +145,7 @@ argument-hint: "<버그 또는 에러 설명>"
 
 ### 4-E. 위키 기록 (선택)
 
-**4-D 가 끝나면 `references/wiki-record.md`「위키 기록」 을 Read 한다** — vault·등록 두 판정을 지난 뒤에만 위키 반영을 제안하고, 재사용 가치가 있는 증상↔원인은 `[SYMPTOM]` 으로 큐잉한다.
+**4-D 가 끝나면 `references/wiki-record.md`「위키 기록」 을 Read 한다** — vault·재사용 두 판정을 지난 뒤에만 위키 반영을 제안하고, 이 프로젝트에 묶인 버그 사례는 위키가 아니라 레포 `docs/conventions.md` 몫이다.
 
 ### 4-F. 커밋·PR
 

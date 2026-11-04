@@ -1791,7 +1791,7 @@
     "expect_rc": 0,
     "expect_keywords": [
       "== 산문 경로 실존 ==",
-      "대상 11문서",
+      "대상 10문서",
       "docs/harness-conventions.md — 후보 4건 · 미실존 0건",
       "결과: 후보 5건 전부 실재"
     ],
@@ -1878,7 +1878,7 @@
     "expect_rc": 0,
     "expect_keywords": [
       "== 산문 심볼 실존 ==",
-      "대상 11문서",
+      "대상 10문서",
       "docs/harness-conventions.md — 후보 3건 · 미실존 0건",
       "결과: 후보 5건 전부 실재"
     ],
@@ -2193,33 +2193,6 @@
     "expect_keywords": [
       "[MISMATCH]",
       "자기 파일 「없는 절 이름」"
-    ]
-  },
-  {
-    "id": "harness-tagenum-ok",
-    "checker": "harness",
-    "fixture": "tagenum-ok",
-    "expect_rc": 0,
-    "expect_keywords": [
-      "결과: 대조 전부 일치",
-      "큐 태그 열거 정합"
-    ],
-    "expect_absent": [
-      "큐 태그 열거 불일치",
-      "큐 태그 수 표현 불일치"
-    ]
-  },
-  {
-    "id": "harness-tagenum-count-bad",
-    "checker": "harness",
-    "fixture": "tagenum-count-bad",
-    "expect_rc": 1,
-    "expect_keywords": [
-      "큐 태그 수 표현 불일치",
-      "docs/queue-tags.md:3"
-    ],
-    "expect_absent": [
-      "결과: 대조 전부 일치"
     ]
   },
   {

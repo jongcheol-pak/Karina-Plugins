@@ -74,10 +74,10 @@
 
 **vault 에 작업 함정을 쓰지 않는다 — 판정·형식·위치는 `REPO-CONVENTIONS.md` 「쓰기」 가 정본이다.** 함정은 레포 `docs/conventions.md` 에 그 회차 커밋과 함께 남는다.
 
-- **`[DECISION]`·`[SYMPTOM]` 큐 기록 규약은 `llm-wiki/references/queue-rules.md` K 5-2·K 5-5 다.**
+- **`[DECISION]` 큐 기록 규약은 `llm-wiki/references/queue-rules.md` K 5-2 다.**
 
 ## 4. 이 문서가 다루지 않는 것
 
 - 위키 페이지 작성·갱신·삭제 · 스키마 · lint · 백업/복구 → `karina:llm-wiki`
 - 레포 작업 함정 문서 `docs/conventions.md` 의 읽기·쓰기 → `REPO-CONVENTIONS.md`
-- `[DECISION]`·`[SYMPTOM]` 등 다른 큐 태그의 기록 규약 → 같은 스킬의 큐 규약
+- `[DECISION]` 큐의 기록 규약 → 같은 스킬의 큐 규약
