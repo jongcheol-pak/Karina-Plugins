@@ -1,9 +1,10 @@
-"""reflect 스크립트(scripts/digest_transcript.py · scripts/append_deferred.py) 골든.
+"""reflect 스크립트(scripts/digest_transcript.py · scripts/append_deferred.py · scripts/digest_history.py) 골든.
 
 모델·Claude Code 를 부르지 않는다 — 임시 폴더에 가짜 projects 폴더(전사 JSONL)와 가짜 대장을 바이트로 만들고,
-두 스크립트를 실제 프로세스로 띄워 종료 코드·출력·파일 바이트를 잰다. 픽스처를 레포에 두지 않는 이유는
+이력 요약은 임시 git 레포에 고정 시각 커밋을 만들고, 세 스크립트를 실제 프로세스로 띄워 종료 코드·출력·파일 바이트를 잰다. 픽스처를 레포에 두지 않는 이유는
 대장 픽스처의 CRLF·BOM 을 git 체크아웃 정규화에 맡기지 않으려는 것이다.
 """
+import datetime
 import json
 import os
 import shutil
@@ -14,6 +15,7 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 DIGEST = os.path.join(HERE, '..', 'scripts', 'digest_transcript.py')
 APPEND = os.path.join(HERE, '..', 'scripts', 'append_deferred.py')
+HISTORY = os.path.join(HERE, '..', 'scripts', 'digest_history.py')
 
 SID = '11111111-2222-3333-4444-555555555555'
 OTHER = '99999999-8888-7777-6666-555555555555'
@@ -671,6 +673,67 @@ def append_no_group_after_continuation():
         assert lines[1:5] == ['- [2026-07-16] 둘 (실해: 2026-07-16 관측)', '  - 하위 1', '  - 하위 2', ENTRY], lines
     finally:
         lg.close()
+
+
+HIST_NOW = datetime.datetime(2026, 6, 1, 12, 0, 0)
+
+
+def git_repo(commits):
+    d = tempfile.mkdtemp(prefix='reflect-hist-')
+    base = dict(os.environ, GIT_AUTHOR_NAME='t', GIT_AUTHOR_EMAIL='t@t', GIT_COMMITTER_NAME='t', GIT_COMMITTER_EMAIL='t@t')
+    subprocess.run(['git', 'init', '-q', d], check=True, env=base)
+    for i, (subject, body, days_ago) in enumerate(commits):
+        with open(os.path.join(d, 'f%d.txt' % i), 'w', encoding='utf-8') as f:
+            f.write(subject)
+        subprocess.run(['git', '-C', d, 'add', '.'], check=True, env=base)
+        when = (HIST_NOW - datetime.timedelta(days=days_ago)).strftime('%Y-%m-%dT%H:%M:%S')
+        env = dict(base, GIT_AUTHOR_DATE=when, GIT_COMMITTER_DATE=when)
+        subprocess.run(['git', '-C', d, 'commit', '-q', '-m', subject + ('\n\n' + body if body else '')], check=True, env=env)
+    return d
+
+
+def history(repo, extra=()):
+    out = os.path.join(tempfile.mkdtemp(prefix='reflect-hist-out-'), 'h.txt')
+    rc, so, se = run(HISTORY, ['--repo', repo, '--out', out, '--now', HIST_NOW.strftime('%Y-%m-%dT%H:%M:%S')] + list(extra))
+    text = open(out, encoding='utf-8').read() if os.path.exists(out) else ''
+    return rc, so + se, text
+
+
+@case
+def history_keeps_fix_and_revert_only():
+    d = git_repo([('수정: 차단 문구 오탐', '첫 줄 본문\n둘째 줄', 3), ('기능: 새 스킬', '', 2),
+                  ('수정: 같은 오탐 재발', '', 1), ('Revert "기능: 새 스킬"', '', 1)])
+    try:
+        rc, out, text = history(d)
+        assert rc == 0, (rc, out)
+        assert text.startswith('# 총 줄 수:'), text[:80]
+        for s in ('수정: 차단 문구 오탐', '수정: 같은 오탐 재발', 'Revert "기능: 새 스킬"', '첫 줄 본문'):
+            assert s in text, (s, text)
+        assert '\n기능: 새 스킬' not in text and 'SUBJECT 기능: 새 스킬' not in text, text
+        assert text.count('== commit ') == 3, text
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+@case
+def history_drops_commits_outside_window():
+    d = git_repo([('수정: 오래된 수정', '', 200), ('수정: 최근 수정', '', 5)])
+    try:
+        rc, out, text = history(d, ['--days', '90'])
+        assert rc == 0, (rc, out)
+        assert '수정: 최근 수정' in text and '수정: 오래된 수정' not in text, text
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+@case
+def history_not_a_repo_exit2():
+    d = tempfile.mkdtemp(prefix='reflect-hist-norepo-')
+    try:
+        rc, out, _ = history(d)
+        assert rc == 2, (rc, out)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 def main():
