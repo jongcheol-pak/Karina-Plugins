@@ -1,9 +1,3 @@
-"""reflect 스크립트(scripts/digest_transcript.py · scripts/append_deferred.py · scripts/digest_history.py) 골든.
-
-모델·Claude Code 를 부르지 않는다 — 임시 폴더에 가짜 projects 폴더(전사 JSONL)와 가짜 대장을 바이트로 만들고,
-이력 요약은 임시 git 레포에 고정 시각 커밋을 만들고, 세 스크립트를 실제 프로세스로 띄워 종료 코드·출력·파일 바이트를 잰다. 픽스처를 레포에 두지 않는 이유는
-대장 픽스처의 CRLF·BOM 을 git 체크아웃 정규화에 맡기지 않으려는 것이다.
-"""
 import datetime
 import json
 import os
