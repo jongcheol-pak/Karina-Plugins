@@ -1,4 +1,4 @@
-﻿# guard-commit-comments.ps1 — git commit 직전 새 주석 첫 시도 차단 (dot-source 전용, hook 아님) — 근거는 `rules/comment-gate-rationale.md` §4
+﻿# guard-commit-comments.ps1 — git commit 직전 새 주석 차단 (dot-source 전용, hook 아님) — 근거는 `rules/comment-gate-rationale.md` §4
 
 . (Join-Path $PSScriptRoot 'git-commit-match.ps1')
 . (Join-Path $PSScriptRoot 'comment-lines.ps1')
@@ -118,31 +118,25 @@ function Invoke-BlockCommitComments {
 
         $moved = New-Object System.Collections.Generic.HashSet[string]
         foreach ($k in $targets) { foreach ($c in (Get-CommentBodies $k $files[$k].Minus)) { [void]$moved.Add($c) } }
-        $session = Get-CommentGateSession $data
-        $approved = Get-CommentGateApproved $session
+        $top = [string](& git rev-parse --show-toplevel 2>$null)
         $found = New-Object System.Collections.Generic.List[string]
         $perFile = New-Object System.Collections.Generic.List[string]
         foreach ($k in ($targets | Sort-Object)) {
-            $n = 0
-            foreach ($c in (Get-CommentBodies $k $files[$k].Plus)) {
-                if ($moved.Contains($c) -or $approved.Contains($c)) { continue }
-                $found.Add($c); $n++
-            }
-            if ($n -gt 0) { $perFile.Add("  $k : 주석 $n줄") }
+            $full = if ($top) { [System.IO.Path]::GetFullPath((Join-Path $top $k)) } else { [System.IO.Path]::GetFullPath($k) }
+            $pair = @(, @(($files[$k].Minus -join "`n"), ($files[$k].Plus -join "`n")))
+            $added = New-Object System.Collections.Generic.List[string]
+            foreach ($c in (Get-AddedCommentBodies $k $pair)) { if (-not $moved.Contains($c)) { $added.Add($c) } }
+            $post = if (Test-Path -LiteralPath $full -PathType Leaf) { @([System.IO.File]::ReadAllText($full) -split '\r?\n') } else { @($files[$k].Plus) }
+            $blocked = Get-BlockedCommentBodies $full $added $post
+            foreach ($c in $blocked) { $found.Add($c) }
+            if ($blocked.Count -gt 0) { $perFile.Add("  $k : 주석 $($blocked.Count)줄") }
         }
         if ($found.Count -eq 0) { return New-HookResult }
 
-        $key = Get-CommentGateKey $session ('commit|' + ([string]$commitDir).ToLowerInvariant()) $found
-        if (Test-CommentGateRetry $key) {
-            Add-CommentGateApproved $session $found
-            return New-HookResult
-        }
-        if (-not (Set-CommentGateRetry $key)) { return New-HookResult }
-
-        $lines = @("[HARNESS] BLOCKED: 커밋에 새 주석이 있습니다 — 첫 시도를 막습니다 (주석 $($found.Count)줄)") + @($perFile) + @(Format-CommentGatePreview $found) + @(
+        $lines = @("[HARNESS] BLOCKED: 커밋에 새 주석이 있습니다 (주석 $($found.Count)줄)") + @($perFile) + @(Format-CommentGatePreview $found) + @(
             $script:CommentGateRule,
-            '  - 그중 하나면 같은 커밋 명령을 그대로 다시 실행하세요 — 통과합니다.',
-            '  - 아니면 주석을 지우고 다시 커밋하고, 남길 이유는 커밋 본문에 적으세요.')
+            '  - 같은 커밋을 다시 내도 통과하지 않습니다. 주석을 지우고 다시 커밋하고, 남길 이유는 커밋 본문에 적으세요.',
+            '  - 위 예외에 드는데 막혔으면 멈추고 사용자에게 보고하세요.')
         return New-HookResult -Block $true -Stderr $lines
     } catch {
         return New-HookResult

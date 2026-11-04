@@ -447,18 +447,33 @@ function Invoke-CcCommit([string]$Dir, [string]$Command, [string]$Session) {
     return (Invoke-Hook 'guard-bash.ps1' (@{ session_id = $Session; tool_name = 'Bash'; cwd = $Dir; tool_input = @{ command = $Command } } | ConvertTo-Json -Compress))
 }
 function Set-CcFile([string]$Dir, [string]$Name, [string]$Text) { [System.IO.File]::WriteAllText((Join-Path $Dir $Name), $Text) }
-$ccBlock = '[HARNESS] BLOCKED: 커밋에 새 주석이 있습니다 — 첫 시도를 막습니다 (주석'
+$ccBlock = '[HARNESS] BLOCKED: 커밋에 새 주석이 있습니다 (주석'
 
 $d = New-CcRepo
 Set-CcFile $d 'a.cs' "// 기존 설명`n// 새 설명`nint a;`n"; git -C $d add a.cs
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-retry'
 Assert-Case -Name "commit-comments: staged 새 주석이 있는 커밋 첫 시도는 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
-Assert-Case -Name "commit-comments: 차단 사유가 재시도 안내를 낸다" -R $r -ExpectExit 2 -ExpectContains '같은 커밋 명령을 그대로 다시 실행하세요'
+Assert-Case -Name "commit-comments: 차단 사유가 다시 내도 통과하지 않음을 낸다" -R $r -ExpectExit 2 -ExpectContains '같은 커밋을 다시 내도 통과하지 않습니다'
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-retry'
-Assert-Case -Name "commit-comments: 같은 주석 집합 재시도는 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
-Set-CcFile $d 'a.cs' "// 기존 설명`n// 바꾼 설명`nint a;`n"; git -C $d add a.cs
-$r = Invoke-CcCommit $d 'git commit -m x' 'cc-retry'
-Assert-Case -Name "commit-comments: 주석 집합이 바뀌면 다시 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+Assert-Case -Name "commit-comments: 같은 주석 집합 두 번째도 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+
+$d = New-CcRepo
+[System.IO.File]::WriteAllText((Join-Path $d 'AGENTS.md'), "# A`n`n- **Test (감사)**: ``cargo test`` · 증가: ``^\s*pub\s+(fn|enum|struct)\b`` · 경로: ``*.rs```n")
+[System.IO.File]::WriteAllText((Join-Path $d 'q.rs'), "fn x() {}`npub enum E {}`n")
+git -C $d add .; git -C $d commit -qm rs
+Set-CcFile $d 'q.rs' "fn x() {}`n/// 감사가 요구하는 계약.`npub enum E {}`n"; git -C $d add q.rs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-audit'
+Assert-Case -Name "commit-comments: 기존 pub 항목 위에 /// 만 더한 커밋(감사 레포)은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Set-CcFile $d 'q.rs' "fn x() {}`n/// 감사가 요구하는 계약.`n#[a]`n#[b]`n#[c]`n#[d]`npub enum E {}`n"; git -C $d add q.rs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-attr'
+Assert-Case -Name "commit-comments: 속성 4줄 뒤 pub 항목은 작업 트리에서 읽어 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+
+$d = New-CcRepo
+[System.IO.File]::WriteAllText((Join-Path $d 'h.ps1'), "$([char]0xFEFF)# h.ps1 — 옛 머리 설명`n`$h = 1`n")
+git -C $d add h.ps1; git -C $d commit -qm h
+[System.IO.File]::WriteAllText((Join-Path $d 'h.ps1'), "$([char]0xFEFF)# h.ps1 — 고친 머리 설명`n`$h = 1`n"); git -C $d add h.ps1
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-bom'
+Assert-Case -Name "commit-comments: BOM 첫 줄 머리 주석의 문구 수정은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 $d = New-CcRepo
 Set-CcFile $d 'b.cs' "// 경로 커밋 설명`nint b;`n"
