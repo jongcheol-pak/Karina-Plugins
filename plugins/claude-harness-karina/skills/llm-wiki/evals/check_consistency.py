@@ -231,7 +231,6 @@ VOCAB_LINES = {
     "confidence": (r"\*\*`confidence` 통제 어휘\(고정\)\*\*:(.+)", "CONFIDENCE_VOCAB"),
     "category": (r"\*\*`category` 통제 어휘\(고정\)\*\*:(.+)", "CATEGORY_VOCAB"),
     "decision": (r"\*\*결정 통제 어휘\(고정, decision-log 항목\)\*\*:(.+)", "DECISION_VOCAB"),
-    "format": (r"\*\*`format` 통제 어휘\(고정\)\*\*:(.+)", "FORMAT_VOCAB"),
 }
 
 

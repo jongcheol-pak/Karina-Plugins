@@ -8,7 +8,6 @@
       / updated 필드 누락(§7-9 — 최종 수정일 추적 전제) / feature 폐지 절 보유(§7-38 — 구현 방법·동작(사용법)·UI·UX·관련 파일·facts 동작·구조)
       / 고아 페이지(간이) / 미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계
-      / feature 각주 경로 레포 실존(§7-20 — 허브 '레포 정보 > 경로'의 레포 접근 가능 시)
       / 본문 코드 경로(§7-40 — project·feature·decision-log 본문의 `a/b.ext` 백틱 토큰. 각주 정의 줄·펜스·허브 경로 줄·URL·아카이브 포인터 제외)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
       / 큐 잔량 집계(INFO — 절차 K 큐 `pending.md`, §7-25)
@@ -19,9 +18,7 @@
       / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
       / index.md 부재·읽기 실패(ERR — 인덱스 기반 검사 불능 신호. 두 사유는 처방이 정반대라
         각각 다른 ERR: 부재는 골격 생성, 읽기 실패는 인코딩 복구)
-      / 위키 뒤처짐(INFO — 허브 synced_commit 이후 레포에 쌓인 커밋 수, §7-26. fail-open)
-      / facts 형식 페이지 검사(§7-39 — `format: facts` 페이지만: 근거 경로 부재·상대 참조 WARN,
-        근거 커밋 이후 근거 파일 변경 INFO. 레포·커밋을 못 찾으면 fail-open)
+      / 상대 참조(§7-39 — project·feature·decision-log 본문의 「위 절」 같은 고정 표현 WARN)
       / (미검증)·미해결 question 집계(INFO)
       / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
       / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트·decision-log 제외)
@@ -33,15 +30,14 @@
       / decision-log 정정 표기 형식(§7-36 — '정정'을 적은 항목의 '(정정 날짜: 옛 → 새, 근거 …)' 형식 위반).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
       `--fix`는 §7 참조 무결성 안전 3종(§7-23·§7-24·§7-19 stale 행)만 적용(승인 후 실행, 비 git vault 만 자동 백업 — schema §7 서두·non-git-backup.md 정본).
-범위: vault 파일 읽기 + 레포 접근 2종 — §7-20의 파일 '실존' 확인과 §7-26의 git 이력 조회
-      (커밋 '수'만 셈). 어느 쪽도 코드 내용은 해석하지 않는다
+범위: vault 파일 읽기만 한다 — 레포에 접근하지 않는다
       (서술↔코드 사실 정합은 §7-10 에이전트 표본이 담당).
 환경변수: LLM_WIKI_TODAY(ISO 날짜) — 시간 기반 판정의 「오늘」을 고정한다(_today 참조).
           골든 러너 전용 경로이며 일반 실행에는 설정하지 않는다.
 규칙 진실원천은 references/wiki-schema.md 번들(§2 는 schema-types.md, §4·§7-2·§8 은 schema-budget.md, §7 은 schema-lint.md). 예산/통제어휘가 바뀌면 이 상수도 함께 갱신할 것
 (H-2 규약(references/procedures-ops.md): 예산 값은 예산표(references/wiki-ops-rules.md)와 이 파일 둘, 통제어휘는 wiki-schema §3 과 이 파일 둘을 동기화).
 """
-import os, re, sys, glob, shutil, datetime, subprocess, collections, posixpath
+import os, re, sys, glob, shutil, datetime, subprocess, collections
 
 # Windows 콘솔(cp949)에서도 한글이 깨지지 않도록 UTF-8 출력 강제
 try:
@@ -158,13 +154,8 @@ PATTERNS_DIR = "30_knowledge/patterns/"
 #  걷으면 lint 에 알 수 없는 타입 검사가 없어 새로 생긴 것이 아무 검사에도 안 걸린다.
 RETIRED_PAGE_TYPES = ("convention",)
 RETIRED_QUEUE_TAG_RX = re.compile(r"^- \[\d{4}-\d{2}-\d{2}\] \[PROJECT-FACT\]")
-# §7-39 facts 형식(wiki-schema §1 「facts 형식」·§3 `format` 통제 어휘가 정본 — check_consistency.py
-#  VOCAB_LINES 가 이 상수와 그 줄을 대조한다). 근거 꼬리 `(근거: `경로`@커밋 · …)` 와
-#  상대 참조 고정 표현 — 표현을 넓게 잡으면 「위 절차」 같은 정상 문장이 오탐하므로 고정 목록만 쓴다.
-FORMAT_VOCAB = {"facts"}
-FACTS_EVIDENCE_RX = re.compile(r"\(근거:([^)]*)\)")
-FACTS_REF_RX = re.compile(r"`?([^`@\s·()]+)`?@([0-9a-f]{7,40})\b")
-FACTS_RELATIVE_REFS = ("위 절", "아래 절", "앞 절", "위 표", "아래 표", "앞 회차", "이전 회차")
+# §7-39 상대 참조 고정 표현 — 표현을 넓게 잡으면 「위 절차」 같은 정상 문장이 오탐하므로 고정 목록만 쓴다.
+RELATIVE_REFS = ("위 절", "아래 절", "앞 절", "위 표", "아래 표", "앞 회차", "이전 회차")
 # 본문 릴리즈 마커 (§7-28 — §5 "changelog 미러링 금지"의 기계 신호). v접두 3필드 semver만 —
 #  2필드(v1.2)·v 없는 버전(2.9.2)은 제품 라인·라이브러리 버전일 수 있어 비검출(오탐 회피가 1급 요건).
 #  경계를 \b로 하지 않는 이유: 한글도 \w라 "v1.2.3에서"(실vault 최빈 형태)의 꼬리 경계가 실패한다 —
@@ -424,7 +415,7 @@ def _section_rx(heading):
 
 def section(text, heading, probe=None):
     """본문에서 '## {heading}' 섹션(헤딩 줄부터 다음 '## ' 헤딩 또는 문서 끝까지)을 반환, 없으면 None.
-    기능별 인덱스(§7-6·14)·레포 정보(§7-20)·아카이브 인덱스(§7-19)·미해결 질문(§7-23) 공용 —
+    기능별 인덱스(§7-6·14)·아카이브 인덱스(§7-19)·미해결 질문(§7-23) 공용 —
     섹션 경계 규칙(다음 ## 또는 \\Z)이 검사마다 어긋나지 않게 한 곳에서 유지한다.
 
     **판정은 `strip_code` 사본으로 한다 — `_md_sections`와 같은 경계를 쓰기 위해서다.**
@@ -701,42 +692,6 @@ def feature_index_rows(text):
     if not sec:
         return 0
     return sum(1 for line in sec.splitlines() if is_feat_recipe_row(line))
-
-
-def git_commits_behind(repo_root, sha, limit_to_root=False):
-    """repo_root의 HEAD가 sha 이후로 몇 커밋 쌓였는지 반환(§7-26). 계산 불가면 None.
-    limit_to_root 면 repo_root 아래를 건드린 커밋만 센다(허브 경로가 git 루트의 하위 폴더일 때).
-
-    fail-open이 이 함수의 계약이다 — git 미설치·비 git 레포·sha 소실(rebase·force push)·
-    타임아웃·예외를 전부 None으로 흡수한다. lint은 읽기 전용 진단 도구라, 환경 차이로
-    실패해 vault 점검 전체를 막으면 안 된다(§7-20의 "레포 접근 가능 시"와 동일 원칙).
-    코드 내용은 읽지 않고 커밋 '수'만 센다(§7 결과 처리의 레포 접근 범위)."""
-    try:
-        proc = subprocess.run(
-            ["git", "-C", repo_root, "rev-list", "--count", f"{sha}..HEAD"]
-            + (["--", "."] if limit_to_root else []),
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10,
-            stdin=subprocess.DEVNULL,  # 자격증명·에디터 프롬프트로 매달리지 않게 입력을 닫는다
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None  # git 미설치·실행 실패·타임아웃
-    if proc.returncode != 0:
-        return None  # sha가 이력에 없음(rebase·force push) 등
-    out = proc.stdout.strip()
-    return int(out) if out.isdigit() else None
-
-
-def repo_root_for_hub(hub_text):
-    """project 허브 '## 레포 정보' 섹션의 '- **경로**: `...`' 백틱 값을 레포 루트로 반환(§7-20용).
-    섹션/경로 줄이 없거나 그 디렉터리가 실재하지 않으면(다른 PC 등) None — 레포 접근 불가로 간주."""
-    sec = section(hub_text, "레포 정보")
-    if not sec:
-        return None
-    m = re.search(r"\*\*경로\*\*\s*:\s*`([^`\n]+)`", sec)
-    if not m:
-        return None
-    root = os.path.expanduser(m.group(1).strip())
-    return root if os.path.isdir(root) else None
 
 
 def cleanup_backups(vault, today):
@@ -1359,8 +1314,8 @@ def _checkpoint_commit(git_root, label):
 def _git(repo_root, *args):
     """git 명령 1회 — 성공하면 stdout(문자열), 실패·부재·타임아웃이면 None.
 
-    `git_commits_behind`와 같은 계약이고(입력을 닫아 자격증명·에디터 프롬프트에 매달리지
-    않는다) 호출부가 None을 「git으로 처리할 수 없음」으로 읽는다.
+    입력을 닫아 자격증명·에디터 프롬프트에 매달리지 않고, 호출부가 None을 「git으로 처리할 수
+    없음」으로 읽는다.
 
     **`encoding`을 명시하지 않으면 Windows에서 cp949로 디코딩해 한글 출력에서 죽는다.**
     커밋 메시지가 한글이고(이 레포 규약) git이 그것을 stdout에 echo하므로 **체크포인트
@@ -1379,29 +1334,6 @@ def _git(repo_root, *args):
     except (OSError, subprocess.SubprocessError):
         return None
     return proc.stdout if proc.returncode == 0 else None
-
-
-def _git_changed_paths(repo_root, sha):
-    """`sha..HEAD` 에서 내용이 바뀐 경로 집합(git 루트 기준) — git 실패·이력에 없는 sha 면 None(§7-39).
-
-    내용 그대로의 이동(R100)은 빼고 그 밖의 rename 은 새 경로를 센다 — 이동 커밋 하나가 그 폴더를
-    근거로 단 사실 줄 전부를 낡음으로 만들지 않게 한다. `-z` 는 탭·따옴표·한글 경로를 이스케이프 없이
-    NUL 로 끊어 준다(quotepath 설정과 무관)."""
-    out = _git(repo_root, "diff", "-z", "-M", "--name-status", f"{sha}..HEAD")
-    if out is None:
-        return None
-    fields = out.split("\0")
-    changed, i = set(), 0
-    while i < len(fields) and fields[i]:
-        status = fields[i]
-        if status[0] in "RC":
-            if status != "R100":
-                changed.add(fields[i + 2])
-            i += 3
-        else:
-            changed.add(fields[i + 1])
-            i += 2
-    return changed
 
 
 # §4 7번 기록의 사유 — 처방 종류별로 다른 것만 둔다(없으면 분할·롤오버의 기본 사유).
@@ -2148,9 +2080,9 @@ TYPE_REQUIRED_SECTIONS = {
     "guide": ("개요",),
 }
 # **project 허브는 산문 하위 분리 대상이 아니다.** 하위는 원본과 같은 타입이라(§4 2번)
-#  `type: project`가 되는데, 그러면 `_project_hub_paths`·`_rows_projects`와 §7-20·
-#  §7-26·§7-30이 그 하위를 **별개 프로젝트**로 잡는다 — 인덱스 프로젝트 표에 한 줄이 더 생기고,
-#  `## 레포 정보`가 없다고 경고하고, 뒤처짐 계측이 그것을 따로 센다. 자동 분할이 스스로 새
+#  `type: project`가 되는데, 그러면 `_project_hub_paths`·`_rows_projects`와 §7-30이 그 하위를
+#  **별개 프로젝트**로 잡는다 — 인덱스 프로젝트 표에 한 줄이 더 생기고,
+#  `## 레포 정보`가 없다고 경고한다. 자동 분할이 스스로 새
 #  위반을 만드는 자리라 문자 축 처방을 두지 않는다(§4 표 project 행 — 그 자리는 사람이 하는
 #  정리가 맡는다). `TYPE_REQUIRED_SECTIONS`에는 남긴다 — 그 dict 는 필수 섹션의 정의이지
 #  분리 대상 목록이 아니다.
@@ -2278,8 +2210,7 @@ def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap, parent=No
     out = head + "# %s\n\n" % _label_with_section(h1.group(1).strip() if h1 else label, title) + back
 
     # 각주 정의는 **원본에 남기고 하위에도 복제**한다 — 각주는 파일 로컬이라 본문만
-    #  옮기면 하위에서 렌더되지 않고, 정의를 통째로 옮기면 원본에 남은 참조가 깨지며
-    #  §7-20 이 원본의 각주 경로를 더는 재지 못한다.
+    #  옮기면 하위에서 렌더되지 않고, 정의를 통째로 옮기면 원본에 남은 참조가 깨진다.
     keep_body = ""
     for req in TYPE_REQUIRED_SECTIONS.get(typ, ()):
         if req == (parent or title):
@@ -2544,8 +2475,8 @@ def relocate_sections(ses):
             hd_end = cur.index("\n", s0) + 1
             ptr = _relocation_pointer(sub_rel, label, title, len(body))
             # **본문 안의 각주 정의는 원본에 남긴다** — 각주는 파일 로컬이라, 정의가
-            #  옮기는 절 안에 있으면 본문과 함께 빠져 **원본에 남은 참조가 깨진다**(§7-20 도
-            #  원본의 각주 경로를 더는 재지 못한다). 하위에는 body 에 이미 딸려 가므로 여기서 복제하지 않는다.
+            #  옮기는 절 안에 있으면 본문과 함께 빠져 **원본에 남은 참조가 깨진다**.
+            #  하위에는 body 에 이미 딸려 가므로 여기서 복제하지 않는다.
             #  마지막 절이 옮겨질 때 실제로 일어나는 경로다 — 각주 정의는 관례상 문서 끝에 모인다.
             kept_defs = FOOTNOTE_DEF_RX.findall(body)
             tail = ("\n".join(kept_defs) + "\n\n") if kept_defs else ""
@@ -3162,7 +3093,7 @@ def main():
                 names = "·".join(dict.fromkeys(abolished))
                 warn(f"폐지 절 보유: {r} (## {names} — 함정·이유는 '## 관련 지식·레시피'로 옮기고 나머지는 지운다, schema §2.3·§7-38)", r)
 
-        # §7-40 본문 코드 경로 — 제외: 펜스 · 각주 정의 줄(출처 — 영구 예외) · 허브 `**경로**` 줄(레포 위치)
+        # §7-40 본문 코드 경로 — 제외: 펜스 · 각주 정의 줄 · 허브 `**경로**` 줄(레포 위치)
         #  · URL · `90_archive/` 포인터(롤오버 --fix·§7-30ⓐ 가 쓰는 장치). deprecated·아카이브 페이지는 frozen 이력.
         if typ in BODY_PATH_TYPES and not is_dep and not in_archive:
             body_paths, fence = [], False
@@ -3904,142 +3835,15 @@ def main():
             if f.startswith(hub_base + "/") and not re.search(re.escape(f) + r"(?![\w-])", hub_text):
                 warn(f"허브 기능 목록 누락: {r} -> {f}", r)
 
-    # feature 각주 경로 레포 실존 (schema-lint §7-20): feature의 [^src-...] 각주 정의 줄에 백틱으로
-    #  병기된 레포 상대경로가, 프로젝트 허브 '## 레포 정보 > 경로'의 레포에 실재하는지 확인.
-    #  lint은 파일 '실존'만 보고 코드 내용은 해석하지 않는다(서술↔코드 정합은 §7-10 에이전트 표본).
-    #  허브에 레포 경로가 없거나 디렉터리가 부재(다른 PC 등)면 프로젝트 단위 INFO 1건 후 건너뛴다
-    #  (그 프로젝트의 ① 경로 실재 확인은 §7-10 에이전트가 폴백 수행).
-    repo_cache = {}  # 허브 rel 경로 -> 레포 루트(str) 또는 None(접근 불가)
-    exists_cache = {}  # (root, 상대경로) -> 실존 여부 — 여러 feature가 같은 경로를 병기할 때 중복 IO 제거
-    for r, (fm, typ, text) in sorted(pages.items()):
-        if typ != "feature" or r.startswith("90_archive/"):
-            continue
-        if (fm.get("status") == "deprecated") or bool(fm.get("deprecated")):
-            continue  # deprecated는 frozen 이력 — 경로가 이미 제거된 게 정상 (§7-38과 동일 제외)
-        # 각주 정의 줄 판별은 strip_code 사본으로(코드펜스 안 유사 줄 제외 — 줄 구조 보존),
-        #  백틱 토큰 추출은 원문 줄에서(strip_code는 인라인코드를 공백화해 토큰이 사라지므로).
-        raw_lines = text.splitlines()
-        stripped_lines = strip_code(text).splitlines()
-        tokens = []
-        for i, sl in enumerate(stripped_lines):
-            if not sl.lstrip().startswith("[^src-"):
-                continue
-            # 디렉터리 구분자 포함 토큰만 경로 후보 — 무구분자(`MainViewModel.LoadAsync` 등
-            #  클래스·멤버명)는 오탐 방지 위해 제외
-            tokens += [t for t in re.findall(r"`([^`\n]+)`", raw_lines[i])
-                       if "/" in t or "\\" in t]
-        if not tokens:
-            continue
-        hub = r.rsplit("/", 1)[0] + ".md"  # 20_projects/{proj}/feat-x.md -> 20_projects/{proj}.md
-        if hub not in repo_cache:
-            hub_text = pages[hub][2] if hub in pages else ""
-            repo_cache[hub] = repo_root_for_hub(hub_text) if hub_text else None
-            if repo_cache[hub] is None:
-                infos.append(f"레포 접근 불가(허브 레포 경로 미기재/부재): {hub} "
-                             f"— 각주 경로 검증 건너뜀(§7-10 에이전트 폴백, schema §7-20)")
-        root = repo_cache[hub]
-        if root is None:
-            continue
-        for t in tokens:
-            p = t.replace("\\", "/").strip()
-            if p.startswith("./"):
-                p = p[2:]
-            if os.path.isabs(p) or re.match(r"^[A-Za-z]:", p):
-                continue  # 레포 '상대'경로만 검사 대상 — 절대경로 병기는 규약 밖이라 제외
-            full = os.path.join(root, p)
-            key = (root, p)
-            if key not in exists_cache:  # 실행-내 memoization (한 실행 중 파일시스템 불변 전제)
-                # 글롭 분기는 레포 루트를 이스케이프한다(L-3의 vault escape와 동형) — 루트 경로에
-                #   [ ] 등 메타문자가 있으면 글롭 토큰이 항상 매치 0건이 되어 실재 경로를 오탐한다.
-                #   토큰 p 안의 글롭(*)은 패턴으로 유지.
-                exists_cache[key] = (bool(glob.glob(os.path.join(glob.escape(root), p)))
-                                     if "*" in p else os.path.exists(full))
-            if not exists_cache[key]:
-                detail = "글롭 매치 0건 — 이동·삭제·오기 가능" if "*" in p \
-                    else "이동·삭제·오기 가능 — 갱신 필요"
-                warn(f"각주 경로 레포에 없음: {r} -> '{t}' ({detail}, schema §7-20)", r)
-
-    # facts 형식 페이지 (schema-lint §7-39): `format: facts` 를 단 project·feature·decision-log 만 본다
-    #  (wiki-schema §1 「facts 형식」 — 기존 페이지는 갱신될 때 바뀌므로 표지 없는 페이지는 대상 밖).
-    #  (ⓐ 근거 꼬리 누락은 폐지 — 그 대상 절 `## 동작`·`## 구조` 가 §7-38 폐지 절이 됐다.)
-    #  ⓑ 근거 경로가 레포 HEAD 에 없으면 WARN(§7-20 과 같은 실존 기준).
-    #  ⓒ 근거 커밋 이후 그 파일이 바뀌었으면 INFO — (레포, 커밋)마다 git diff 1회만 부른다. 근거 경로는
-    #     허브 레포 경로 기준이고 diff 는 git 루트 기준이라 접두를 붙여 대조한다(`_git_changed_paths`).
-    #  ⓓ 상대 참조 고정 표현은 WARN. 레포·커밋을 못 찾으면 fail-open(§7-26 과 같은 관례).
-    facts_diff_cache = {}  # (root, 커밋) -> 바뀐 경로 집합 또는 None(이력에 없음·git 실패)
-    facts_prefix_cache = {}  # root -> git 루트에서 root 까지의 접두(`sub/` · 루트면 빈 문자열)
+    # 상대 참조 (schema-lint §7-39): 절 단위로 뽑아 읽으면 「위 절」이 가리키던 것이 사라진다.
     for r, (fm, typ, text) in sorted(pages.items()):
         if typ not in ("project", "feature", "decision-log") or r.startswith("90_archive/"):
             continue
-        if str(fm.get("format", "")).strip() not in FORMAT_VOCAB:
-            continue
-        raw_lines = text.splitlines()
-        stripped_lines = strip_code(text).splitlines()
-        refs = []
-        for i, sl in enumerate(stripped_lines):
-            m_ev = FACTS_EVIDENCE_RX.search(raw_lines[i]) if "(근거:" in sl else None
-            if m_ev:
-                refs += FACTS_REF_RX.findall(m_ev.group(1))
-        body = "\n".join(stripped_lines)
-        for phrase in FACTS_RELATIVE_REFS:
+        body = strip_code(text)
+        for phrase in RELATIVE_REFS:
             if phrase in body:
-                warn(f"facts 상대 참조: {r} -> '{phrase}' "
-                     f"(대상의 이름·경로로 쓴다 — wiki-schema §1 facts 형식 5, schema §7-39)", r)
-        if not refs:
-            continue
-        hub = r if typ == "project" else r.rsplit("/", 1)[0] + ".md"
-        if hub not in repo_cache:
-            hub_text = pages[hub][2] if hub in pages else ""
-            repo_cache[hub] = repo_root_for_hub(hub_text) if hub_text else None
-        root = repo_cache[hub]
-        if root is None:
-            infos.append(f"facts 근거 확인 불가(허브 레포 경로 미기재/부재): {r} — 근거 경로·낡음 검사 건너뜀 (schema §7-39)")
-            continue
-        for path, sha in refs:
-            p = path.replace("\\", "/").strip()
-            if p.startswith("./"):
-                p = p[2:]
-            if not os.path.exists(os.path.join(root, p)):
-                warn(f"facts 근거 경로 레포에 없음: {r} -> '{p}' (이동·삭제·오기 가능, schema §7-39)", r)
-                continue
-            key = (root, sha)
-            if key not in facts_diff_cache:
-                changed_paths = _git_changed_paths(root, sha)
-                facts_diff_cache[key] = changed_paths
-                if changed_paths is None:
-                    infos.append(f"facts 근거 커밋 확인 불가: {r} -> {sha[:7]} "
-                                 f"(레포 이력에 없음 — rebase·다른 레포 가능, schema §7-39)")
-            if root not in facts_prefix_cache:
-                facts_prefix_cache[root] = (_git(root, "rev-parse", "--show-prefix") or "").strip()
-            git_path = posixpath.normpath(facts_prefix_cache[root] + p)
-            changed = facts_diff_cache[key]
-            if changed is not None and not git_path.startswith("..") and git_path in changed:
-                infos.append(f"facts 근거 낡음 가능: {r} -> '{p}' ({sha[:7]} 이후 변경 — 그 사실 줄을 코드와 대조, schema §7-39)")
-
-    # 위키 뒤처짐 (schema-lint §7-26): 허브 synced_commit(§2.2) 이후 레포에 쌓인 커밋 수를 센다.
-    #  updated는 "언제 손댔나"라서, 날짜만 갱신되고 내용이 레포를 못 따라온 상태를 그대로
-    #  통과시킨다 — 그 사각을 이 검사가 메운다("어디까지 담았나").
-    #  전부 INFO다: 커밋 수 임계는 프로젝트 커밋 빈도에 따라 의미가 달라 근거 없는 상수가 되므로
-    #  "후보 제시"에 머문다(exit code 불변). 접근 불가는 조용히 skip(fail-open).
-    for r, (fm, typ, text) in sorted(pages.items()):
-        if typ != "project" or r.startswith("90_archive/"):
-            continue
-        synced = str(fm.get("synced_commit", "")).strip()
-        if not synced:
-            infos.append(f"동기 기준점 미설정: {r} — synced_commit 없음 "
-                         f"(다음 ingest에서 기록, schema §2.2·§7-26)")
-            continue
-        root = repo_root_for_hub(text)
-        prefix = _git(root, "rev-parse", "--show-prefix") if root is not None else None
-        if prefix is None:
-            continue  # 레포 경로 부재·git 아님 → 조용히 skip (fail-open — 다른 PC·비 git 레포)
-        behind = git_commits_behind(root, synced, limit_to_root=bool(prefix.strip()))
-        if behind is None:
-            infos.append(f"동기 기준점이 레포 이력에 없음: {r} -> '{synced[:7]}' "
-                         f"(rebase·force push 가능 — 다음 ingest에서 재설정, schema §7-26)")
-        elif behind > 0:
-            infos.append(f"위키 뒤처짐: {r} — {behind}커밋 미반영 "
-                         f"(synced: {synced[:7]}, schema §7-26)")
+                warn(f"상대 참조: {r} -> '{phrase}' "
+                     f"(대상의 이름·경로로 쓴다 — wiki-schema §1 사실 줄 형식, schema §7-39)", r)
 
     # 고아 페이지(간이): 어디서도 링크되지 않는 페이지 (루트 인프라·아카이브·lint 리포트 제외)
     #  lint-YYYYMMDD 리포트(questions/, type: question)는 어디서도 링크되지 않는 게 정상이라

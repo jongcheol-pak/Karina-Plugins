@@ -1,5 +1,5 @@
 {
-  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). expect_absent는 보조 필드 — 나열 키워드가 출력에 있으면 FAIL(오탐 가드). placeholder=true면 fixture를 임시 복사 후 .md의 __FIXTURE_ROOT__를 복사본 절대경로로 치환해 실행(§7-20처럼 실재 경로가 필요한 fixture용). 커버리지: 번호가 부여된 §7 검사 36개 중 케이스가 인용하는 번호 32개(폐지 §7-3·27 언급 포함 — 집계는 케이스의 `§7-N` 인용. 괄호 안은 초기 대표 목록이다: 깨진 링크·예산(펜스 제외 판정 §7-2 포함)·통제어휘(platform/origin/confidence + category)·한영 병기(§7-16 — 통합 표의 가이드 행까지 포함. 종전의 가이드 섹션 전용 검사는 폐지돼 여기에 흡수됐다)·시크릿·decision 어휘·index 부재·feature 폐지 절 보유(§7-38)·updated 누락·각주 경로 실존(§7-20)·고아 lint 리포트 제외(§7-8)·순번 sub-index 자동 분할 신호+목록 정합(§7-14·15)·90_archive 검사 제외(§7-7·9·11 + BOM, §2.8·§8)·convention 예산(§7-2)·이동·분리 도달 경로(§7-30 ⓐ정·ⓑ역·ⓒ인덱스 등록·ⓓguide 허브↔하위)·작업 규약 미마이그레이션(§7-31)). 골든이 없는 번호는 §7-4·5·10·13 — [에이전트] 항목(모델 판정)이다.",
+  "_note": "lint.py 골든 회귀 케이스. run_lint_evals.py가 각 fixture에 lint.py를 실행해 대조한다. expect_clean=true면 ERR·WARN 0을, expect_keywords면 그 키워드가 모두 lint 출력에 나오는지 확인한다(부분 매칭 — lint 문구 미세 변경에 견고). expect_absent는 보조 필드 — 나열 키워드가 출력에 있으면 FAIL(오탐 가드). 커버리지: 번호가 부여된 §7 검사 36개 중 케이스가 인용하는 번호 32개(폐지 §7-3·27 언급 포함 — 집계는 케이스의 `§7-N` 인용. 괄호 안은 초기 대표 목록이다: 깨진 링크·예산(펜스 제외 판정 §7-2 포함)·통제어휘(platform/origin/confidence + category)·한영 병기(§7-16 — 통합 표의 가이드 행까지 포함. 종전의 가이드 섹션 전용 검사는 폐지돼 여기에 흡수됐다)·시크릿·decision 어휘·index 부재·feature 폐지 절 보유(§7-38)·updated 누락·고아 lint 리포트 제외(§7-8)·순번 sub-index 자동 분할 신호+목록 정합(§7-14·15)·90_archive 검사 제외(§7-7·9·11 + BOM, §2.8·§8)·convention 예산(§7-2)·이동·분리 도달 경로(§7-30 ⓐ정·ⓑ역·ⓒ인덱스 등록·ⓓguide 허브↔하위)·작업 규약 미마이그레이션(§7-31)). 골든이 없는 번호는 §7-4·5·10·13 — [에이전트] 항목(모델 판정)이다.",
   "cases": [
     {
       "fixture": "clean",
@@ -157,19 +157,6 @@
         "category 통제어휘 위반"
       ],
       "rationale": "§7-7 확장 — category 오타는 sub-index 라우팅을 어긋나게 함 (ERR)"
-    },
-    {
-      "fixture": "path-missing",
-      "placeholder": true,
-      "expect_keywords": [
-        "각주 경로 레포에 없음",
-        "Gone.cs"
-      ],
-      "expect_absent": [
-        "Real.cs",
-        "진입점 심볼 소스에 없음"
-      ],
-      "rationale": "§7-20 실존 검사 — 각주의 부재 경로 WARN + 실재 경로 무경고(오탐 가드). placeholder로 레포 루트를 실행 시점에 주입. 진입점 심볼 검사(옛 §7-21)는 관련 파일 절과 함께 폐지돼 그 WARN이 어디서도 나오면 안 된다."
     },
     {
       "fixture": "md-ext-link",
@@ -390,45 +377,6 @@
         "아카이브 포인터 깨짐"
       ],
       "rationale": "--fix 보수 동작 실증(v1.116.0) — ① §7-23 등록이 표 형식 '## 미해결 질문' 섹션에 표 행으로 삽입돼 재lint에서 등록 인정(미등록 부재), ② §7-24 제거가 '## 아카이브' 섹션 안 깨진 포인터만 지움(정확히 1행) — 결정 항목 본문의 깨진 아카이브 경로 인용은 비제거라 재lint에 '아카이브 포인터 깨짐' WARN이 잔존해야 PASS(§2.8 항목 불변 보호, after_expect_keywords로 실증)"
-    },
-    {
-      "fixture": "wiki-stale",
-      "git_repo": true,
-      "synced_mode": "first",
-      "expect_keywords": [
-        "위키 뒤처짐",
-        "2커밋 미반영"
-      ],
-      "rationale": "§7-26 핵심 경로 — 러너가 커밋 3개짜리 임시 git 레포를 만들고 허브 synced_commit을 첫 커밋으로 두면 2커밋이 미반영이다. 이 케이스가 git rev-list 실경로를 실증한다(스텁 대체 금지 — 계산이 검증되지 않으면 검사가 있으나 마나)"
-    },
-    {
-      "fixture": "wiki-stale",
-      "git_repo": true,
-      "synced_mode": "missing",
-      "expect_keywords": [
-        "동기 기준점이 레포 이력에 없음"
-      ],
-      "expect_absent": [
-        "위키 뒤처짐"
-      ],
-      "rationale": "§7-26 sha 소실(rebase·force push) — 기준점이 이력에 없으면 커밋 수를 셀 수 없다. 뒤처짐 수치를 지어내지 않고 INFO로 재설정을 안내해야 한다(expect_absent가 거짓 수치 출력을 막는 가드)"
-    },
-    {
-      "fixture": "wiki-nongit",
-      "placeholder": true,
-      "expect_clean": true,
-      "expect_absent": [
-        "위키 뒤처짐",
-        "동기 기준점"
-      ],
-      "rationale": "§7-26 fail-open — synced_commit은 있으나 레포 경로가 git 레포가 아니면(.git 없음) 조용히 건너뛴다. ERR/WARN은 물론 INFO도 내지 않아야 한다(진단 도구가 환경 차이로 소음을 내면 안 됨). expect_clean 단독으로는 INFO 누출을 못 잡아 expect_absent를 병기한다"
-    },
-    {
-      "fixture": "clean",
-      "expect_keywords": [
-        "동기 기준점 미설정"
-      ],
-      "rationale": "§7-26 미설정 INFO — synced_commit이 없는 기존 허브는 유효하되(선택 필드) 기준점 부재를 INFO 1줄로 알린다. clean fixture가 ERR/WARN 0을 유지하는 것과 양립함을 함께 실증한다(신규 필드가 기존 vault를 깨지 않는다)"
     },
     {
       "fixture": "emoji-bad",
@@ -1994,142 +1942,23 @@
       "rationale": "**인라인 코드 안의 백틱 셋이 펜스로 짝지어지지 않는가.** 종전 `strip_code` 는 ``` 를 줄 어디서든 펜스로 보고, 인라인 코드를 백틱 하나로만 닫았다 — 그래서 4-백틱 인라인 코드 안의 ```mermaid 와 먼 줄의 ``` 가 짝지어져 **그 사이 헤딩(`## H`)이 지워졌다**. 실 vault `feat-source-control` 에서 `## 동작(사용법)`이 그렇게 보이지 않아 `## 관련 파일`이 그 절까지 먹었다. 펜스는 줄머리에서만 열고, 인라인 코드는 여는 백틱 수와 같은 수로 닫는다(CommonMark). **판정은 반환 전문이다** — 헤딩 줄이 살아 있는지와 두 스팬이 정확히 공백으로 바뀌는지를 함께 본다."
     },
     {
-      "fixture": "facts-bad",
-      "git_repo": true,
-      "synced_mode": "first",
+      "fixture": "relref-noformat",
       "expect_keywords": [
-        "facts 근거 경로 레포에 없음",
-        "nope.txt"
-      ],
-      "rationale": "§7-39 ⓑ — 근거 경로가 레포 HEAD 에 없으면 WARN 이다(§7-20 과 같은 실존 기준)"
-    },
-    {
-      "fixture": "facts-bad",
-      "git_repo": true,
-      "synced_mode": "first",
-      "expect_keywords": [
-        "facts 근거 낡음 가능",
-        "f2.txt"
-      ],
-      "expect_absent": [
-        "'f0.txt'"
-      ],
-      "rationale": "§7-39 ⓒ — 근거 커밋(러너의 첫 커밋) 이후 근거 파일이 바뀌면(f2.txt 는 셋째 커밋에 생겼다) INFO 다. f0.txt 는 첫 커밋 뒤 바뀌지 않아 신호가 없어야 한다 — (레포, 커밋)별 git diff 1회 대조(D7)"
-    },
-    {
-      "fixture": "facts-bad",
-      "git_repo": true,
-      "synced_mode": "first",
-      "expect_keywords": [
-        "facts 상대 참조",
+        "상대 참조: 20_projects/personal/demo/feat-thing.md",
         "위 절"
       ],
-      "rationale": "§7-39 ⓓ — 상대 참조 고정 표현(위 절 등)은 절 단위로 뽑아 읽으면 가리키던 것이 사라져 WARN 이다(wiki-schema §1 facts 형식 5)"
+      "rationale": "§7-39 상대 참조 — `format: facts` 표지가 없는 feature 에서도 「위 절」 같은 상대 참조를 잡는다(표지 게이트 폐지, 2026-11-04 위키 범위 축소). 절 단위로 뽑아 읽으면 가리키던 것이 사라진다"
     },
     {
-      "fixture": "facts-noformat",
-      "git_repo": true,
-      "synced_mode": "first",
-      "expect_keywords": [
-        "위키 뒤처짐"
-      ],
+      "fixture": "relref-evidence-ok",
+      "expect_clean": true,
       "expect_absent": [
-        "facts 근거 경로 레포에 없음",
-        "facts 근거 낡음 가능",
-        "facts 상대 참조"
+        "근거 경로",
+        "근거 낡음",
+        "근거 확인 불가",
+        "상대 참조"
       ],
-      "rationale": "§7-39 ⓔ 음성 짝 — 같은 위반을 담아도 `format: facts` 가 없는 페이지는 검사 대상이 아니다(사용자 답 「갱신되는 페이지부터」 — 기존 페이지에 경고를 쏟지 않는다)"
-    },
-    {
-      "fixture": "facts-ok",
-      "git_repo": true,
-      "synced_mode": "first",
-      "expect_keywords": [
-        "위키 뒤처짐"
-      ],
-      "expect_absent": [
-        "facts 근거 경로 레포에 없음",
-        "facts 근거 낡음 가능",
-        "facts 상대 참조"
-      ],
-      "rationale": "§7-39 ⓕ 음성 짝 — 형식을 지킨 facts 페이지(근거가 첫 커밋 뒤 안 바뀐 f0.txt · `없음:` 사실 포함)는 무경고다"
-    },
-    {
-      "fixture": "facts-ok",
-      "git_repo": true,
-      "synced_mode": "missing",
-      "expect_keywords": [
-        "facts 근거 커밋 확인 불가"
-      ],
-      "expect_absent": [
-        "facts 근거 낡음 가능"
-      ],
-      "rationale": "§7-39 ⓗ 음성 짝 — 근거 커밋이 레포 이력에 없으면(rebase·다른 레포) 낡음을 지어내지 않고 fail-open INFO 1줄이다(§7-26 과 같은 관례)"
-    },
-    {
-      "fixture": "facts-monorepo",
-      "git_repo": true,
-      "repo_layout": "monorepo",
-      "synced_mode": "first",
-      "expect_keywords": [
-        "facts 근거 낡음 가능",
-        "'a.txt'"
-      ],
-      "rationale": "§7-39 하위 폴더 — 허브 레포 경로가 git 루트의 하위 폴더 `sub` 면 근거 경로는 `sub` 기준이고 `git diff` 는 git 루트 기준이다. 접두를 붙여 대조해야 셋째 커밋이 바꾼 `sub/a.txt` 가 잡힌다"
-    },
-    {
-      "fixture": "facts-monorepo",
-      "git_repo": true,
-      "repo_layout": "monorepo",
-      "synced_mode": "first",
-      "expect_keywords": [
-        "facts 근거 낡음 가능",
-        "'../tools/ci.yml'"
-      ],
-      "expect_absent": [
-        "facts 근거 경로 레포에 없음"
-      ],
-      "rationale": "§7-39 하위 폴더 밖 — `../` 로 git 루트의 `tools/ci.yml` 을 가리킨 근거도 정규화해 대조한다(셋째 커밋이 바꿨다). 메시지는 페이지에 적힌 근거 경로를 그대로 낸다"
-    },
-    {
-      "fixture": "facts-monorepo",
-      "git_repo": true,
-      "repo_layout": "monorepo",
-      "synced_mode": "first",
-      "expect_keywords": [
-        "facts 근거 낡음 가능"
-      ],
-      "expect_absent": [
-        "'README.md'"
-      ],
-      "rationale": "§7-39 하위 폴더 음성 짝 — 둘째 커밋이 git 루트의 `README.md` 를 바꿔도 하위 폴더 근거 `README.md`(= `sub/README.md`, 안 바뀜)는 낡음이 아니다. 기대 키워드는 같은 픽스처의 `a.txt` 신호로 검사가 실제로 돌았음을 보장한다"
-    },
-    {
-      "fixture": "facts-monorepo",
-      "git_repo": true,
-      "repo_layout": "monorepo",
-      "synced_mode": "first",
-      "expect_keywords": [
-        "facts 근거 낡음 가능"
-      ],
-      "expect_absent": [
-        "'b.txt'"
-      ],
-      "rationale": "§7-39 내용 그대로 이동 음성 짝 — 둘째 커밋이 `old/b.txt` 를 `sub/b.txt` 로 내용 그대로 옮겼다. rename 100% 는 근거 내용이 그대로라 낡음이 아니다 — 이동 한 번에 근거 줄 전부가 경고되는 것을 막는다"
-    },
-    {
-      "fixture": "facts-monorepo",
-      "git_repo": true,
-      "repo_layout": "monorepo",
-      "synced_mode": "first",
-      "expect_keywords": [
-        "위키 뒤처짐",
-        "2커밋 미반영"
-      ],
-      "expect_absent": [
-        "3커밋 미반영"
-      ],
-      "rationale": "§7-26 하위 폴더 — 허브 레포 경로가 git 루트의 하위 폴더 `sub` 면 `.git` 폴더가 없어도 git 으로 레포를 판정하고, 그 폴더를 건드린 커밋만 센다. 첫 커밋 뒤 셋 중 넷째 커밋은 루트 `README.md` 만 바꿔 전체 셈(3)과 한정 셈(2)이 갈린다"
+      "rationale": "§7-39 음성 짝 — 사실 줄 끝의 `(근거: 경로@커밋)` 꼬리표는 더는 검사하지 않는다. 레포에 없는 경로·없는 커밋을 가리켜도 경고·정보 줄이 없다(근거 꼬리표 폐지, 2026-11-04)"
     },
     {
       "fixture": "body-code-path-feature",
