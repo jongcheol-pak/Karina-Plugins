@@ -56,7 +56,7 @@ $script:CommentLinkRx = '(?i)https?://\S*(/issues/\d+|/pull/\d+|/-/issues/\d+|rf
 $script:CommentTrackerRx = '\b(?!(UTF|SHA|ISO|CP|IEC|IEEE|ECMA|ANSI|CRC|AES|RSA|TLS|HTTP|MD|BASE)[A-Z0-9]*-)[A-Z]{2,}[A-Z0-9]*-\d+\b'
 $script:CommentTodoRx = '\b(TODO|FIXME|XXX)\b'
 $script:CommentBaseBudgetMs = 10000
-$script:CommentKeepLineRx ='^- \*\*Comment \(보존\)\*\*: `(?<rx>[^`]+)` · 경로: `(?<paths>[^`]+)`'
+$script:CommentKeepLineRx = '^- \*\*Comment \(보존\)\*\*: `(?<rx>[^`]+)` · 경로: `(?<paths>[^`]+)`'
 
 function Get-AddedCommentBodies([string]$Path, $Pairs) {
     $added = New-Object System.Collections.Generic.List[object]
@@ -214,7 +214,7 @@ function New-CommentBaseBudget { return @{ Deadline = [DateTime]::UtcNow.AddMill
 
 function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budget) {
     try {
-        if (-not $Root -or -not $File.StartsWith($Root, [System.StringComparison]::OrdinalIgnoreCase)) { return @() }
+        if (-not $Root -or $File.Contains('"') -or -not $File.StartsWith($Root, [System.StringComparison]::OrdinalIgnoreCase)) { return @() }
         $plan = $null
         foreach ($d in (Get-CommentSearchDirs $Dir $Root)) {
             $cand = Join-Path $d 'plan.md'

@@ -50,7 +50,7 @@ GIT_TIMEOUT_SEC = 30         # lint.py·relocate-agents.py 의 git 시한과 같
 SWEEP_AGE_SEC = 7 * 24 * 3600
 BUSY_SAME_MAX = 6            # 바쁨(CI pending·백그라운드 셸)인 같은 화면을 움직임으로 세는 연속 비교 상한(약 54분)
 TREE_HASH_MAX = 200
-ANSWER_MAX_SEC = 2700       # --answer-by 상한 — 백그라운드 대기 생존 실측 45분
+ANSWER_MAX_SEC = 2700        # --answer-by 상한 — 백그라운드 대기 생존 실측 45분
 
 
 BUSY_CAPPED_NOTE = ('바쁨(백그라운드 셸·CI pending)인 같은 화면이 상한을 넘어 멈춤으로 셌다 — 오판일 수 있다 '
