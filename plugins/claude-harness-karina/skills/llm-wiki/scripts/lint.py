@@ -2087,8 +2087,8 @@ TYPE_REQUIRED_SECTIONS = {
 #  정리가 맡는다). `TYPE_REQUIRED_SECTIONS`에는 남긴다 — 그 dict 는 필수 섹션의 정의이지
 #  분리 대상 목록이 아니다.
 RELOCATE_TYPES = tuple(t for t in TYPE_REQUIRED_SECTIONS if t != "project")
-# §7-38 폐지 절 — schema §2.3 이 feature 에서 걷은 절(facts 변형의 동작·구조 포함). 줄 머리 헤딩만 센다.
-ABOLISHED_FEATURE_RX = re.compile(r"(?m)^##[ \t]+(구현 방법|동작\(사용법\)|UI·UX|관련 파일|동작|구조)[ \t]*$")
+# §7-38 폐지 절 — schema §2.3 이 feature 에서 걷은 절(facts 변형의 동작·구조와 관련 지식·레시피 포함). 줄 머리 헤딩만 센다.
+ABOLISHED_FEATURE_RX = re.compile(r"(?m)^##[ \t]+(구현 방법|동작\(사용법\)|UI·UX|관련 파일|동작|구조|관련 지식·레시피)[ \t]*$")
 FOOTNOTE_DEF_RX = re.compile(r"(?m)^\[\^[^\]\n]+\]:.*$")
 # §7-40 본문 코드 경로 — 위키는 코드 경로를 쓰지 않는다(wiki-schema §1 「쓰지 않는 코드 정보」).
 #  `a/b.ext` 형 백틱 토큰만 센다 — 구분자 없는 이름·확장자 없는 토큰은 경로로 단정하기 어렵다.
@@ -2320,8 +2320,8 @@ def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra
         if hit:
             return hit
     # **`###` 경계 폴백** — 옮길 수 있는 `## ` 가 없으면 기본 유지 섹션 밖 `## ` 안의 `### `
-    #  구역을 크기순으로 같은 가드에 건다. facts 형식 feature 는 `## 개요`·`## 관련 지식·레시피`
-    #  둘뿐이라, 뒤의 절이 통째로는 하위를 곧바로 발동시켜 이 폴백 없이는 처방이 없다.
+    #  구역을 크기순으로 같은 가드에 건다. 유지 절 밖 `## ` 이 하나뿐인 페이지(guide·concept 등)는
+    #  그 절이 통째로는 하위를 곧바로 발동시켜 이 폴백 없이는 처방이 없다.
     #  범위를 `extra_keep` 으로 줄이지 않는다 — 같은 부모에서 여러 번 옮길 수 있어야 한다.
     #  이미 옮긴 구역은 제목(`extra_keep`)과 포인터 전용 판정이 뺀다.
     base_keep = set(RELOCATE_KEEP_COMMON) | set(TYPE_KEEP_SECTIONS.get(typ, ()))
@@ -3091,7 +3091,7 @@ def main():
             abolished = ABOLISHED_FEATURE_RX.findall(strip_code(text))
             if abolished:
                 names = "·".join(dict.fromkeys(abolished))
-                warn(f"폐지 절 보유: {r} (## {names} — 함정·이유는 '## 관련 지식·레시피'로 옮기고 나머지는 지운다, schema §2.3·§7-38)", r)
+                warn(f"폐지 절 보유: {r} (## {names} — 함정은 레포 docs/conventions.md, 채택 이유는 decisions.md 몫이고 나머지는 지운다, schema §2.3·§7-38)", r)
 
         # §7-40 본문 코드 경로 — 제외: 펜스 · 각주 정의 줄 · 허브 `**경로**` 줄(레포 위치)
         #  · URL · `90_archive/` 포인터(롤오버 --fix·§7-30ⓐ 가 쓰는 장치). deprecated·아카이브 페이지는 frozen 이력.

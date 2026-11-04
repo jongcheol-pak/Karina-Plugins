@@ -24,7 +24,7 @@ Thing 클래스가 처리한다[^src-thing].
 ## 화면 구성
 버튼 하나로 구성.
 
-## 관련 지식·레시피
+## 메모
 없음.
 
 [^src-thing]: [[10_sources/personal/src-demo\|소스: Demo]] — `src/Demo/Thing.cs`

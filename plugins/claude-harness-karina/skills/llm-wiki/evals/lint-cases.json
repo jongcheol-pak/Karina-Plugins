@@ -142,7 +142,7 @@
         "구현 근거 각주 누락",
         "폐지 절 보유"
       ],
-      "rationale": "2절(개요·관련 지식·레시피)만 가진 feature 는 구조 경고를 내지 않는다 — 옛 §7-18(구현 방법 필수·구현 근거 각주) 폐지와 §7-38 음성 짝"
+      "rationale": "폐지 절 없는 2절(개요·메모)만 가진 feature 는 구조 경고를 내지 않는다 — 옛 §7-18(구현 방법 필수·구현 근거 각주) 폐지와 §7-38 음성 짝"
     },
     {
       "fixture": "no-updated",
@@ -1240,7 +1240,7 @@
         ],
         "20_projects/personal/demo/feat-thing-2.md": [
           "### 함정 나",
-          "## 관련 지식·레시피"
+          "## 메모"
         ]
       },
       "rationale": "**`###` 경계 폴백.** facts 형식 feature 처럼 이동 가능한 `## ` 가 하나뿐이고 그 절을 통째로 옮기면 하위가 곧바로 발동하는 크기일 때, `## ` 후보만 보는 분할은 옮길 것이 없어 멈춘다(실 vault 의 `feat-implement`·`feat-chain-plan-6` 이 그 상태였다). 폴백은 그 절 안의 가장 큰 `### ` 구역을 하위로 옮기고 원본에 `### ` 헤딩과 정본 포인터를 남긴다. 포인터가 하위의 `### ` 헤딩을 가리키므로 §7-30 이 `### ` 도 절로 읽어야 한다 — `## ` 만 찾으면 분할할 때마다 「정본 포인터 절 없음」이 난다. 한 번 옮겨 풀리므로 `-3.md` 가 생기면 부모가 통째로 따라간 것이다."
@@ -1265,7 +1265,7 @@
       ],
       "expect_file_contains": {
         "20_projects/personal/demo/feat-thing.md": [
-          "## 관련 지식·레시피",
+          "## 메모",
           "### 함정 다"
         ]
       },
@@ -1959,6 +1959,24 @@
         "상대 참조"
       ],
       "rationale": "§7-39 음성 짝 — 사실 줄 끝의 `(근거: 경로@커밋)` 꼬리표는 더는 검사하지 않는다. 레포에 없는 경로·없는 커밋을 가리켜도 경고·정보 줄이 없다(근거 꼬리표 폐지, 2026-11-04)"
+    },
+    {
+      "fixture": "abolished-related-feature",
+      "expect_keywords": [
+        "폐지 절 보유: 20_projects/personal/demo/feat-thing.md",
+        "관련 지식·레시피"
+      ],
+      "rationale": "§7-38 — feature 의 `## 관련 지식·레시피` 도 폐지 절이다(2026-11-04 위키 범위 축소). feature 는 `## 개요` 만 담고, 함정은 레포 `docs/conventions.md`, 채택 이유는 decisions 가 맡는다"
+    },
+    {
+      "fixture": "guide-related-ok",
+      "expect_keywords": [
+        "검사 파일"
+      ],
+      "expect_absent": [
+        "폐지 절 보유"
+      ],
+      "rationale": "§7-38 음성 짝 — guide 의 `## 관련 지식·레시피` 는 재사용 지식이라 폐지 대상이 아니다(검사는 feature 타입만 본다)"
     },
     {
       "fixture": "body-code-path-feature",
