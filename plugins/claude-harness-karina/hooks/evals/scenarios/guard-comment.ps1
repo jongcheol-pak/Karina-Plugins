@@ -106,7 +106,26 @@ $r = Invoke-GcEditAt (Join-Path $gcAudit 'src/q.rs') 'pub enum FollowUp {}' "///
 Assert-Case -Name "guard-comment: 감사 레포 pub enum 위 /// 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 [System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/h.rs'), "fn helper() {}`n")
 $r = Invoke-GcEditAt (Join-Path $gcAudit 'src/h.rs') 'fn helper() {}' "/// 감사 대상이 아닌 비공개 함수.`nfn helper() {}"
-Assert-Case -Name "guard-comment: 감사 레포 비공개 fn 위 /// 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+Assert-Case -Name "guard-comment: 감사 레포 비공개 fn 위 /// 차단" -R $r -ExpectExit 2 -ExpectContains '주석 1줄'
+[System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/dup.rs'), "/// # Errors`npub fn a() {}`nfn helper() {}`n")
+$r = Invoke-GcEditAt (Join-Path $gcAudit 'src/dup.rs') 'fn helper() {}' "/// # Errors`nfn helper() {}"
+Assert-Case -Name "guard-comment: 같은 문구 사본: 비공개 fn 위 /// 차단(첫 사본은 pub fn 위)" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+[System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/dup2.rs'), "/// 내부 설명`nfn first() {}`npub fn api() {}`n")
+$r = Invoke-GcEditAt (Join-Path $gcAudit 'src/dup2.rs') 'pub fn api() {}' "/// 내부 설명`npub fn api() {}"
+Assert-Case -Name "guard-comment: 같은 문구 사본: pub fn 위 /// 통과(첫 사본은 비공개 fn 위)" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+[System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/attr.rs'), "pub struct S;`n")
+$r = Invoke-GcEditAt (Join-Path $gcAudit 'src/attr.rs') 'pub struct S;' "/// 계약.`n#[derive(`n    Debug,`n)]`npub struct S;"
+Assert-Case -Name "guard-comment: 여러 줄 속성 #[derive(…)] 뒤 pub struct 위 /// 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+[System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/attr1.rs'), "pub struct T;`n")
+$r = Invoke-GcEditAt (Join-Path $gcAudit 'src/attr1.rs') 'pub struct T;' "/// 계약.`n#[derive(Debug)]`npub struct T;"
+Assert-Case -Name "guard-comment: 단일 줄 속성 뒤 pub struct 위 /// 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+[System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/multi.rs'), "/// 표지`nfn first() {}`nfn gap() {}`npub fn api() {}`n")
+$gcMultiDup = @(@{ old_string = 'fn gap() {}'; new_string = "fn gap() {}`nfn gap2() {}" }, @{ old_string = 'pub fn api() {}'; new_string = "/// 표지`npub fn api() {}" })
+$r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'gc-mdup'; tool_name = 'MultiEdit'; cwd = $gcAudit; tool_input = @{ file_path = (Join-Path $gcAudit 'src/multi.rs'); edits = $gcMultiDup } } | ConvertTo-Json -Compress -Depth 5)
+Assert-Case -Name "guard-comment: MultiEdit: 첫 사본은 비공개 fn 위인 파일에서 앞 쌍이 위쪽 줄 수를 늘린 뒤 뒤 쌍이 pub fn 위에 단 /// 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+[System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/ra.rs'), "#[x]`npub fn a() {}`n#[x]`nfn b() {}`n")
+$r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'gc-ra'; tool_name = 'Edit'; cwd = $gcAudit; tool_input = @{ file_path = (Join-Path $gcAudit 'src/ra.rs'); old_string = '#[x]'; new_string = "/// 표시`n#[x]"; replace_all = $true } } | ConvertTo-Json -Compress -Depth 5)
+Assert-Case -Name "guard-comment: replace_all: 같은 쌍이 pub fn(위쪽)과 비공개 fn(아래쪽) 두 자리에 /// 를 넣으면 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 $r = Invoke-GcEditAt (Join-Path $gcLib 'src/lib.rs') 'pub fn api() {}' "/// 공개 계약.`npub fn api() {}"
 Assert-Case -Name "guard-comment: 라이브러리 크레이트 pub fn 위 /// 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 $r = Invoke-GcEditAt (Join-Path $gcTs 'index.ts') 'export function f() {}' "/**`n * 공개 함수.`n */`nexport function f() {}"

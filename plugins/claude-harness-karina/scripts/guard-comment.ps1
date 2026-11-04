@@ -26,7 +26,8 @@ function Invoke-GuardComment($Data, [string]$File) {
     }
     $added = Get-AddedCommentBodies $File $pairs
     if ($added.Count -eq 0) { return $pass }
-    $blocked = Get-BlockedCommentBodies $File $added (Get-CommentPostImage $File $Data)
+    $post = Get-CommentPostImage $File $Data $added
+    $blocked = Get-BlockedCommentBodies $File $added $post
     if ($blocked.Count -eq 0) { return $pass }
 
     Write-GuardCommentEvent 'block' $File

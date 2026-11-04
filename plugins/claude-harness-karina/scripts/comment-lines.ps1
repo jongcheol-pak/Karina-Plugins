@@ -11,13 +11,19 @@ function Test-CommentTarget([string]$Path) {
 
 function Get-CommentBodies([string]$Path, [string[]]$Lines) {
     $bodies = New-Object System.Collections.Generic.List[string]
+    foreach ($e in (Get-CommentBodyLines $Path $Lines)) { $bodies.Add($e.Body) }
+    return , $bodies
+}
+
+function Get-CommentBodyLines([string]$Path, [string[]]$Lines) {
+    $bodies = New-Object System.Collections.Generic.List[object]
     if (-not (Test-CommentTarget $Path) -or $null -eq $Lines) { return , $bodies }
     $ext = [System.IO.Path]::GetExtension($Path).ToLower()
     $isSlash = $script:CommentSlashExts -contains $ext
     $rawExempt = if ($isSlash) { '^//(go:|\s*#(end)?region\b)' } elseif ($ext -eq '.ps1') { '(?i)^#(requires|(end)?region)\b' } else { '(?!)' }
     $inBlock = $false
-    foreach ($line in $Lines) {
-        $t = ([string]$line).Trim()
+    for ($n = 0; $n -lt $Lines.Count; $n++) {
+        $t = ([string]$Lines[$n]).Trim()
         $body = $null
         if ($inBlock) {
             $body = $t -replace '^\*+(?!/)', ''
@@ -36,7 +42,7 @@ function Get-CommentBodies([string]$Path, [string[]]$Lines) {
         if ($null -eq $body) { continue }
         $body = ($body -replace '(\*/|#>)\s*$', '').Trim()
         if ($body -eq '' -or $body -match $script:CommentExemptRx -or $t -match $rawExempt) { continue }
-        $bodies.Add($t)
+        $bodies.Add(@{ Body = $t; Line = $n })
     }
     return , $bodies
 }
@@ -52,19 +58,20 @@ $script:CommentTodoRx = '\b(TODO|FIXME|XXX)\b'
 $script:CommentKeepLineRx = '^- \*\*Comment \(보존\)\*\*: `(?<rx>[^`]+)` · 경로: `(?<paths>[^`]+)`'
 
 function Get-AddedCommentBodies([string]$Path, $Pairs) {
-    $added = New-Object System.Collections.Generic.List[string]
-    foreach ($pair in $Pairs) {
+    $added = New-Object System.Collections.Generic.List[object]
+    for ($p = 0; $p -lt @($Pairs).Count; $p++) {
+        $pair = @($Pairs)[$p]
         $oldBodies = Get-CommentBodies $Path ([string]$pair[0] -split '\r?\n')
-        $newBodies = Get-CommentBodies $Path ([string]$pair[1] -split '\r?\n')
+        $newLines = Get-CommentBodyLines $Path ([string]$pair[1] -split '\r?\n')
         $oldSet = New-Object System.Collections.Generic.HashSet[string]
         foreach ($o in ([string]$pair[0] -split '\r?\n')) { [void]$oldSet.Add($o.Trim()) }
         $newSet = New-Object System.Collections.Generic.HashSet[string]
-        foreach ($c in $newBodies) { [void]$newSet.Add($c) }
+        foreach ($c in $newLines) { [void]$newSet.Add($c.Body) }
         $rewritten = @($oldBodies | Where-Object { -not $newSet.Contains($_) }).Count
-        foreach ($c in $newBodies) {
-            if ($oldSet.Contains($c)) { continue }
+        foreach ($c in $newLines) {
+            if ($oldSet.Contains($c.Body)) { continue }
             if ($rewritten -gt 0) { $rewritten--; continue }
-            $added.Add($c)
+            $added.Add(@{ Body = $c.Body; Pair = $p; Line = $c.Line; Indexes = @() })
         }
     }
     return , $added
@@ -185,7 +192,18 @@ function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index) {
     $attrRx = switch ($ext) { '.rs' { '^#!?\[' } '.cs' { '^\[' } default { '^@' } }
     for ($j = $Index + 1; $j -lt $Lines.Count; $j++) {
         $t = ([string]$Lines[$j]).Trim()
-        if ($t -eq '' -or $docFlag[$j] -or $t.StartsWith('//') -or $t -match $attrRx) { continue }
+        if ($t -eq '' -or $docFlag[$j] -or $t.StartsWith('//')) { continue }
+        if ($t -match $attrRx) {
+            $depth = 0
+            while ($j -lt $Lines.Count) {
+                $s = [string]$Lines[$j]
+                $depth += ([regex]::Matches($s, '[\[(]')).Count - ([regex]::Matches($s, '[\])]')).Count
+                if ($depth -le 0) { break }
+                $j++
+            }
+            if ($j -ge $Lines.Count) { return $null }
+            continue
+        }
         return $t
     }
     return $null
@@ -196,39 +214,67 @@ function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines) {
     if ($Added.Count -eq 0) { return , $blocked }
     $ctx = Get-CommentRepoContext $Path
     $ext = [System.IO.Path]::GetExtension($Path).ToLower()
-    $trimmed = @($PostLines | ForEach-Object { ([string]$_).Trim() })
-    foreach ($c in $Added) {
+    $base = if ($ctx.Agents) { Split-Path -Parent $ctx.Agents } else { $ctx.Dir }
+    foreach ($a in $Added) {
+        $c = [string]$a.Body
         if (Test-CommentLineExempt $c $Path $ctx.Dir $ctx.Root) { continue }
-        $base = if ($ctx.Agents) { Split-Path -Parent $ctx.Agents } else { $ctx.Dir }
         $kept = $false
         foreach ($k in $ctx.KeepRules) {
             if (-not $k.Pattern.IsMatch($c)) { continue }
             foreach ($p in $k.Paths) { if (Test-CommentPathLike $ctx.File $base $p) { $kept = $true } }
         }
         if ($kept) { continue }
-        if ($c -notmatch $script:CommentTodoRx -and @('.rs', '.cs', '.ts', '.tsx', '.js', '.jsx') -contains $ext) {
-            $code = Get-CommentDocTarget $Path $PostLines ([array]::IndexOf($trimmed, $c))
-            if ($code) {
-                $audited = @($ctx.AuditRules | Where-Object { $_.Pattern.IsMatch($code) -and (Test-CommentPathLike $ctx.File $base $_.Pathspec) }).Count -gt 0
-                if ($audited -or ($ctx.Library -and (Test-CommentPublicItem $ext $code))) { continue }
+        if ($c -notmatch $script:CommentTodoRx -and @('.rs', '.cs', '.ts', '.tsx', '.js', '.jsx') -contains $ext -and @($a.Indexes).Count -gt 0) {
+            $allOk = $true
+            foreach ($ix in @($a.Indexes)) {
+                $code = Get-CommentDocTarget $Path $PostLines $ix
+                $ok = $false
+                if ($code) {
+                    $audited = @($ctx.AuditRules | Where-Object { $_.Pattern.IsMatch($code) -and (Test-CommentPathLike $ctx.File $base $_.Pathspec) }).Count -gt 0
+                    $ok = $audited -or ($ctx.Library -and (Test-CommentPublicItem $ext $code))
+                }
+                if (-not $ok) { $allOk = $false; break }
             }
+            if ($allOk) { continue }
         }
         $blocked.Add($c)
     }
     return , $blocked
 }
 
-function Get-CommentPostImage([string]$File, $Data) {
+function Get-CommentPostImage([string]$File, $Data, $Added) {
     $ti = $Data.tool_input
-    if ([string]$Data.tool_name -eq 'Write') { return ([string]$ti.content -split '\r?\n') }
-    $edits = if ([string]$Data.tool_name -eq 'MultiEdit') { @($ti.edits) } else { @($ti) }
-    $text = if (Test-Path -LiteralPath $File -PathType Leaf) { [System.IO.File]::ReadAllText($File) } else { $null }
-    foreach ($e in $edits) {
-        $old = [string]$e.old_string; $new = [string]$e.new_string
-        if ($null -eq $text -or $old -eq '' -or $text.IndexOf($old) -lt 0) { $text = $null; break }
-        if ($e.replace_all) { $text = $text.Replace($old, $new) }
-        else { $i = $text.IndexOf($old); $text = $text.Substring(0, $i) + $new + $text.Substring($i + $old.Length) }
+    if ([string]$Data.tool_name -eq 'Write') {
+        foreach ($a in $Added) { $a.Indexes = @($a.Line) }
+        return ([string]$ti.content -split '\r?\n')
     }
-    if ($null -eq $text) { $text = (@($edits | ForEach-Object { [string]$_.new_string }) -join "`n") }
-    return ($text -split '\r?\n')
+    $edits = if ([string]$Data.tool_name -eq 'MultiEdit') { @($ti.edits) } else { @($ti) }
+    $marked = New-Object System.Collections.Generic.List[string]
+    for ($p = 0; $p -lt $edits.Count; $p++) {
+        $lines = [string]$edits[$p].new_string -split '\r?\n'
+        for ($k = 0; $k -lt $Added.Count; $k++) {
+            if ($Added[$k].Pair -eq $p) { $lines[$Added[$k].Line] = [char]1 + [string]$k + [char]2 + $lines[$Added[$k].Line] }
+        }
+        $marked.Add($lines -join "`n")
+    }
+    $text = if (Test-Path -LiteralPath $File -PathType Leaf) { [System.IO.File]::ReadAllText($File) -replace '\r\n', "`n" } else { $null }
+    for ($p = 0; $p -lt $edits.Count; $p++) {
+        $old = ([string]$edits[$p].old_string) -replace '\r\n', "`n"
+        if ($null -eq $text -or $old -eq '' -or $text.IndexOf($old) -lt 0) { $text = $null; break }
+        if ($edits[$p].replace_all) { $text = $text.Replace($old, $marked[$p]) }
+        else { $i = $text.IndexOf($old); $text = $text.Substring(0, $i) + $marked[$p] + $text.Substring($i + $old.Length) }
+    }
+    if ($null -eq $text) { $text = ($marked -join "`n") }
+    $post = @($text -split "`n")
+    $hits = @{}
+    for ($n = 0; $n -lt $post.Count; $n++) {
+        $m = [regex]::Match($post[$n], "^\x01(\d+)\x02")
+        if (-not $m.Success) { continue }
+        $k = [int]$m.Groups[1].Value
+        if (-not $hits.ContainsKey($k)) { $hits[$k] = New-Object System.Collections.Generic.List[int] }
+        $hits[$k].Add($n)
+        $post[$n] = $post[$n].Substring($m.Length)
+    }
+    for ($k = 0; $k -lt $Added.Count; $k++) { if ($hits.ContainsKey($k)) { $Added[$k].Indexes = $hits[$k].ToArray() } }
+    return , $post
 }
