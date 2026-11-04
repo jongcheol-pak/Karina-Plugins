@@ -3,7 +3,7 @@
 출력 — 첫 줄 `RESULT: <갈래> — <다음 행동>`, 이어 본문:
 - message    `check` 가 배치를 돌려줬다(빈 값의 키를 빼고 subject·body 밖의 긴 값을 자른 JSON 한 줄).
              ack 는 하지 않는다 — 코디네이터가 처리한 뒤 한다.
-- stall      같은 화면이 체크포인트마다 `--stall` 장 이어졌고 그 사이 HEAD·작업 트리가 움직이지 않았다 — 첫 화면이 1장이다(화면 끝 40줄).
+- stall      같은 화면이 체크포인트마다 `--stall` 장 이어졌고 그 사이 HEAD·작업 트리가 움직이지 않았다 — 첫 화면이 1장이다(화면 끝 40줄 · 바쁨 상한을 넘겨 났으면 그 앞에 「오판일 수 있다」 한 줄).
 - error      CLI 실행 실패 · JSON 아님 · `ok: false`(원문).
 - superseded 같은 dispatch 의 새 대기가 잠금을 가져갔다. 받은 배치는 싣지 않는다 —
              Karina 앱 `check` 는 ack 전까지 같은 배치를 다시 주므로 새 대기가 받는다.
@@ -470,7 +470,7 @@ PLAN_TASK = re.compile(r'^### T(\d+)\. ', re.M)
 
 
 class Progress:
-    """task 완료 커밋을 표시 줄로 바꾼다. git(args)->(성공, 출력) · read_plan()->str|None · store(load/save) 는 주입한다."""
+    """task 완료 커밋을 표시 줄로 바꾸고, 멈춤 판정에 쓸 작업 트리 서명(tree_sig)을 낸다. git(args)->(성공, 출력) · read_plan()->str|None · store(load/save) 는 주입한다."""
 
     def __init__(self, git, read_plan, store, label, pr=None):
         self.git, self.read_plan, self.store, self.label = git, read_plan, store, label

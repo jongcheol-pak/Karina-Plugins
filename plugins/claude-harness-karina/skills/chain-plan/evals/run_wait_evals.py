@@ -339,11 +339,6 @@ PLAN5 = '# plan\r\n\r\n### T1. 첫\r\n### T2. 둘\r\n### T3. 셋\r\n### T4. 넷\
 
 
 class FakeGit:
-    """`git -C <repo> <args>` 응답. log 는 두 모드다 — `logs=` 는 호출마다 차례로 소비하고(None 이면 실패),
-    `history=` 는 실제 git 처럼 기준 범위(`<sha>..HEAD`)로 답한다: log 를 k번째 부를 때 history[:k] 의 커밋이
-    쌓여 있고, 기준이 `head`(시작 HEAD)면 그 전부를, 쌓인 커밋 중 하나면 그 뒤를, 어느 쪽도 아니면 실패를 낸다.
-    저장하지 않은 주기에 같은 커밋이 다시 나오는 것을 흉내 내려면 history 모드를 쓴다."""
-
     def __init__(self, head='h0', logs=(), head_ok=True, heads=(), history=None, trees=()):
         self.head = head
         self.logs = list(logs)
