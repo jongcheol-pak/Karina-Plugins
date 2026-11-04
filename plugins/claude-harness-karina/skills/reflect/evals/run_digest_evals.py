@@ -710,6 +710,18 @@ def history_keeps_fix_and_revert_only():
 
 
 @case
+def history_revert_needs_word_boundary():
+    d = git_repo([('Reverting the cache layout', '', 2), ('Revert "기능: 캐시"', '', 1)])
+    try:
+        rc, out, text = history(d)
+        assert rc == 0, (rc, out)
+        assert 'Reverting the cache layout' not in text, text
+        assert 'Revert "기능: 캐시"' in text, text
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+@case
 def history_drops_commits_outside_window():
     d = git_repo([('수정: 오래된 수정', '', 200), ('수정: 최근 수정', '', 5)])
     try:
