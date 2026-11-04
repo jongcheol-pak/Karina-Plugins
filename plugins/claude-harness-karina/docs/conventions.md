@@ -55,9 +55,7 @@
 
 - [2026-08-26] **vault를 고치는 하네스 세션은 작업 전에 vault 워킹트리 상태를 먼저 본다** — 다른 세션이 같은 vault에서 작업 중이면 **그쪽 커밋이 이쪽 미커밋 변경을 통째로 흡수**해 승인 절차 밖에서 push된다. 실측: 허브 14개에 넣은 `repo_url` 14줄이 리뷰 대기 중 무관한 MOA ingest 커밋(`197b067`)에 딸려 나갔고, 그 메시지는 `repo_url`을 언급하지 않는다. 되돌리려면 force push라 파괴적이어서 사실상 되돌릴 수 없다. **대책은 둘** — ⓐ 착수 전 `git -C <vault> status --porcelain`으로 남의 미커밋 변경이 있는지 본다 ⓑ 내 변경을 오래 미커밋으로 두지 않는다(승인이 필요하면 그 지점에서 바로 받는다).
 
-- [2026-08-13] **`updated`와 `synced_commit`은 다른 축이다.** `updated`는 「언제 손댔나」, `synced_commit`은 「어디까지 담았나」다. 날짜만 보고 stale을 판정하면 **조용한 프로젝트를 낡은 위키로 오인**한다 — 실제로 「6~7월에 멈춘 허브 8개」 중 7개는 레포도 그때 이후 안 바뀌었다.
-
-- [2026-08-13] **동기 표시만 갱신하면 미설정보다 나빠진다.** 내용 반영 없이 `synced_commit`에 현재 HEAD를 적으면 §7-26이 「0커밋 미반영」이라는 거짓 신호를 낸다. 미설정은 최소한 「계측 불가」라는 정직한 신호였다(schema §2.2가 경고하는 사각). 백필하려면 그 구간 커밋이 **위키에 반영할 내용이 아님**을 전량 확인한 뒤에만.
+- [2026-08-13] **책갈피만 앞당기면 그 구간이 영영 반영되지 않는다.** `synced_commit` 은 다음 ingest 의 델타 시작점이라, 내용 반영 없이 현재 HEAD 를 적으면 다음 ingest 가 그 구간을 건너뛴다. 앞당기려면 그 구간 커밋이 **위키에 반영할 내용(기능 추가·삭제·스택 변경·결정)이 아님**을 확인한 뒤에만.
 
 ## 다른 프로젝트의 파일을 하니스 세션에서 고칠 때
 
@@ -96,7 +94,7 @@
 
 - [2026-11-02] **`scripts/` 에 dot-source 전용 스크립트를 새로 만들면 등록 자리가 다섯이다 — `scripts/rules/harness-hooks.json` 이름 집합 · `validate.ps1` `$knownHelpers` · 시나리오 `$scenarioGroups`·`GoldenFilterNames` · 커밋 시점 라이브러리면 `hooks/evals/scenarios/guard-bash.ps1` LZ 의 가짜 라이브러리 목록** — 둘은 부분 골든(`-Filter`)이 잡지 못하고 무인자 전체에서야 빨개졌다(`guard-task-audit` 회차: LZ 「로드 실패」 경고 · `guard-harness` 8.3 전수 `missing=guard-task-audit`). 새 스크립트 task 의 Files 에 다섯을 함께 적는다 (실측)
 - [2026-10-20] **파괴적 명령 문자열을 담은 골든 케이스·시나리오를 Bash 도구 인라인(heredoc·`python -c`)으로 고치면 지금 도는 `block-destructive` 가 명령 문자열 전체를 보고 막는다** — 케이스 텍스트 안의 `git push --force-with-lease origin main` 이 실제 명령으로 읽힌다. 편집 스크립트는 Write 도구로 파일에 쓰고 `python <파일>` 로 돌린다 (실측)
-- [2026-10-08] **hook 에서 외부 프로세스 출력을 `StandardOutput.ReadToEnd()` 로 읽은 뒤 `WaitForExit(ms)` 를 부르면 그 대기 상한이 걸리지 않는다** — `ReadToEnd` 가 프로세스가 끝날 때까지 먼저 막기 때문이다(4초 걸리는 프로세스에 1초 상한을 주고 4,422ms 를 기다렸다). 상한이 필요하면 `ReadToEndAsync()` 로 읽고 남은 시간으로 `WaitForExit` 한다 — `session-wiki-signals.ps1` 의 위키 뒤처짐 계산이 그렇게 고쳐졌다. (실측)
+- [2026-10-08] **hook 에서 외부 프로세스 출력을 `StandardOutput.ReadToEnd()` 로 읽은 뒤 `WaitForExit(ms)` 를 부르면 그 대기 상한이 걸리지 않는다** — `ReadToEnd` 가 프로세스가 끝날 때까지 먼저 막기 때문이다(4초 걸리는 프로세스에 1초 상한을 주고 4,422ms 를 기다렸다). 상한이 필요하면 `ReadToEndAsync()` 로 읽고 남은 시간으로 `WaitForExit` 한다 — `session-wiki-signals.ps1` 의 위키 뒤처짐 계산(2026-11-04 폐지)이 그렇게 고쳐졌었다. (실측)
 - [2026-09-23] **hook `matcher` 는 글자·숫자·`_`·`-`·공백·`,`·`|` 만 쓰면 정규식이 아니라 「정확 일치 목록」이다** — `"implement|plan"` 은 `pjc:implement` 를 받지 못한다. 그 밖의 문자가 하나라도 있어야 정규식(비앵커)으로 판정되므로 `^(pjc:)?(implement|plan)$` 처럼 쓴다. **골든 시나리오는 스크립트에 JSON 을 직접 넣어 matcher 를 거치지 않으므로** hooks.json 의 matcher 를 읽어 입력 형태에 대 보는 케이스를 따로 둔다 (실측 — 완료 리뷰 BLOCKER)
 - [2026-09-23] **자기보호 이름 집합(`harness-hooks.json`)의 등재는 8.3 짧은 경로(`CLAUDE~1/plugins/cache/…`)로만 잰다** — 설치본 일반 경로는 경로 축이 `scripts/*.ps1` 전체를 막아, 목록에서 이름이 빠져도 일반 경로 케이스는 PASS 한다. 누락을 잡으려면 목록이 아니라 **실제 스크립트 파일을 기준으로 전수** 대조한다 (실측 — `guard-stale-docs` 누락이 그렇게 숨어 있었다)
 - [2026-09-23] **PowerShell hook 에서 `$event` 를 변수 이름으로 쓰지 않는다** — `$Event` 는 자동 변수라 대입이 불안정하다. 이벤트 이름은 `$hookEvent` 처럼 다른 이름에 담는다
@@ -118,7 +116,7 @@
 
 - [2026-10-21] **레포를 다른 레포의 하위 폴더로 옮길 때 `git filter-repo` 는 쓸 수 없다 — `block-destructive` 가 `--version` 까지 「히스토리 재작성」 으로 막는다.** 대신 `git merge --allow-unrelated-histories` 로 옛 main 을 합친 뒤, 내용 변경 없이 rename 만 담은 `git mv` 커밋을 따로 둔다 — 원래 SHA 가 그대로 남아 문서의 SHA 참조가 열리고 `git log --follow` 가 이동 전 이력을 잇는다. 새 clone 에는 `core.longpaths=true` 를 먼저 둔다(픽스처 경로가 260자를 넘는다) (실측 — Karina-Plugins #1)
 - [2026-10-20] **`AGENTS.md` 의 Build 명령(`pwsh -NoProfile -Command "$f=0; … $e …"`)을 Claude Code 의 Bash 도구로 돌리면 bash 가 `$f`·`$e`·`$_` 를 빈 문자열로 치환해 PowerShell 이 ParserError 를 낸다 — PowerShell 도구로 돌리거나, Bash 에서는 명령 전체를 작은따옴표로 감싼다.** 실패 출력이 깨진 한글 ParserError 라 원인이 치환이라는 것이 보이지 않는다. (실측) 2026-10-28 재발 뒤 `AGENTS.md` 의 Build·Test 명령을 바깥 작은따옴표·안쪽 겹따옴표 형태로 바꿔 두 도구에서 원문 그대로 돈다 — 바깥 겹따옴표로 되돌리지 않는다.
-- [2026-10-14] **스크립트가 자식 프로세스(git·claude)를 띄우며 stderr 를 리다이렉트했으면 반드시 비우거나 임시 파일로 받는다** — stdout 만 읽는 동안 stderr 파이프가 차면 자식이 stderr 쓰기에서 막혀 시한·watchdog 에 걸리고, 그 실패는 「느리다」나 케이스 timeout 으로만 보인다. 같은 원인이 두 자리에서 났다 — 세션 시작 위키 뒤처짐 계산의 git(`scripts/session-wiki-signals.ps1` — 비동기로 비움)과 트리거 eval 의 claude(`skills/evals/trigger_eval.py` `run_claude` — 임시 파일). 리다이렉트를 풀면 경고가 hook stderr 로 새므로 푸는 것은 답이 아니다 (실측 — 1583cdd3·f6b1af96 커밋 본문: `GIT_TRACE=1`+긴 경로에서 5초 상한 초과, 비우면 46ms)
+- [2026-10-14] **스크립트가 자식 프로세스(git·claude)를 띄우며 stderr 를 리다이렉트했으면 반드시 비우거나 임시 파일로 받는다** — stdout 만 읽는 동안 stderr 파이프가 차면 자식이 stderr 쓰기에서 막혀 시한·watchdog 에 걸리고, 그 실패는 「느리다」나 케이스 timeout 으로만 보인다. 같은 원인이 두 자리에서 났다 — 세션 시작 위키 뒤처짐 계산(2026-11-04 폐지)의 git(`scripts/session-wiki-signals.ps1` — 비동기로 비움)과 트리거 eval 의 claude(`skills/evals/trigger_eval.py` `run_claude` — 임시 파일). 리다이렉트를 풀면 경고가 hook stderr 로 새므로 푸는 것은 답이 아니다 (실측 — 1583cdd3·f6b1af96 커밋 본문: `GIT_TRACE=1`+긴 경로에서 5초 상한 초과, 비우면 46ms)
 - [2026-10-14] **Git Bash 에서 띄운 python 의 직계 부모는 세션이 아니라 WindowsApps python 스텁이다** — 부모 생존으로 「띄운 세션이 사라졌는가」를 재면 스텁만 보게 된다. 조상 사슬에서 스텁·셸을 건너뛴 첫 비셸 프로세스를 감시 대상으로 고르고, 사슬을 못 얻으면 감시 없이 종전대로 기다린다(fail-open) (실측 — bd5fe8ba 커밋 본문: python → python(스텁) → bash×3 → claude.exe)
 - [2026-10-14] **`cmd /c` 에 따옴표가 셋 이상인 명령을 넘기면 첫·끝 따옴표가 벗겨져 공백 경로가 깨진다 — `cmd /s /c "<전체>"` 로 넘긴다** (실측 — 1583cdd3 커밋 본문)
 - [2026-10-14] **검증용 테스트 문자열에 `explorer` 같은 단어를 쓰면 `check-stale-refs.py` 의 삭제 자산 이름(`DEAD`)에 걸려 FAIL 한다** — 임시 픽스처·케이스 문자열은 삭제된 스킬·에이전트 이름과 겹치지 않게 짓는다 (실측 — 1583cdd3 커밋 본문)
@@ -242,7 +240,7 @@
 
 - [2026-10-22] **evals 골든의 `mutate` 로 줄을 더할 때 `replace` 문자열의 줄바꿈은 `\r\n` 으로 쓴다 — `\n` 이면 CRLF 픽스처에 LF 줄이 섞여 「줄바꿈 혼재」 MISMATCH 가 함께 걸린다.** 재려던 판정과 무관하게 rc 가 1 이 되어, 음성 케이스는 FAIL 하고 양성 케이스는 그 MISMATCH 때문에 RED 가 엉뚱한 이유로 선다. frontmatter YAML 골든 12건 중 줄을 더한 4건이 첫 시도에서 그렇게 났다 — 정본은 `docs/harness-conventions.md` 「검증 명령 상세」 의 evals 골든 러너 항목이다 (실측)
 - [2026-10-22] **골든 픽스처의 `plan.md` 는 러너 python 코드 안에서 만든다 — Bash 도구로 `echo x>plan.md` 처럼 쓰면 경로가 스크래치 폴더여도 `guard-bash` 가 「plan.md 를 스크립트로 쓰려 합니다」로 막는다** — 그 차단은 파일 이름만 보고 위치를 가리지 않는다. 러너 파일 안의 `open(...).write` 는 명령 문자열이 아니라 검사 대상이 아니다 (실측)
-- [2026-10-21] **골든 러너가 만드는 임시 git 레포에 `.github/` 경로를 쓰지 않는다 — 전역 gitignore 가 `.github/` 를 무시하는 PC 에서는 `git add -A` 가 그 파일을 커밋하지 않는다.** 파일은 디스크에 있어 실존 검사는 통과하고 diff·이력에만 없어, 실패가 「키워드 미검출」로만 보여 구현 결함으로 오인한다. git 루트 밖·하위 폴더 밖을 재는 픽스처는 `tools/` 처럼 무시되지 않는 이름을 쓴다(lint §7-39 하위 폴더 골든 · 회차 「lint 근거 낡음 검사의 모노레포 하위 폴더 대응」). (실측)
+- [2026-10-21] **골든 러너가 만드는 임시 git 레포에 `.github/` 경로를 쓰지 않는다 — 전역 gitignore 가 `.github/` 를 무시하는 PC 에서는 `git add -A` 가 그 파일을 커밋하지 않는다.** 파일은 디스크에 있어 실존 검사는 통과하고 diff·이력에만 없어, 실패가 「키워드 미검출」로만 보여 구현 결함으로 오인한다. git 루트 밖·하위 폴더 밖을 재는 픽스처는 `tools/` 처럼 무시되지 않는 이름을 쓴다(옛 lint 근거 낡음 검사의 하위 폴더 골든 — 2026-11-04 폐지). (실측)
 
 - [2026-10-08] **session-context 시나리오 끝부분에 케이스를 더할 때는 `USERPROFILE` 을 try/finally 로 격리 홈(`$iso`)에 고정한다** — 앞 케이스들이 그 변수를 vault 홈(`$isoV`)으로 바꿔 둔 채라, 고정하지 않으면 `$iso` 아래 심은 픽스처를 hook 이 못 보고 출력이 vault 줄로 갈린다. 첫 RED 가 이 때문에 무효였던 회차가 있다(2026-10-08 · 같은 회차군에서 두 번 이 형태로 케이스를 더했다). (실측)
 - [2026-10-06] **케이스 실패를 `except Exception` 으로만 받는 골든 러너는 케이스 안의 `SystemExit` 에 러너째 죽는다 — `main()` 을 부르는 케이스는 `SystemExit` 을 잡아 `AssertionError` 로 바꿔 낸다** — 대기 골든 `run_wait_evals.py` 에서 argparse 가 인자를 거절하며 낸 `SystemExit` 이 러너를 끝내 남은 케이스가 돌지 않았다(인자 거절 케이스의 RED 첫 실행). `SystemExit` 은 `Exception` 이 아니라 `BaseException` 이다. (실측)

@@ -5,7 +5,7 @@
 ## 위키
 
 - **프로젝트 페이지**: 20_projects/personal/claude-harness-karina.md (LLM WIKI vault)
-- 프로젝트 성격·기술 스택·구조·**아키텍처 상세**·기능 목록은 **위키가 정본**이다.
+- 프로젝트 성격·기술 스택·구조 개요·기능 목록은 **위키가 정본**이다.
 - 작업 함정: 레포 `docs/conventions.md` (규약 `skills/REPO-CONVENTIONS.md`)
 
 ## Build & Test
