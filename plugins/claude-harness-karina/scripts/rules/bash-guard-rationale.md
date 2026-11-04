@@ -51,7 +51,7 @@ dot-source 는 넷 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
   `@{ Block = [bool]; Stderr = [string[]]; Context = [string] }`.
   **`Block = $true`(exit 2)를 내는 경로는 다섯이다** — `guard-bash.ps1` 2곳(`block-plan-write` 의
   plan.md 스크립트 쓰기 · `require-task-checkbox`) + `warn-commit-secrets` 2곳(`guard-commit-secrets.ps1`
-  의 시크릿 검출·스캔 캡 초과) + `block-commit-comments` 1곳(`guard-commit-comments.ps1` 의 새 주석 첫 시도).
+  의 시크릿 검출·스캔 캡 초과) + `block-commit-comments` 1곳(`guard-commit-comments.ps1` 의 새 주석 차단).
   `check-block-coverage.py` 가 세는 「guard-bash 경로 2 · guard-commit-secrets 경로 2 · guard-commit-comments 경로 1」이
   그 다섯이다. 10검사 중 차단하는 것은 이 4종이고, 나머지 경고 전용 6종은 `Block` 을 세우지 않는다.
   출력·exit 번역은 파일 하단의 단일 caller 가 하고, 각 함수는 「판정 → 결과」만 낸다.
