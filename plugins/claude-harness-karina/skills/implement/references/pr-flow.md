@@ -12,7 +12,7 @@
 - **직행이면 「적용 판정」·「브랜치」·「PR 열기」 를 건너뛰고, 브랜치를 바꾸지 않고 worktree 를 만들지 않고 지금 브랜치에 커밋한다** — 선언한 레포에는 PR 을 받을 리뷰어가 없어 브랜치가 시간만 든다. GitHub 원격·`gh` 인증은 보지 않는다.
 - **회차 끝(「PR 열기」 자리)에 지금 브랜치가 기본 브랜치이고 `origin` 이 있으면 `local-gate.md`「회차 끝 게이트」 를 거쳐 `git push origin <기본>` 을 1회 한다** — 기본 브랜치는 git 만으로 정한다: `git symbolic-ref --short refs/remotes/origin/HEAD` 의 `origin/` 뒤, 실패하면 `git ls-remote --symref origin HEAD` 의 `ref: refs/heads/<이름>`. 원격이 없으면 push 하지 않는다. **기본 브랜치가 아니면 push 하지 않고, 중계 모드가 아니면 커밋이 기본 브랜치에 없다는 사실을 보고의 「기다리는 것」 에 `기본 브랜치에 없는 커밋 — <브랜치> · <git rev-list --count <기본>..HEAD>개 · 병합은 사용자` 로 싣는다** — 직행은 PR 도 열지 않아, 알리지 않으면 그 커밋이 기본 브랜치로 갈 길 없이 남는다.
 - **push 가 거부되면 오류 원문을 보고하고 멈추지 않는다 — `pull --rebase`·rebase·force 로 맞추지 않는다** — 미push 커밋 rebase 는 history rewrite 라 `karina/` 예외 밖이고, 맞추기는 사용자다.
-- **중계 모드(`karina:chain-plan` 워커)면 push 하지 않는다** — 체인 끝에 코디네이터가 한 번 push 한다(`../../chain-plan/references/pr-mode.md`「Y 체인 끝 PR」).
+- **중계 모드(`karina:chain-plan` 워커)면 push 하지 않는다** — 체인 끝에 코디네이터가 한 번 push 한다(`../../chain-plan/references/chain-end-pr.md`「Y 체인 끝 PR」).
 - **보고 `PR` 줄은 `건너뜀 — main 직행 · 게이트 <판정> · push <결과>` 다(판정 값은 `local-gate.md`「보고」)** — 결과는 `origin/<기본> <sha7>` · `건너뜀(<사유>)` · `거부(<오류 요지>)` 중 하나다 — 괄호로 적어 줄의 첫 `—` 뒤가 늘 사유 하나다.
 
 ## 적용 판정
@@ -29,7 +29,7 @@
 
 | 지금 브랜치 | 할 일 |
 |---|---|
-| 기본 브랜치 | `git fetch origin <기본>` → `git switch -c karina/<슬러그>` → `git rebase origin/<기본>`(미push 자기 브랜치 — 글로벌 지침 예외 3 · **중계 모드(spec `PR 모드: 켬`)와 체인 끝 PR(`../../chain-plan/references/pr-mode.md`「P 체인 끝 PR」)은 rebase 없이** — 체인 브랜치는 merge commit 을 품어 rebase 가 그것을 편다) → `git branch -f <기본> origin/<기본>` 으로 로컬 기본 브랜치를 원격에 맞춘다. rebase 가 커밋을 옮겼으면(`git rev-parse HEAD` 가 switch 직후와 다르면) `plan.md` 의 `> BASE:` 를 rebase 뒤 HEAD 로 고친다(아래 「merge 된 브랜치에서 시작할 때」 4번과 같은 처리)(중계 PR 모드의 화면 줄 task 직렬 예외 — `../../chain-plan/references/pr-mode.md`「워커」) |
+| 기본 브랜치 | `git fetch origin <기본>` → `git switch -c karina/<슬러그>` → `git rebase origin/<기본>`(미push 자기 브랜치 — 글로벌 지침 예외 3 · **중계 모드(spec `PR 모드: 켬`)와 체인 끝 PR(`../../chain-plan/references/chain-end-pr.md`「P 체인 끝 PR」)은 rebase 없이** — 체인 브랜치는 merge commit 을 품어 rebase 가 그것을 편다) → `git branch -f <기본> origin/<기본>` 으로 로컬 기본 브랜치를 원격에 맞춘다. rebase 가 커밋을 옮겼으면(`git rev-parse HEAD` 가 switch 직후와 다르면) `plan.md` 의 `> BASE:` 를 rebase 뒤 HEAD 로 고친다(아래 「merge 된 브랜치에서 시작할 때」 4번과 같은 처리)(중계 PR 모드의 화면 줄 task 직렬 예외 — `../../chain-plan/references/pr-mode.md`「워커」) |
 | `karina/*` 이고 그 PR 이 MERGED | 기본 브랜치에서 시작한 것으로 본다 — 아래 「merge 된 브랜치에서 시작할 때」 |
 | 그 밖(다른 기능 브랜치 · PR 이 OPEN·CLOSED 이거나 없는 `karina/*`) | 그대로 둔다. 회차 끝 PR 은 이 브랜치에서 연다 |
 
