@@ -467,6 +467,9 @@ Assert-Case -Name "commit-comments: 기존 pub 항목 위에 /// 만 더한 커�
 Set-CcFile $d 'q.rs' "fn x() {}`n/// 감사가 요구하는 계약.`n#[a]`n#[b]`n#[c]`n#[d]`npub enum E {}`n"; git -C $d add q.rs
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-attr'
 Assert-Case -Name "commit-comments: 속성 4줄 뒤 pub 항목은 작업 트리에서 읽어 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Set-CcFile $d 'q.rs' "/// 감사 대상이 아닌 비공개 함수.`nfn x() {}`n/// 감사가 요구하는 계약.`n#[a]`n#[b]`n#[c]`n#[d]`npub enum E {}`n"; git -C $d add q.rs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-audit-neg'
+Assert-Case -Name "commit-comments: 감사 레포 비공개 fn 위 /// 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
 
 $d = New-CcRepo
 [System.IO.File]::WriteAllText((Join-Path $d 'h.ps1'), "$([char]0xFEFF)# h.ps1 — 옛 머리 설명`n`$h = 1`n")

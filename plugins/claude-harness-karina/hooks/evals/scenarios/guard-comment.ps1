@@ -104,6 +104,9 @@ $r = Invoke-GcEdit 'retry2.rs' 'fn a() {}' "// 섹션의 첫 행인가`nfn a() {
 Assert-Case -Name "guard-comment: 같은 편집 두 번째도 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 $r = Invoke-GcEditAt (Join-Path $gcAudit 'src/q.rs') 'pub enum FollowUp {}' "/// 작업 중 보낸 메시지가 가는 곳.`n#[derive(Clone)]`npub enum FollowUp {}"
 Assert-Case -Name "guard-comment: 감사 레포 pub enum 위 /// 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+[System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/h.rs'), "fn helper() {}`n")
+$r = Invoke-GcEditAt (Join-Path $gcAudit 'src/h.rs') 'fn helper() {}' "/// 감사 대상이 아닌 비공개 함수.`nfn helper() {}"
+Assert-Case -Name "guard-comment: 감사 레포 비공개 fn 위 /// 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 $r = Invoke-GcEditAt (Join-Path $gcLib 'src/lib.rs') 'pub fn api() {}' "/// 공개 계약.`npub fn api() {}"
 Assert-Case -Name "guard-comment: 라이브러리 크레이트 pub fn 위 /// 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 $r = Invoke-GcEditAt (Join-Path $gcTs 'index.ts') 'export function f() {}' "/**`n * 공개 함수.`n */`nexport function f() {}"

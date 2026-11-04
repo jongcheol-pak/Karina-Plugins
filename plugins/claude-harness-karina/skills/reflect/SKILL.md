@@ -12,7 +12,7 @@ disable-model-invocation: true
 > **원문과 다르게 한 것** — ① 리뷰어 셋(judgment·tooling·divergent)과 합성기를 읽기 전용 에이전트 `reflect-reviewer` 하나로 합쳤다 ② 승인된 후보를 스킬 편집으로 적용하지 않고 Deferred 대장에 올리기만 한다 — 스킬 수정은 별도 `karina:plan` 회차가 맡는다(위키 `decisions.md` 2026-10-20 reflect 기각 사유) ③ Backlog 를 승인 없이 트래커에 올리지 않고, 사용자가 고른 후보만 등재한다 ④ 전사 원본 대신 스크립트 요약을 읽힌다.
 > **들이지 않은 파일** — `references/judgment-reviewer.md` · `references/tooling-reviewer.md` · `references/divergent-reviewer.md` · `references/synthesizer.md`(쓸모 있는 관점은 `../../agents/reflect-reviewer.md` 에 합쳤다).
 >
-> 환경 범주의 출처는 mattpocock/skills 의 retro 다 — 고정 위치 `https://github.com/mattpocock/skills/blob/a7d038f6bf7f01b516408e95e2fb56e0b338fa6f/skills/engineering/retro/SKILL.md` · MIT. **원문과 다르게 한 것** — ① 다른 세션 로그를 찾아 읽지 않고 현재 세션만 읽는다 ② `writing-for-agents` 스킬 대신 대장 줄 문체는 `../WRITING.md` 가 맡는다 ③ 후보를 적용하지 않고 대상의 대장에 올린다(글로벌은 보고만) ④ 범주를 별도 스킬이 아니라 `reflect-reviewer` 에 합쳤다.
+> 환경 범주의 출처는 mattpocock/skills 의 retro 다 — 고정 위치 `https://github.com/mattpocock/skills/blob/a7d038f6bf7f01b516408e95e2fb56e0b338fa6f/skills/engineering/retro/SKILL.md` · MIT. **원문과 다르게 한 것** — ① 다른 세션 로그를 찾아 읽지 않는다 — 현재 세션 전사, 이력 모드면 작업 레포 커밋만 읽는다 ② `writing-for-agents` 스킬 대신 대장 줄 문체는 `../WRITING.md` 가 맡는다 ③ 후보를 적용하지 않고 대상의 대장에 올린다(글로벌은 보고만) ④ 범주를 별도 스킬이 아니라 `reflect-reviewer` 에 합쳤다.
 
 사용자가 `/karina:reflect` 로 부를 때만 돈다. 다른 스킬·hook 이 이 스킬을 부르지 않는다 — 작업이 끝날 때 저절로 돌지 않는 것이 이 스킬의 전제다.
 
