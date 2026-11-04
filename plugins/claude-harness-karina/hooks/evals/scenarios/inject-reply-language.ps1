@@ -1,7 +1,5 @@
 ﻿# scenarios/inject-reply-language.ps1 — inject-reply-language 시나리오 (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook)와 공유 변수($pluginRoot)를 그대로 쓴다.
-# 무엇을 재는가: 주입 1이벤트(Skill 도구) · 스킬 이름 무관 · hookEventName · 침묵 4경로(UserPromptSubmit 포함) ·
-#   배선(hooks.json). 판정 근거는 `scripts/rules/reply-language-rationale.md` 다.
 if (Test-HookSelected @('inject-reply-language')) {
 
 function Get-RlContext([hashtable]$R) {
@@ -12,7 +10,6 @@ function New-RlSkillJson([string]$skill) {
     return (@{ session_id = 'rl-s'; hook_event_name = 'PreToolUse'; tool_name = 'Skill'; tool_input = @{ skill = $skill } } | ConvertTo-Json -Compress)
 }
 
-# ---- 주입 ----
 $r = Invoke-Hook 'inject-reply-language.ps1' (@{ session_id = 'rl-u'; hook_event_name = 'UserPromptSubmit'; prompt = 'implement this' } | ConvertTo-Json -Compress)
 Assert-Case -Name "inject-reply-language: UserPromptSubmit 는 무출력(매 턴 주입 폐지)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'inject-reply-language.ps1' (New-RlSkillJson 'karina:plan')
@@ -30,7 +27,6 @@ $r = Invoke-Hook 'inject-reply-language.ps1' (@{ session_id = 'rl-n3'; hook_even
 Assert-Case -Name "inject-reply-language: 다른 이벤트는 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
 
 # ---- 배선 — 위 케이스는 스크립트에 JSON 을 직접 넣어 hooks.json 을 거치지 않는다 ----
-#   글자·|만으로 된 matcher 는 「정확 일치 목록」이라 정확 일치로 흉내 낸다(record-work-start 시나리오와 같은 방식).
 $rlHooks = Get-Content -LiteralPath (Join-Path $pluginRoot 'hooks/hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $rlUps = @($rlHooks.hooks.UserPromptSubmit | Where-Object { ($_.hooks.command -join ' ') -match 'inject-reply-language' })
 Assert-Case -Name "inject-reply-language: UserPromptSubmit 블록이 이 스크립트를 부르지 않는다" -R @{ code = 0; out = "blocks=$($rlUps.Count)" } -ExpectContains 'blocks=0'

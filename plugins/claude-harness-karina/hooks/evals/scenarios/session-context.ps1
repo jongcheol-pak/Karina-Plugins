@@ -280,8 +280,6 @@ if (Test-HookSelected @('session-context')) {
     $r = & $scCompact $scPlanless 'sc42'
     Assert-Case -Name "session-context: compact 큐 기록 규약 절 주입 (SC42)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고'
     Assert-Case -Name "session-context: 큐 규약 주입에 발췌 표기 (SC42b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — llm-wiki/references/queue-rules.md'
-    # SC42f (경계 계약): 추출 구간이 **K 5-2 끝까지** 닿고 K 6 앞에서 멈춘다 — 종료 앵커가 `### K 6.`임을 고정한다.
-    #   SC42는 K 5-2 첫머리 본문만 보므로 앵커를 절 중간으로 잘못 옮겨도 그대로 통과한다(K 5-3 은 2026-10-20, K 5-5 는 2026-11-04 폐지).
     Assert-Case -Name "session-context: 큐 규약 주입이 K 5-2 끝까지 포함 (SC42f)" -R $r -ExpectExit 0 -ExpectContains '레포 자신의 결정은 큐 대신' -ExpectNotContains '쓰기 예외는 하나뿐이다'
     # SC42c (델타 음성): startup엔 주입하지 않는다(SC41c와 같은 취지).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
@@ -664,8 +662,6 @@ if (Test-HookSelected @('session-context')) {
     Remove-Item -Recurse -Force $scStaleCwd -ErrorAction SilentlyContinue
 
     # SC44~SC44n: Deferred 대장(docs/plans/deferred.md) 최고령 「마지막 판정일」 주입 (v1.221.0 T1).
-    #   착수 조건 축 ②의 값이 손계산이라 같은 오산이 2회 났다(v1.188.0 부기 형식 미인식 /
-    #   v1.219.0·v1.220.0 항목 내 최신 스탬프 미인식). hook이 그 값을 계산해 알린다.
     #   ⚠ **기대는 날짜부로 잰다** — 일수는 매일 늘어 픽스처 골든이 다음 날 깨진다.
     #   ⚠ 각 축은 **단독으로 무엇을 검출하는지**가 달라야 한다 — 한 픽스처가 두 규칙을 함께 태우면
     #     둘 중 하나만 살아도 통과해 어느 회귀도 못 잡는다(ⓒ 형식 한정 / ⓓ 미래 배제를 가른 이유).

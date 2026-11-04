@@ -121,8 +121,6 @@ print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
     Remove-Item (Join-Path $sdRoot 'evals/check-harness-consistency.py') -Force
     Remove-Item (Join-Path $sdRoot 'hooks/evals/run-hook-evals.ps1') -Force
 
-
-    # 4) 비커밋 Bash 호출은 무출력 — 조사만 하는 턴에 발화하면 소음이 된다.
     $sdOther = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $sdRoot
                   tool_input = @{ command = 'git status' } } | ConvertTo-Json -Compress
     Push-Location $sdRoot

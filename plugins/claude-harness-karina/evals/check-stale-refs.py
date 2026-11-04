@@ -164,8 +164,6 @@ PROSE_TARGETS = (
     'evals/harness-consistency-pointer-rationale.md',
 )
 
-# 백틱 인라인 코드 스팬. 여는·닫는 백틱이 같은 줄에 있는 것만 본다(코드 펜스는 여러 줄이라
-#   이 정규식에 걸리지 않는다 — 펜스 안의 경로는 예시일 때가 많아 대상 밖인 편이 맞다).
 PROSE_TOKEN_RX = re.compile(r'`([^`\n]+)`')
 
 # 경로 후보의 문자셋. **좁히는 것이 이 축의 전부다** — 백틱 안에는 경로만이 아니라 명령 조각·

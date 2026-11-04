@@ -5,7 +5,7 @@
 검사: 깨진/경로 없는 wikilink(루트 큐 파일 pending.md는 제외 — §7-1) / 예산 준수(§7-2 발동·guide_kind 부재/오타 —
       platform-bootstrap·ui-ux guide는 코드 펜스 내부 문자 제외 판정, recipe는 펜스 포함)
       / platform·origin·confidence·category 통제어휘 위반·누락
-      / updated 필드 누락(§7-9 — 최종 수정일 추적 전제) / feature 폐지 절 보유(§7-38 — 구현 방법·동작(사용법)·UI·UX·관련 파일·facts 동작·구조)
+      / updated 필드 누락(§7-9 — 최종 수정일 추적 전제) / feature 폐지 절 보유(§7-38 — 구현 방법·동작(사용법)·UI·UX·관련 파일·facts 동작·구조·관련 지식·레시피)
       / 고아 페이지(간이) / 미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계
       / 본문 코드 경로(§7-40 — project·feature·decision-log 본문의 `a/b.ext` 백틱 토큰. 각주 정의 줄·펜스·허브 경로 줄·URL·아카이브 포인터 제외)
@@ -30,7 +30,7 @@
       / decision-log 정정 표기 형식(§7-36 — '정정'을 적은 항목의 '(정정 날짜: 옛 → 새, 근거 …)' 형식 위반).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
       `--fix`는 §7 참조 무결성 안전 3종(§7-23·§7-24·§7-19 stale 행)만 적용(승인 후 실행, 비 git vault 만 자동 백업 — schema §7 서두·non-git-backup.md 정본).
-범위: vault 파일 읽기만 한다 — 레포에 접근하지 않는다
+범위: vault 만 다룬다 — 레포에 접근하지 않는다
       (서술↔코드 사실 정합은 §7-10 에이전트 표본이 담당).
 환경변수: LLM_WIKI_TODAY(ISO 날짜) — 시간 기반 판정의 「오늘」을 고정한다(_today 참조).
           골든 러너 전용 경로이며 일반 실행에는 설정하지 않는다.
@@ -39,7 +39,6 @@
 """
 import os, re, sys, glob, shutil, datetime, subprocess, collections
 
-# Windows 콘솔(cp949)에서도 한글이 깨지지 않도록 UTF-8 출력 강제
 try:
     sys.stdout.reconfigure(encoding="utf-8")
 except Exception:
@@ -150,20 +149,14 @@ DECISION_FIX_RX = re.compile(
 PATTERN_CASE_SECTION = "프로젝트 사례"
 PATTERNS_DIR = "30_knowledge/patterns/"
 
-# §7-41 폐지 타입·태그 — 작업 규약은 레포 docs/conventions.md 로 옮겼다(2026-10-20). 타입·태그를
-#  걷으면 lint 에 알 수 없는 타입 검사가 없어 새로 생긴 것이 아무 검사에도 안 걸린다.
 RETIRED_PAGE_TYPES = ("convention",)
 RETIRED_QUEUE_TAG_RX = re.compile(r"^- \[\d{4}-\d{2}-\d{2}\] \[(PROJECT-FACT|SYMPTOM)\]")
 RETIRED_QUEUE_TAG_HINT = {
     "PROJECT-FACT": "작업 함정은 그 레포 docs/conventions.md 로 옮기고 큐에서 지운다",
     "SYMPTOM": "증상 큐는 폐지됐다 — 디버깅 사례는 레포 docs/conventions.md 몫이고 큐에서 지운다",
 }
-# §7-39 상대 참조 고정 표현 — 표현을 넓게 잡으면 「위 절차」 같은 정상 문장이 오탐하므로 고정 목록만 쓴다.
 RELATIVE_REFS = ("위 절", "아래 절", "앞 절", "위 표", "아래 표", "앞 회차", "이전 회차")
 # 본문 릴리즈 마커 (§7-28 — §5 "changelog 미러링 금지"의 기계 신호). v접두 3필드 semver만 —
-#  2필드(v1.2)·v 없는 버전(2.9.2)은 제품 라인·라이브러리 버전일 수 있어 비검출(오탐 회피가 1급 요건).
-#  경계를 \b로 하지 않는 이유: 한글도 \w라 "v1.2.3에서"(실vault 최빈 형태)의 꼬리 경계가 실패한다 —
-#  영숫자·언더스코어·점만 명시 배제해 한글 인접은 매치하고 식별자 일부(curve1.2.3)·4필드는 배제.
 RELEASE_MARKER_RX = re.compile(r"(?<![0-9A-Za-z_.])v\d+\.\d+\.\d+(?![0-9.])")
 
 # 장식 이모지 (§7-29 — 위키 본문 평문 원칙). Unicode Emoji_Presentation=Yes 코드포인트 + VS16(U+FE0F).
@@ -731,10 +724,6 @@ def cleanup_backups(vault, today):
     return removed, failed
 
 
-# --- 인덱스 생성 (--build-index) ------------------------------------------
-# index.md는 손으로 유지하기에는 원천이 너무 흩어져 있다(수백 페이지의 frontmatter). 생성 마커
-# 사이만 파생으로 채우고 밖은 손대지 않는다 -- 참조처럼 판단이 들어가는 섹션은
-# 사람이 쓰는 자리로 남긴다(wiki-schema §6 「생성 마커」).
 AUTO_INDEX_BEGIN = "<!-- AUTO-INDEX:BEGIN -->"
 AUTO_INDEX_END = "<!-- AUTO-INDEX:END -->"
 
@@ -1323,7 +1312,6 @@ def _git(repo_root, *args):
     return proc.stdout if proc.returncode == 0 else None
 
 
-# §4 7번 기록의 사유 — 처방 종류별로 다른 것만 둔다(없으면 분할·롤오버의 기본 사유).
 LOG_REASON = {"허브 하위 행 정리": "분할 하위 허브 미등재"}
 
 
@@ -2066,19 +2054,9 @@ TYPE_REQUIRED_SECTIONS = {
     "concept": ("개요",),
     "guide": ("개요",),
 }
-# **project 허브는 산문 하위 분리 대상이 아니다.** 하위는 원본과 같은 타입이라(§4 2번)
-#  `type: project`가 되는데, 그러면 `_project_hub_paths`·`_rows_projects`와 §7-30이 그 하위를
-#  **별개 프로젝트**로 잡는다 — 인덱스 프로젝트 표에 한 줄이 더 생기고,
-#  `## 레포 정보`가 없다고 경고한다. 자동 분할이 스스로 새
-#  위반을 만드는 자리라 문자 축 처방을 두지 않는다(§4 표 project 행 — 그 자리는 사람이 하는
-#  정리가 맡는다). `TYPE_REQUIRED_SECTIONS`에는 남긴다 — 그 dict 는 필수 섹션의 정의이지
-#  분리 대상 목록이 아니다.
 RELOCATE_TYPES = tuple(t for t in TYPE_REQUIRED_SECTIONS if t != "project")
-# §7-38 폐지 절 — schema §2.3 이 feature 에서 걷은 절(facts 변형의 동작·구조와 관련 지식·레시피 포함). 줄 머리 헤딩만 센다.
 ABOLISHED_FEATURE_RX = re.compile(r"(?m)^##[ \t]+(구현 방법|동작\(사용법\)|UI·UX|관련 파일|동작|구조|관련 지식·레시피)[ \t]*$")
 FOOTNOTE_DEF_RX = re.compile(r"(?m)^\[\^[^\]\n]+\]:.*$")
-# §7-40 본문 코드 경로 — 위키는 코드 경로를 쓰지 않는다(wiki-schema §1 「쓰지 않는 코드 정보」).
-#  `a/b.ext` 형 백틱 토큰만 센다 — 구분자 없는 이름·확장자 없는 토큰은 경로로 단정하기 어렵다.
 BODY_PATH_TYPES = ("project", "feature", "decision-log")
 BODY_PATH_RX = re.compile(r"`([^`\s]*[\w.-]/[^`\s]*\.[A-Za-z0-9]{1,6})`")
 
@@ -2196,8 +2174,6 @@ def _sub_page_text(text, fm, typ, title, body, label, rel, nl, secmap, parent=No
     back = "> 상위 문서: [[%s|%s]]\n\n" % (rel[:-len(".md")], label)
     out = head + "# %s\n\n" % _label_with_section(h1.group(1).strip() if h1 else label, title) + back
 
-    # 각주 정의는 **원본에 남기고 하위에도 복제**한다 — 각주는 파일 로컬이라 본문만
-    #  옮기면 하위에서 렌더되지 않고, 정의를 통째로 옮기면 원본에 남은 참조가 깨진다.
     keep_body = ""
     for req in TYPE_REQUIRED_SECTIONS.get(typ, ()):
         if req == (parent or title):
@@ -2306,11 +2282,6 @@ def _pick_relocatable(cur, text, fm, typ, label, rel, nl, secmap, sub_rel, extra
         hit = _relocation_candidate(cand, c_body, text, fm, typ, label, rel, nl, secmap, sub_rel)
         if hit:
             return hit
-    # **`###` 경계 폴백** — 옮길 수 있는 `## ` 가 없으면 기본 유지 섹션 밖 `## ` 안의 `### `
-    #  구역을 크기순으로 같은 가드에 건다. 유지 절 밖 `## ` 이 하나뿐인 페이지(guide·concept 등)는
-    #  그 절이 통째로는 하위를 곧바로 발동시켜 이 폴백 없이는 처방이 없다.
-    #  범위를 `extra_keep` 으로 줄이지 않는다 — 같은 부모에서 여러 번 옮길 수 있어야 한다.
-    #  이미 옮긴 구역은 제목(`extra_keep`)과 포인터 전용 판정이 뺀다.
     base_keep = set(RELOCATE_KEEP_COMMON) | set(TYPE_KEEP_SECTIONS.get(typ, ()))
     subs = []
     for p_title, p0, p1 in secs:
@@ -2461,10 +2432,6 @@ def relocate_sections(ses):
             (title, s0, s1), body, sub_text = pick
             hd_end = cur.index("\n", s0) + 1
             ptr = _relocation_pointer(sub_rel, label, title, len(body))
-            # **본문 안의 각주 정의는 원본에 남긴다** — 각주는 파일 로컬이라, 정의가
-            #  옮기는 절 안에 있으면 본문과 함께 빠져 **원본에 남은 참조가 깨진다**.
-            #  하위에는 body 에 이미 딸려 가므로 여기서 복제하지 않는다.
-            #  마지막 절이 옮겨질 때 실제로 일어나는 경로다 — 각주 정의는 관례상 문서 끝에 모인다.
             kept_defs = FOOTNOTE_DEF_RX.findall(body)
             tail = ("\n".join(kept_defs) + "\n\n") if kept_defs else ""
             cur = cur[:hd_end] + "\n" + ptr + tail + cur[s1:]
@@ -3070,7 +3037,7 @@ def main():
             # F1-ⓑ 폐기 안내 정합: deprecated인데 "코드에서 제거" 안내가 없으면 경고
             if "코드에서 제거" not in text:
                 warn(f"deprecated 표기 안내 누락: {r} ('⚠ 코드에서 제거됨' 안내 권장, schema §2.3)", r)
-        # §7-38 feature 폐지 절 보유 — 폐지한 세 절(schema §2.3)을 새 ingest 가 다시 만들지
+        # §7-38 feature 폐지 절 보유 — 폐지 절(schema §2.3)을 새 ingest 가 다시 만들지
         #  못하게 하는 재성장 방지 신호다. 헤딩 존재로 판정해 정본 포인터만 남은 헤딩도 잡는다.
         #  펜스 안의 예시 헤딩은 세지 않는다 — 위키 문서는 자기 서식을 코드블록으로 예시하는
         #  것이 관례라 그 오차가 구조적이다(폐지된 §7-18 이 같은 판정을 썼다).
@@ -3080,8 +3047,6 @@ def main():
                 names = "·".join(dict.fromkeys(abolished))
                 warn(f"폐지 절 보유: {r} (## {names} — 함정은 레포 docs/conventions.md, 채택 이유는 decisions.md 몫이고 나머지는 지운다, schema §2.3·§7-38)", r)
 
-        # §7-40 본문 코드 경로 — 제외: 펜스 · 각주 정의 줄 · 허브 `**경로**` 줄(레포 위치)
-        #  · URL · `90_archive/` 포인터(롤오버 --fix·§7-30ⓐ 가 쓰는 장치). deprecated·아카이브 페이지는 frozen 이력.
         if typ in BODY_PATH_TYPES and not is_dep and not in_archive:
             body_paths, fence = [], False
             for ln in text.splitlines():
@@ -3352,7 +3317,6 @@ def main():
     if "index.md" in pages:
         itext = pages["index.md"][2]
 
-        # 분할 신호 (schema-budget §4) — sub 합치기 전 index.md 본체로 측정
         idx_lines = itext.count("\n") + 1
         feat_rows = feature_index_rows(itext)
         if idx_lines > INDEX_BODY_LINES or feat_rows > INDEX_FEAT_ROWS:
@@ -3423,19 +3387,12 @@ def main():
                 warn(f"해결된 질문이 index 미해결 목록에 잔존: {qr} "
                      f"(index에서 제거 — 페이지는 보존, B-2 3-1, schema §7-23)", qr)
 
-        # 코드펜스/인라인코드 제외 후 feature 링크 추출 — wikilink_targets(메인 루프 파싱과 공용)
         for t in wikilink_targets(itext):
             if "/feat-" in t:
-                # M-3: '.md' 확장자를 벗겨 feat_files(무확장)와 동일 형태로 맞춘다 —
-                #   '[[…/feat-x.md]]' 링크를 '인덱스 누락'으로 오판하지 않게(깨진링크·고아와 함께 3중 오탐 제거).
                 index_feat_links.add(t[:-3] if t.endswith(".md") else t)
         for f in sorted(feat_files - index_feat_links):
             warn(f"기능별 인덱스 누락: {f} (feature인데 index 미등록)", f)
 
-        # 인덱스 등록 (§7-30 ⓒ): guide·entity·concept이 어느 인덱스에도 안 실렸는가.
-        #  §7-6이 feature에 하는 일을 나머지 타입으로 넓힌 것이다 — 종전에는 이 셋에 대응 검사가
-        #  없어, 분할·신설한 페이지가 등록에서 빠져도 기계가 침묵했다(§7-8 고아 검사는 위키 어디서든
-        #  링크되면 통과하므로 "인덱스 밖" 상태를 잡지 못한다).
         idx_links = {t[:-3] if t.endswith(".md") else t for t in wikilink_targets(itext)}
         for typ_name in sorted(indexed_files):
             for f in sorted(indexed_files[typ_name] - idx_links):
@@ -3511,16 +3468,8 @@ def main():
                  f"롤오버가 훑지 않는 구역이라 아카이브로 넘어가지 않는다('## 최근 변경'으로 이동)",
                  "log.md")
 
-    # pending.md 미처리 잔량 집계 (절차 K 큐 — K 5-2/B-1 0): 잔량이 있으면 INFO로 알려
-    #  다음 소비 세션이 소비하게 한다 (0건·파일 없음이면 생략). 소비 주체는 ingest/lint 세션이고,
-    #  [DECISION]은 사용자 요청으로 도는 절차 M(큐 소비 경량)도 소비 주체다
-    #  — 한 번의 소비는 그 요청이 지목한 범위만 닿으므로 이 INFO가 0이 되지 않는 것은 정상.
-    #  [DECISION]은 해당 프로젝트 decisions.md에 추가 후 제거(자가 소비).
-    #  (보고됨 ...) 표식 줄도 잔량이므로 집계에 포함.
     if "pending.md" in pages:
         pend_text = pages["pending.md"][2]
-        # 태그 목록은 아래 잔량 집계와 형식 위반 검사가 공유한다 — 한쪽만 태그를 추가하면
-        #  새 태그가 집계되지 않거나 위반 검출에서 빠져 조용히 사각지대가 생긴다(단일 출처).
         pend_tags = (("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트분만 즉시 소비, 타 프로젝트분은 lint F-2·큐 정리 M 승인 시 소비)"),)
         parts = []
         for tag, label in pend_tags:
@@ -3808,7 +3757,6 @@ def main():
             if f.startswith(hub_base + "/") and not re.search(re.escape(f) + r"(?![\w-])", hub_text):
                 warn(f"허브 기능 목록 누락: {r} -> {f}", r)
 
-    # 상대 참조 (schema-lint §7-39): 절 단위로 뽑아 읽으면 「위 절」이 가리키던 것이 사라진다.
     for r, (fm, typ, text) in sorted(pages.items()):
         if typ not in ("project", "feature", "decision-log") or r.startswith("90_archive/"):
             continue

@@ -1065,9 +1065,6 @@ def check_case(case):
         return False, f"lint.py 비정상 종료(exit {rc}): {tail}"
 
     if case.get("expect_clean"):
-        # 정상 vault: ERR·WARN 0이어야 한다(INFO는 허용).
-        # expect_absent는 clean 케이스에도 적용한다 — "조용히 건너뛰어야 하는" 동작은
-        #  ERR/WARN 0만으로는 실증되지 않는다(INFO로 새어나와도 clean 판정은 통과하므로).
         present = [kw for kw in case.get("expect_absent", []) if kw in out]
         if present:
             return False, "부재 기대 키워드가 출력에 존재(오탐): " + ", ".join(present)

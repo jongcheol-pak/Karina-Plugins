@@ -179,7 +179,6 @@ function Invoke-WarnStaleDocs {
         $lines.Add("[낡음] 골든 실측이 낡았습니다 — 문서 최신 $($gl.Doc)케이스 ↔ 러너 상수 $($gl.Base)케이스. 전량 실행의 [TIMING] 값으로 golden-runner.md 를 갱신하세요")
     }
 
-    # --- 층 3: 기계가 못 재는 축 ---
     if ($script:StaleAxisMap.Count -ne $script:StaleAxisBaseline) {
         $lines.Add("[내부] 경로→축 매핑이 $($script:StaleAxisMap.Count)건인데 기준선은 $($script:StaleAxisBaseline)건입니다 — 정당한 증감이면 StaleAxisBaseline 을 함께 갱신하세요(그 diff 가 목록 변화의 기록입니다)")
     }

@@ -253,8 +253,7 @@ try {
             }
         }
 
-        # 위키 vault 신호는 `session-wiki-signals.ps1`이 계산한다.
-        $vaultInsertAt = $lines.Count      # AGENTS 라인보다 앞 위치를 미리 기록(전문이 길어 뒤에 붙으면 묻힌다)
+        $vaultInsertAt = $lines.Count
         . (Join-Path $PSScriptRoot 'session-wiki-signals.ps1')
         $vaultLine = (Get-WikiSignals).VaultLine
 
