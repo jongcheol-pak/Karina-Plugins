@@ -18,12 +18,12 @@
       / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
       / index.md 부재·읽기 실패(ERR — 인덱스 기반 검사 불능 신호. 두 사유는 처방이 정반대라
         각각 다른 ERR: 부재는 골격 생성, 읽기 실패는 인코딩 복구)
-      / 상대 참조(§7-39 — project·feature·decision-log 본문의 「위 절」 같은 고정 표현 WARN)
+      / 상대 참조(§7-39 — project·feature·decision-log 본문의 「위 절」 같은 고정 표현 WARN, deprecated 제외)
       / (미검증)·미해결 question 집계(INFO)
       / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
       / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트·decision-log 제외)
       / 이동·분리 도달 경로 정합(§7-30 — ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향)
-      / 폐지 타입·태그 보유(§7-41 — 옛 작업 규약 타입 페이지·pending.md 의 [PROJECT-FACT]·[SYMPTOM] 항목 줄 WARN)
+      / 폐지 타입·태그 보유(§7-41 — 옛 작업 규약 타입 페이지·pending.md 의 [PROJECT-FACT]·[SYMPTOM] 항목 줄·index.md 증상별 인덱스 절 WARN)
       / 섹션 구역화 권장(§7-32 — feature의 한 섹션이 SECTION_H3_CHARS를 초과하면서 '### ' 0개면 INFO).
       / decision-log 방향 미기재(§7-33 — 기각·보류 항목의 판정 직후 ': {실제 방향}' 부재).
       / patterns 관측 폭 집계(INFO — '## 프로젝트 사례' 절 미보유 건수 / 전체, §7-35).
@@ -150,12 +150,13 @@ PATTERN_CASE_SECTION = "프로젝트 사례"
 PATTERNS_DIR = "30_knowledge/patterns/"
 
 RETIRED_PAGE_TYPES = ("convention",)
-RETIRED_QUEUE_TAG_RX = re.compile(r"^- \[\d{4}-\d{2}-\d{2}\] \[(PROJECT-FACT|SYMPTOM)\]")
+RETIRED_QUEUE_TAG_RX = re.compile(r"^\s*-\s*.{0,15}?\[(PROJECT-FACT|SYMPTOM)\]")
+RETIRED_INDEX_SECTION_RX = re.compile(r"(?m)^##[ \t]+증상별 인덱스[ \t]*$")
 RETIRED_QUEUE_TAG_HINT = {
     "PROJECT-FACT": "작업 함정은 그 레포 docs/conventions.md 로 옮기고 큐에서 지운다",
     "SYMPTOM": "증상 큐는 폐지됐다 — 디버깅 사례는 레포 docs/conventions.md 몫이고 큐에서 지운다",
 }
-RELATIVE_REFS = ("위 절", "아래 절", "앞 절", "위 표", "아래 표", "앞 회차", "이전 회차")
+RELATIVE_REFS_RX = re.compile(r"(위|아래|앞) 절(?!차)|(위|아래) 표(?![기시준현])|(앞|이전) 회차")
 # 본문 릴리즈 마커 (§7-28 — §5 "changelog 미러링 금지"의 기계 신호). v접두 3필드 semver만 —
 RELEASE_MARKER_RX = re.compile(r"(?<![0-9A-Za-z_.])v\d+\.\d+\.\d+(?![0-9.])")
 
@@ -3041,13 +3042,16 @@ def main():
         #  못하게 하는 재성장 방지 신호다. 헤딩 존재로 판정해 정본 포인터만 남은 헤딩도 잡는다.
         #  펜스 안의 예시 헤딩은 세지 않는다 — 위키 문서는 자기 서식을 코드블록으로 예시하는
         #  것이 관례라 그 오차가 구조적이다(폐지된 §7-18 이 같은 판정을 썼다).
-        if typ == "feature" and not is_dep and not in_archive:
-            abolished = ABOLISHED_FEATURE_RX.findall(strip_code(text))
+        if typ in BODY_PATH_TYPES and not is_dep and not in_archive:
+            stripped = strip_code(text)
+            abolished = ABOLISHED_FEATURE_RX.findall(stripped) if typ == "feature" else []
             if abolished:
                 names = "·".join(dict.fromkeys(abolished))
                 warn(f"폐지 절 보유: {r} (## {names} — 함정은 레포 docs/conventions.md, 채택 이유는 decisions.md 몫이고 나머지는 지운다, schema §2.3·§7-38)", r)
+            for phrase in dict.fromkeys(m.group(0) for m in RELATIVE_REFS_RX.finditer(stripped)):
+                warn(f"상대 참조: {r} -> '{phrase}' "
+                     f"(대상의 이름·경로로 쓴다 — wiki-schema §1 사실 줄 형식, schema §7-39)", r)
 
-        if typ in BODY_PATH_TYPES and not is_dep and not in_archive:
             body_paths, fence = [], False
             for ln in text.splitlines():
                 if re.match(r"[ \t>]*(```|~~~)", ln):
@@ -3316,6 +3320,10 @@ def main():
     #   BOM은 utf-8-sig로 이미 흡수됐고 개행도 메인 루프가 LF로 정규화했다(534-544행).
     if "index.md" in pages:
         itext = pages["index.md"][2]
+        if RETIRED_INDEX_SECTION_RX.search(strip_code(itext)):
+            warn("폐지 타입·태그 보유: index.md '## 증상별 인덱스' — 증상별 인덱스는 폐지됐다. 디버깅 사례는 "
+                 "레포 docs/conventions.md 로 옮기고 절을 지운다(남아 있으면 그 행이 §7-6·§7-16·§7-30ⓒ 판정에 섞인다, "
+                 "schema §7-41)", "index.md")
 
         idx_lines = itext.count("\n") + 1
         feat_rows = feature_index_rows(itext)
@@ -3756,15 +3764,6 @@ def main():
             #   못 잡는다(위음성) → 경로 뒤에 단어문자·하이픈이 없어야 진짜 등록으로 본다(.md 확장자는 허용).
             if f.startswith(hub_base + "/") and not re.search(re.escape(f) + r"(?![\w-])", hub_text):
                 warn(f"허브 기능 목록 누락: {r} -> {f}", r)
-
-    for r, (fm, typ, text) in sorted(pages.items()):
-        if typ not in ("project", "feature", "decision-log") or r.startswith("90_archive/"):
-            continue
-        body = strip_code(text)
-        for phrase in RELATIVE_REFS:
-            if phrase in body:
-                warn(f"상대 참조: {r} -> '{phrase}' "
-                     f"(대상의 이름·경로로 쓴다 — wiki-schema §1 사실 줄 형식, schema §7-39)", r)
 
     # 고아 페이지(간이): 어디서도 링크되지 않는 페이지 (루트 인프라·아카이브·lint 리포트 제외)
     #  lint-YYYYMMDD 리포트(questions/, type: question)는 어디서도 링크되지 않는 게 정상이라
