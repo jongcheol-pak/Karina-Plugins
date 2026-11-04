@@ -344,7 +344,7 @@ class FakeGit:
     쌓여 있고, 기준이 `head`(시작 HEAD)면 그 전부를, 쌓인 커밋 중 하나면 그 뒤를, 어느 쪽도 아니면 실패를 낸다.
     저장하지 않은 주기에 같은 커밋이 다시 나오는 것을 흉내 내려면 history 모드를 쓴다."""
 
-    def __init__(self, head='h0', logs=(), head_ok=True, heads=(), history=None):
+    def __init__(self, head='h0', logs=(), head_ok=True, heads=(), history=None, trees=()):
         self.head = head
         self.logs = list(logs)
         self.head_ok = head_ok
@@ -352,9 +352,18 @@ class FakeGit:
         self.history = None if history is None else [list(h) for h in history]
         self.log_count = 0
         self.calls = []
+        self.trees = list(trees)
+        self.tree = ('', '', '')
 
     def __call__(self, args):
         self.calls.append(list(args))
+        if args[0] == 'diff':
+            self.tree = self.trees.pop(0) if self.trees else ('', '', '')
+            return (False, '') if self.tree is None else (True, self.tree[0])
+        if args[0] == 'ls-files':
+            return (True, self.tree[1]) if self.tree else (False, '')
+        if args[0] == 'hash-object':
+            return (True, self.tree[2]) if self.tree else (False, '')
         if args[0] == 'rev-parse':
             if self.heads:
                 return self.heads.pop(0)
@@ -673,6 +682,60 @@ def background_shell_too_long_stalls():
     out = run(cli)
     assert first(out).startswith('RESULT: stall — '), out
     assert len([c for c in cli.calls if c[0] == 'worker-read']) == 9, out
+    assert any('오판일 수 있다' in l for l in out), out
+
+
+@case
+def plain_stall_has_no_misjudge_line():
+    cli = FakeCli([EMPTY] * 3, [screen('frozen')] * 3)
+    out = run(cli)
+    assert first(out).startswith('RESULT: stall — '), out
+    assert not any('오판일 수 있다' in l for l in out), out
+
+
+@case
+def tree_change_resets_stall():
+    git = FakeGit(history=[], trees=[('diff %d' % n, '', '') for n in range(4)])
+    cli = FakeCli([EMPTY] * 4 + [msg_batch()], [screen('frozen')] * 4)
+    out = runp(cli, prog(git), timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: message — '), out
+
+
+@case
+def untracked_content_change_resets_stall():
+    git = FakeGit(history=[], trees=[('same', 'new.rs', 'hash%d' % n) for n in range(4)])
+    cli = FakeCli([EMPTY] * 4 + [msg_batch()], [screen('frozen')] * 4)
+    out = runp(cli, prog(git), timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: message — '), out
+    assert any(c[0] == 'hash-object' and 'new.rs' in c for c in git.calls), git.calls
+
+
+@case
+def fixed_dirty_tree_still_stalls():
+    git = FakeGit(history=[], trees=[('same diff', 'new.rs', 'hashA')] * 3)
+    cli = FakeCli([EMPTY] * 3, [screen('frozen')] * 3)
+    out = runp(cli, prog(git), timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: stall — '), out
+    assert 'HEAD·작업 트리가 움직이지 않았다' in first(out), out
+
+
+@case
+def tree_git_failure_is_not_movement():
+    git = FakeGit(history=[], trees=[None] * 3)
+    cli = FakeCli([EMPTY] * 3, [screen('frozen')] * 3)
+    out = runp(cli, prog(git), timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: stall — '), out
+
+
+@case
+def multi_tree_change_resets_only_its_dispatch():
+    ga = FakeGit(history=[], trees=[('a %d' % n, '', '') for n in range(3)])
+    gb = FakeGit(history=[], trees=[('b', '', '')] * 3)
+    cli = FakeCli([EMPTY] * 3, [screen('fa'), screen('fb')] * 3)
+    out = runp(cli, [prog(ga, label='Plan 2'), prog(gb, label='Plan 3')], dispatch=['disp_a', 'disp_b'],
+               timeout_ms=60000, poll_ms=60000)
+    assert first(out).startswith('RESULT: stall — '), out
+    assert 'worker-retain --dispatch disp_b' in first(out), out
 
 
 @case

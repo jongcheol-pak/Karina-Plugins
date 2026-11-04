@@ -3,7 +3,7 @@
 출력 — 첫 줄 `RESULT: <갈래> — <다음 행동>`, 이어 본문:
 - message    `check` 가 배치를 돌려줬다(빈 값의 키를 빼고 subject·body 밖의 긴 값을 자른 JSON 한 줄).
              ack 는 하지 않는다 — 코디네이터가 처리한 뒤 한다.
-- stall      같은 화면이 체크포인트마다 `--stall` 장 이어졌고 그 사이 HEAD 가 움직이지 않았다 — 첫 화면이 1장이다(화면 끝 40줄).
+- stall      같은 화면이 체크포인트마다 `--stall` 장 이어졌고 그 사이 HEAD·작업 트리가 움직이지 않았다 — 첫 화면이 1장이다(화면 끝 40줄).
 - error      CLI 실행 실패 · JSON 아님 · `ok: false`(원문).
 - superseded 같은 dispatch 의 새 대기가 잠금을 가져갔다. 받은 배치는 싣지 않는다 —
              Karina 앱 `check` 는 ack 전까지 같은 배치를 다시 주므로 새 대기가 받는다.
@@ -49,9 +49,12 @@ CLI_WAIT_MARGIN_SEC = 60     # check --wait 는 자기 --timeout-ms 에 이만�
 GIT_TIMEOUT_SEC = 30         # lint.py·relocate-agents.py 의 git 시한과 같다
 SWEEP_AGE_SEC = 7 * 24 * 3600
 BUSY_SAME_MAX = 6            # 바쁨(CI pending·백그라운드 셸)인 같은 화면을 움직임으로 세는 연속 비교 상한(약 54분)
-ANSWER_MAX_SEC = 2700        # --answer-by 상한 — 백그라운드 대기 생존 실측 45분
+TREE_HASH_MAX = 200
+ANSWER_MAX_SEC = 2700       # --answer-by 상한 — 백그라운드 대기 생존 실측 45분
 
 
+BUSY_CAPPED_NOTE = ('바쁨(백그라운드 셸·CI pending)인 같은 화면이 상한을 넘어 멈춤으로 셌다 — 오판일 수 있다 '
+                    '(워커가 긴 백그라운드 작업을 기다리는 중일 수 있다)')
 BG_SHELL = re.compile(r'\b\d+ shells?\b')
 
 
@@ -90,11 +93,11 @@ def _action(kind, dispatch, streak=0, on_place=False, parallel=False, answer_by=
                 '남은 병렬 워커가 있으면 그 dispatch 들로 곧바로 다시 띄운다 — references/parallel.md)')
     if kind == 'stall' and parallel:
         return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고(화면은 구분 줄 뒤다), '
-                '같은 화면이 체크포인트마다 %d장 이어졌고 HEAD 가 움직이지 않았다 — worker-retain --dispatch %s 후 '
+                '같은 화면이 체크포인트마다 %d장 이어졌고 HEAD·작업 트리가 움직이지 않았다 — worker-retain --dispatch %s 후 '
                 '병렬 대기라 references/parallel.md 「멈춤」 을 따른다' % (streak, dispatch))
     if kind == 'stall':
         return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고(화면은 구분 줄 뒤다), '
-                '같은 화면이 체크포인트마다 %d장 이어졌고 HEAD 가 움직이지 않았다 — worker-retain --dispatch %s 후 '
+                '같은 화면이 체크포인트마다 %d장 이어졌고 HEAD·작업 트리가 움직이지 않았다 — worker-retain --dispatch %s 후 '
                 '같은 --dispatch 에 --watch 만 붙인 감시 대기(--repo·--label·--pr 없이)를 run_in_background 로 띄우고 보고하고 멈춘다 '
                 '(보고의 멈춘 사유에 직접 재개 알림 안내를 싣는다 — references/report.md · references/manual-resume.md)'
                 % (streak, dispatch))
@@ -152,6 +155,7 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
     last_hash = {d: None for d in ids}
     # 직전 화면 비교 때 본 그 워커 레포의 HEAD — progs[i] 가 ids[i] 의 레포다(같은 수·같은 순서).
     head_at_read = {d: None for d in ids}
+    tree_at_read = {d: None for d in ids}
     busy_run = {d: 0 for d in ids}
     poll = poll_ms or timeout_ms
     remaining = timeout_ms
@@ -213,14 +217,19 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
             cur_head = progs[i].last_head if i < len(progs) else None
             moved = None not in (cur_head, head_at_read[d]) and cur_head != head_at_read[d]
             head_at_read[d] = cur_head
+            cur_tree = progs[i].tree_sig() if i < len(progs) else None
+            moved = moved or None not in (cur_tree, tree_at_read[d]) and cur_tree != tree_at_read[d]
+            if cur_tree is not None:
+                tree_at_read[d] = cur_tree
             busy = (i < len(progs) and progs[i].pr_busy) or background_shell(lines)
             busy_run[d] = busy_run[d] + 1 if busy and h == last_hash[d] else 0
             moved = moved or (busy and busy_run[d] <= BUSY_SAME_MAX)
             streak[d] = streak[d] + 1 if h == last_hash[d] and not moved else 0
             last_hash[d] = h
             if streak[d] + 1 >= stall:
+                note = [BUSY_CAPPED_NOTE] if busy and busy_run[d] > BUSY_SAME_MAX else []
                 sep = ['— 화면 끝 %d줄 —' % STALL_TAIL] if lines_done else []
-                return emit('stall', sep + lines[-STALL_TAIL:], lines_done, who=d,
+                return emit('stall', note + sep + lines[-STALL_TAIL:], lines_done, who=d,
                             streak=streak[d] + 1, parallel=parallel)
 
 
@@ -479,6 +488,21 @@ class Progress:
     @property
     def pr_busy(self):
         return self.pr is not None and self.pr.busy
+
+    def tree_sig(self):
+        ok, diff = self.git(['diff', 'HEAD', '--no-color', '--no-ext-diff'])
+        if not ok:
+            return None
+        ok, untracked = self.git(['ls-files', '--others', '--exclude-standard'])
+        if not ok:
+            return None
+        files = [f for f in untracked.splitlines() if f][:TREE_HASH_MAX]
+        hashes = ''
+        if files:
+            ok, hashes = self.git(['hash-object', '--'] + files)
+            if not ok:
+                return None
+        return hashlib.sha1('\x1f'.join((diff, untracked, hashes)).encode('utf-8')).hexdigest()[:16]
 
     def poll(self):
         """새 진행 줄(task 완료 · PR 단계)을 돌려주고 갱신할 상태를 pending 에 둔다 — 저장은 commit() 이 한다(잠금 확인 뒤).
