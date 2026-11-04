@@ -253,13 +253,10 @@ try {
             }
         }
 
-        # 위키 신호 2종(vault 상태·뒤처짐)은 `session-wiki-signals.ps1`이 계산한다 —
-        #   그 둘만 vault를 훑어(허브 전수 스캔·git rev-list) 판정 입력이 다르다.
+        # 위키 vault 신호는 `session-wiki-signals.ps1`이 계산한다.
         $vaultInsertAt = $lines.Count      # AGENTS 라인보다 앞 위치를 미리 기록(전문이 길어 뒤에 붙으면 묻힌다)
         . (Join-Path $PSScriptRoot 'session-wiki-signals.ps1')
-        $wikiSig = Get-WikiSignals -cwd $cwd
-        $vaultLine = $wikiSig.VaultLine
-        $staleLine = $wikiSig.StaleLine
+        $vaultLine = (Get-WikiSignals).VaultLine
 
         # ---- AGENTS.md 주입 — 근거는 `rules/session-context-rationale-wiki.md` §31
         $agentsMaxBytes = 16384      # 크기 상한 — 전문 주입 상방이자 이관 판정 기준(relocate-agents.py 가 이 변수 이름으로 읽는다)
@@ -384,10 +381,6 @@ try {
         # ---- vault 라인 주입 — 근거는 `rules/session-context-rationale-wiki.md` §34
         if ($vaultLine -and ($lines.Count -gt $cwdBaseCount)) {
             $lines.Insert([Math]::Min($vaultInsertAt, $lines.Count), $vaultLine)
-            # 뒤처짐 라인은 vault 라인 다음이다.
-            if ($staleLine) {
-                $lines.Insert([Math]::Min($vaultInsertAt + 1, $lines.Count), $staleLine)
-            }
         }
     }
 

@@ -24,7 +24,7 @@ $script:StaleAxisMap = @(
        TtlFile = 'AGENTS.md'
        TtlDays = 90 }
     @{ Pattern = '^skills/llm-wiki/'
-       Axis    = '위키 feature 서술 ↔ 코드 — 각주 경로 실존은 lint 가 재지만 서술 내용은 표본 판정뿐이다' }
+       Axis    = '위키 규칙 ↔ 실 vault — 골든 픽스처는 작아 실물 규모의 형상을 못 재므로 실 vault 사본으로 lint 를 한 번 돌린다' }
 )
 # 4 -> 3: `docs/golden-runner.md` 의 소요 실측 축이 **층 2 의 케이스 수 대조로 승격**돼
 #   빠졌다(회차 64). 근거 문서 §5 의 「감소에도 정당한 형태가 하나 있다」가 이 자리다.
@@ -122,24 +122,6 @@ function Get-GoldenTimingLag {
     return @{ Doc = $docMax; Base = $base }
 }
 
-function Get-WikiLag {
-    <#
-      층 2 — 위키가 레포에 얼마나 뒤처졌는가. 허브 frontmatter 의 `synced_commit` 과 HEAD 사이
-      커밋 수를 센다. **알아야 할 시점이 위키 세션 시작이 아니라 코드 세션의 커밋 직전이다** —
-      시작 알림은 「이번 세션이 또 벌린 격차」를 원리상 못 알린다(그때는 아직 안 벌어졌다).
-      lint §7-26 의 등급은 건드리지 않는다 — 그쪽은 WARN 으로 올려도 exit 0 이라 실효가 없다.
-    #>
-    param([string]$RepoRoot, [string]$HubPath)
-    if ([string]::IsNullOrWhiteSpace($HubPath) -or -not (Test-Path -LiteralPath $HubPath)) { return $null }
-    $head = (Get-Content -LiteralPath $HubPath -TotalCount 40 -ErrorAction SilentlyContinue) -join "`n"
-    if ($head -notmatch '(?m)^synced_commit:\s*["'']?([0-9a-f]{7,40})') { return $null }
-    $sha = $Matches[1]
-    # 경로 제한 `-- .` — 모노레포에서 다른 플러그인 커밋을 격차로 세지 않는다(하니스 루트 기준).
-    $n = & git -C $RepoRoot rev-list --count "$sha..HEAD" -- . 2>$null
-    if ($LASTEXITCODE -ne 0) { return $null }   # 그 sha 가 이 레포에 없으면 판정 불가
-    return [int]$n
-}
-
 function Invoke-WarnStaleDocs {
     param($data)
     $cmd = $data.tool_input.command
@@ -195,15 +177,6 @@ function Invoke-WarnStaleDocs {
     $gl = Get-GoldenTimingLag -RepoRoot $root -Base $(if ($baseText) { [int]$baseText } else { $null })
     if ($null -ne $gl) {
         $lines.Add("[낡음] 골든 실측이 낡았습니다 — 문서 최신 $($gl.Doc)케이스 ↔ 러너 상수 $($gl.Base)케이스. 전량 실행의 [TIMING] 값으로 golden-runner.md 를 갱신하세요")
-    }
-
-    # --- 층 2: 위키 격차 ---
-    $vault = $env:CLAUDE_WIKI_VAULT
-    if ($vault) {
-        $lag = Get-WikiLag -RepoRoot $root -HubPath (Join-Path $vault '20_projects/personal/claude-harness-karina.md')
-        if ($null -ne $lag -and $lag -gt 0) {
-            $lines.Add("[뒤처짐] 위키가 레포보다 $lag 커밋 뒤에 있습니다 — 이번 커밋이 격차를 더 벌립니다. `pending.md` 소비는 위키 세션에서 하세요")
-        }
     }
 
     # --- 층 3: 기계가 못 재는 축 ---

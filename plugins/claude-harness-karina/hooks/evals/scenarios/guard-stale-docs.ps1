@@ -121,6 +121,7 @@ print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
     Remove-Item (Join-Path $sdRoot 'evals/check-harness-consistency.py') -Force
     Remove-Item (Join-Path $sdRoot 'hooks/evals/run-hook-evals.ps1') -Force
 
+
     # 4) 비커밋 Bash 호출은 무출력 — 조사만 하는 턴에 발화하면 소음이 된다.
     $sdOther = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $sdRoot
                   tool_input = @{ command = 'git status' } } | ConvertTo-Json -Compress
@@ -241,6 +242,24 @@ print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdMonoJson } finally { Pop-Location }
     Assert-Case -Name 'stale-docs: 모노레포 다른 플러그인 폴더는 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
     Remove-Item $sdMono -Recurse -Force -ErrorAction SilentlyContinue
+
+    '{ "name": "karina", "version": "1.0.0" }' | Set-Content (Join-Path $sdRoot '.claude-plugin/plugin.json')
+    & git -C $sdRoot add -A 2>$null
+    & git -C $sdRoot -c user.email=t@t -c user.name=t commit -q -m 'restore-manifest' 2>$null
+    $sdInitSha = (& git -C $sdRoot rev-parse HEAD 2>$null | Select-Object -First 1)
+    'x' | Set-Content (Join-Path $sdRoot 'after-sync.txt')
+    & git -C $sdRoot add -A 2>$null
+    & git -C $sdRoot -c user.email=t@t -c user.name=t commit -q -m 'after-sync' 2>$null
+    $sdVault = Join-Path $work 'sd-vault'
+    New-Item -ItemType Directory (Join-Path $sdVault '20_projects/personal') -Force | Out-Null
+    @('---', 'type: project', "synced_commit: $sdInitSha", '---', '# 허브') |
+        Set-Content -Encoding UTF8 (Join-Path $sdVault '20_projects/personal/claude-harness-karina.md')
+    $sdVaultPrev = $env:CLAUDE_WIKI_VAULT
+    $env:CLAUDE_WIKI_VAULT = $sdVault
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location; $env:CLAUDE_WIKI_VAULT = $sdVaultPrev }
+    Assert-Case -Name 'stale-docs: 위키가 커밋 뒤처져도 [뒤처짐] 고지 없음' -R $r -ExpectExit 0 -ExpectNotContains '[뒤처짐]'
+    Remove-Item -Recurse -Force $sdVault -ErrorAction SilentlyContinue
 
 } finally {
     if (Test-Path $sdRoot) { Remove-Item $sdRoot -Recurse -Force -ErrorAction SilentlyContinue }
