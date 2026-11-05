@@ -1,7 +1,9 @@
 ﻿# comment-lines.ps1 — 새 주석 줄 판별 (dot-source 전용) — 근거는 `rules/comment-gate-rationale.md` §2
 
 $script:CommentSlashExts = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift')
-$script:CommentHashExts = @('.py', '.ps1', '.sh')
+$script:CommentHashExts = @('.py', '.ps1', '.psm1', '.psd1', '.sh', '.yaml', '.yml', '.toml')
+$script:CommentPsExts = @('.ps1', '.psm1', '.psd1')
+$script:CommentConfExts = @('.yaml', '.yml', '.toml')
 $script:CommentExemptRx = '(?i)^(eslint-|prettier-ignore|@ts-|noqa|type:\s*ignore|pylint:|pyright:|mypy:|nolint|istanbul ignore|c8 ignore|biome-ignore|resharper|fmt:\s*(off|on)\b|isort:|<reference|spdx-license-identifier|copyright|@license|-\*-\s*coding)'
 
 function Test-CommentTarget([string]$Path) {
@@ -20,7 +22,7 @@ function Get-CommentBodyLines([string]$Path, [string[]]$Lines) {
     if (-not (Test-CommentTarget $Path) -or $null -eq $Lines) { return , $bodies }
     $ext = [System.IO.Path]::GetExtension($Path).ToLower()
     $isSlash = $script:CommentSlashExts -contains $ext
-    $rawExempt = if ($isSlash) { '^//(go:|\s*#(end)?region\b)' } elseif ($ext -eq '.ps1') { '(?i)^#(requires|(end)?region)\b' } else { '(?!)' }
+    $rawExempt = if ($isSlash) { '^//(go:|\s*#(end)?region\b)' } elseif ($script:CommentPsExts -contains $ext) { '(?i)^#(requires|(end)?region)\b' } elseif ($script:CommentConfExts -contains $ext) { '^#(cloud-config\b|:schema\b|\s*yamllint (disable|enable)\b|\s*yaml-language-server:)' } else { '(?!)' }
     $inBlock = $false
     for ($n = 0; $n -lt $Lines.Count; $n++) {
         $t = ([string]$Lines[$n]).Trim()
@@ -33,7 +35,7 @@ function Get-CommentBodyLines([string]$Path, [string[]]$Lines) {
         } elseif ($isSlash -and $t.StartsWith('/*')) {
             $body = $t -replace '^/\*+!?', ''
             $inBlock = -not ($body -match '\*/')
-        } elseif ((-not $isSlash) -and $ext -eq '.ps1' -and $t.StartsWith('<#')) {
+        } elseif ((-not $isSlash) -and $script:CommentPsExts -contains $ext -and $t.StartsWith('<#')) {
             $body = $t.Substring(2)
             $inBlock = -not ($body -match '#>')
         } elseif ((-not $isSlash) -and $t.StartsWith('#') -and -not $t.StartsWith('#!')) {

@@ -456,6 +456,14 @@ Assert-Case -Name "commit-comments: staged 새 주석이 있는 커밋 첫 시�
 Assert-Case -Name "commit-comments: 차단 사유가 다시 내도 통과하지 않음을 낸다" -R $r -ExpectExit 2 -ExpectContains '같은 커밋을 다시 내도 통과하지 않습니다'
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-retry'
 Assert-Case -Name "commit-comments: 같은 주석 집합 두 번째도 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+$d = New-CcRepo
+Set-CcFile $d 'ci.yaml' "# 새 설명`non: push`n"; git -C $d add ci.yaml
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-yaml'
+Assert-Case -Name "commit-comments: .yaml 새 # 주석을 staged 한 커밋 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+$d = New-CcRepo
+Set-CcFile $d 'mod.psm1' "#Requires -Version 7`n`$m = 1`n"; git -C $d add mod.psm1
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-psm1'
+Assert-Case -Name "commit-comments: .psm1 #Requires 만 staged 한 커밋 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 $d = New-CcRepo
 [System.IO.File]::WriteAllText((Join-Path $d 'AGENTS.md'), "# A`n`n- **Test (감사)**: ``cargo test`` · 증가: ``^\s*pub\s+(fn|enum|struct)\b`` · 경로: ``*.rs```n")

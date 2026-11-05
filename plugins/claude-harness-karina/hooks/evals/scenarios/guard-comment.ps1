@@ -42,6 +42,28 @@ Assert-Case -Name "guard-comment: .py 의 go: 로 시작하는 주석은 Go 지�
 
 $r = Invoke-GcEdit 'ps_directive.ps1' '$z = 0' "#Requires -Version 7`n#region Helpers`n#endregion`n`$z = 0"
 Assert-Case -Name "guard-comment: .ps1 의 #Requires·#region 지시문은 통과" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-GcEdit 'mod.psm1' '$m = 1' "# 설명`n`$m = 1"
+Assert-Case -Name "guard-comment: .psm1 # 주석 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcEdit 'man.psd1' '@{ A = 1 }' "<# 첫 줄`n 둘째 줄`n 셋째 줄 #>`n@{ A = 1 }"
+Assert-Case -Name "guard-comment: .psd1 <# #> 블록은 블록 안 줄까지 센다" -R $r -ExpectExit 2 -ExpectContains '주석 3줄'
+$r = Invoke-GcEdit 'conf.yaml' 'a: 1' "# 설명`na: 1"
+Assert-Case -Name "guard-comment: .yaml # 주석 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcEdit 'ci.yml' 'on: push' "# 설명`non: push"
+Assert-Case -Name "guard-comment: .yml # 주석 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcEdit 'cfg.toml' 'a = 1' "# 설명`na = 1"
+Assert-Case -Name "guard-comment: .toml # 주석 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcEdit 'lint.yaml' 'b: 1' "# yamllint 규칙은 느슨하게 둔다`nb: 1"
+Assert-Case -Name "guard-comment: .yaml 의 yamllint 로 시작하는 일반 주석은 지시문이 아니다" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcEdit 'ps_directive.psm1' '$z = 0' "#Requires -Version 7`n#region Helpers`n#endregion`n`$z = 0"
+Assert-Case -Name "guard-comment: .psm1 의 #Requires·#region 지시문은 통과" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-GcWrite (Join-Path $gc 'lic.yaml') "# SPDX-License-Identifier: MIT`nc: 1"
+Assert-Case -Name "guard-comment: .yaml 라이선스 줄만 있는 Write 는 통과" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-GcEdit 'color.toml' 'a = 1' "a = 1`ncolor = `"#000`""
+Assert-Case -Name "guard-comment: .toml 문자열 속 # 은 주석이 아니다" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-GcWrite (Join-Path $gc 'cloud.yaml') "#cloud-config`n# yaml-language-server: `$schema=./s.json`n# yamllint disable-line rule:line-length`n# yamllint enable`nd: 1"
+Assert-Case -Name "guard-comment: .yaml 의 cloud-config·yaml-language-server·yamllint 지시문은 통과" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-GcWrite (Join-Path $gc 'schema.toml') "#:schema ./s.json`ne = 1"
+Assert-Case -Name "guard-comment: .toml 의 #:schema 지시문은 통과" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-GcEdit 'go_directive.go' 'var w = 0' "//go:generate stringer -type=W`n// #region A`n// #endregion`nvar w = 0"
 Assert-Case -Name "guard-comment: // 계열의 //go:·// #region 지시문은 통과" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-GcEdit 'move.rs' "// 기존 설명`nfn a() {}" "fn b() {}`n// 기존 설명"
