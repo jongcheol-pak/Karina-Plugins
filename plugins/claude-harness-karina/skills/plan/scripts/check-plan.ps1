@@ -35,7 +35,8 @@
 #   plan-check timeout <s> log <파일>  그 명령이 상한(KARINA_PLAN_CHECK_TIMEOUT_SEC, 기본 120초)을 넘음
 #                                (줄이 없으면 아무것도 내지 않는다 · -Base 모드는 돌리지 않는다)
 # -Base 모드의 코드 — 대상은 하위 항목이 전부 [x]·[X] 인 task 이고, 전부 「(불요」 인 task 는 뺀다:
-#   no-task-commit T<N>          BASE..HEAD 에 제목이 「{유형}: T<N> —」(또는 「T<N>:」)인 커밋이 없음
+#   no-task-commit T<N>          BASE..HEAD 에 제목이 「{유형}: T<N> —」(또는 「T<N>:」)인 커밋이 없음 — 마지막 task 는
+#                                그 블록이 <버전> 을 담으면 「설정: v<버전> —」(Release 형식 버전 커밋)도 센다
 #   no-commit-evidence T<N>      그 커밋은 있으나 어느 본문에도 「검증 결과」·「검증:」·HUMAN-VERIFY 가 없음
 #   ERROR no-git · ERROR bad-base  plan 이 git 밖 · BASE 가 커밋이 아님(exit 2)
 # 제목 형식의 정본은 guard-bash 의 완료 커밋 판정이다(scripts/rules/bash-guard-rationale.md §14) — 같은 정규식을 쓴다.
@@ -140,19 +141,25 @@ if ($Base) {
     $titleRx = '^\s*(?:(?:' + $types + ')\s*:\s*)?T(\d+)\s*(?::|' + [char]0x2014 + '|-)'
     $verify = Get-Text @(0xAC80, 0xC99D)    # 검증
     $evidenceRx = $verify + '\s*(?:' + (Get-Text @(0xACB0, 0xACFC)) + '|:)|HUMAN-VERIFY'    # 검증 결과 · 검증: · HUMAN-VERIFY
+    $versionRx = '^\s*' + (Get-Text @(0xC124, 0xC815)) + '\s*:\s*v(\d+\.\d+\.\d+)\s*' + [char]0x2014    # 설정: v<버전> —
+    $taskBlocks = @(Get-TaskBlocks)
+    $lastText = if ($taskBlocks.Count) { (@($taskBlocks[-1].Lines | ForEach-Object { $_.Text }) -join "`n") } else { '' }
     $commits = @()
     foreach ($msg in ($logText -split "`0")) {
         $msg = $msg.Trim()
         if (-not $msg) { continue }
         $parts = $msg -split "`n", 2
-        $m = [regex]::Match($parts[0], $titleRx)
-        if (-not $m.Success) { continue }
         $body = if ($parts.Count -gt 1) { $parts[1] } else { '' }
-        $commits += [pscustomobject]@{ Id = [int]$m.Groups[1].Value; Evidence = [regex]::IsMatch($body, $evidenceRx) }
+        $m = [regex]::Match($parts[0], $titleRx)
+        $v = [regex]::Match($parts[0], $versionRx)
+        if ($m.Success) { $id = [int]$m.Groups[1].Value }
+        elseif ($v.Success -and $taskBlocks.Count -and $lastText.Contains($v.Groups[1].Value)) { $id = $taskBlocks[-1].Id }
+        else { continue }
+        $commits += [pscustomobject]@{ Id = $id; Evidence = [regex]::IsMatch($body, $evidenceRx) }
     }
 
     $unneeded = '(' + (Get-Text @(0xBD88, 0xC694))    # (불요
-    foreach ($b in @(Get-TaskBlocks)) {
+    foreach ($b in $taskBlocks) {
         $items = @($b.Lines | Where-Object { $_.Text -match '^- \[[ xX/]\]' })
         if (-not $items.Count) { continue }
         if (@($items | Where-Object { $_.Text -notmatch '^- \[[xX]\]' }).Count) { continue }

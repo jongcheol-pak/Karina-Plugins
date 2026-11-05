@@ -260,6 +260,18 @@ Assert-Case -Name "check-plan 증거: 한글 제목·한글 검증 결과 본문
 $ev = New-EvidenceRepo @("문서: T1 — 한다`n`nHUMAN-VERIFY: 화면 배치는 사용자 확인")
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: 본문의 HUMAN-VERIFY 를 증거로 받는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$cpVer = "설정: v1.2.3 — 버전`n`n검증 결과: json → OK"
+$cpTwoVer = $cpDone.Replace("`n## 검증 방법", "`n### T2. 버전`n`n- [x] **T2-1** 버전을 1.2.3 으로 올린다`n`n## 검증 방법")
+$cpTwoPlain = $cpDone.Replace("`n## 검증 방법", "`n### T2. 마무리`n`n- [x] **T2-1** 마무리한다`n`n## 검증 방법")
+$ev = New-EvidenceRepo @($cpOk, $cpVer)
+$r = Invoke-CheckEvidence $cpTwoVer $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: Release 형식 버전 커밋은 그 버전을 적은 마지막 task 의 커밋이다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$ev = New-EvidenceRepo @($cpVer)
+$r = Invoke-CheckEvidence $cpTwoVer $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 버전 커밋은 마지막이 아닌 task 의 커밋이 아니다" -R $r -ExpectExit 1 -ExpectContains 'no-task-commit T1'
+$ev = New-EvidenceRepo @($cpOk, $cpVer)
+$r = Invoke-CheckEvidence $cpTwoPlain $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 버전을 적지 않은 마지막 task 에는 버전 커밋을 치지 않는다" -R $r -ExpectExit 1 -ExpectContains 'no-task-commit T2'
 $cpSkip = $cpBase.Replace('- [ ] **T1-1** 한다', '- [x] **T1-1** (불요 — 근거)').Replace("## 검증 방법`n", "### T2. 둘`n`n- [ ] **T2-1** 아직`n- **Files**: ``b.ps1`` [면제 ①] 문서`n- **Acceptance**: 참`n- **검증**: ``run`` → OK`n`n## 검증 방법`n")
 $ev = New-EvidenceRepo @()
 $r = Invoke-CheckEvidence $cpSkip $ev.dir $ev.base
