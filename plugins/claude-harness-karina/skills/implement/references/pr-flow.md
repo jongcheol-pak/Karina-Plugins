@@ -27,6 +27,8 @@
 
 **루프 진입 전 1회.** 기본 브랜치를 먼저 정한다 — `git symbolic-ref --short refs/remotes/origin/HEAD` 의 `origin/` 뒤가 그 이름이다. 실패하면(`git remote add` 로 붙인 레포에는 `origin/HEAD` 가 없다) `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` 을 쓰고, 그것도 실패하면 이 절과 「PR 열기」 를 건너뛰고 사유를 보고한다.
 
+**지금 브랜치가 기본 브랜치면 아래 표대로 바꾸기 전에 `concurrent-sessions.md`「병행 세션 감지」 를 Read 해 따른다 — 중계 모드(`karina:chain-plan` 워커)면 건너뛴다** — 같은 폴더의 다른 세션이 일하는 중에 브랜치를 바꾸면 그 세션의 미커밋 편집이 회차 브랜치로 따라온다.
+
 | 지금 브랜치 | 할 일 |
 |---|---|
 | 기본 브랜치 | `git fetch origin <기본>` → `git switch -c karina/<슬러그>` → `git rebase origin/<기본>`(미push 자기 브랜치 — 글로벌 지침 예외 3 · **중계 모드(spec `PR 모드: 켬`)와 체인 끝 PR(`../../chain-plan/references/chain-end-pr.md`「P 체인 끝 PR」)은 rebase 없이** — 체인 브랜치는 merge commit 을 품어 rebase 가 그것을 편다) → `git branch -f <기본> origin/<기본>` 으로 로컬 기본 브랜치를 원격에 맞춘다. rebase 가 커밋을 옮겼으면(`git rev-parse HEAD` 가 switch 직후와 다르면) `plan.md` 의 `> BASE:` 를 rebase 뒤 HEAD 로 고친다(아래 「merge 된 브랜치에서 시작할 때」 4번과 같은 처리)(중계 PR 모드의 화면 줄 task 직렬 예외 — `../../chain-plan/references/pr-mode.md`「워커」) |
@@ -37,7 +39,7 @@
 - **로컬 기본 브랜치를 원격에 맞추는 이유** — 앞서 쌓인 미push 커밋이 로컬 기본 브랜치에 남으면, PR 이 squash 로 들어간 뒤 로컬 기본 브랜치가 원격과 갈라진다. 그 커밋들은 `karina/` 브랜치에 그대로 있으므로 잃는 것이 없다. **rebase 를 먼저 하는 이유** — 원격 기본 브랜치가 로컬보다 앞서 있으면 새 브랜치가 낡은 로컬 HEAD 위에서 시작해 task 검증이 원격 기준선 밖에서 돌고, 원격의 변경과 PR 의 변경이 처음 만나는 자리가 squash merge 뒤가 된다(*"Rebase onto clean trunk first so every check measures against the real baseline."*). **rebase 가 충돌하면 `git rebase --abort`, 작업 트리가 깨끗하지 않아 시작 전에 거부되면 abort 없이 — 어느 쪽이든 rebase 없이 `branch -f` 만 해 지금까지의 순서로 돌아간 뒤 그 사실을 보고에 싣는다. 이때 `> BASE:` 는 그대로다.** **원격보다 앞서 있던 커밋 수를 최종 보고에 싣고**, 이 회차 밖 커밋이 섞였으면 PR 본문 `## 범위` 에 그 목록을 적는다.
 - **`git branch -f` 가 거부되면 로컬 기본 브랜치를 그대로 두고 그 사실을 보고에 싣고, 멈추지 않는다** — 기본 브랜치가 다른 worktree 에 체크아웃돼 있으면 거부된다. 이 회차 작업은 `karina/` 브랜치에서 그대로 이어지고, 갈라짐은 merge 뒤 `git pull --ff-only` 실패로 드러나 사용자가 그때 맞춘다.
 - **체크아웃의 HEAD 가 바뀌었다는 사실을 보고에 싣는다** — 병행 세션이 같은 체크아웃을 쓰면 그쪽 커밋도 이 브랜치로 온다.
-- **worktree 를 새로 만들지 않고 지금 체크아웃의 브랜치를 바꾼다** — 새 worktree 에는 무시 대상 파일(추적하지 않는 `plan.md`·`.env`·빌드 캐시)이 옮겨지지 않고, hook 의 plan 게이트가 다른 폴더의 `plan.md` 를 보게 된다(실측 서술은 `../../chain-plan/references/parallel.md`「병렬 그룹」·「띄우기」). 한 세션이 task 를 차례로 도는 직렬 작업이라 격리가 필요 없다 — 동시에 여러 체크아웃이 필요한 체인 병렬 그룹만 worktree 를 쓴다.
+- **worktree 를 새로 만들지 않고 지금 체크아웃의 브랜치를 바꾼다** — 새 worktree 에는 무시 대상 파일(추적하지 않는 `plan.md`·`.env`·빌드 캐시)이 옮겨지지 않고, hook 의 plan 게이트가 다른 폴더의 `plan.md` 를 보게 된다(실측 서술은 `../../chain-plan/references/parallel.md`「병렬 그룹」·「띄우기」). 한 세션이 task 를 차례로 도는 직렬 작업이라 격리가 필요 없다 — 동시에 여러 체크아웃이 필요한 체인 병렬 그룹과, 위 병행 세션 감지에서 사용자가 「worktree 로 옮김」 을 고른 경우(새 세션으로 넘긴다)만 worktree 를 쓴다.
 
 ### merge 된 브랜치에서 시작할 때
 
