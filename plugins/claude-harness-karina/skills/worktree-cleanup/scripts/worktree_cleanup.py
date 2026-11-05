@@ -16,7 +16,8 @@ audit — 읽기 전용. git 호출은 모두 `--no-optional-locks` 라 index �
 
 remove [--dry-run] <경로>... — 경로마다 audit 과 같은 판정을 다시 해 hold·current 버킷과 주 worktree 는 거부한다.
   지우기 전에 미추적(`??`)·ignore(`!!`) 항목을 `<backup-root>/<레포 이름>/<worktree 이름>-<시각>/` 에 복사하고
-  manifest.txt(원래 경로·브랜치·HEAD·백업한 것·건너뛴 것과 사유)를 쓴다. ignore 폴더 항목은 이름이 ARTIFACT_DIRS
+  manifest.txt(원래 경로·브랜치·HEAD·백업한 것·건너뛴 것과 사유)를 쓴다. 백업할 항목이 없으면(건너뛴 것만 있어도)
+  폴더도 manifest 도 만들지 않고 줄에 `백업 없음` 을 낸다 — 건너뛴 것은 SKIP 줄에만 남는다. ignore 폴더 항목은 이름이 ARTIFACT_DIRS
   (빌드·캐시 폴더)이면 크기와 무관하게, 그 밖은 합계가 --ignored-dir-cap-mb 를 넘으면 건너뛴다. 미추적 폴더는 상한
   없이 복사하되 그 안의 ignore 항목은 빼고 자기 규칙으로 따로 처리한다.
   삭제: Karina CLI 가 그 경로를 아는 worktree(`worktree show --worktree path:<경로>` 가 ok)는
@@ -320,6 +321,8 @@ def ignored_filter(wt_path, entries):
 
 
 def do_backup(root, repo, wt, take, skip, now, entries):
+    if not take:
+        return None
     stamp = time.strftime('%Y%m%d-%H%M%S', time.localtime(now))
     first = os.path.join(root, os.path.basename(repo.rstrip('/\\')), '%s-%s' % (os.path.basename(wt['path'].rstrip('/\\')), stamp))
     dest, n = first, 2
@@ -403,13 +406,14 @@ def cmd_remove(args):
             failed += 1
             out.append('FAILED %s — 백업 실패, 지우지 않음 (%s)' % (wt['path'], e))
             continue
+        where = ('백업 %s' % dest) if dest else '백업 없음'
         reason = delete_worktree(repo, wt['path'], cli)
         if reason:
             failed += 1
-            out.append('FAILED %s — %s · 백업 %s' % (wt['path'], reason, dest))
+            out.append('FAILED %s — %s · %s' % (wt['path'], reason, where))
         else:
             removed += 1
-            out.append('REMOVED %s — 백업 %s' % (wt['path'], dest))
+            out.append('REMOVED %s — %s' % (wt['path'], where))
         out += items
     if args.dry_run:
         print('RESULT: dry-run · would remove %d · refused %d · failed %d' % (planned, refused, failed))

@@ -394,10 +394,11 @@ def remove_refuses_main():
 
 @case
 def remove_skips_big_ignored_dir():
-    # ㉒ 상한을 넘는 ignore 폴더는 건너뛰고 manifest·출력에 싣는다
+    # ㉒ 상한을 넘는 ignore 폴더는 건너뛰고 SKIP 줄에 싣는다(다른 백업 대상이 있으면 manifest 에도)
     def body(fx):
         p = fx.add('big', commit=True, merge=True)
         fx.write('big', 'bigdir/blob.bin', 'x' * 4096)
+        fx.write('big', 'plan.md', '# plan\n')
         rc, out, err = fx.remove('--no-karina', '--ignored-dir-cap-mb', '0.001', p)
         assert rc == 0, (out, err)
         assert 'SKIP' in out and 'bigdir' in out, out
@@ -497,14 +498,14 @@ def remove_backs_up_untracked_dir():
 
 @case
 def remove_skips_artifact_dir():
-    # ㉟ 빌드·캐시 이름의 ignore 폴더는 상한 이하여도 백업하지 않고 SKIP·manifest 에 싣는다
+    # ㉟ 빌드·캐시 이름의 ignore 폴더는 상한 이하여도 백업하지 않고 SKIP 줄에만 싣는다(백업 대상이 없으면 폴더도 없다)
     def body(fx):
         p = fx.add('art', commit=True, merge=True)
         fx.write('art', 'node_modules/x.js', 'x\n')
         rc, out, err = fx.remove('--no-karina', p)
         assert rc == 0 and out.startswith('RESULT: removed 1'), (out, err)
         assert any(l.startswith('SKIP') and 'node_modules' in l for l in out.splitlines()), out
-        assert 'node_modules' in fx.manifest() and not any(f.endswith('x.js') for f in fx.backup_files())
+        assert not os.path.exists(fx.backup), fx.backup_files()
         assert not fx.is_listed(p)
     with_fixture(body)
 
@@ -639,6 +640,17 @@ def remove_fails_when_karina_down():
         rc, out, _ = fx.remove('--karina-cli', cli, p)
         assert rc == 1 and 'FAILED' in out and 'runtime_unavailable' in out, out
         assert fx.is_listed(p) and os.path.exists(p)
+    with_fixture(body)
+
+
+@case
+def remove_without_backup_makes_no_folder():
+    def body(fx):
+        p = fx.add('clean', commit=True, merge=True)
+        rc, out, err = fx.remove('--no-karina', p)
+        assert rc == 0 and any(l.startswith('REMOVED') and l.endswith('— 백업 없음') for l in out.splitlines()), (out, err)
+        assert not os.path.exists(fx.backup), fx.backup_files()
+        assert not fx.is_listed(p)
     with_fixture(body)
 
 
