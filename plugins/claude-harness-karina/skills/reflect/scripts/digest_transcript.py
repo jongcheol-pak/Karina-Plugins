@@ -11,6 +11,8 @@
 머리에 읽은 파일·갈래별 줄 수·총 줄 수를 싣는다 — 리뷰어가 총 줄 수까지 나눠 읽는다.
 `--audit`(implement 완료 리뷰의 전사 대조용) — 서브에이전트 전사를 읽지 않고 A: 줄 · Bash·Skill 의 T: 줄 ·
 `<command-name>` 이 든 U: 줄만 남긴다(Skill·slash command 줄은 대조 범위를 가르는 표지). 머리에 `# 모드: audit` 을 싣는다.
+  한글 음절(가-힣)이 하나도 없는 A: 줄은 `A: [한글 없음] …` 으로 표지하고 그 수를 머리 `# 한글 없는 A: <N>` 에 싣는다
+  — implement·pr 의 「상태 메모도 한글로」 위반을 완료 리뷰가 세는 재료다.
 
 종료 코드: 0 정상 · 2 세션 판정 실패(ID 없음·파일 0개·2개 이상) · 3 인식한 레코드 0(전사 형식이 바뀌었을 수 있다).
 전사 형식은 Claude Code 내부 형식이라 문서화돼 있지 않다 — 2.1.306 실측 기준이다.
@@ -30,6 +32,8 @@ HOOK_TYPES = ('hook_additional_context', 'hook_cancelled')
 PERSISTED = re.compile(r'<persisted-output>\s*Output too large \(([\d.]+)(KB|MB)\)')
 AUDIT_KINDS = ('U', 'A', 'T')
 AUDIT_TOOLS = ('T: Bash ', 'T: Skill ')
+HANGUL = re.compile('[가-힣]')
+HANGUL_FREE_MARK = 'A: [한글 없음] '
 
 
 def audit_keep(line):
@@ -175,9 +179,12 @@ def main(argv=None):
     head = ['# reflect 요약 — 세션 %s' % sid, '# 본 전사: %s' % mains[0], '# 서브에이전트 전사: %d개' % len(subs)]
     if a.audit:
         body = [line for line in body if audit_keep(line)]
+        body = [HANGUL_FREE_MARK + line[3:] if line.startswith('A: ') and not HANGUL.search(line) else line
+                for line in body]
         counts = {k: sum(1 for line in body if line.startswith(k + ': ')) for k in AUDIT_KINDS}
         kinds = AUDIT_KINDS
         head.append('# 모드: audit')
+        head.append('# 한글 없는 A: %d' % sum(1 for line in body if line.startswith(HANGUL_FREE_MARK)))
     head.append('# 줄 수: ' + ' · '.join('%s %d' % (k, counts.get(k, 0)) for k in kinds))
     total = len(head) + 1 + len(body)
     text = '\n'.join(head + ['# 총 줄 수: %d' % total] + body) + '\n'

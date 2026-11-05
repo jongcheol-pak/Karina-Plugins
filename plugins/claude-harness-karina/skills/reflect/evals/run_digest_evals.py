@@ -407,6 +407,32 @@ def audit_header_marks_mode():
         t.close()
 
 
+@case
+def audit_marks_hangul_free_lines():
+    t = Tree()
+    try:
+        t.session('proj-a', SID, [rec_assistant([{'type': 'text', 'text': 'Now running the full verification.'}]),
+                                  rec_assistant([{'type': 'text', 'text': '검증을 돌린다'}])])
+        rc, out, err = digest(t, ['--audit'])
+        assert rc == 0, (rc, err)
+        lines = out.splitlines()
+        assert '# 한글 없는 A: 1' in lines, lines
+        assert 'A: [한글 없음] Now running the full verification.' in lines, lines
+    finally:
+        t.close()
+
+
+@case
+def audit_leaves_korean_lines():
+    t = Tree()
+    try:
+        rc, out, err = audit_digest(t)
+        assert rc == 0, (rc, err)
+        assert '[한글 없음]' not in out, out
+    finally:
+        t.close()
+
+
 LEDGER = (
     '﻿# Deferred 대장\r\n'
     '\r\n'
