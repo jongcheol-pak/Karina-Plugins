@@ -394,7 +394,6 @@ def remove_refuses_main():
 
 @case
 def remove_skips_big_ignored_dir():
-    # ㉒ 상한을 넘는 ignore 폴더는 건너뛰고 SKIP 줄에 싣는다(다른 백업 대상이 있으면 manifest 에도)
     def body(fx):
         p = fx.add('big', commit=True, merge=True)
         fx.write('big', 'bigdir/blob.bin', 'x' * 4096)
@@ -498,7 +497,6 @@ def remove_backs_up_untracked_dir():
 
 @case
 def remove_skips_artifact_dir():
-    # ㉟ 빌드·캐시 이름의 ignore 폴더는 상한 이하여도 백업하지 않고 SKIP 줄에만 싣는다(백업 대상이 없으면 폴더도 없다)
     def body(fx):
         p = fx.add('art', commit=True, merge=True)
         fx.write('art', 'node_modules/x.js', 'x\n')
