@@ -6,7 +6,7 @@
 # 출력은 ASCII 만이고 줄 종류는 다섯이다:
 #   check-plan <줄>: <코드> <세부>        위반 하나
 #   check-plan: skip <검사> <사유>        건너뛴 검사 하나(위반 아님)
-#   check-plan: ran plan-check exit 0 log <파일>   AGENTS.md 의 Plan check 가 돌아 통과함(위반 아님)
+#   check-plan: ran plan-check exit 0     AGENTS.md 의 Plan check 가 돌아 통과함(위반 아님 · 로그 파일 없음)
 #   check-plan: <N> problems              마지막 줄 — 위반 수
 #   check-plan: ERROR <사유>              입력 오류(exit 2)
 # 종료 코드: 0 위반 없음 · 1 위반 있음 · 2 입력 오류(경로 없음·파일 없음·읽기 실패 · -Base 모드의 git 밖·없는 BASE).
@@ -345,7 +345,6 @@ if ($pc) {
     $tmp = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
     if (-not $tmp) { $tmp = [System.IO.Path]::GetTempPath() }
     $logDir = Join-Path (Join-Path $tmp 'karina-plugin') 'scratch'
-    New-Item -ItemType Directory -Path $logDir -Force | Out-Null
     $logName = 'check-plan-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '.log'
     $limit = 120
     $n = 0
@@ -376,10 +375,13 @@ if ($pc) {
     $text = ''
     if ($outTask.Wait(5000)) { $text += $outTask.Result }
     if ($errTask.Wait(5000)) { $text += $errTask.Result }
-    [System.IO.File]::WriteAllText((Join-Path $logDir $logName), $text, $utf8)
+    if ($timedOut -or $proc.ExitCode -ne 0) {
+        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+        [System.IO.File]::WriteAllText((Join-Path $logDir $logName), $text, $utf8)
+    }
     if ($timedOut) { Add-Problem $pc.Line ('plan-check timeout ' + $limit + ' log ' + $logName) }
     elseif ($proc.ExitCode -ne 0) { Add-Problem $pc.Line ('plan-check exit ' + $proc.ExitCode + ' log ' + $logName) }
-    else { Write-Output ('check-plan: ran plan-check exit 0 log ' + $logName) }
+    else { Write-Output 'check-plan: ran plan-check exit 0' }
 }
 
 Complete-Check
