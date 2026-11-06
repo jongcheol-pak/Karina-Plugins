@@ -294,6 +294,10 @@
 
 **정본은 conventions-verification — 정합 검사기·문서 대조의 「정합 검사기·문서 대조」이다** — 본문 5373자를 옮겼다(§7-2 발동 처방).
 
+## 코드 주석·docstring 을 쓰거나 고칠 때
+
+- [2026-11-06] **함수·상수를 새로 쓰거나 고칠 때 그 자리의 docstring·주석을 「새 동작에 맞게 갱신」하지 말고 먼저 `skills/implement/references/code-style.md`「주석」 의 예외·보존 대상에 드는지 가른다 — 들지 않으면 지우고 이유는 커밋 본문에 쓴다** — 코드를 되풀이하는 새 docstring 과, 예외 밖 hunk 주석을 문구만 고쳐 남긴 것이 회차 끝 주석 정리(comment-reviewer)에서 두 회차 연속 작성 위반으로 지워졌다. 보존 대상은 하니스 `AGENTS.md` 「Comment (보존)」 경로와 문서가 정본으로 지정한 머리 주석·docstring 뿐이다 (실측)
+
 ## 계획 · 검증 방법론 — plan을 쓰거나 acceptance를 설계할 때
 
 ### acceptance 설계
