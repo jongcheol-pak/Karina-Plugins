@@ -1,5 +1,5 @@
 ---
-name: pr-verifier
+name: gate-verifier
 description: karina:pr 의 ship 이 merge 전에, karina:chain-plan 코디네이터가 스택 체인의 계획별 검증으로 PR 마다, main 직행 레포의 로컬 게이트(implement 회차 끝·디버깅 수정·체인 끝)가 push 전에 1회 이름으로 호출한다. PR head(로컬 게이트는 push 할 HEAD)를 받아 둔 worktree 에서 그 레포 AGENTS.md 의 검증 명령과 Verify 검증 스킬을 돌려 PASS / PASS+NOTES / FAIL 을 낸다. 코드를 쓰지 않는다. 다른 상황에는 쓰지 않는다.
 model: opus
 tools: Read, Grep, Glob, Bash

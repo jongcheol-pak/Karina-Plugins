@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 > 출처는 Cursor pstack 의 create-formal-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/create-formal-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮기며 원문과 다르게 한 것 — ① 생성 위치를 Claude Code 프로젝트 스킬 `.claude/skills/formal-<영역>/` 로 ② 도구 설치는 승인 뒤에만 ③ 소비자가 이름으로 찾는 「변경 검증」 절과 알려진 위반 목록 ④ 원문의 덮는 코드 기록·동기 커밋을 그 절의 항목으로 ⑤ `AGENTS.md` 등록 절차(6단계). 덧붙인 것 — 조건 앵커와 반례 재현 증거 기준을 — 앵커는 원문 「코드에 충실하다」 의 *"Every part of the model or proof points to code that a reviewer can open."* 를 `파일:줄` 로 구체화한 karina 규칙이고(처음 출처였던 statechart 스킬의 앵커 문면은 최신본에 없다), 증거 기준은 statechart 의 *"replay each bug path against the real code"*(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/statechart/SKILL.md`)와 principle-test-behavior-not-implementation 의 관측 가능한 동작 축(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/principle-test-behavior-not-implementation/SKILL.md`)이다 — 3절과 4절 「판정」 에.
 
-테스트는 누군가 떠올린 경우만 확인한다. 형식 검증은 정해 둔 범위 안의 모든 경우를 확인한다 — 모델 안의 모든 단계 순서, 한계까지의 모든 입력, 또는 모든 입력이다. 이 스킬은 레포에서 그것이 가장 중요한 자리를 찾아 그 자리의 속성 하나를 검증하고, 다음 에이전트가 변경을 그 속성에 대조할 수 있는 프로젝트 스킬 `.claude/skills/formal-<영역>/` 을 남긴다. **생성물의 독자는 작업 도중에 그 스킬을 처음 읽는, 이번 작업을 본 적 없는 에이전트다** — `karina:implement`·`pr-verifier`·`karina:karina-systematic-debugging` 이 `AGENTS.md` 의 `Verify (형식 검증)` 줄로 찾는다. 사용자는 검증 언어를 배우지 않고도 결과를 믿고 행동할 수 있어야 한다.
+테스트는 누군가 떠올린 경우만 확인한다. 형식 검증은 정해 둔 범위 안의 모든 경우를 확인한다 — 모델 안의 모든 단계 순서, 한계까지의 모든 입력, 또는 모든 입력이다. 이 스킬은 레포에서 그것이 가장 중요한 자리를 찾아 그 자리의 속성 하나를 검증하고, 다음 에이전트가 변경을 그 속성에 대조할 수 있는 프로젝트 스킬 `.claude/skills/formal-<영역>/` 을 남긴다. **생성물의 독자는 작업 도중에 그 스킬을 처음 읽는, 이번 작업을 본 적 없는 에이전트다** — `karina:implement`·`gate-verifier`·`karina:karina-systematic-debugging` 이 `AGENTS.md` 의 `Verify (형식 검증)` 줄로 찾는다. 사용자는 검증 언어를 배우지 않고도 결과를 믿고 행동할 수 있어야 한다.
 
 ## 1. 코드에서 대상을 고른다
 
@@ -64,7 +64,7 @@ disable-model-invocation: true
 
 증명에 성공했을 때만 한다. 순서가 정해져 있다.
 
-1. **추적되는 경로인지 본다** — `git check-ignore -q .claude/skills/formal-<영역>/SKILL.md` 의 종료 코드가 **1** 이어야 한다(0 이면 무시되는 경로다). 무시되면 `git check-ignore -v` 출력을 보이고 사용자에게 둘 중 하나를 고르게 한다 — 고르지 않으면 등록하지 않고 보고한다. `pr-verifier` 는 PR head 의 worktree 에서만 돌아 추적되지 않은 스킬을 보지 못한다.
+1. **추적되는 경로인지 본다** — `git check-ignore -q .claude/skills/formal-<영역>/SKILL.md` 의 종료 코드가 **1** 이어야 한다(0 이면 무시되는 경로다). 무시되면 `git check-ignore -v` 출력을 보이고 사용자에게 둘 중 하나를 고르게 한다 — 고르지 않으면 등록하지 않고 보고한다. `gate-verifier` 는 PR head 의 worktree 에서만 돌아 추적되지 않은 스킬을 보지 못한다.
    - **(권장) 레포 `.gitignore` 에 부정 사슬을 더한다** — 사슬이 없으면 다섯 줄 `!.claude/` · `.claude/*` · `!.claude/skills/` · `.claude/skills/*` · `!.claude/skills/formal-<영역>/` 이다. **사슬이 이미 있으면(앞서 `verify-<app>` 등을 등록한 레포) `!.claude/skills/formal-<영역>/` 한 줄만 더한다** — gitignore 는 마지막에 맞는 줄이 이겨, 다섯 줄을 다시 붙이면 뒤의 `.claude/skills/*` 가 앞서 풀어 둔 폴더를 다시 무시한다. 4번 커밋 경로에 `.gitignore` 를 더한다.
    - **`git add -f -- .claude/skills/formal-<영역>`** — 이 경로를 고르면 4번의 `add` 에도 `-f` 가 필요하다.
    - 고른 수단을 적용한 뒤 이 1번을 다시 돌려 종료 코드 1 을 확인한다.

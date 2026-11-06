@@ -77,7 +77,7 @@ pstack `bug-fix.md` 는 6단계 *"Run **Opening a PR**."* 로 끝나고, `openin
 
 - **회귀 테스트를 수정보다 먼저 커밋한다** — pstack 5단계 *"Stage the commits so the failing repro lands before the fix in git history."* 다. 테스트만 담은 커밋은 BASE 위에서 실패하므로, 리뷰어가 PR 의 커밋 순서로 그 수정이 그 실패를 없앴는지 본다. 4-D 뒤에 한 번에 순서대로 커밋하는 것은 Halt·Phase 4.5 로 끝날 때 빨간 커밋만 브랜치에 남지 않게 하려는 것이다.
 - **squash merge 라 main 이력에는 순서가 남지 않는다** — pstack `shipping.md` 4단계도 `gh pr merge <pr> --squash` 다. 순서는 리뷰하는 동안 PR 안에서 쓰이고, 그것으로 목적을 이룬다(2026-10-19 사용자 결정 — rebase merge 를 쓰지 않는다).
-- **4-D 가 `미검증` 이어도 PR 을 연다** — pstack 은 *"'Inconclusive' or wrong-surface is not a pass. Flag it."* 하고 6단계로 간다. 본문 `## 검증` 에 `미검증 — <사유>` 를 적으면 merge 전에 `pr-verifier` 와 사용자가 그 줄을 본다. PR 을 열지 않으면 수정이 로컬에 남아 그 판단을 할 자리가 없다.
+- **4-D 가 `미검증` 이어도 PR 을 연다** — pstack 은 *"'Inconclusive' or wrong-surface is not a pass. Flag it."* 하고 6단계로 간다. 본문 `## 검증` 에 `미검증 — <사유>` 를 적으면 merge 전에 `gate-verifier` 와 사용자가 그 줄을 본다. PR 을 열지 않으면 수정이 로컬에 남아 그 판단을 할 자리가 없다.
 
 ## §12 얕은 seam 의 회귀 테스트를 쓰지 않는 이유
 
