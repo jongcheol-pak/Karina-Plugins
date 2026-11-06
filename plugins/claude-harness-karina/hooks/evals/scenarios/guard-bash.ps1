@@ -199,6 +199,24 @@ Assert-Case -Name "rtc: 볼드 하위 항목 전부 [x] → 신형 제목 통과
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcBold '설정: v1.258.0 — 회차 44: T3 정리')
 Assert-Case -Name "rtc: 유형 뒤가 T<N> 이 아닌 제목은 판정 제외 (회차 44 T4 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+$rtcBt = '```'
+$rtcDash = Join-Path $work 'rtc-dash'; New-Item -ItemType Directory $rtcDash -Force | Out-Null
+"# plan`n### T3. 검색`n- [x] **T3-1** 검색 요약`n- [-] **T3-2** 인덱스" | Set-Content (Join-Path $rtcDash 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcDash '기능: T3 — 검색 요약')
+Assert-Case -Name "rtc: [-] 하위 항목이 남은 T3 커밋 차단" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$rtcFence = Join-Path $work 'rtc-fence'; New-Item -ItemType Directory $rtcFence -Force | Out-Null
+"# plan`n### T3. 검색`n- [x] **T3-1** 검색 요약`n$($rtcBt)markdown`n- [ ] **T3-9** 서식 예시`n$rtcBt" | Set-Content (Join-Path $rtcFence 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcFence '기능: T3 — 검색 요약')
+Assert-Case -Name "rtc: 펜스 안 예시만 미완인 T3 커밋 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
+$rtcUpper = Join-Path $work 'rtc-upper'; New-Item -ItemType Directory $rtcUpper -Force | Out-Null
+"# plan`n### T3. 검색`n- [X] **T3-1** 검색 요약`n- [X] **T3-2** 인덱스" | Set-Content (Join-Path $rtcUpper 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUpper '기능: T3 — 검색 요약')
+Assert-Case -Name "rtc: [X] 뿐인 T3 커밋 통과(무출력) (델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+$rtcUnneeded = Join-Path $work 'rtc-unneeded'; New-Item -ItemType Directory $rtcUnneeded -Force | Out-Null
+"# plan`n### T3. 검색`n- [x] (불요 — 이미 있음) **T3-1** 검색 요약" | Set-Content (Join-Path $rtcUnneeded 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUnneeded '기능: T3 — 검색 요약')
+Assert-Case -Name "rtc: [x] (불요 뿐인 T3 커밋 통과(무출력) (델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+
 # ---- [대장 2026-10-08] 커밋 제목을 -m 밖에서 읽기(RF) — -F 파일·-F - heredoc/here-string·PowerShell 여러 줄 -m ----
 #   제목을 끝내 못 읽으면 차단하지 않고 plan 이 있을 때만 경고한다. 모든 케이스가 cwd 를 픽스처 폴더로 준다
 #   (빼면 러너 레포의 실제 plan.md 를 읽는다). 근거는 `rules/bash-guard-rationale.md` §14.

@@ -978,7 +978,7 @@
     "fixture": "minimal-repo",
     "expect_rc": 0,
     "expect_keywords": [
-      "복제 사본 동기 11항목",
+      "복제 사본 동기 13항목",
       "대조 전부 일치"
     ]
   },

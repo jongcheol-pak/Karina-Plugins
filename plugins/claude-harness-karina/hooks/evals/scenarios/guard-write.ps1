@@ -64,6 +64,23 @@ $plusplan = Join-Path $work 'proj-plus';  New-Item -ItemType Directory $plusplan
 "# plan`n+ [x] T1: done" | Set-Content (Join-Path $plusplan 'plan.md')
 $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $plusplan (Join-Path $plusplan 'A.cs'))
 Assert-Case -Name "require-plan: 플러스(+) 불릿 완료 plan 은 G4(완료)로 판정 (회차 44 T5)" -R $r -ExpectExit 0 -ExpectContains '완료된 것으로'
+$gwBt = '```'
+$mixplan = Join-Path $work 'proj-mixdash';  New-Item -ItemType Directory $mixplan -Force | Out-Null
+"# plan`n- [x] T1: done`n- [-] T2: dropped" | Set-Content (Join-Path $mixplan 'plan.md')
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $mixplan (Join-Path $mixplan 'A.cs'))
+Assert-Case -Name "require-plan: [x]+[-] plan 은 G4(완료)가 아니다" -R $r -ExpectExit 0 -ExpectNotContains '완료된 것으로'
+$dashplan = Join-Path $work 'proj-dash';  New-Item -ItemType Directory $dashplan -Force | Out-Null
+"# plan`n- [-] T1: dropped" | Set-Content (Join-Path $dashplan 'plan.md')
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $dashplan (Join-Path $dashplan 'A.cs'))
+Assert-Case -Name "require-plan: [-] 뿐인 plan 은 H3(빈)가 아니다" -R $r -ExpectExit 0 -ExpectNotContains '빈/플레이스홀더'
+$fenceplan = Join-Path $work 'proj-fenceonly';  New-Item -ItemType Directory $fenceplan -Force | Out-Null
+"# plan`n$gwBt`n- [ ] T1: 서식 예시`n$gwBt" | Set-Content (Join-Path $fenceplan 'plan.md')
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $fenceplan (Join-Path $fenceplan 'A.cs'))
+Assert-Case -Name "require-plan: 체크박스가 펜스 안에만 있는 plan 은 H3(빈)" -R $r -ExpectExit 0 -ExpectContains '빈/플레이스홀더'
+$upperplan = Join-Path $work 'proj-upper';  New-Item -ItemType Directory $upperplan -Force | Out-Null
+"# plan`n- [x] T1: done`n- [X] T2: done" | Set-Content (Join-Path $upperplan 'plan.md')
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $upperplan (Join-Path $upperplan 'A.cs'))
+Assert-Case -Name "require-plan: [x]·[X] 뿐인 plan 은 G4(완료) 유지" -R $r -ExpectExit 0 -ExpectContains '완료된 것으로'
 $trivial = @{ tool_name = 'Edit'; cwd = $noplan; tool_input = @{ file_path = (Join-Path $noplan 'A.cs'); old_string = 'int x = 1;'; new_string = 'int x = 2;' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'guard-write.ps1' $trivial
 Assert-Case -Name "require-plan: trivial Edit 통과" -R $r -ExpectExit 0 -ExpectContains 'Trivial'

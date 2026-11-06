@@ -1514,7 +1514,8 @@ COPY_SYNC_GROUPS = (
     ("불릿 정규식", "literal",
      (("guard-write.ps1", "planBulletRx"), ("session-context.ps1", "planBulletRx"), ("loop-continue.ps1", "planBulletRx"))),
     ("펜스 정규식", "literal",
-     (("session-context.ps1", "planFenceRx"), ("loop-continue.ps1", "planFenceRx"))),
+     (("session-context.ps1", "planFenceRx"), ("loop-continue.ps1", "planFenceRx"),
+      ("guard-bash.ps1", "planFenceRx"), ("guard-write.ps1", "planFenceRx"))),
     ("heredoc 정규식", "literal",
      (("block-destructive.ps1", "heredocRx"), ("guard-bash.ps1", "HeredocBlockRx"))),
 )

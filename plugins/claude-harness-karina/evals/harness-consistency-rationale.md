@@ -71,7 +71,7 @@
        · `Split-TopLevel` 함수 — `block-destructive.ps1` → `guard-bash.ps1`
        · `Find-PlanFileUpwards` 함수 — `session-context.ps1` → `loop-continue.ps1`
        · 불릿 정규식 `$planBulletRx` — `guard-write.ps1`(불릿 집합 정본) → `session-context.ps1`·`loop-continue.ps1`
-       · 펜스 정규식 `$planFenceRx` — `session-context.ps1` → `loop-continue.ps1`
+       · 펜스 정규식 `$planFenceRx` — `session-context.ps1` → `loop-continue.ps1`·`guard-bash.ps1`·`guard-write.ps1`
        · heredoc 정규식 — `block-destructive.ps1` 의 `$heredocRx` → `guard-bash.ps1` 의 `$script:HeredocBlockRx`
          (변수 이름이 다르다 — 둘 다 차단 hook 이라 이름을 맞추지 않는다. 그래서 묶음은 (파일, 이름) 쌍이다)
      **복제를 둔 이유는 둘이다**(`skills/DESIGN.md` 2절의 복제 예외 문단이 정본) — ① 안전 임계
