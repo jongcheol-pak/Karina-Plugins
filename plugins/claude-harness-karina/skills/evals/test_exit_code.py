@@ -1,5 +1,5 @@
 """trigger_eval 의 순수 함수 단위 케이스 — `exit_code` 종료 코드 판정 · `summarize` 오발동 게이트 ·
-`judge_case` 첫 발동 판정 · `is_skill_call` 조기 종료 · `attach_diagnostics` 진단 부착 ·
+`judge_case` 첫 발동 판정 · `is_skill_call` 조기 종료 · `attach_diagnostics` 진단 부착 · `diagnostic_lines` 진단 출력 ·
 `missing_skills` 스킬 로드 누락 · `run_claude` stderr 배수(claude 대신 가짜 프로세스 — 모델 호출 없음).
 
 이 서브트리에는 골든 러너가 없다. `trigger_eval.py` 본체는 실제 모델을 호출해 비용이
@@ -122,6 +122,11 @@ DIAG_CASES = [
     ("ⓟ pass 결과 -> 진단 없음", "pass", False),
 ]
 
+DIAG_PRINT_CASES = [
+    ("ⓥ fail 결과 -> 진단 줄에 세 필드", "fail", ["error_max_turns", "Read", "Skill", "되물음"]),
+    ("ⓥ pass 결과 -> 진단 줄 없음", "pass", []),
+]
+
 # 스킬 로드 갈래 — 플러그인은 떴는데 SKILL.md 하나가 조용히 빠진 상태를 잡는가.
 #   frontmatter YAML 이 깨진 스킬은 오류 없이 목록에서 빠지고, 그 run 은 그 스킬 케이스를 전부
 #   「발동 없음」 FAIL 로 세 품질 저하로 둔갑한다(2026-10-04 실측 — run 153358, 6종 중 5종 로드).
@@ -208,6 +213,14 @@ def main():
         ok = got == want
         failed += 0 if ok else 1
         print(f"[{'PASS' if ok else 'FAIL'}] {name}: tool_calls {'있음' if got else '없음'}")
+    for name, status, want_parts in DIAG_PRINT_CASES:
+        result = {"status": status}
+        _call(_TE, "attach_diagnostics", result, "error_max_turns", ["Read", "Skill"], "되물음")
+        lines = _call(_TE, "diagnostic_lines", result)
+        text = "\n".join(lines) if isinstance(lines, list) else str(lines)
+        ok = isinstance(lines, list) and (all(p in text for p in want_parts) if want_parts else not lines)
+        failed += 0 if ok else 1
+        print(f"[{'PASS' if ok else 'FAIL'}] {name}: {lines!r}")
     with tempfile.TemporaryDirectory() as plugin_dir:
         # 레포 스킬 목록에 기대지 않도록 스킬 둘짜리 플러그인 트리를 만든다
         for skill in ("plan", "implement"):
@@ -243,7 +256,8 @@ def main():
         print(f"[{mark}] {name}: judged_negative {got_n} (기대 {want_n})"
               f" · 오발동률 {got_rate} (기대 {want_rate})")
     total = (len(CASES) + len(SUMMARIZE_CASES) + len(JUDGE_CASES)
-             + len(STOP_CASES) + len(DIAG_CASES) + len(LOAD_CASES) + len(MANUAL_CASES)
+             + len(STOP_CASES) + len(DIAG_CASES) + len(DIAG_PRINT_CASES) + len(LOAD_CASES)
+             + len(MANUAL_CASES)
              + 1)  # +1: stderr 배수 갈래
     print(f"\n결과: {total - failed}/{total} PASS")
     sys.exit(1 if failed else 0)
