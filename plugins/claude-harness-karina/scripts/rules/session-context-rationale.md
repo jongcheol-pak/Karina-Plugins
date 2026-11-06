@@ -77,11 +77,14 @@
 
 **찾은 plan 을 따르는 판정은 셋 더 있다** — Deferred 미판정 계수(§7) · 압축 리마인더 조건(`-not $planPath`) · vault 줄 게이팅(§4 — plan 요약 줄도 cwd 수집 라인으로 센다). 하위 폴더 세션에서도 vault 줄이 나오는 것은 의도된 변화다. AGENTS.md 목차는 계속 `cwd` 기준이다.
 
-**의도적 사본이다** — `Find-PlanFileUpwards` 와 `$planBulletRx` 는 `loop-continue.ps1` 에 같은 글자로 있다. 공용 `.ps1` 로 빼면 `rules/harness-hooks.json`(목록 = 스크립트 전량)에 올라 차단 hook `guard-harness` 의 보호 범위가 바뀐다. 사본의 일치는 `evals/check-harness-consistency.py` 의 「복제 사본 동기」 축이 잰다(`skills/DESIGN.md` 2절의 복제 예외).
+**의도적 사본이다** — `Find-PlanFileUpwards`·`$planBulletRx`·`$planFenceRx` 는 `loop-continue.ps1` 에 같은 글자로 있다. 공용 `.ps1` 로 빼면 `rules/harness-hooks.json`(목록 = 스크립트 전량)에 올라 차단 hook `guard-harness` 의 보호 범위가 바뀐다. 사본의 일치는 `evals/check-harness-consistency.py` 의 「복제 사본 동기」 축이 잰다(`skills/DESIGN.md` 2절의 복제 예외).
 
 ## §5-1 task 계수식
 
-`$planBulletRx`(`guard-write.ps1` 이 정본인 불릿 집합 — `-`·`*`·`+`·번호, 들여쓰기 허용) 뒤에 `\[[ /xX]\]`(전체)·`\[[ /]\]`(미완)와 `[ \t]*\**T\d+` 를 잇는다. 템플릿 정본(plan-template.md 「작업 단계」)의 `- [ ] **T1-1** …`(볼드 하위 항목)과 구형 `- [x] T1: …` 을 함께 받는다.
+`$planBulletRx`(`guard-write.ps1` 이 정본인 불릿 집합 — `-`·`*`·`+`·번호, 들여쓰기 허용) 뒤에 `\[[ /xX~-]\]`(전체)·`\[[ /~-]\]`(미완)와 `[ \t]*\**T\d+` 를 잇는다. 템플릿 정본(plan-template.md 「작업 단계」)의 `- [ ] **T1-1** …`(볼드 하위 항목)과 구형 `- [x] T1: …` 을 함께 받는다.
+
+- **완료는 `[x]`·`[X]` 뿐이고 `[ ]`·`[/]`·`[-]`·`[~]` 는 미완이다** — 집합은 작성 게이트 `$planTaskRx` 와 같다. 근거와 펜스 규칙은 `loop-continue-rationale.md`「§4 미완 판정식과 plan 탐색」이 정본이다.
+- **계수 전에 `$planFenceRx` 로 코드 펜스 구간을 지운 사본(`$taskText`)을 센다** — Deferred 미판정 계수(§7)는 원문 `$planText` 를 그대로 본다(그 절의 표·마커는 펜스와 무관하다).
 
 - **task 번호가 붙은 줄만 센다** — `guard-write` 는 번호 없는 체크박스도 세지만, 여기서 세면 통과 체크리스트가 task 수에 섞인다. 종전 정규식은 볼드를 못 받아 현행 plan 에서 0건으로 떨어졌다(대장 2026-09-06·09-08 등재분 — 회차 44 해소).
 - **`]` 와 `T` 사이는 `[ \t]*` 다** — `\s*` 는 줄을 넘어 `- [ ]` 만 있는 줄 다음 줄의 `T3` 을 task 로 센다.

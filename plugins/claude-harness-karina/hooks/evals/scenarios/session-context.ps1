@@ -1013,7 +1013,21 @@ if (Test-HookSelected @('session-context')) {
             Set-Content -Encoding UTF8 (Join-Path $scBul 'plan.md')
         $r = & $scStart $scBul
         Assert-Case -Name "session-context: guard-write 불릿 집합·[X] 로 task 를 센다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectContains 'task 4개 중 미완료 3개'
+
+        $scMk = Join-Path $work 'sc-markers'
+        New-Item -ItemType Directory $scMk -Force | Out-Null
+        @('# Plan', '- [x] **T1-1** a', '- [-] **T1-2** b', '- [~] **T1-3** c') | Set-Content -Encoding UTF8 (Join-Path $scMk 'plan.md')
+        $r = & $scStart $scMk
+        Assert-Case -Name "session-context: [-]·[~] 를 미완료로 센다" -R $r -ExpectExit 0 -ExpectContains 'task 3개 중 미완료 2개'
+        $scBt = '```'
+        @('# Plan', '- [ ] **T1-1** a', $scBt, '- [ ] **T9-1** x', $scBt, '~~~', '- [x] **T9-2** y', '~~~', ($scBt + 'text'), '- [ ] **T9-3** z') |
+            Set-Content -Encoding UTF8 (Join-Path $scMk 'plan.md')
+        $r = & $scStart $scMk
+        Assert-Case -Name "session-context: 백틱·~~~·닫히지 않은 펜스 안 체크박스는 세지 않는다" -R $r -ExpectExit 0 -ExpectContains 'task 1개 중 미완료 1개'
+        @('# Plan', '- [x] **T1-1** a', '- [X] **T1-2** b') | Set-Content -Encoding UTF8 (Join-Path $scMk 'plan.md')
+        $r = & $scStart $scMk
+        Assert-Case -Name "session-context: [x]·[X] 뿐이면 미완료로 세지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '중 미완료'
     } finally { $env:USERPROFILE = $scUpSaved }
-    Remove-Item -Recurse -Force $scUp, $scDp, $scNest, $scWt, $scBul -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $scUp, $scDp, $scNest, $scWt, $scBul, $scMk -ErrorAction SilentlyContinue
 }   # ---- §13 게이트 끝 (session-context) ----
 

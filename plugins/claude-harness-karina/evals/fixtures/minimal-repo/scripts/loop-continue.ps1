@@ -1,7 +1,8 @@
-﻿# 픽스처용 loop-continue 최소 사본 — 복제 사본 동기 축의 **사본** 쪽이다(plan 탐색 함수 · 불릿 정규식).
+﻿# 픽스처용 loop-continue 최소 사본 — 복제 사본 동기 축의 **사본** 쪽이다(plan 탐색 함수 · 불릿·펜스 정규식).
 
 # 실물의 판정 로직은 담지 않는다. 재는 것은 「사본이 원본과 같은가」다.
 $planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
+$planFenceRx = '(?ms)^ {0,3}([`~])\1{2,}[^\r\n]*\r?$.*?(?:^ {0,3}\1{3}[^\r\n]*\r?$|\z)'
 function Find-PlanFileUpwards([string]$StartDir, [int]$MaxDepth = 8) {
     if ([string]::IsNullOrEmpty($StartDir)) { return $null }
     $base = [System.IO.Path]::GetFullPath($StartDir).TrimEnd('\', '/')

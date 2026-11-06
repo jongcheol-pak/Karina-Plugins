@@ -30,6 +30,7 @@ function Clear-ActiveMarker {
 
 # plan 탐색과 미완 판정식 — session-context.ps1 과 같은 글자의 사본이다 — 근거는 `rules/loop-continue-rationale.md` §4
 $planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
+$planFenceRx = '(?ms)^ {0,3}([`~])\1{2,}[^\r\n]*\r?$.*?(?:^ {0,3}\1{3}[^\r\n]*\r?$|\z)'
 function Find-PlanFileUpwards([string]$StartDir, [int]$MaxDepth = 8) {
     if ([string]::IsNullOrEmpty($StartDir)) { return $null }
     $base = [System.IO.Path]::GetFullPath($StartDir).TrimEnd('\', '/')
@@ -55,7 +56,7 @@ function Find-PlanFileUpwards([string]$StartDir, [int]$MaxDepth = 8) {
 }
 
 function Get-OpenTaskIds([string]$planText) {
-    $ms = [regex]::Matches($planText, $planBulletRx + '\[[ /]\][ \t]*\**(?<id>T\d+(?:-\d+)?)')
+    $ms = [regex]::Matches([regex]::Replace($planText, $planFenceRx, ''), $planBulletRx + '\[[ /~-]\][ \t]*\**(?<id>T\d+(?:-\d+)?)')
     return @($ms | ForEach-Object { $_.Groups['id'].Value })
 }
 

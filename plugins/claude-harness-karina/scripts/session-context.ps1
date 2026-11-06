@@ -73,8 +73,9 @@ function Get-SkillSection {
     } catch { return $null }
 }
 
-# plan 탐색과 task 체크박스 불릿 — guard-write 와 같은 규칙의 사본이고 loop-continue.ps1 에 같은 글자로 있다 — 근거는 `rules/session-context-rationale.md` §5
+# plan 탐색과 task 체크박스 불릿·코드 펜스 — guard-write 와 같은 규칙의 사본이고 loop-continue.ps1 에 같은 글자로 있다 — 근거는 `rules/session-context-rationale.md` §5
 $planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
+$planFenceRx = '(?ms)^ {0,3}([`~])\1{2,}[^\r\n]*\r?$.*?(?:^ {0,3}\1{3}[^\r\n]*\r?$|\z)'
 function Find-PlanFileUpwards([string]$StartDir, [int]$MaxDepth = 8) {
     if ([string]::IsNullOrEmpty($StartDir)) { return $null }
     $base = [System.IO.Path]::GetFullPath($StartDir).TrimEnd('\', '/')
@@ -158,8 +159,9 @@ try {
             try { $planText = Get-Content -LiteralPath $planPath -Raw -Encoding UTF8 } catch {}
             if ($planText) {
                 # task 번호가 붙은 체크박스만 센다 — 근거는 `rules/session-context-rationale.md` §5-1
-                $all = [regex]::Matches($planText, $planBulletRx + '\[[ /xX]\][ \t]*\**T\d+').Count
-                $open = [regex]::Matches($planText, $planBulletRx + '\[[ /]\][ \t]*\**T\d+').Count
+                $taskText = [regex]::Replace($planText, $planFenceRx, '')
+                $all = [regex]::Matches($taskText, $planBulletRx + '\[[ /xX~-]\][ \t]*\**T\d+').Count
+                $open = [regex]::Matches($taskText, $planBulletRx + '\[[ /~-]\][ \t]*\**T\d+').Count
 
                 # ---- Deferred 미판정 계수 — 근거는 `rules/session-context-rationale.md` §7
                 # 마커의 백틱 코드 스팬을 허용한다 — 형식 정본(deferred-rules.md)이 마커를 표 안에서

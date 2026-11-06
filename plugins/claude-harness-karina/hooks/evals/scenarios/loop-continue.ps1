@@ -123,6 +123,31 @@ $r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-u5' $lcBul)
 Assert-Case -Name "loop-continue: guard-write 불릿 집합의 미완 ID 를 모두 주입한다 (회차 4 T2)" -R $r -ExpectExit 0 -ExpectContains 'T5-1, T5-2, T5-3'
 Remove-Item -Recurse -Force $lcUp, $lcDp, $lcNest, $lcWt, $lcBul -ErrorAction SilentlyContinue
 
+$lcMk = Join-Path $work 'lc-markers'; New-Item -ItemType Directory $lcMk -Force | Out-Null
+$lcBt = '```'
+"- [x] **T1-1** a`n- [-] **T2-1** b`n- [~] **T2-2** c" | Set-Content -LiteralPath (Join-Path $lcMk 'plan.md') -Encoding UTF8
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-f1' 'karina:implement')
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-f1' $lcMk)
+Assert-Case -Name "loop-continue: [-]·[~] 하위 항목을 미완 ID 로 주입한다" -R $r -ExpectExit 0 -ExpectContains 'T2-1, T2-2'
+"- [ ] **T1-1** a`n$($lcBt)markdown`n- [ ] **T9-1** x`n$lcBt" | Set-Content -LiteralPath (Join-Path $lcMk 'plan.md') -Encoding UTF8
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-f2' 'karina:implement')
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-f2' $lcMk)
+Assert-Case -Name "loop-continue: 백틱 펜스 밖 미완 ID 는 주입한다" -R $r -ExpectExit 0 -ExpectContains 'T1-1'
+Assert-Case -Name "loop-continue: 백틱 펜스 안 체크박스는 주입하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'T9-1'
+"- [ ] **T1-1** a`n~~~`n- [ ] **T9-1** x`n~~~" | Set-Content -LiteralPath (Join-Path $lcMk 'plan.md') -Encoding UTF8
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-f3' 'karina:implement')
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-f3' $lcMk)
+Assert-Case -Name "loop-continue: ~~~ 펜스 안 체크박스는 주입하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'T9-1'
+"- [ ] **T1-1** a`n$($lcBt)text`n- [ ] **T9-1** x" | Set-Content -LiteralPath (Join-Path $lcMk 'plan.md') -Encoding UTF8
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-f4' 'karina:implement')
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-f4' $lcMk)
+Assert-Case -Name "loop-continue: 닫히지 않은 펜스 뒤 체크박스는 주입하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'T9-1'
+"- [x] **T1-1** a`n- [X] **T1-2** b" | Set-Content -LiteralPath (Join-Path $lcMk 'plan.md') -Encoding UTF8
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-f5' 'karina:implement')
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-f5' $lcMk)
+Assert-Case -Name "loop-continue: [x]·[X] 뿐이면 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+Remove-Item -Recurse -Force $lcMk -ErrorAction SilentlyContinue
+
 # ---- 배선 — 위 케이스는 스크립트에 JSON 을 직접 넣어 hooks.json matcher 를 거치지 않는다 ----
 #   matcher 가 글자·|만으로 쓰이면 「정확 일치 목록」으로 판정돼 karina: 접두 형태를 떨어뜨린다(hooks 문서 「Matcher patterns」 —
 #   완료 리뷰 BLOCKER). 그래서 UserPromptExpansion matcher 를 두 이름 형태에 직접 대 본다. 정규식 경로 판정은 JS RegExp 이나

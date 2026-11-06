@@ -28,9 +28,11 @@ stdin 파싱 실패 · `session_id` 부재 · `cwd` 부재 · plan 을 못 찾�
 
 **plan 탐색** — `session-context.ps1` 과 같은 `Find-PlanFileUpwards` 로 찾는다. 규칙(후보 3종 · 8단계 · `.git` 폴더·파일과 `.claude` 폴더에서 멈춤 · 라벨)의 근거는 `session-context-rationale.md`「§5 ---- plan 탐색: 상위 탐색과 레포 경계」가 정본이다. 이 hook 에서 경계가 특히 중요한 이유는 찾은 plan 의 미완 task 로 「계속」을 주입하기 때문이다 — worktree 세션이 부모 레포 plan 을 잡으면 그 세션과 무관한 task 를 이어 하라고 밀게 된다. 주입 문구는 찾은 plan 의 라벨을 적는다(`docs/plan.md` · 위에서 찾았으면 전체 경로).
 
-**미완 판정식** — `session-context.ps1` 의 미완 계수식(`$planBulletRx` + `\[[ /]\][ \t]*\**T\d+`)에 이름 그룹 ID 캡처(`(?<id>T\d+(?:-\d+)?)`)만 더한 식이다. `$planBulletRx` 가 번호 그룹을 가져 숫자 그룹을 쓰면 ID 가 아니라 불릿을 집는다. 템플릿 정본(`plan/references/plan-template.md` 「작업 단계」)의 `- [ ] **T1-1**` 과 구형 `- [ ] T1:` 을 함께 받고, `[/]`(진행 중)도 미완으로 센다.
+**미완 판정식** — `session-context.ps1` 의 미완 계수식(`$planBulletRx` + `\[[ /~-]\][ \t]*\**T\d+`)에 이름 그룹 ID 캡처(`(?<id>T\d+(?:-\d+)?)`)만 더한 식이다. `$planBulletRx` 가 번호 그룹을 가져 숫자 그룹을 쓰면 ID 가 아니라 불릿을 집는다. 템플릿 정본(`plan/references/plan-template.md` 「작업 단계」)의 `- [ ] **T1-1**` 과 구형 `- [ ] T1:` 을 함께 받는다. **완료는 `[x]`·`[X]` 뿐이고, 작성 게이트의 마커 집합(`guard-write.ps1` `$planTaskRx` — `[ ]`·`[/]`·`[x]`·`[X]`·`[-]`·`[~]`)의 나머지 넷은 전부 미완이다** — 종전 식은 `[ ]`·`[/]` 만 미완으로 세어 `[-]` 만 남은 task 가 계속 주입을 빠져나갔다(2026-11-06 임시 레포 실측). 집합 밖 글자(`[?]` 등)는 작성 게이트가 체크박스로 보지 않는 것과 같은 이유로 세지 않는다(`write-gate-rationale.md`).
 
-**사본이다** — `Find-PlanFileUpwards` 와 `$planBulletRx` 는 두 hook 에 같은 글자로 있고 `evals/check-harness-consistency.py` 의 「복제 사본 동기」 축이 일치를 잰다(공용 `.ps1` 은 차단 hook 보호 목록을 넓혀 만들지 않는다 — `session-context-rationale.md` §5). 판정식의 뒷부분은 두 hook 에서 모양이 갈려(계수 ↔ ID 캡처) 기계 대조 밖이라 **두 hook 의 근거 문서가 서로를 가리킨다**(이 절 ↔ `session-context-rationale.md`「§5-1 task 계수식」) — 한쪽만 고치면 세션 시작 안내와 계속 주입이 서로 다른 미완 수를 보게 되고, 그것은 두 hook 의 불릿 집합 골든이 각각 잡는다.
+**코드 펜스 안은 세지 않는다** — 판정 전에 `$planFenceRx` 로 펜스 구간을 지운다. 규칙은 `skills/plan/scripts/check-plan.ps1` 의 줄 단위 펜스 판정과 같다: 들여쓰기 0~3칸의 ```` ``` ````·`~~~`(3개 이상)로 열고, 여는 줄과 첫 글자가 같은 3개 이상 펜스 줄에서 닫히며(길이·뒤 글자 무관), 닫히지 않으면 끝까지 펜스다. `\r?$` 는 CRLF plan 에서 펜스 줄 끝을 맞추려는 것이다 — 없으면 CRLF 에서 펜스 안 체크박스가 샌다(실측). plan 에 서식 예시를 펜스로 실으면 그 안의 `- [ ] **T9-1**` 이 미완으로 주입되던 경로를 닫는다.
+
+**사본이다** — `Find-PlanFileUpwards`·`$planBulletRx`·`$planFenceRx` 는 두 hook 에 같은 글자로 있고 `evals/check-harness-consistency.py` 의 「복제 사본 동기」 축이 일치를 잰다(공용 `.ps1` 은 차단 hook 보호 목록을 넓혀 만들지 않는다 — `session-context-rationale.md` §5). 판정식의 뒷부분은 두 hook 에서 모양이 갈려(계수 ↔ ID 캡처) 기계 대조 밖이라 **두 hook 의 근거 문서가 서로를 가리킨다**(이 절 ↔ `session-context-rationale.md`「§5-1 task 계수식」) — 한쪽만 고치면 세션 시작 안내와 계속 주입이 서로 다른 미완 수를 보게 되고, 그것은 두 hook 의 불릿 집합 골든이 각각 잡는다.
 
 ## §5 상태 파일과 정리
 
