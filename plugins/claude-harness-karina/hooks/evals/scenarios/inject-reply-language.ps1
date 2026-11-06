@@ -74,13 +74,13 @@ $rlPreHit = @('Skill', 'Bash' | Where-Object {
 })
 Assert-Case -Name "inject-reply-language: PreToolUse 블록이 Skill 만 받고 Bash 는 받지 않는다" -R @{ code = 0; out = "blocks=$($rlPre.Count) hits=$($rlPreHit -join ',')" } -ExpectContains 'blocks=1 hits=Skill' -ExpectNotContains 'Bash'
 $rlPost = @($rlHooks.hooks.PostToolUse | Where-Object { ($_.hooks.command -join ' ') -match 'inject-reply-language' })
-$rlPostHit = @('Bash', 'PowerShell', 'Write', 'Edit', 'Read', 'Grep' | Where-Object {
+$rlPostHit = @('Bash', 'PowerShell', 'Write', 'Edit', 'MultiEdit', 'NotebookEdit', 'Read', 'Grep', 'Glob' | Where-Object {
     $tool = $_
     @($rlPost | Where-Object {
         $m = [string]$_.matcher
         if ($m -match '^[A-Za-z0-9_ ,|-]*$') { ($m -split '[|,]' | ForEach-Object { $_.Trim() }) -contains $tool } else { $tool -match $m }
     }).Count -gt 0
 })
-Assert-Case -Name "inject-reply-language: PostToolUse 블록이 셸·쓰기 도구만 받는다" -R @{ code = 0; out = "blocks=$($rlPost.Count) hits=$($rlPostHit -join ',')" } -ExpectContains 'blocks=1 hits=Bash,PowerShell,Write,Edit' -ExpectNotContains 'Read'
+Assert-Case -Name "inject-reply-language: PostToolUse 블록이 셸·쓰기 도구만 받는다" -R @{ code = 0; out = "blocks=$($rlPost.Count) hits=[$($rlPostHit -join ',')]" } -ExpectContains 'blocks=1 hits=[Bash,PowerShell,Write,Edit,MultiEdit,NotebookEdit]'
 
 }
