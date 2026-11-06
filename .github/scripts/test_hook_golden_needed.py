@@ -39,7 +39,7 @@ def fake_git(diff_out=None, parents_out='p1 p2', fail=False):
 
 
 paths(1, ['plugins/claude-harness-karina/.claude-plugin/plugin.json', 'README.md'], False, '버전 커밋')
-paths(2, ['plugins/claude-harness-karina/skills/implement/references/pr-flow.md'], True, 'skills md')
+paths(2, ['plugins/claude-harness-karina/skills/implement/references/push-flow.md'], True, 'skills md')
 paths(3, ['plugins/claude-harness-karina/scripts/guard-bash.ps1'], True, 'hook 스크립트')
 paths(4, ['plugins/claude-harness-karina/hooks/hooks.json'], True, 'hooks.json')
 paths(5, ['plugins/claude-harness-karina/docs/golden-runner.md'], True, 'golden-runner.md')

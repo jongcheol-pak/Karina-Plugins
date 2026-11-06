@@ -109,7 +109,7 @@ argument-hint: "<버그 또는 에러 설명>"
 
 **`plan.md` 가 없으면 첫 편집 전에 면제 표식을 받는다 — 편집 크기와 무관하게 1회다** — 절차는 `../plan/references/interview.md` 「계획 불필요 판정과 면제 표식」 그대로다(고칠 파일 경로 확정 → `A) 바로 수정 / B) 계획부터` → A 면 `[PLAN-EXEMPT]` 표식, B 면 `karina:plan`). 표식 경로에는 4-A 회귀 테스트를 쓰는 경우 그 파일도 함께 적는다. `guard-write` 의 plan 존재 게이트가 plan 없는 편집을 막고, 그것을 여는 수단이 이 표식뿐이다.
 
-**첫 편집 전에 `../implement/references/pr-flow.md`「디버깅 단독 경로」 의 「갈래」 를 거친다 — `karina:implement` 루프 안이면 건너뛴다** — 기본 브랜치에서 고치면 수정이 PR 없이 로컬 기본 브랜치에 남고, 브랜치는 편집 전에 정해야 수정 커밋이 그 위에 쌓인다.
+**첫 편집 전에 `../implement/references/push-flow.md`「디버깅 단독 경로」 의 「갈래」 를 거친다 — `karina:implement` 루프 안이면 건너뛴다** — 기본 브랜치에서 고치면 수정이 PR 없이 로컬 기본 브랜치에 남고, 브랜치는 편집 전에 정해야 수정 커밋이 그 위에 쌓인다.
 
 ### 4-A. 회귀 테스트 먼저
 
@@ -149,7 +149,7 @@ argument-hint: "<버그 또는 에러 설명>"
 
 ### 4-F. 커밋·PR
 
-**4-D 가 끝나면(통과든 `미검증` 이든) `../implement/references/pr-flow.md`「디버깅 단독 경로」 의 「커밋」·「PR」·「돌아가기」 를 따른다 — 보고에 PR URL 또는 `PR: 건너뜀 — <사유>` 와 수정 브랜치를 싣는다. 「갈래」 가 main 직행이었으면 「커밋」 뒤 「PR」·「돌아가기」 대신 `../implement/references/local-gate.md`「디버깅 단독」 게이트를 거쳐 같은 파일 「main 직행」 의 push 를 하고(그 갈래의 진행 중 회차 예외 포함) `PR: 건너뜀 — main 직행 · 게이트 <판정> · push <결과>` 를 싣는다** — 이 단계가 없으면 고친 버그가 로컬 커밋 없이 작업 트리에만 남는다. 미검증도 PR 을 여는 이유와 커밋 순서의 근거는 `references/debugging-rationale.md` §11.
+**4-D 가 끝나면(통과든 `미검증` 이든) `../implement/references/push-flow.md`「디버깅 단독 경로」 의 「커밋」·「PR」·「돌아가기」 를 따른다 — 보고에 PR URL 또는 `PR: 건너뜀 — <사유>` 와 수정 브랜치를 싣는다. 「갈래」 가 main 직행이었으면 「커밋」 뒤 「PR」·「돌아가기」 대신 `../implement/references/local-gate.md`「디버깅 단독」 게이트를 거쳐 같은 파일 「기본 브랜치 push」 의 push 를 하고(그 갈래의 진행 중 회차 예외 포함) `PR: 건너뜀 — main 직행 · 게이트 <판정> · push <결과>` 를 싣는다** — 이 단계가 없으면 고친 버그가 로컬 커밋 없이 작업 트리에만 남는다. 미검증도 PR 을 여는 이유와 커밋 순서의 근거는 `references/debugging-rationale.md` §11.
 
 ## Phase 4.5 — 아키텍처 의심
 

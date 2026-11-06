@@ -556,8 +556,8 @@
       "skill": "karina:record-project-fact",
       "expect": "trigger",
       "workspace": "no_plan",
-      "query": "이 레포는 혼자 쓰니까 Git 흐름을 main 직행으로 기록해줘",
-      "why": "Git 흐름 선언 — 매 세션 implement 의 브랜치·PR 흐름을 바꾸는 레포 사실이라 AGENTS.md `## Conventions`(이 스킬) 몫이다(implement/references/pr-flow.md「main 직행」). rec-neg-4 의 기능 결정과 달리 실행 방식을 정한다"
+      "query": "이 레포는 scripts 폴더 변경은 작아도 게이트를 꼭 거치게 게이트 필수 경로로 기록해줘",
+      "why": "게이트 필수 경로 선언 — 매 회차 push 전 로컬 게이트의 경량 면제를 바꾸는 레포 사실이라 AGENTS.md `## Build & Test`(이 스킬) 몫이다(implement/references/local-gate.md「경량 면제」). rec-neg-4 의 기능 결정과 달리 실행 방식을 정한다"
     },
     {
       "id": "chain-pos-1",

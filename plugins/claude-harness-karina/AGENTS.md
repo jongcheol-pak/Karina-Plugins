@@ -21,10 +21,11 @@
   pwsh -NoProfile -Command '@(".claude-plugin/plugin.json","hooks/hooks.json","../../.claude-plugin/marketplace.json") | ForEach-Object { $c = Get-Content -LiteralPath $_ -Raw -ErrorAction Stop; $null = $c | ConvertFrom-Json; Write-Host ($_ + " OK") }'
   ```
 - **Plan check**: `python evals/check-harness-consistency.py --plan` — 계획 단계 검사(`karina:plan` Step 6 의 `check-plan` 이 승인 전에 돌린다)
-- **Comment (보존)**: `.` · 경로: `skills/plan/scripts/check-plan.ps1 evals/check-harness-consistency.py evals/run-evals.py skills/llm-wiki/evals/check_consistency.py skills/chain-plan/scripts/pr_stage.py skills/chain-plan/scripts/run-verify.py skills/chain-plan/scripts/wait-worker.py skills/record-project-fact/scripts/relocate-agents.py skills/temp-cleanup/scripts/temp_cleanup.py skills/worktree-cleanup/scripts/worktree_cleanup.py`
+- **Comment (보존)**: `.` · 경로: `skills/plan/scripts/check-plan.ps1 evals/check-harness-consistency.py evals/run-evals.py skills/llm-wiki/evals/check_consistency.py skills/chain-plan/scripts/run-verify.py skills/chain-plan/scripts/wait-worker.py skills/record-project-fact/scripts/relocate-agents.py skills/temp-cleanup/scripts/temp_cleanup.py skills/worktree-cleanup/scripts/worktree_cleanup.py`
 - **조건부 검증**: 변경 파일 패턴별 명령(합집합)은 `docs/harness-conventions.md` 「검증 매핑 (task 검증 선택)」 — 「줄바꿈 정합」 축은 모든 task. `docs/harness-conventions.md` 「골든 부분 실행의 판정 자격」·`[면제 ⑤]` 대상도 함께 읽는다.
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 보므로 재설치 후에만 반영된다.
-- **Release**: 버전 정본은 `plugin.json`(`README.md` 상단 `**버전**:` 은 파생) · main 직행 회차 끝 버전 커밋 → 로컬 게이트 → push → 발행 · 발행 여부는 마지막 `karina-v<버전>` 태그 이후 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`) 변경으로 판정 · **릴리즈 발행은 별도 승인** · ⚠ 태그는 원격에만 생겨 확인은 `gh release list`. 정본은 `docs/harness-conventions.md` 「Release (배포·릴리즈 발행)」.
+- **Gate 필수 경로**: `scripts/**` · `hooks/**` — 차단 hook·그 규칙·골든은 크기와 관계없이 push 전 검증자를 거친다(`skills/implement/references/local-gate.md`「경량 면제」).
+- **Release**: 버전 정본은 `plugin.json`(`README.md` 상단 `**버전**:` 은 파생) · 회차 끝 버전 커밋 → 로컬 게이트 → push → 발행 · 발행 여부는 마지막 `karina-v<버전>` 태그 이후 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`) 변경으로 판정 · **릴리즈 발행은 별도 승인** · ⚠ 태그는 원격에만 생겨 확인은 `gh release list`. 정본은 `docs/harness-conventions.md` 「Release (배포·릴리즈 발행)」.
 - **⚠ 검증 배치에 `Remove-Item` 인라인 금지** — 도구 경로 보호가 오차단한다(회피법은 정본).
 
 ## 데이터 접근
@@ -38,7 +39,6 @@
 
 ## Conventions
 
-- **Git 흐름**: main 직행 — 혼자 쓰는 하니스 레포라 브랜치·PR 없이 main 에 커밋하고 회차 끝 로컬 게이트(`skills/implement/references/local-gate.md`) 뒤 push 한다.
 - **아키텍처**: 계층 없음 — 실행 단위가 hook 스크립트와 Markdown 지침이라 도메인/UI/인프라로 가를 대상이 없다(글로벌 「단순 스크립트·유틸리티는 대상이 아니다」).
 - **인코딩**: `.ps1` 은 **UTF-8 BOM 필수**(PS 5.1 한글 호환), 그 외는 **BOM 없음**.
 - **줄바꿈**: 워킹트리 **CRLF**·`core.autocrlf=true`. `Edit` 도구는 CRLF·BOM 을 지킨다. ⚠ **`Write` 도구·`sed -i` 는 파일 전체를 LF 로 바꿔 놓고, python 텍스트 쓰기(`open(p,'w')`)는 실행 플랫폼 줄바꿈으로 쓴다(텍스트 모드로 읽은 내용을 `newline=''`·`'\n'` 으로 쓰거나 LF 플랫폼 python 이면 전면 LF)** — 편집 후 `git ls-files --eol` 로 확인(정본은 `docs/harness-conventions.md` 의 「편집 스크립트 사고」).

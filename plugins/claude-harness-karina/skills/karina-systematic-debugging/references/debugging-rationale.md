@@ -73,7 +73,7 @@ RIGHT: H1의 예측("TTL=0이면 사라짐")을 검증하는 한 지점만 계�
 
 ## §11 직접 수정 경로가 PR 까지 가는 이유와 커밋 순서
 
-pstack `bug-fix.md` 는 6단계 *"Run **Opening a PR**."* 로 끝나고, `opening-a-pr.md` 는 *"Invoked at the end of every other playbook."* 이다(고정 커밋 `f713f14203cd6420cec13cd7c55c32d598dbab68`). PR #9(`0781edc3`)는 bug-fix 를 대조하면서 이 단계를 들인 목록에도 뺀 목록에도 올리지 않아, 직접 수정 경로가 4-E 에서 끝나고 고친 버그가 로컬에만 남았다. 절차는 `implement/references/pr-flow.md`「디버깅 단독 경로」 가 맡는다 — 적용 판정·브랜치·PR 본문 규칙의 정본이 그 파일이라, 디버깅 쪽에 사본을 두면 한쪽만 고쳐져 갈린다.
+pstack `bug-fix.md` 는 6단계 *"Run **Opening a PR**."* 로 끝나고, `opening-a-pr.md` 는 *"Invoked at the end of every other playbook."* 이다(고정 커밋 `f713f14203cd6420cec13cd7c55c32d598dbab68`). PR #9(`0781edc3`)는 bug-fix 를 대조하면서 이 단계를 들인 목록에도 뺀 목록에도 올리지 않아, 직접 수정 경로가 4-E 에서 끝나고 고친 버그가 로컬에만 남았다. 절차는 `implement/references/push-flow.md`「디버깅 단독 경로」 가 맡는다 — 적용 판정·브랜치·PR 본문 규칙의 정본이 그 파일이라, 디버깅 쪽에 사본을 두면 한쪽만 고쳐져 갈린다.
 
 - **회귀 테스트를 수정보다 먼저 커밋한다** — pstack 5단계 *"Stage the commits so the failing repro lands before the fix in git history."* 다. 테스트만 담은 커밋은 BASE 위에서 실패하므로, 리뷰어가 PR 의 커밋 순서로 그 수정이 그 실패를 없앴는지 본다. 4-D 뒤에 한 번에 순서대로 커밋하는 것은 Halt·Phase 4.5 로 끝날 때 빨간 커밋만 브랜치에 남지 않게 하려는 것이다.
 - **squash merge 라 main 이력에는 순서가 남지 않는다** — pstack `shipping.md` 4단계도 `gh pr merge <pr> --squash` 다. 순서는 리뷰하는 동안 PR 안에서 쓰이고, 그것으로 목적을 이룬다(2026-10-19 사용자 결정 — rebase merge 를 쓰지 않는다).

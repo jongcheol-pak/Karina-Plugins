@@ -15,7 +15,7 @@ description: 병합이 끝난 git worktree 를 정리한다 — worktree 마다 
 4. **삭제** — 승인받은 경로 그대로 `remove <경로>...` 를 돌린다. 경로를 바꾸거나 늘리려면 3번으로 돌아간다.
 5. **보고** — `RESULT` 줄, 지운 경로와 백업 위치(백업할 것이 없었으면 `백업 없음` — 폴더를 만들지 않는다), `REFUSED`·`FAILED` 경로와 사유, 건너뛴 ignore 폴더. 백업은 `%TEMP%\karina-plugin\worktree-backup\`(`../TEMP-FILES.md`)에 남고 자동으로 지우지 않는다 — 지우려면 `/karina:temp-cleanup` 이고, OS 의 임시 폴더 정리에는 지워질 수 있다고 한 줄 붙인다.
 
-`sessions` 서브커맨드는 이 절차가 아니라 `karina:implement` 가 브랜치를 바꾸기 전에 병행 세션을 찾을 때 부른다(`../implement/references/pr-flow.md`「브랜치」).
+`sessions` 서브커맨드는 이 절차가 아니라 `karina:implement` 가 브랜치를 바꾸기 전에 병행 세션을 찾을 때 부른다(`../implement/references/push-flow.md`「브랜치」).
 
 ## 하지 않는 것
 
