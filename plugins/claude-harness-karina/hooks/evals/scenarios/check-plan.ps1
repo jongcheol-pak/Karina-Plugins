@@ -276,6 +276,12 @@ $cpSkip = $cpBase.Replace('- [ ] **T1-1** 한다', '- [x] **T1-1** (불요 — �
 $ev = New-EvidenceRepo @()
 $r = Invoke-CheckEvidence $cpSkip $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: 전부 불요인 task 와 열린 task 는 대조하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$cpDash = $cpBase.Replace('- [ ] **T1-1** 한다', "- [x] **T1-1** 한다`n- [-] **T1-2** 남김")
+$r = Invoke-CheckEvidence $cpDash $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: [x]+[-] task 는 닫힌 task 가 아니라 대조하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$cpUpper = $cpBase.Replace('- [ ] **T1-1** 한다', '- [X] **T1-1** 한다')
+$r = Invoke-CheckEvidence $cpUpper $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: [X] 뿐인 task 는 닫힌 task 로 대조한다" -R $r -ExpectExit 1 -ExpectContains 'no-task-commit T1'
 $r = Invoke-CheckEvidence $cpDone $ev.dir 'deadbeefdeadbeef'
 Assert-Case -Name "check-plan 증거: 없는 BASE 는 ERROR 와 exit 2" -R $r -ExpectExit 2 -ExpectContains 'check-plan: ERROR bad-base'
 $cpNoGit = Join-Path $cpRoot 'ev-nogit'

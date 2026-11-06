@@ -34,7 +34,7 @@
 #                                exit 0 이 아님 — <줄> 은 AGENTS.md 의 줄 · 출력은 임시 폴더 karina-plugin\scratch\<파일>
 #   plan-check timeout <s> log <파일>  그 명령이 상한(KARINA_PLAN_CHECK_TIMEOUT_SEC, 기본 120초)을 넘음
 #                                (줄이 없으면 아무것도 내지 않는다 · -Base 모드는 돌리지 않는다)
-# -Base 모드의 코드 — 대상은 하위 항목이 전부 [x]·[X] 인 task 이고, 전부 「(불요」 인 task 는 뺀다:
+# -Base 모드의 코드 — 대상은 하위 항목(마커 [ ]·[/]·[x]·[X]·[-]·[~])이 전부 [x]·[X] 인 task 이고, 전부 「(불요」 인 task 는 뺀다:
 #   no-task-commit T<N>          BASE..HEAD 에 제목이 「{유형}: T<N> —」(또는 「T<N>:」)인 커밋이 없음 — 마지막 task 는
 #                                그 블록이 <버전> 을 담으면 「설정: v<버전> —」(Release 형식 버전 커밋)도 센다
 #   no-commit-evidence T<N>      그 커밋은 있으나 어느 본문에도 「검증 결과」·「검증:」·HUMAN-VERIFY 가 없음
@@ -160,7 +160,7 @@ if ($Base) {
 
     $unneeded = '(' + (Get-Text @(0xBD88, 0xC694))    # (불요
     foreach ($b in $taskBlocks) {
-        $items = @($b.Lines | Where-Object { $_.Text -match '^- \[[ xX/]\]' })
+        $items = @($b.Lines | Where-Object { $_.Text -match '^- \[[ /xX~-]\]' })
         if (-not $items.Count) { continue }
         if (@($items | Where-Object { $_.Text -notmatch '^- \[[xX]\]' }).Count) { continue }
         if (-not @($items | Where-Object { -not $_.Text.Contains($unneeded) }).Count) { continue }
