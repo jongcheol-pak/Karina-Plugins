@@ -13,15 +13,14 @@
 - closed     (`--watch` 만) 지켜보던 dispatch 행이 자리를 놓았거나 배치가 다른 Run 의 것이다(그 dispatch 행 —
              배치는 싣지 않는다 · ack 전이라 그 Run 의 대기가 받는다).
 
-진행 줄(`--repo` 를 줬을 때만): 워커가 끝낸 task 마다 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작` 한 줄,
-`--pr <base>` 면 PR 단계마다 한 줄(문면은 `pr_stage.py` 모듈 docstring). 따로 깨우지 않고
-message·stall·error 원문 앞에 싣는다.
+진행 줄(`--repo` 를 줬을 때만): 워커가 끝낸 task 마다 `<label>: T<N>/T<M> 완료 — <무엇을> · T<다음> 시작` 한 줄.
+따로 깨우지 않고 message·stall·error 원문 앞에 싣는다.
 
 모드: `--dispatch` 하나(단일) · 여럿(병렬 — `--repo`·`--label` 도 같은 수·같은 순서) · `--place <dispatch>`(자리 대기).
 `--answer-by <epoch 초>` 는 단일에만 — 사용자에게 넘긴 질문의 미답 시한 대기다(화면을 읽지 않는다 · 45분 안).
-`--watch` 는 단일에만 — stall 로 멈춘 워커의 감시 대기다(화면·진행·시한 없음 · `--answer-by`·`--repo`·`--pr` 와 함께 주지 않는다).
+`--watch` 는 단일에만 — stall 로 멈춘 워커의 감시 대기다(화면·진행·시한 없음 · `--answer-by`·`--repo` 와 함께 주지 않는다).
 
-판정 근거(멈춤·진행 감지·PR 단계·고아 감시·외부 호출 시한·stdout 인코딩)는
+판정 근거(멈춤·진행 감지·고아 감시·외부 호출 시한·stdout 인코딩)는
 `../references/wait-worker-rationale.md` 가 정본이다.
 """
 import argparse
@@ -35,7 +34,6 @@ import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import pr_stage
 
 STALL_TAIL = 40
 RAW_LIMIT = 4000
@@ -48,12 +46,12 @@ CLI_TIMEOUT_SEC = 60         # worker-read·worker-list 처럼 기다리지 않�
 CLI_WAIT_MARGIN_SEC = 60     # check --wait 는 자기 --timeout-ms 에 이만큼 더한 뒤에야 응답 불능으로 본다
 GIT_TIMEOUT_SEC = 30         # lint.py·relocate-agents.py 의 git 시한과 같다
 SWEEP_AGE_SEC = 7 * 24 * 3600
-BUSY_SAME_MAX = 6            # 바쁨(CI pending·백그라운드 셸)인 같은 화면을 움직임으로 세는 연속 비교 상한(약 54분)
+BUSY_SAME_MAX = 6            # 바쁨(백그라운드 셸)인 같은 화면을 움직임으로 세는 연속 비교 상한(약 54분)
 TREE_HASH_MAX = 200
 ANSWER_MAX_SEC = 2700        # --answer-by 상한 — 백그라운드 대기 생존 실측 45분
 
 
-BUSY_CAPPED_NOTE = ('바쁨(백그라운드 셸·CI pending)인 같은 화면이 상한을 넘어 멈춤으로 셌다 — 오판일 수 있다 '
+BUSY_CAPPED_NOTE = ('바쁨(백그라운드 셸)인 같은 화면이 상한을 넘어 멈춤으로 셌다 — 오판일 수 있다 '
                     '(워커가 긴 백그라운드 작업을 기다리는 중일 수 있다)')
 BG_SHELL = re.compile(r'\b\d+ shells?\b')
 
@@ -98,7 +96,7 @@ def _action(kind, dispatch, streak=0, on_place=False, parallel=False, answer_by=
     if kind == 'stall':
         return ('앞에 진행 줄이 있으면 먼저 그대로 한 줄씩 표시하고(화면은 구분 줄 뒤다), '
                 '같은 화면이 체크포인트마다 %d장 이어졌고 HEAD·작업 트리가 움직이지 않았다 — worker-retain --dispatch %s 후 '
-                '같은 --dispatch 에 --watch 만 붙인 감시 대기(--repo·--label·--pr 없이)를 run_in_background 로 띄우고 보고하고 멈춘다 '
+                '같은 --dispatch 에 --watch 만 붙인 감시 대기(--repo·--label 없이)를 run_in_background 로 띄우고 보고하고 멈춘다 '
                 '(보고의 멈춘 사유에 직접 재개 알림 안내를 싣는다 — references/report.md · references/manual-resume.md)'
                 % (streak, dispatch))
     if kind == 'error':
@@ -221,7 +219,7 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
             moved = moved or None not in (cur_tree, tree_at_read[d]) and cur_tree != tree_at_read[d]
             if cur_tree is not None:
                 tree_at_read[d] = cur_tree
-            busy = (i < len(progs) and progs[i].pr_busy) or background_shell(lines)
+            busy = background_shell(lines)
             busy_run[d] = busy_run[d] + 1 if busy and h == last_hash[d] else 0
             moved = moved or (busy and busy_run[d] <= BUSY_SAME_MAX)
             streak[d] = streak[d] + 1 if h == last_hash[d] and not moved else 0
@@ -472,9 +470,8 @@ PLAN_TASK = re.compile(r'^### T(\d+)\. ', re.M)
 class Progress:
     """task 완료 커밋을 표시 줄로 바꾸고, 멈춤 판정에 쓸 작업 트리 서명(tree_sig)을 낸다. git(args)->(성공, 출력) · read_plan()->str|None · store(load/save) 는 주입한다."""
 
-    def __init__(self, git, read_plan, store, label, pr=None):
+    def __init__(self, git, read_plan, store, label):
         self.git, self.read_plan, self.store, self.label = git, read_plan, store, label
-        self.pr = pr
         self.pending = None
         self.last_head = None
 
@@ -484,10 +481,6 @@ class Progress:
             if ok and head:
                 self.store.save({'sha': head, 'shown': []})
                 self.last_head = head
-
-    @property
-    def pr_busy(self):
-        return self.pr is not None and self.pr.busy
 
     def tree_sig(self):
         ok, diff = self.git(['diff', 'HEAD', '--no-color', '--no-ext-diff'])
@@ -505,19 +498,10 @@ class Progress:
         return hashlib.sha1('\x1f'.join((diff, untracked, hashes)).encode('utf-8')).hexdigest()[:16]
 
     def poll(self):
-        """새 진행 줄(task 완료 · PR 단계)을 돌려주고 갱신할 상태를 pending 에 둔다 — 저장은 commit() 이 한다(잠금 확인 뒤).
+        """새 진행 줄(task 완료)을 돌려주고 갱신할 상태를 pending 에 둔다 — 저장은 commit() 이 한다(잠금 확인 뒤).
         plan.md 는 매치가 있는 주기에 한 번만 읽는다."""
         self.pending = None
-        st = self.store.load()
-        done = self._poll_tasks(st)
-        if self.pr is not None:
-            # 기준 sha 가 없는 상태(부재·읽지 못함)에는 PR 상태만 저장하지 않는다 — 저장하면 task 진행 감지가 꺼진다.
-            base = self.pending if self.pending is not None else (st or {})
-            lines, pr_st = self.pr.poll(base.get('pr'))
-            if base.get('sha') and pr_st != (base.get('pr') or {}):
-                self.pending = dict(base, pr=pr_st)
-            done += lines
-        return done
+        return self._poll_tasks(self.store.load())
 
     def _poll_tasks(self, st):
         if st is None:
@@ -652,18 +636,15 @@ def main(argv=None):
     ap.add_argument('--repo', action='append', default=None)
     ap.add_argument('--label', action='append', default=None)
     ap.add_argument('--poll-ms', type=int, default=None)
-    ap.add_argument('--pr', default=None)
     ap.add_argument('--answer-by', type=int, default=None)
     ap.add_argument('--watch', action='store_true')
     a = ap.parse_args(argv)
     if (a.dispatch is None) == (a.place is None):
         ap.error('--dispatch 와 --place 중 하나만 준다')
-    if a.pr is not None and not a.repo:
-        ap.error('--pr 는 --repo 와 함께 준다')
     if a.answer_by is not None and (a.place is not None or len(a.dispatch) > 1):
         ap.error('--answer-by 는 --dispatch 하나와만 준다')
-    if a.watch and (a.place is not None or len(a.dispatch) > 1 or a.answer_by is not None or a.repo or a.pr):
-        ap.error('--watch 는 --dispatch 하나와만 준다 (--answer-by·--repo·--pr 없이)')
+    if a.watch and (a.place is not None or len(a.dispatch) > 1 or a.answer_by is not None or a.repo):
+        ap.error('--watch 는 --dispatch 하나와만 준다 (--answer-by·--repo 없이)')
     if a.answer_by is not None and a.answer_by - time.time() > ANSWER_MAX_SEC:
         ap.error('--answer-by 는 지금부터 %d초 안이어야 한다' % ANSWER_MAX_SEC)
     for name, vals in (('--repo', a.repo), ('--label', a.label)):
@@ -688,8 +669,7 @@ def main(argv=None):
     progress = None
     poll_ms = a.poll_ms
     if a.repo:
-        progress = [Progress(make_git(r), make_read_plan(r), FileStore(d), lb,
-                             pr=pr_stage.PrStage(make_git(r), pr_stage.make_gh(r), a.pr, lb) if a.pr else None)
+        progress = [Progress(make_git(r), make_read_plan(r), FileStore(d), lb)
                     for d, r, lb in zip(ids, a.repo, labels)]
         poll_ms = poll_ms or 60000
     lock = FileLock(ids[0]) if len(ids) == 1 else AllLocks([FileLock(d) for d in ids])
