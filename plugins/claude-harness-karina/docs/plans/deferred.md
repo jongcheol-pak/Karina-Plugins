@@ -35,7 +35,7 @@
 
 ### hook · 안전망 (차단·경고·골든 러너)
 
-- [2026-11-01] **운영 hook 의 이벤트당 다중 pwsh 기동 통합** — `hooks/hooks.json` 이 도구 호출마다 hook 별로 pwsh 를 띄운다(PreToolUse `Bash|PowerShell` 2 + PostToolUse 1 · `Write|Edit` 2+1 · `Skill` 3). 이벤트·matcher 별 디스패처 하나로 묶되 안전 임계 hook 의 exit 2 합성과 골든 실증이 필요하다. 위키 decisions 2026-10-24 가 문구를 두 곳으로 가르는 안을 기각했으니 문구는 한 곳에 둔다 (출처: hook 골든 in-process 회차 후보 — 사용자 「대장에 등재」) (실해: 2026-11-01 빈 pwsh 기동 약 290ms · guard-bash 단독 약 790ms 가 도구 호출마다 든다 — 사용자 결정 예외)
+- [2026-11-01] **운영 hook 의 이벤트당 다중 pwsh 기동 통합** — `hooks/hooks.json` 이 도구 호출마다 hook 별로 pwsh 를 띄운다(PreToolUse `Bash|PowerShell` 2 + PostToolUse 2 · `Write|Edit` 2+2 · `Skill` 3). 이벤트·matcher 별 디스패처 하나로 묶되 안전 임계 hook 의 exit 2 합성과 골든 실증이 필요하다. 위키 decisions 2026-10-24 가 문구를 두 곳으로 가르는 안을 기각했으니 문구는 한 곳에 둔다 (출처: hook 골든 in-process 회차 후보 — 사용자 「대장에 등재」) (실해: 2026-11-01 빈 pwsh 기동 약 290ms · guard-bash 단독 약 790ms 가 도구 호출마다 든다 — 사용자 결정 예외)
 
 - [2026-10-23] **chain-plan 코디네이터 검증 명령을 `run-verify.py` 밖에서 띄우면 guard-bash 가 경고** — `continuation.md`「코디네이터 검증」 은 명령마다 래퍼로 띄우라고 하지만 코디네이터가 어기면 감시가 빠진다. 명령줄로 잴 수 있는 것은 「래퍼를 거쳤는가」뿐이다(규칙대로면 `cargo` 는 스크립트 파일 안에 있다). 체인 실행 중 판정·`run_in_background` 판정과 골든 실증이 필요하다 (출처: 2026-10-23 karina-ea 요청 ④ — 사용자 「4는 대장」) (실해: 2026-10-23 run_34c092d3 plan 6 검증이 정리 명령과 검증 셋을 시한 없이 한 백그라운드에 묶어 80분 넘게 섰다)
 
