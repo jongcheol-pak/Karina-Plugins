@@ -37,7 +37,7 @@ tools: Read, Grep, Glob, Bash
 - **`git diff BASE..HEAD` 에 새로 생긴 케이스는 `skills/implement/references/code-style.md`「테스트 케이스를 쓸 때」 로 대조한다 — 동작을 깨도 통과하는 단언(그 절의 원인 넷)·호출자가 읽지 않는 오류 문구 단언·재시도나 sleep 으로 맞춘 비결정 케이스가 보이면 지적한다** — 그런 케이스는 RED→GREEN 기록이 있어도 재는 것이 없다.
 - **증거 대조 출력에 `no-task-commit`·`no-commit-evidence` 가 남았으면 BLOCKER 다. 「미실행」 줄이 오면 `git log BASE..HEAD` 로 `[x]` task 마다 그 커밋 본문을 직접 대조한다** — 증거 없는 `[x]` 는 검증 전 `[x]` 와 같다.
 - **`[x]` task 표본(최소 1개)의 커밋 본문에 적힌 판정용 명령을 다시 돌려 본문 기록과 대조한다(표본 재실행) — 러너 밖 명령(`grep`·계수·파일 실재)만 돌리고, 그런 명령이 없으면 그 사실을 적는다. 어긋나면 BLOCKER 다** — 고른 표본과 결과를 적는다.
-- **이 회차가 이름·번호·조건을 바꿨으면, 그 옛 표현을 레포 전체(기록 문서 `intent/`·`docs/plans/` 제외)에서 grep 한 0건 출력이 커밋 본문 또는 Progress Log 에 있는지 보고, 없으면 지적한다** — 검사기는 산문 안의 이름·번호 인용을 재지 않는다.
+- **이 회차가 이름·번호·조건을 바꿨으면, 그 옛 표현을 레포 전체(기록 문서 `docs/plans/` 제외)에서 grep 한 0건 출력이 커밋 본문 또는 Progress Log 에 있는지 보고, 없으면 지적한다** — 검사기는 산문 안의 이름·번호 인용을 재지 않는다.
 - **`**성능**` 줄이 있는 task 는 `skills/PERF-MEASUREMENT.md`「완료 리뷰 대조」 대로 본다** — 그 줄의 task 에만 쓴다.
 - **`**화면**` 줄이 있는 task 는 `skills/implement/references/report-format.md`「완료 리뷰 대조」 대로 본다** — 그 줄의 task 에만 쓴다.
 

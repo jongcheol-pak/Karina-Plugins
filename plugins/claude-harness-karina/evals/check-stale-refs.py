@@ -88,7 +88,6 @@ DEAD = [
     #  'delegation.md' 만 쓰면 살아 있는 `plan/references/measure-delegation.md` 가 부분 일치로 잡혀 경로 접두를 붙인다.
     'references/delegation.md', 'worker-start.md',
     # 구 plan 참조 1 (2026-10-18 체인 plan 3) — intent 산출물 폐지. 요구·BASE 는 plan-template 「Goal」 로 옮겼다.
-    #  옛 intent/ 파일들이 이 이름을 인용하지만 intent/ 는 스캔 범위 밖이다.
     'intent-rules.md',
     # 구 debugging 참조 1 (2026-10-18 체인 plan 2) — 세 스킬이 함께 읽도록 skills 최상위 PERF-MEASUREMENT.md 로 옮겼다.
     #  대소문자를 가르는 정규식이라 새 이름은 걸리지 않는다.
@@ -278,7 +277,7 @@ def scan_tree():
     #   루트를 재귀하면 .git·node_modules 배제를 새로 관리해야 하는데 얻는 것이 없다.
     for pat in ('*.ps1', '*.md'):
         targets.extend(p for p in ROOT.glob(pat) if p.is_file())
-    # 하니스 루트의 폴더는 **목록으로 고른다** — `intent/`·`assets/` 는 옛 이름을 이력으로
+    # 하니스 루트의 폴더는 **목록으로 고른다** — `assets/` 는 옛 이름을 이력으로
     #   인용해 범위 밖이다. `skills`·`docs` 는 없으면 잴 것이 없다는 뜻이라 앵커 실패고,
     #   나머지는 선택이다(골든 픽스처는 일부만 갖는다).
     # `.github` 는 **git 루트**에 있다(모노레포에서 하니스 루트는 git 루트 아래 플러그인 폴더다).

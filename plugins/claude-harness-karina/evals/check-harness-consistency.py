@@ -137,8 +137,7 @@ def _pointer_sources():
         rel_src = os.path.relpath(src, ROOT).replace(os.sep, "/")
         # 과거 plan·로컬 노트·문서 아카이브는 그 시점의 기록이라 갱신 대상이 아니다(대장 관례).
         # 판정을 `_is_record_doc` 와 공유한다 — 따로 두면 한쪽만 낡는다.
-        # `intent/` 는 폐지 전 회차의 요구 기록이라 고칠 대상이 아니다 — 근거는 `harness-consistency-rationale.md` §7
-        if not (_is_record_doc(rel_src) or rel_src.startswith("intent/")):
+        if not _is_record_doc(rel_src):
             out.append((src, rel_src))
     return out
 
