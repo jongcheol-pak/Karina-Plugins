@@ -672,7 +672,6 @@ def background_shell_idle_does_not_stall():
 
 @case
 def background_shell_too_long_stalls():
-    # 백그라운드 셸 표시인 채 같은 화면이 6비교를 넘으면 다시 멈춤으로 센다 — 상한은 BUSY_SAME_MAX(9장).
     cli = FakeCli([EMPTY] * 12, [bg_screen('1 shell')] * 12)
     out = run(cli)
     assert first(out).startswith('RESULT: stall — '), out

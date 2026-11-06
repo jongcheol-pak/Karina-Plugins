@@ -16,7 +16,7 @@
 
 ## stall 뒤 감시
 
-`RESULT: stall` 로 멈춘 단일 체인은 retain 뒤 `--watch` 로 그 dispatch 를 지켜본다. 멈춤 판정은 백그라운드 셸·CI 대기가 상한(`BUSY_SAME_MAX`)을 넘으면 일하는 워커도 멈춤으로 센다 — 2026-10-29 plan 10 은 04:18 stall 뒤 워커가 스스로 이어 가 07:10 에 `worker_done` 을 보냈는데, 받을 대기가 없어 사용자가 07:20 에 말할 때까지 체인이 섰다.
+`RESULT: stall` 로 멈춘 단일 체인은 retain 뒤 `--watch` 로 그 dispatch 를 지켜본다. 멈춤 판정은 백그라운드 셸 대기가 상한(`BUSY_SAME_MAX`)을 넘으면 일하는 워커도 멈춤으로 센다 — 2026-10-29 plan 10 은 04:18 stall 뒤 워커가 스스로 이어 가 07:10 에 `worker_done` 을 보냈는데, 받을 대기가 없어 사용자가 07:20 에 말할 때까지 체인이 섰다.
 
 - **시한이 없다** — 그 사례에서 완료까지 약 3시간이 걸렸고, 백그라운드 대기는 5시간 넘게 살아 완료 알림을 냈다(같은 세션 실측). 끝나는 길은 message · closed · superseded · orphaned · error 다.
 - **구조는 자리 대기를 따른다** — 주기(`--poll-ms`, 기본 1분)마다 `check --wait` 로 쉬고 `worker-list --json` 에서 그 dispatch 행을 본다. 배치 없이 행이 자리를 놓았으면(사용자가 탭을 닫았다) closed 다. 화면·진행은 쓰지 않아 `--repo` 를 받지 않는다.
