@@ -1,6 +1,6 @@
 {
   "name": "karina",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Korean-first harness for Claude Code: plan, implement, chain-plan, karina-systematic-debugging, review subagents, push gate verifier subagent, wiki page writer subagent. Safety hooks run on pwsh 7 / Windows PowerShell, cross-platform (Windows verified, macOS/Linux experimental); skills are OS-agnostic (chain-plan needs the Karina app on Windows).",
   "author": {
     "name": "pjc"
