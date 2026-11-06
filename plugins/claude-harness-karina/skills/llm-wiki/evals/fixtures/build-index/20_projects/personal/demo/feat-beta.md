@@ -3,7 +3,6 @@ type: feature
 project: Demo
 category: personal
 feature_name: "베타 기능"
-description: "index_label 없음 — feature_name 폴백 경로"
 platform: cli
 status: active
 origin: agent-synthesized

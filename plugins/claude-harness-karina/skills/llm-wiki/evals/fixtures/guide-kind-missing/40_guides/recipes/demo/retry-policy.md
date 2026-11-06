@@ -1,6 +1,5 @@
 ---
 type: guide
-description: "재시도 정책 recipe — guide_kind 필드가 빠진 fixture (§7-2 부재 WARN 검증)"
 platform: cli
 origin: agent-synthesized
 confidence: medium

@@ -1,7 +1,6 @@
 ---
 type: entity
 entity_name: "DemoTech"
-domain: tech
 index_label: "데모 기술 (DemoTech)"
 origin: agent-synthesized
 confidence: high

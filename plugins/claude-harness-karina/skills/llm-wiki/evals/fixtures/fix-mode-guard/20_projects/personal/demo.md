@@ -2,7 +2,6 @@
 type: project
 project: demo
 category: personal
-description: "fix-mode-guard 데모 프로젝트"
 tech_stack: ["CSharp"]
 platform: cli
 status: active

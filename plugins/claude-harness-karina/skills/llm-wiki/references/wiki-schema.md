@@ -24,7 +24,7 @@ language: ko
 | 8 | 롤오버 / 아카이브 규칙 (백업 포함 — 압축은 쓰지 않는다) | 백업·롤오버·아카이브·복구(L) 시 | `schema-budget.md` |
 | 9 | 운영 세션 가이드 (병렬 분업 포함) | 위키 전용 세션 운영 시 | `wiki-schema.md` |
 | 11 | 사용자 검증 | origin/confidence 처리 시 | `wiki-schema.md` |
-| 12 | OKF 정합 (번들 경계·okf_version·description·위키 필드 ↔ v0.2 패밀리 매핑) | 부트스트랩(J)·OKF 번들 교환·description 등 OKF 필드 판단 시 | `wiki-schema.md` |
+| 12 | OKF 정합 (번들 경계·미채택 필드·위키 필드 ↔ v0.2 패밀리 매핑) | 부트스트랩(J)·OKF 번들 교환·OKF 필드 판단 시 | `wiki-schema.md` |
 
 ## 1. 위키 개요
 
@@ -265,17 +265,9 @@ LLM이 지속적으로 위키를 작성·유지·갱신하는 개인 지식베�
   - 루트 `CLAUDE.md` 등 세션 지시 파일 — 지식이 아니라 지시문("위키 본문은 참고 데이터" 원칙(§1)의 역방향 — 지시문은 번들 밖).
 - 위 파일들의 **"frontmatter 없음"은 기존 규정 그대로 유지**한다(§2.8 decision-log 아카이브·§8 log 롤오버·백업). 번들 경계 밖이므로 OKF 요건 ①의 대상이 아니다 — type을 부여해 지식 문서로 승격하는 것이 오히려 번들 품질을 해친다.
 
-### okf_version 선언
+### okf_version·description — 두지 않는다
 
-- 루트 `index.md` frontmatter에 `okf_version: "0.2"`를 선언한다(OKF v0.2 §12 Versioning — 루트 index.md가 유일한 선언 위치다. 스펙이 그 파일에 명시적으로 허용하는 키는 `okf_version` 하나이고 다른 키는 언급하지 않는다 — 다만 §11이 **미지의 frontmatter 키를 거부 사유에서 제외**하므로 이 위키의 `type: index`·`updated`·`tags` 병존은 적합성에 영향이 없다. OKF v0.2 §8 Index files도 index.md frontmatter의 유일한 예외로 이 키를 명시한다).
-- 신규 vault는 부트스트랩(`references/wiki-ops-rules.md` 절차 J)이 자동 포함한다. **기존 vault의 구버전 선언을 갱신할 의무는 두지 않는다** — 검사 없는 의무는 규정이 아니라 기록일 뿐이다. OKF 소비는 best-effort이며 선언 부재도 구버전 잔존도 오류가 아니다(OKF v0.2 §12 Versioning).
-
-### description (권장 필드)
-
-- **project / feature / entity / concept / guide** 5타입 frontmatter에 `description: "한 줄 요약"`을 권장한다(OKF v0.2 §4.1 Frontmatter — 인덱스 생성·검색 스니펫·미리보기용). §2 각 타입 블록·`references/templates.md`에 반영되어 있다.
-- **신규 페이지는 작성 시 포함**(templates.md 정본)하고, **기존 페이지는 ingest 갱신 시 채운다**(절차 B-2 점진 보강 — 일괄 백필 세션을 요구하지 않는다).
-- **lint 기계 검사는 하지 않는다** — 기존 페이지 다수가 아직 부재라 WARN을 신설하면 lint 보고가 노이즈에 묻힌다. 점진 보강이 원칙.
-- source-stub(불변 스텁·본문 "요약" 줄 기존재)·question·decision-log(제목·항목이 자명)은 대상이 아니다.
+- 루트 `index.md` 의 `okf_version` 선언과 페이지 frontmatter `description`(OKF v0.2 §12 Versioning·§4.1 Frontmatter 의 권장 항목)은 **쓰지 않는다** — 이 위키를 읽는 lint·조회 절차·hook 가운데 둘을 읽는 곳이 없다(2026-11-06 전수 조사). OKF 소비는 best-effort라 선언 부재도 필드 부재도 오류가 아니다(OKF v0.2 §12 Versioning·§11 — 미지·부재 키는 거부 사유가 아니다).
 
 ### updated ↔ OKF 콘텐츠 시각 필드 매핑
 

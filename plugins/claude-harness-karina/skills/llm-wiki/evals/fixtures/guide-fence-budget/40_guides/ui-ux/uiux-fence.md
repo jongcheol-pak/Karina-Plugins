@@ -1,7 +1,6 @@
 ---
 type: guide
 guide_kind: ui-ux
-description: "통짜 코드 펜스 템플릿 가이드 — 펜스 내부 줄 제외 예산 판정(§7-2) 양성 fixture"
 platform: cross
 origin: human-validated
 confidence: high

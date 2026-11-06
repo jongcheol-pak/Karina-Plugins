@@ -1,7 +1,6 @@
 ---
 type: guide
 guide_kind: ui-ux
-description: "마커 없는 vault의 옛 가이드 섹션 행 fixture — 첫 컬럼 wikilink 형상의 §7-16 검출 검증"
 platform: cross
 origin: human-validated
 confidence: high

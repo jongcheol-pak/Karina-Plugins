@@ -3,7 +3,6 @@ type: project
 project: WDemo
 category: work
 index_label: "업무 데모 (work demo)"
-description: "업무 category 분기 확인용"
 tech_stack: ["TypeScript"]
 platform: web
 status: active

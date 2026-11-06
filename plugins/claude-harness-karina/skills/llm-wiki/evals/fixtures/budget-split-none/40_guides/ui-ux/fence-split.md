@@ -1,7 +1,6 @@
 ---
 type: guide
 guide_kind: ui-ux
-description: "펜스 제외 판정 타입의 budget_split 억제 픽스처"
 platform: web
 origin: agent-synthesized
 confidence: medium
@@ -153,3 +152,4 @@ tags: [guide, ui-ux, demo]
 // 분할 불가능한 페이로드(예제 코드) — ui-ux guide 예산은 이 안을 제외하고 잰다
 // 분할 불가능한 페이로드(예제 코드) — ui-ux guide 예산은 이 안을 제외하고 잰다
 ```
+가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가

@@ -326,7 +326,7 @@ def prepare_aux_split_vault(fixture_dir, concept_count, open_questions):
     for i in range(1, open_questions + 1):
         with open(os.path.join(qd, "q-20260822-bulk%02d.md" % i), "w",
                   encoding="utf-8", newline="") as fh:
-            fh.write("---\ntype: question\nstatus: open\npriority: medium\n"
+            fh.write("---\ntype: question\nstatus: open\n"
                      "updated: 2026-08-22\nrelated: [Demo]\ntags: [question]\n---\n\n"
                      "# 미해결 질문 %02d\n\n## 질문\n골든용.\n" % i)
     return tmp, dest

@@ -1,7 +1,6 @@
 ---
 type: guide
 guide_kind: ui-ux
-description: "통합 표의 ui-ux 라벨이 한글 전용인 fixture — §7-16 양성 검출 검증"
 platform: cross
 origin: human-validated
 confidence: high

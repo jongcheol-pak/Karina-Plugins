@@ -1,7 +1,6 @@
 ---
 type: guide
 guide_kind: recipe
-description: "옛 가이드 섹션의 recipe 행 fixture — §3 하위호환 형상 ① 제외(이중 요구 방지) 실증"
 platform: cli
 origin: human-validated
 confidence: high

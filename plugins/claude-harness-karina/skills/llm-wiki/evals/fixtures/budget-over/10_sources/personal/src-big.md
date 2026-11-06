@@ -1,10 +1,8 @@
 ---
 type: source-stub
-source_type: project-repo
 project: Big
 category: personal
 repo_path: "D:/none"
-ingested: 2026-07-02
 tags: [source, big]
 ---
 # Big 소스 스텁 (1800자 예산 초과 위반 — v1.138.0 문자 수 전환)

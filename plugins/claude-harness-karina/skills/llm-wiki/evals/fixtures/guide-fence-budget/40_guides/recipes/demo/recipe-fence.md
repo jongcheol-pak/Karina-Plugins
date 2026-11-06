@@ -1,7 +1,6 @@
 ---
 type: guide
 guide_kind: recipe
-description: "recipe는 펜스 포함 판정 유지 — 문자 수 예산(8500자) 초과 WARN이 나야 하는 음성 대조 fixture"
 platform: cli
 origin: agent-synthesized
 confidence: medium

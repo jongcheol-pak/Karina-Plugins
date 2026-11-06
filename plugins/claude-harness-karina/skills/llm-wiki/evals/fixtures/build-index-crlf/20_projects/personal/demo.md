@@ -3,7 +3,6 @@ type: project
 project: Demo
 category: personal
 index_label: "데모 프로젝트 (Demo)"
-description: "인덱스 생성 골든용 프로젝트"
 tech_stack: ["Python", "Markdown"]
 platform: cli
 status: active

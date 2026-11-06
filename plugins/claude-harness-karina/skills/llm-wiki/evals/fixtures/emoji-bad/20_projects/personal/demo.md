@@ -2,7 +2,6 @@
 type: project
 project: demo
 category: personal
-description: "§7-29 decision-log 제외 fixture 프로젝트"
 tech_stack: ["CLI"]
 platform: cli
 status: active

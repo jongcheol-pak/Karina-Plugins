@@ -17,20 +17,14 @@
 ```markdown
 ---
 type: source-stub
-source_type: project-repo
 project: 프로젝트명
 category: personal | work
 repo_path: "전체 경로"
-ingested: YYYY-MM-DD
 tags: [source, 프로젝트태그]
 ---
 
 # 소스: 프로젝트명
 
-- **유형**: 프로젝트 레포지토리
-- **경로**: `전체 경로`
-- **참조 파일**: 존재하는 문서 파일 목록
-- **요약**: 한 줄 요약
 - **기술 스택**: 프레임워크/라이브러리 이름만 나열 (SDK/패키지 major.minor 버전 숫자 제외 — 스텁은 불변이라 버전이 영구 stale, 버전 진실원천은 코드/csproj. `.NET 10`·`WinUI 3` 같은 제품 라인 major 식별자는 허용)
 - **서브프로젝트**: (있으면) 목록
 ```
@@ -42,7 +36,6 @@ type: project
 index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
 project: 프로젝트명
 category: personal | work
-description: "한 줄 요약 (권장 — wiki-schema §12, 검색·인덱스 스니펫용)"
 tech_stack: ["기술1", "기술2"]
 platform: windows-desktop | web | mobile | cli | cross
 status: active
@@ -107,7 +100,6 @@ index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 �
 project: 프로젝트명
 category: personal | work
 feature_name: "기능명"
-description: "한 줄 요약 (권장 — wiki-schema §12)"
 platform: windows-desktop | web | mobile | cli | cross
 status: active   # 코드에서 제거 시 deprecated: YYYY-MM-DD 추가 (폐기 보존, schema-types §2.3)
 origin: agent-synthesized | human-validated
@@ -134,8 +126,6 @@ tags: [feature, 기능태그, 프로젝트태그]
 type: entity
 index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
 entity_name: "기술명"
-description: "한 줄 요약 (권장 — wiki-schema §12)"
-domain: tech
 origin: agent-synthesized | human-validated
 confidence: high | medium | low
 updated: YYYY-MM-DD
@@ -162,7 +152,6 @@ tags: [entity, 기술태그]
 type: concept
 index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
 concept_name: "패턴명"
-description: "한 줄 요약 (권장 — wiki-schema §12)"
 origin: agent-synthesized | human-validated
 confidence: high | medium | low
 updated: YYYY-MM-DD
@@ -192,7 +181,6 @@ tags: [concept, 패턴태그]
 type: guide
 index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
 guide_kind: platform-bootstrap | ui-ux | recipe
-description: "한 줄 요약 (권장 — wiki-schema §12)"
 platform: windows-desktop | web | mobile | cli | cross
 origin: agent-synthesized | human-validated
 confidence: high | medium | low
@@ -218,9 +206,7 @@ tags: [guide, recipe, 플랫폼태그]
 type: question
 index_label: "인덱스 표시 라벨 (index label)"   # 선택 — 인덱스 카탈로그 표기(한/영 병기), schema §3
 status: open | investigating | resolved
-priority: high | medium | low
 related_pages: ["[[경로|이름]]"]
-created: YYYY-MM-DD
 updated: YYYY-MM-DD
 tags: [question, 관련태그]
 ---

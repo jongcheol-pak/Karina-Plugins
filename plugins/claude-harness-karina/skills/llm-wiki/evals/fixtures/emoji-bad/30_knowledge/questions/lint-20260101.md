@@ -1,7 +1,6 @@
 ---
 type: question
 status: resolved
-priority: low
 updated: 2026-01-01
 tags: [question]
 ---

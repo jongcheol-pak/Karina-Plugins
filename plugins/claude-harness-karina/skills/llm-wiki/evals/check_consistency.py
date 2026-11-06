@@ -46,8 +46,8 @@
 조용히 낡는 사각을 잡는다(⑨는 타입 집합의 존재만 보고 산문 열거는 읽지 않는다). 두 그룹으로
 나뉘고 기대 집합의 정본이 서로 다르다 — ⓐ 값의 정본이 lint.py 상수인 자리(§3 origin·confidence,
 §7-9, §7-28, §11 적용 대상)는 상수 ↔ 산문을 집합 대조하고, ⓑ 정본이
-schema §2 타입 집합인 자리(목차 §2 행, §3 계층 태그, templates.md 목차, §12 description 권장/비대상)는
-전 타입 등장(§12는 권장·비대상 **분할 커버**)을 요구한다. 새 타입 누락을 강제로 잡는 것은 ⓑ다.
+schema §2 타입 집합인 자리(목차 §2 행, §3 계층 태그, templates.md 목차)는
+전 타입 등장을 요구한다. 새 타입 누락을 강제로 잡는 것은 ⓑ다.
 계기: v1.164.0이 `convention` 타입을 신설하며 이 자리들을 일회성 정규식 스캔으로 손수 찾아냈고,
 그 스캔은 자산이 아니라 임시 스크립트였다.
 
@@ -599,11 +599,6 @@ TYPE_ENUM_LINT_SITES = {"A2-updated", "A5-release", "A7-emoji"}
 TYPE_ENUM_SITES_COVER = {
     "B1-toc": r"^\| 2 \| [^|(]*\(([^)]+)\)",          # 목차 §2 행 내용열의 괄호 안 타입 나열
     "B2-tags": r"^- 계층 태그: (.+)$",                 # §3 계층 태그
-    # §12 description 권장/비대상 2줄. **절 스코프가 필수다** — 스코프 없이 '은 대상이 아니다'로
-    #  잡으면 §2.8의 '구현 세부 결정(…)은 대상이 아니다'(:256)를 먼저 물어 비대상 집합이 통째로
-    #  비어 버린다(구현 중 실측). A6이 §11로 스코프를 한정한 것과 같은 이유다.
-    "B4-desc-recommended": r"^### description \(권장 필드\)[\s\S]*?^- (.+?5타입 frontmatter에)",
-    "B4-desc-excluded": r"^### description \(권장 필드\)[\s\S]*?^- (.+?은 대상이 아니다)",
 }
 # B2 계층 태그는 §2 타입과 1:1이 아니다 — source-stub이 'source'로 표기되고 recipe(guide 하위
 #  종류)가 추가된다. 이 둘이 축 ⑩ 전체에서 코드에 값을 적는 유일한 자리다.
@@ -653,7 +648,7 @@ def check_type_enumerations(schema_text, types_text, bundle, lint):
     두 그룹으로 나뉘며 기대 집합의 정본이 서로 다르다 —
       ⓐ 값의 정본이 lint.py 상수인 자리: 상수 ↔ 문서 산문을 집합 대조(축 ②와 같은 구조).
         새 타입이 그 자리에 없어도 lint 상수에 없으면 정상이므로 '미판정'은 검출하지 않는다.
-      ⓑ 값의 정본이 schema §2 타입 집합인 자리: 전 타입이 등장(또는 분할 커버)해야 한다.
+      ⓑ 값의 정본이 schema §2 타입 집합인 자리: 전 타입이 등장해야 한다.
         새 타입 누락을 강제로 잡는 역할은 이쪽이 담당한다.
 
     ⚠ ⓐⓑ의 검출 방향은 **누락 한쪽뿐이다** — 토큰 어휘를 실재 타입으로 한정하므로(오탐 차단이
@@ -664,7 +659,7 @@ def check_type_enumerations(schema_text, types_text, bundle, lint):
     **그 반대 방향은 B5가 목록 등재분에 한해서만 본다**(`RETIRED_TYPES`) — 자동 확장이 아니라
     사람이 적은 이름만 보므로 위 어휘 한정을 깨지 않는다. 즉 미등재 삭제 이름은 여전히 통과한다.
     **읽는 파일이 셋으로 갈린다** — 타입 집합(`### 2.N`)은 `types_text`, 열거 자리(A1·A2·A5~A7·
-    B1·B2·B4)는 코어 `schema_text` 이되 §7 항목 자리(A2·A5·A7)는 `schema-lint.md`(`TYPE_ENUM_LINT_SITES`),
+    B1·B2)는 코어 `schema_text` 이되 §7 항목 자리(A2·A5·A7)는 `schema-lint.md`(`TYPE_ENUM_LINT_SITES`),
     B5 유령 이름은 번들 네 파일(`bundle`) 전부다.
     반환: (불일치 목록, 대조 항목 수)."""
     types = {hm.group(1) for hm in SCHEMA_TYPE_HEADING_RX.finditer(types_text)}
@@ -720,21 +715,6 @@ def check_type_enumerations(schema_text, types_text, bundle, lint):
     if found != tmpl_types:
         issues.append(f"타입 열거 'B3-templates-toc' 불일치: 목차에만 {sorted(found - tmpl_types)} / "
                       f"템플릿 본문에만 {sorted(tmpl_types - found)}")
-
-    # ⓑ B4 — §12 description 권장/비대상의 **분할 커버**. 합집합이 §2 전 타입이어야 하고
-    #  교집합은 공집합이어야 한다(한 타입이 양쪽에 적히는 모순 검출). 새 타입이 어느 쪽에도
-    #  들어가지 않으면 여기서 걸린다 — 이 축이 겨냥한 실패 모드다.
-    rec = extract_type_tokens(
-        _enum_span(schema_text, TYPE_ENUM_SITES_COVER["B4-desc-recommended"], "B4-desc-recommended"),
-        types)
-    exd = extract_type_tokens(
-        _enum_span(schema_text, TYPE_ENUM_SITES_COVER["B4-desc-excluded"], "B4-desc-excluded"), types)
-    checked += 1
-    if rec | exd != types:
-        issues.append(f"타입 열거 'B4-description' 분할 커버 위반: 어느 쪽에도 없는 타입 "
-                      f"{sorted(types - (rec | exd))} / §2에 없는 표기 {sorted((rec | exd) - types)}")
-    if rec & exd:
-        issues.append(f"타입 열거 'B4-description' 중복: {sorted(rec & exd)}가 권장·비대상 양쪽에 있음")
 
     # ⓑ B5 — 삭제된 타입의 유령 이름(RETIRED_TYPES). 위 docstring이 「검출 방향은 누락 한쪽뿐」
     #  이라 적은 그 반대 방향이다. 목록에 있는 이름만 보므로 오탐 경로가 새로 열리지 않는다 —

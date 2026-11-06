@@ -202,7 +202,7 @@ ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
 # category 통제 어휘 (wiki-schema §3 — 오타(Personal 등)는 sub-index 분할 라우팅·경로 규약을 어긋나게 함)
 CATEGORY_VOCAB = {"personal", "work"}
 # updated 필수 타입 (§7-9 — 필드가 없으면 미래날짜 검사가 조용히 건너뛰어져 추적 사각.
-#  source-stub은 불변 스텁이라 ingested를 쓰므로 제외)
+#  source-stub은 불변 스텁이라 갱신 날짜가 없어 제외)
 UPDATED_REQUIRED_TYPES = ORIGIN_REQUIRED_TYPES | {"question", "decision-log"}
 # log.md는 문자 수 예산(줄 수 아님 — 한 항목이 길면 줄 수가 실제 분량을 못 담음, schema-budget §4·§8)
 SPECIAL_BUDGET = {"log.md": 6000}

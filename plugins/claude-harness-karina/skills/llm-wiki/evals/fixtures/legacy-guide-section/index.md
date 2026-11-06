@@ -1,6 +1,5 @@
 ---
 type: index
-okf_version: "0.1"
 updated: 2026-08-21
 ---
 

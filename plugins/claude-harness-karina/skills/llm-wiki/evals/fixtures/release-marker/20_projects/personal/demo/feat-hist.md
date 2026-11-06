@@ -3,7 +3,6 @@ type: feature
 project: demo
 category: personal
 feature_name: "이력 (history)"
-description: "본문에 릴리즈 마커가 남은 feature — §7-28 양성 fixture"
 platform: cli
 status: active
 origin: agent-synthesized

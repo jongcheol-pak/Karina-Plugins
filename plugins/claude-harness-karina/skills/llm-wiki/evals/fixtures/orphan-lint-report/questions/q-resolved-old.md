@@ -1,6 +1,5 @@
 ---
 type: question
-created: 2026-01-01
 updated: 2026-01-01
 resolved: 2026-01-02
 tags: [question, demo]

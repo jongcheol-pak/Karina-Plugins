@@ -2,7 +2,6 @@
 type: project
 project: demo
 category: personal
-description: "§7-28 릴리즈 마커 fixture 프로젝트"
 tech_stack: ["CLI"]
 platform: cli
 status: active
