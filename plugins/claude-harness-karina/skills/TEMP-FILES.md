@@ -7,7 +7,7 @@
 - **모든 임시 산출물은 `%TEMP%\karina-plugin\` 아래 하위 폴더에 둔다 — 임시 폴더 바로 아래에 파일·폴더를 만들지 않는다.**
 - **루트는 Python 이면 `os.path.join(tempfile.gettempdir(), 'karina-plugin')` 이다. PowerShell 은 `TMPDIR`→`TEMP`→`TMP` 순으로 있는 폴더를 찾고, 없을 때만 `[IO.Path]::GetTempPath()` 를 쓴다** — `GetTempPath()` 는 Windows 에서 `TMP` 를 먼저 읽고 Python 은 `TEMP` 를 먼저 읽어, 두 값이 다른 환경에서는 스크립트가 쓰는 폴더와 정리가 보는 폴더가 갈린다.
 - **쓰기 전에 하위 폴더를 만든다**(Python `os.makedirs(..., exist_ok=True)` · PowerShell `New-Item -ItemType Directory -Force`). 처음 쓰는 세션에는 폴더가 없다.
-- **보고·plan·PR 본문에 싣는 경로는 `%TEMP%\karina-plugin\…` 로 적는다** — 사용자 홈 경로가 공개 PR 과 커밋에 남지 않게 한다.
+- **plan·커밋 메시지에 싣는 경로는 `%TEMP%\karina-plugin\…` 로 적는다** — 사용자 홈 경로가 커밋과 원격에 남지 않게 한다.
 
 ## 하위 폴더
 
@@ -24,6 +24,6 @@
 ## 누가 지우는가
 
 - **직접 지우지 않는다.** 기한이 지난 것은 아래 두 곳이 지우고, 그 밖은 사용자가 `/karina:temp-cleanup` 으로 고른 것만 지운다.
-- **세션 시작 정리** — `scripts/session-context.ps1` 이 `plan-variants\`·`verify\`·`scratch\` 와 `chain\` 의 결정 파일을 기한(값은 그 스크립트의 표가 정본이다)이 지나면 지운다. 화면 변형·증거는 PR merge 전 화면 게이트와 체인 보고가 경로를 다시 보이므로 쓴 직후에 지우지 않는다.
+- **세션 시작 정리** — `scripts/session-context.ps1` 이 `plan-variants\`·`verify\`·`scratch\` 와 `chain\` 의 결정 파일을 기한(값은 그 스크립트의 표가 정본이다)이 지나면 지운다. 화면 변형·증거는 push 전 화면 게이트와 체인 보고가 경로를 다시 보이므로 쓴 직후에 지우지 않는다.
 - **체인 스크립트** — `wait-worker.py`·`run-verify.py` 가 시작할 때 `chain\` 의 자기 접두 파일만 기한이 지나면 지운다.
 - **백업 두 폴더(`backup\`·`worktree-backup\`)는 자동으로 지우지 않는다** — 원본이 사라진 뒤의 유일한 사본일 수 있다.

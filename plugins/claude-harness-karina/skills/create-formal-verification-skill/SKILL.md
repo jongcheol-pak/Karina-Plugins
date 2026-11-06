@@ -64,13 +64,13 @@ disable-model-invocation: true
 
 증명에 성공했을 때만 한다. 순서가 정해져 있다.
 
-1. **추적되는 경로인지 본다** — `git check-ignore -q .claude/skills/formal-<영역>/SKILL.md` 의 종료 코드가 **1** 이어야 한다(0 이면 무시되는 경로다). 무시되면 `git check-ignore -v` 출력을 보이고 사용자에게 둘 중 하나를 고르게 한다 — 고르지 않으면 등록하지 않고 보고한다. `gate-verifier` 는 PR head 의 worktree 에서만 돌아 추적되지 않은 스킬을 보지 못한다.
+1. **추적되는 경로인지 본다** — `git check-ignore -q .claude/skills/formal-<영역>/SKILL.md` 의 종료 코드가 **1** 이어야 한다(0 이면 무시되는 경로다). 무시되면 `git check-ignore -v` 출력을 보이고 사용자에게 둘 중 하나를 고르게 한다 — 고르지 않으면 등록하지 않고 보고한다. `gate-verifier` 는 push 할 head 의 worktree 에서만 돌아 추적되지 않은 스킬을 보지 못한다.
    - **(권장) 레포 `.gitignore` 에 부정 사슬을 더한다** — 사슬이 없으면 다섯 줄 `!.claude/` · `.claude/*` · `!.claude/skills/` · `.claude/skills/*` · `!.claude/skills/formal-<영역>/` 이다. **사슬이 이미 있으면(앞서 `verify-<app>` 등을 등록한 레포) `!.claude/skills/formal-<영역>/` 한 줄만 더한다** — gitignore 는 마지막에 맞는 줄이 이겨, 다섯 줄을 다시 붙이면 뒤의 `.claude/skills/*` 가 앞서 풀어 둔 폴더를 다시 무시한다. 4번 커밋 경로에 `.gitignore` 를 더한다.
    - **`git add -f -- .claude/skills/formal-<영역>`** — 이 경로를 고르면 4번의 `add` 에도 `-f` 가 필요하다.
    - 고른 수단을 적용한 뒤 이 1번을 다시 돌려 종료 코드 1 을 확인한다.
 2. **`AGENTS.md` 에 이번과 무관한 미커밋 변경이 없는지 본다** — `git status --porcelain -- AGENTS.md` 가 비어 있지 않으면 등록하지 않고 보고한다. 4번 커밋이 그 파일의 다른 변경까지 담기 때문이다.
 3. **`karina:record-project-fact` 로 `AGENTS.md` 의 `Verify (형식 검증)` 줄에 `.claude/skills/formal-<영역>/` 를 적는다** — 줄이 이미 있으면 ` · ` 로 이어 붙인다. `AGENTS.md` 쓰기의 정본은 그 스킬이고, 그 스킬이 바꿀 내용을 보이고 승인을 받는다.
-4. **생성 폴더와 `AGENTS.md` 를 함께 로컬 커밋한다** — `git add -- .claude/skills/formal-<영역> AGENTS.md` 뒤 `git commit -m "설정: 형식 검증 스킬 formal-<영역> 생성" -- .claude/skills/formal-<영역> AGENTS.md`. 1번에서 부정 사슬을 골랐으면 `.gitignore` 를, `-f` 를 골랐으면 `add` 에 `-f` 를 더한다. 포인터만 커밋되고 대상이 빠지거나 그 반대면 PR head 에서 한쪽이 없다.
+4. **생성 폴더와 `AGENTS.md` 를 함께 로컬 커밋한다** — `git add -- .claude/skills/formal-<영역> AGENTS.md` 뒤 `git commit -m "설정: 형식 검증 스킬 formal-<영역> 생성" -- .claude/skills/formal-<영역> AGENTS.md`. 1번에서 부정 사슬을 골랐으면 `.gitignore` 를, `-f` 를 골랐으면 `add` 에 `-f` 를 더한다. 포인터만 커밋되고 대상이 빠지거나 그 반대면 push 할 head 에서 한쪽이 없다.
 5. **스킬을 거치지 않은 변경(merge·리팩토링) 뒤에는 `/karina:maintain-formal-verification-skill` 로 검증을 코드에 다시 맞춘다고 안내한다** — 그 스킬이 동기 커밋부터의 변경을 읽어 검증 드리프트와 코드 버그를 가른다. 주기는 사용자가 물을 때만 제안한다.
 
 ## 보고

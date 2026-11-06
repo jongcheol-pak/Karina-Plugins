@@ -1,6 +1,6 @@
 # 읽기 전용 서브에이전트 사후 확인
 
-> 여덟 호출부가 가리키는 공용 규칙이다 — `implement/references/final-review.md`(completion-reviewer) · `no-comments/SKILL.md`(comment-reviewer) · `pr/references/ship.md`(gate-verifier) · `implement/references/local-gate.md`(gate-verifier — main 직행 로컬 게이트) · `chain-plan/references/stack-mode.md`(gate-verifier — 계획별 검증) · `plan/references/measure-delegation.md`(Explore) · `chain-plan/references/measure.md`(Explore) · `maintain-verification-skill/SKILL.md`(Explore 웨이브). 읽기 전용이라고 정한 서브에이전트가 `Bash` 를 가지면 셸로 파일을 바꿀 수 있어, 그 서브에이전트를 부르기 전후에 이 절을 그대로 거친다.
+> 여섯 호출부가 가리키는 공용 규칙이다 — `implement/references/final-review.md`(completion-reviewer) · `no-comments/SKILL.md`(comment-reviewer) · `implement/references/local-gate.md`(gate-verifier — 로컬 게이트) · `plan/references/measure-delegation.md`(Explore) · `chain-plan/references/measure.md`(Explore) · `maintain-verification-skill/SKILL.md`(Explore 웨이브). 읽기 전용이라고 정한 서브에이전트가 `Bash` 를 가지면 셸로 파일을 바꿀 수 있어, 그 서브에이전트를 부르기 전후에 이 절을 그대로 거친다.
 
 ## 호출 전후 확인
 
@@ -22,5 +22,5 @@
   - `karina:implement`(completion-reviewer) — `## Progress Log` 에 `판정: 서브에이전트 호출 뒤 작업 트리 변경 — <경로> — 되돌리지 않음 — 근거: 없음 — 틀리면: 그 변경이 다음 커밋에 섞인다` 줄. 최종 보고 「판정」 이 이 줄을 그대로 옮긴다.
   - `karina:plan`(measure-delegation, 또는 Step 5 가 띄운 chain-plan measure) — Investigation Log 에 `서브에이전트 작업 트리 변경` 행.
   - `karina:chain-plan` 코디네이터(measure) — 체인 승인 제시에 `작업 트리 변경 — <경로>` 한 줄.
-  - `karina:no-comments`·`karina:pr` ship·`karina:maintain-verification-skill` — 그 스킬의 「보고」 에 `작업 트리 변경 — <경로>` 한 줄. `karina:no-comments` 자동 모드는 위 `karina:implement` 줄과 같다.
+  - `karina:no-comments`·`karina:maintain-verification-skill` — 그 스킬의 「보고」 에 `작업 트리 변경 — <경로>` 한 줄. `karina:no-comments` 자동 모드는 위 `karina:implement` 줄과 같다.
 - **완료 보고의 「남은 이슈」 에는 싣지 않는다** — 그 줄은 판정 마커(`[등재]`·`[다음 회차]`)를 단 항목만 싣는 자리다(`implement/references/report-format.md`「「남은 이슈」의 판정」).

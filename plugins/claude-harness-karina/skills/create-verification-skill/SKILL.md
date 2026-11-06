@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 > 출처는 Cursor pstack 의 create-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/create-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮기며 생성 위치를 Claude Code 프로젝트 스킬로 바꾸고, Windows 데스크톱 조작·「변경 검증」 절·karina 등록 절차를 더했다.
 
-실제 앱을 띄우고, 사용자가 쓰는 방식으로 기능을 조작하고, 증거를 남기는 절차를 대상 레포 전용 스킬 `.claude/skills/verify-<app>/` 로 만든다. **생성물의 독자는 사람이 아니라 다음 에이전트다** — 앱을 한 번도 본 적 없는 에이전트가 작업 도중에 처음 읽고 그대로 따라 한다. 그 에이전트는 `karina:implement` 의 화면 확인 전 조작과 `gate-verifier` 의 merge 전 검증이다(`AGENTS.md` 의 `Verify (앱 조작)` 줄로 찾는다).
+실제 앱을 띄우고, 사용자가 쓰는 방식으로 기능을 조작하고, 증거를 남기는 절차를 대상 레포 전용 스킬 `.claude/skills/verify-<app>/` 로 만든다. **생성물의 독자는 사람이 아니라 다음 에이전트다** — 앱을 한 번도 본 적 없는 에이전트가 작업 도중에 처음 읽고 그대로 따라 한다. 그 에이전트는 `karina:implement` 의 화면 확인 전 조작과 `gate-verifier` 의 push 전 검증이다(`AGENTS.md` 의 `Verify (앱 조작)` 줄로 찾는다).
 
 ## 1. 사용자가 아니라 레포를 조사한다
 
@@ -37,7 +37,7 @@ disable-model-invocation: true
   - dry-run·테스트 모드가 안전한 경로면, 이름을 믿지 말고 실제로 무엇을 건너뛰는지(파일·네트워크·git ref) 관측한다 — 네트워크를 건드리거나 브라우저를 여는 dry-run 도 있다
 - **Cleanup** — 이번 실행이 만든 인스턴스를 내리는 법. 프로세스 이름으로 죽이지 않고 **시작한 것만**(PID) 내린다. Cleanup 은 인스턴스와 임시 상태를 지우되 **이번 실행의 증거는 지우지 않는다** — 증거는 Evidence 가 이름 댄 위치에 남는다.
 - **Helpers** — 스킬이 함께 두는 스크립트는 실행 가능해야 하고 호출 방법이 본문에 있어야 한다. 읽는 쪽이 거꾸로 분석해야 하는 헬퍼는 헬퍼가 아니다. **헬퍼는 `helpers/` 아래에 둔다 — `.claude/` 아래 `scripts/*.ps1` 은 karina 하니스의 `guard-harness` hook 이 hook 스크립트 개조로 보고 막는다.** PowerShell 헬퍼는 UTF-8 BOM 으로 저장한다(Windows PowerShell 5.1 한글). **같은 조작을 일회용 스크립트로 두 번째 쓰게 되면 그 조작을 인자로 받는 작은 제어 CLI 로 `helpers/` 에 올리고 스킬이 그것을 부르게 한다** — 실행마다 같은 결과가 나고 토큰이 덜 든다(pstack guide 06 *"ask for a small control CLI that the skill calls instead"* — `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/docs/guide/06-verify-and-ship.md`).
-- **변경 검증** — 코드 변경 하나를 증명할 때의 절차: 계획 `**화면**` 줄이나 PR 본문 `화면 시나리오:` 줄이 입력으로 오면 그 시나리오를 그대로 조작해 스크린샷을 Evidence 위치에 그 이름으로 남기고, 판정 전에 그 스크린샷을 Read 로 열어 통과 조건과 대조해 판정한다(BASE 에서도 돌리라는 입력이면 그 worktree 경로로 Launch 한다). 입력이 없으면 바뀐 파일이 닿는 기능을 `features/README.md` 색인에서 고르고, 고른 기능 파일의 **모든 진입 경로**를 조작한다. 편한 진입 경로 하나만 조작한 증명은 지도가 다른 경로를 적었으면 불완전하다. 어느 기능에도 닿지 않으면 그 사실과 근거를 적는다. `karina:implement` 와 `gate-verifier` 는 이 절을 따른다.
+- **변경 검증** — 코드 변경 하나를 증명할 때의 절차: 계획 `**화면**` 줄이나 게이트 본문 파일 `화면 시나리오:` 줄이 입력으로 오면 그 시나리오를 그대로 조작해 스크린샷을 Evidence 위치에 그 이름으로 남기고, 판정 전에 그 스크린샷을 Read 로 열어 통과 조건과 대조해 판정한다(BASE 에서도 돌리라는 입력이면 그 worktree 경로로 Launch 한다). 입력이 없으면 바뀐 파일이 닿는 기능을 `features/README.md` 색인에서 고르고, 고른 기능 파일의 **모든 진입 경로**를 조작한다. 편한 진입 경로 하나만 조작한 증명은 지도가 다른 경로를 적었으면 불완전하다. 어느 기능에도 닿지 않으면 그 사실과 근거를 적는다. `karina:implement` 와 `gate-verifier` 는 이 절을 따른다.
 
 조작 방식별 Launch·Drive·Evidence·Cleanup 의 일반 방식과 함정은 `references/drive-recipes.md` 다.
 
@@ -63,13 +63,13 @@ disable-model-invocation: true
 
 증명에 성공했을 때만 한다. 순서가 정해져 있다.
 
-1. **추적되는 경로인지 본다** — `git check-ignore -q .claude/skills/verify-<app>/SKILL.md` 의 종료 코드가 **1** 이어야 한다(0 이면 무시되는 경로다). 무시되는 경로면 `git check-ignore -v` 출력(어느 ignore 파일의 몇째 줄인지)을 보이고 사용자에게 둘 중 하나를 고르게 한다 — 고르지 않으면 등록하지 않고 보고한다. `gate-verifier` 는 PR head 의 worktree 에서만 돌아 추적되지 않은 스킬을 보지 못한다(전역 `core.excludesfile` 이 `.claude/` 를 무시하는 PC 가 흔하다).
+1. **추적되는 경로인지 본다** — `git check-ignore -q .claude/skills/verify-<app>/SKILL.md` 의 종료 코드가 **1** 이어야 한다(0 이면 무시되는 경로다). 무시되는 경로면 `git check-ignore -v` 출력(어느 ignore 파일의 몇째 줄인지)을 보이고 사용자에게 둘 중 하나를 고르게 한다 — 고르지 않으면 등록하지 않고 보고한다. `gate-verifier` 는 push 할 head 의 worktree 에서만 돌아 추적되지 않은 스킬을 보지 못한다(전역 `core.excludesfile` 이 `.claude/` 를 무시하는 PC 가 흔하다).
    - **(권장) 레포 `.gitignore` 에 부정 사슬 다섯 줄을 더한다** — `!.claude/` · `.claude/*` · `!.claude/skills/` · `.claude/skills/*` · `!.claude/skills/verify-<app>/`. git 은 제외된 부모 폴더 아래 파일을 되살리지 못해 `!.claude/skills/verify-<app>/` 한 줄로는 풀리지 않는다. 이후 `add` 는 그대로 통하고, 4번 커밋 경로에 `.gitignore` 를 더한다.
    - **`git add -f -- .claude/skills/verify-<app>`** — 폴더 전체를 지정한다. 이 경로를 고르면 4번과 유지 스킬의 `add` 에도 `-f` 가 필요하다 — 없으면 `The following paths are ignored` 로 실패한다.
    - 고른 수단을 적용한 뒤 이 1번을 다시 돌려 종료 코드 1 을 확인한다(2026-10-18 전역 ignore 를 둔 임시 레포 실측: 부정 사슬 rc 0→1·이후 add rc 0 · `add -f` 뒤 일반 add rc 1·`add -f` rc 0).
 2. **`AGENTS.md` 에 이번과 무관한 미커밋 변경이 없는지 먼저 본다** — `git status --porcelain -- AGENTS.md` 가 비어 있지 않으면 등록하지 않고 보고한다. 아래 커밋이 그 파일의 다른 변경까지 담기 때문이다.
 3. **`karina:record-project-fact` 로 `AGENTS.md` 의 `Verify (앱 조작)` 줄에 `.claude/skills/verify-<app>/` 를 적는다** — `AGENTS.md` 쓰기의 정본은 그 스킬이고, 그 스킬이 바꿀 내용을 보이고 승인을 받는다.
-4. **생성 폴더와 `AGENTS.md` 를 함께 로컬 커밋한다** — `git add -- .claude/skills/verify-<app> AGENTS.md` 뒤 `git commit -m "설정: 검증 스킬 verify-<app> 생성" -- .claude/skills/verify-<app> AGENTS.md`. 새 폴더는 추적 전이라 `add` 없이 경로를 지정하면 `pathspec … did not match` 로 실패한다. 1번에서 부정 사슬을 골랐으면 `.gitignore` 를, `-f` 를 골랐으면 `add` 에 `-f` 를 더한다. 포인터만 커밋되고 대상이 빠지거나 그 반대면 PR head 에서 한쪽이 없다.
+4. **생성 폴더와 `AGENTS.md` 를 함께 로컬 커밋한다** — `git add -- .claude/skills/verify-<app> AGENTS.md` 뒤 `git commit -m "설정: 검증 스킬 verify-<app> 생성" -- .claude/skills/verify-<app> AGENTS.md`. 새 폴더는 추적 전이라 `add` 없이 경로를 지정하면 `pathspec … did not match` 로 실패한다. 1번에서 부정 사슬을 골랐으면 `.gitignore` 를, `-f` 를 골랐으면 `add` 에 `-f` 를 더한다. 포인터만 커밋되고 대상이 빠지거나 그 반대면 push 할 head 에서 한쪽이 없다.
 5. **앱이 바뀌면 `/karina:maintain-verification-skill` 로 지도를 다시 맞춘다고 안내한다** — 주기는 사용자가 물을 때만 제안한다.
 
 ## 보고

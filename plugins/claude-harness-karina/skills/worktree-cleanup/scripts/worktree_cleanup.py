@@ -28,12 +28,6 @@ remove [--dry-run] <경로>... — 경로마다 audit 과 같은 판정을 다�
   (--dry-run 이면 `RESULT: dry-run · would remove N · refused N · failed N`). 이어서 경로마다
   REMOVED | REFUSED | FAILED | PLAN 줄, 백업 항목마다 BACKUP | SKIP 줄.
 
-sessions --path <경로> [--minutes 30] [--session <id>] — 읽기 전용. `karina:implement` 가 브랜치를 바꾸기 전에 같은
-  체크아웃의 병행 세션을 찾는다. 폴더 판정은 audit 의 세션과 같다(슬러그 정확 일치 또는 `<슬러그>-` 접두). 그 폴더들의
-  `*.jsonl` 마다(파일 이름 = 세션 ID) mtime 이 --minutes 안이면 `OTHER <세션 ID> <경과 분> <폴더 이름>` 줄(경과 순),
-  없으면 `NONE`, 경로에 비 ASCII 가 있으면 `UNKNOWN <사유>`. 자기 세션(--session, 없으면 CLAUDE_CODE_SESSION_ID)은 뺀다.
-  종료 코드는 늘 0.
-
 변동값 주입: --now <epoch 초> · --projects-dir · --pr-json <[{"head","state"}] 파일 — 없으면 `gh pr list` 를 부르고
 실패하면 PR 열은 -> · --backup-root(기본 시스템 임시 폴더/karina-plugin/worktree-backup — TEMP-FILES.md) · --karina-cli <경로>(.py 면
 python 으로 실행 · 없으면 KARINA_CLI_COMMAND → PATH 의 karina-cli) · --no-karina.
@@ -425,53 +419,11 @@ def cmd_remove(args):
     return 1 if refused or failed else 0
 
 
-def recent_sessions(path, projects_dir, own, now, minutes):
-    """(세션 ID, 경과 분, 폴더 이름) 목록. 비 ASCII 경로면 None."""
-    if not path.isascii():
-        return None
-    s = slug(path)
-    found = []
-    if not projects_dir or not os.path.isdir(projects_dir):
-        return found
-    for name in os.listdir(projects_dir):
-        low = name.lower()
-        d = os.path.join(projects_dir, name)
-        if not (low == s or low.startswith(s + '-')) or not os.path.isdir(d):
-            continue
-        for f in os.listdir(d):
-            if not f.endswith('.jsonl') or f[:-6] == own:
-                continue
-            age = (now - os.path.getmtime(os.path.join(d, f))) / 60
-            if age <= minutes:
-                found.append((f[:-6], int(age), name))
-    return sorted(found, key=lambda r: r[1])
-
-
-def cmd_sessions(args):
-    now = args.now if args.now is not None else int(time.time())
-    own = args.session or os.environ.get('CLAUDE_CODE_SESSION_ID') or ''
-    rows = recent_sessions(os.path.abspath(args.path), args.projects_dir, own, now, args.minutes)
-    if rows is None:
-        print('UNKNOWN 비 ASCII 경로 — 세션 폴더 슬러그 규칙을 모른다')
-    elif not rows:
-        print('NONE')
-    else:
-        for sid, age, name in rows:
-            print('OTHER %s %d %s' % (sid, age, name))
-    return 0
-
-
 def main(argv=None):
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
     ap = argparse.ArgumentParser(description='git worktree 감사·정리')
     sub = ap.add_subparsers(dest='cmd', required=True)
-    ss = sub.add_parser('sessions')
-    ss.add_argument('--path', required=True)
-    ss.add_argument('--minutes', type=float, default=30)
-    ss.add_argument('--session')
-    ss.add_argument('--now', type=int)
-    ss.add_argument('--projects-dir', default=os.path.join(os.path.expanduser('~'), '.claude', 'projects'))
     for name in ('audit', 'remove'):
         p = sub.add_parser(name)
         p.add_argument('--repo', default='.')
@@ -489,8 +441,6 @@ def main(argv=None):
     rm.add_argument('--no-karina', action='store_true')
     rm.add_argument('paths', nargs='+')
     args = ap.parse_args(argv)
-    if args.cmd == 'sessions':
-        return cmd_sessions(args)
     try:
         return cmd_audit(args) if args.cmd == 'audit' else cmd_remove(args)
     except Fatal as e:

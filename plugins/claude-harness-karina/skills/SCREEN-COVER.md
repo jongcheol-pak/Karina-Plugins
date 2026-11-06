@@ -1,6 +1,6 @@
 # 앱 검증 중 화면 가리기
 
-> 여덟 자리가 가리키는 공용 규칙이다 — `implement/references/report-format.md`·`implement/references/loop-exceptions.md`·`implement/references/final-review.md`(`karina:implement`) · `pr/references/ship.md`(ship 의 `gate-verifier` 호출) · `implement/references/local-gate.md`(로컬 게이트의 `gate-verifier` 호출) · `karina-systematic-debugging/SKILL.md` · `create-verification-skill/SKILL.md` · `maintain-verification-skill/SKILL.md`. Karina 앱의 화면 가리기(cover)가 켜진 모니터는 마우스 입력이 막혀(`karina-cli skills get karina-workspace` 「Screen Cover」) 검증 스킬의 조작이 그 모니터에서 실패한다.
+> 일곱 자리가 가리키는 공용 규칙이다 — `implement/references/report-format.md`·`implement/references/loop-exceptions.md`·`implement/references/final-review.md`(`karina:implement`) · `implement/references/local-gate.md`(로컬 게이트의 `gate-verifier` 호출) · `karina-systematic-debugging/SKILL.md` · `create-verification-skill/SKILL.md` · `maintain-verification-skill/SKILL.md`. Karina 앱의 화면 가리기(cover)가 켜진 모니터는 마우스 입력이 막혀(`karina-cli skills get karina-workspace` 「Screen Cover」) 검증 스킬의 조작이 그 모니터에서 실패한다.
 
 ## 대상
 
@@ -16,7 +16,7 @@ Bash:       "$(command -v pwsh || echo powershell)" -NoProfile -File "<스크립
 PowerShell: & "<스크립트>" -Action <pause|resume> -Holder '<보유자>'
 ```
 
-- **보유자는 `<호출자>:<레포 루트 또는 worktree 절대경로>` 다** — 예 `implement:D:/repo` · `ship:<head worktree>`. 병렬 체인 워커는 worktree 가 달라 보유자가 갈리고, 스크립트는 마지막 보유자가 resume 할 때만 다시 덮는다. 같은 단계의 pause 와 resume 은 같은 보유자를 쓴다.
+- **보유자는 `<호출자>:<레포 루트 또는 worktree 절대경로>` 다** — 예 `implement:D:/repo` · `local-gate:<head worktree>`. 병렬 체인 워커는 worktree 가 달라 보유자가 갈리고, 스크립트는 마지막 보유자가 resume 할 때만 다시 덮는다. 같은 단계의 pause 와 resume 은 같은 보유자를 쓴다.
 - **판정은 출력의 `karina-cover ` 줄 하나다** — `paused`·`held`·`restored`·`skip` 은 exit 0 이고 그대로 계속한다. `ERROR <사유>` 는 exit 1 이지만 검증을 멈추지 않고, 그 단계의 보고 「기계로 확인 못 한 항목」(없으면 보고 끝)에 `화면 가리기 — <줄 원문>` 으로 싣는다. 화면 가리기는 검증 대상이 아니라 환경이다.
 
 ## 언제 끄고 켜는가
@@ -27,8 +27,7 @@ PowerShell: & "<스크립트>" -Action <pause|resume> -Holder '<보유자>'
 | 호출부 | resume 자리 |
 |---|---|
 | `karina:implement` | 회차 끝의 완료 시각 기록 직전(`report-format.md`「소요 기록」) — 그리고 회차가 끝나기 전에 멈추는 모든 보고 직전(멈추는 넷 · 시크릿 경고 · plan 밖 변경 · 같은 지적 3회 · 사용자 중단) |
-| `karina:pr` ship | 4번 `gate-verifier` 가 돌아온 뒤 — 판정 없이 끝난 경우도 |
-| main 직행 로컬 게이트(`implement/references/local-gate.md`) | 「호출」 의 `gate-verifier` 가 돌아온 뒤 — 판정 없이 끝난 경우도 |
+| 로컬 게이트(`implement/references/local-gate.md`) | 「호출」 의 `gate-verifier` 가 돌아온 뒤 — 판정 없이 끝난 경우도 |
 | `karina-systematic-debugging` | 최종 보고 직전 — `karina:implement` 루프 안이면 그 루프의 자리를 따른다 |
 | `create-verification-skill` | 4단계 증명이 끝난 뒤 — 성공이든 초안이든 |
 | `maintain-verification-skill` | 5번 재증명까지 포함한 이번 실행의 마지막 조작 뒤, 6번 전 |

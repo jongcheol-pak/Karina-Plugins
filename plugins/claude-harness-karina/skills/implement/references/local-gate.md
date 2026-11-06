@@ -1,6 +1,6 @@
 # 로컬 게이트 — push 전 독립 검증과 화면 확인
 
-> 기본 브랜치에 push 하기 직전에 읽는다(`push-flow.md`「기본 브랜치 push」) — `karina:implement` 회차 끝(`final-review.md`「완료 순서」 의 plan 파일 커밋 뒤), `karina:karina-systematic-debugging` 직접 수정 경로(`push-flow.md`「갈래」), `karina:chain-plan` 체인 끝(`../../chain-plan/references/chain-end-pr.md`「Y 체인 끝 PR」). 「코드를 쓰지 않은 쪽의 판정」 과 「사용자가 본 화면」 없이는 push 하지 않게 하고, 작은 변경은 「경량 면제」 로 검증자를 부르지 않는다.
+> 기본 브랜치에 push 하기 직전에 읽는다(`push-flow.md`「기본 브랜치 push」) — `karina:implement` 회차 끝(`final-review.md`「완료 순서」 의 plan 파일 커밋 뒤), `karina:karina-systematic-debugging` 직접 수정 경로(`push-flow.md`「갈래」), `karina:chain-plan` 체인 끝(`../../chain-plan/references/chain-end-push.md`「체인 끝 push」). 「코드를 쓰지 않은 쪽의 판정」 과 「사용자가 본 화면」 없이는 push 하지 않게 하고, 작은 변경은 「경량 면제」 로 검증자를 부르지 않는다.
 > 출처는 pstack autopilot-full 4·5단계다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/autopilot-full.md`(*"Green CI alone never authorizes a merge."*).
 >
 > 목차: 회차 끝 게이트(대상과 범위 · 경량 면제 · worktree 와 빌드 캐시 · 본문 파일 · 호출 · FAIL 처리 · 판정 재사용 · 게이트 완화 서명 · 화면 게이트 · push 와 거부 · 보고) · 디버깅 단독 · 체인 끝
@@ -87,6 +87,6 @@
 `karina:chain-plan` 코디네이터가 체인 끝 push 직전에 1회 돈다 — 사용자 답 「체인 끝 1회」. 코디네이터는 대상 레포 밖에서 돌 수 있어 git 명령은 모두 `git -C "<대상 레포 경로>"` 로 돈다. 다른 자리는 넷이다.
 
 - **범위의 아래 끝은 원격이 없으면 체인 결정 파일(`../../chain-plan/references/chain-decisions.md`「결정 기록」)의 `- plan 1 · 부모 <sha>` 다** — 코디네이터는 워커의 `plan.md` 를 읽지 않는다.
-- **화면 줄의 출처는 `git log --format=%B <범위>` 의 `화면: ` 으로 시작하는 줄이다** — 체인 끝 PR 이 화면 변경을 찾는 자리와 같다(`../../chain-plan/references/chain-end-pr.md`「Y 체인 끝 PR」).
+- **화면 줄의 출처는 `git log --format=%B <범위>` 의 `화면: ` 으로 시작하는 줄이다** — 체인 끝 push 가 게이트 본문 파일의 화면 절을 채우는 자리와 같다(`../../chain-plan/references/chain-end-push.md`「체인 끝 push」).
 - **게이트 완화 서명과 화면 확인은 코디네이터가 사용자에게 직접 받는다 — 위 「화면 게이트」 의 사용자 원문 기준 그대로다** — 코디네이터 판정·위임 답은 서명이 아니다.
 - **FAIL 이면 코디네이터가 고치지 않는다 — `../../chain-plan/references/continuation.md`「체인 끝 게이트 FAIL」 대로 실패 파일이 속한 계획의 이어받기 워커가 고치고, 끝나면 직전 판정을 넘겨 게이트를 다시 돈다(최대 2회)** — 코디네이터는 파일을 고치지 않는다(`../../chain-plan/SKILL.md`「하지 않는 것」). 판정 기록은 결정 파일에 `- 체인 끝 게이트 · <판정> · head <full SHA> · base <full SHA> · patch-id <값>` 줄로 남긴다 — 레포 밖 파일을 코디네이터가 직접 써 작성자를 안다.

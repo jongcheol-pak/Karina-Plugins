@@ -27,7 +27,7 @@ description: 승인된 plan.md(`## Goal` 아래 `> 승인:` 줄에 날짜가 있
 
 - **프로젝트가 다른 패턴을 명시했으면 그것이 스킬 절차를 이긴다** — `AGENTS.md`(또는 그것이 가리키는 문서)가 아키텍처·배치·도구를 정해 두었으면 그 프로젝트의 결정이 먼저다. 스킬 절차를 그대로 밀면 그 레포에서만 이질적인 코드가 남는다.
 - **루프 진입 전 1회, `plan.md` 의 승인 표지(`^> 승인: [0-9]{4}-` 줄 — 서식 정본 `../plan/references/plan-template.md` 「Goal」)를 본다** — 없으면 승인 전 초안일 수 있다. 없으면 `references/loop-exceptions.md`「승인 표지 없음」 을 Read 한다 — 확인 방식이 이 루프의 여덟 정지와 갈리는 막힘형 호출이라 그 절에 있다.
-- **루프 진입 전 1회 `references/push-flow.md`「기본 브랜치 push」·「적용 판정」·「브랜치」 를 Read 한다** — `AGENTS.md` 가 main 직행을 선언했으면 브랜치를 그대로 두고 회차 끝에 `references/local-gate.md`「회차 끝 게이트」 를 거쳐 push 한다. 그 밖에 기본 브랜치에서 시작했으면 `karina/<슬러그>` 로 옮겨 작업하고, 회차 끝에 같은 파일 「PR 열기」 로 PR 을 연다.
+- **루프 진입 전 1회 `references/push-flow.md`「기본 브랜치 push」 를 Read 한다** — 브랜치를 그대로 두고 지금 브랜치에 커밋하며, 회차 끝에 `references/local-gate.md`「회차 끝 게이트」 를 거쳐 push 한다. PR 은 열지 않는다.
 
 ## 자율 루프
 
@@ -105,7 +105,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ## 회차 끝
 
-- **4번 통과 뒤 `references/final-review.md`「완료 순서」 대로 닫고, `completion-reviewer` 서브에이전트는 같은 파일 「절차」 대로 호출한다** — Deferred 판정·함정 기록이 리뷰보다 먼저이고 완료 시각·plan 파일 커밋·PR 열기가 최종 보고 앞이다. 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
+- **4번 통과 뒤 `references/final-review.md`「완료 순서」 대로 닫고, `completion-reviewer` 서브에이전트는 같은 파일 「절차」 대로 호출한다** — Deferred 판정·함정 기록이 리뷰보다 먼저이고 완료 시각·plan 파일 커밋·로컬 게이트와 push 가 최종 보고 앞이다. 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
 - **완료 때 함정 판정과 보류·기각 `[DECISION]` 의 K 5-2 일괄 큐잉은 같은 파일 「함정 기록·결정 큐잉」 대로 한다(함정 판정 기준은 `../REPO-CONVENTIONS.md`「쓰기」)** — 그 큐잉의 배치 시점은 여기 하나다.
 - **`## Deferred / Follow-up`의 항목은 전부 판정한다 — 판정과 대장 이관은 같은 파일 「Deferred 판정」** — 판정 없이 남긴 항목은 `plan.md` 와 함께 덮어써진다.
 - **일부 task를 남긴 채 완료라고 보고하지 않는다** — 남은 것이 있으면 그것은 진행 중이거나 중단이지 완료가 아니다.
