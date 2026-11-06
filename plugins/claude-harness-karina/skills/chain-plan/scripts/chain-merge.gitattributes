@@ -5,6 +5,5 @@
 # chaintheirs: 계획마다 덮어쓰는 회차 파일 — 병합되는 쪽 판을 받는다(드라이버는 병합 명령의 -c 가 정의).
 # Deferred 대장은 넣지 않는다 — 계수 줄이 있어 union 이 소리 없이 오염시킨다.
 docs/plans/chain-*.md merge=union
-docs/plans/history.md merge=union
 /plan.md merge=chaintheirs
 /notes.md merge=chaintheirs

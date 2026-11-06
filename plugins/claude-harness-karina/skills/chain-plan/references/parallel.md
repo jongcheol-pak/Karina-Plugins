@@ -61,7 +61,7 @@
 `worker_done`(succeeded)을 받은 순서대로 하나씩 한다. 병합 중에 다른 워커가 끝나면 앞 병합이 끝난 뒤에 한다. **PR 모드 체인이면 이 절·「충돌·검증 실패」·「버전」 대신 `pr-mode.md`「병렬」 을 따른다** — 워커가 PR 을 원격에서 merge 하므로 여기서 로컬로 다시 병합하면 체인 브랜치가 원격과 갈라진다.
 
 - **ⓐ 주 레포가 깨끗할 때만 한다 — `git -C "<대상 레포 경로>" status --porcelain --untracked-files=no` 가 비어 있고 현재 브랜치가 체인 브랜치여야 한다. 아니면 병합하지 않고 보고하고 멈춘다(stash·폐기하지 않는다)** — 미커밋 변경이 있으면 git 이 병합을 거부하거나 `--abort` 가 그 변경을 되살리지 못할 수 있고, 섞인 트리의 검증은 판정이 오염된다. 워커에 넘겨도 주 레포는 고칠 수 없다.
-- **ⓑ 속성이 걸리는지 본다 — `git -C "<대상 레포 경로>" -c core.attributesFile="<skill>/scripts/chain-merge.gitattributes" check-attr merge -- docs/plans/chain-<Run id>.md docs/plans/history.md plan.md notes.md`** — `core.attributesFile` 은 우선순위가 가장 낮아 레포의 `.gitattributes` 가 같은 경로를 정하면 그쪽이 이긴다. `union`·`chaintheirs` 가 아닌 경로는 일반 병합으로 두고 진행한다(충돌하면 「충돌·검증 실패」).
+- **ⓑ 속성이 걸리는지 본다 — `git -C "<대상 레포 경로>" -c core.attributesFile="<skill>/scripts/chain-merge.gitattributes" check-attr merge -- docs/plans/chain-<Run id>.md plan.md notes.md`** — `core.attributesFile` 은 우선순위가 가장 낮아 레포의 `.gitattributes` 가 같은 경로를 정하면 그쪽이 이긴다. `union`·`chaintheirs` 가 아닌 경로는 일반 병합으로 두고 진행한다(충돌하면 「충돌·검증 실패」).
 - **ⓒ 커밋하지 않고 병합한다:**
 
   ```
