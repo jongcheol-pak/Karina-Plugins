@@ -4,7 +4,6 @@ $skillsDir = Join-Path $PSScriptRoot '..' 'skills'
 $s = Get-SkillSection -Path (Join-Path $skillsDir 'sample/SKILL.md') -StartHeading '## 주입 대상 절' -StopHeading '## 그다음 절'
 Write-Output $s
 
-# 복제 사본 동기 축의 원본 쪽(plan 탐색 함수) · 사본 쪽(불릿 리터럴)
 $planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
 $planFenceRx = '(?ms)^ {0,3}([`~])\1{2,}[^\r\n]*\r?$.*?(?:^ {0,3}\1{3}[^\r\n]*\r?$|\z)'
 function Find-PlanFileUpwards([string]$StartDir, [int]$MaxDepth = 8) {

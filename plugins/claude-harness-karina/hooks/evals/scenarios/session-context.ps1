@@ -1029,5 +1029,5 @@ if (Test-HookSelected @('session-context')) {
         Assert-Case -Name "session-context: [x]·[X] 뿐이면 미완료로 세지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '중 미완료'
     } finally { $env:USERPROFILE = $scUpSaved }
     Remove-Item -Recurse -Force $scUp, $scDp, $scNest, $scWt, $scBul, $scMk -ErrorAction SilentlyContinue
-}   # ---- §13 게이트 끝 (session-context) ----
+}
 

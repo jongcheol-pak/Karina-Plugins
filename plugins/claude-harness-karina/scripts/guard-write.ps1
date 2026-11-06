@@ -313,8 +313,6 @@ if ($foundIn) {
                     [Console]::Out.WriteLine($payload)
                 }
             } elseif ($incomplete -eq 0 -and $done -eq 0) {
-                # H3: 코드 펜스 밖 task 체크박스(- [ ]/[x] 등)가 하나도 없음 = 빈/플레이스홀더 plan.
-                #   0바이트·골격만 있는 plan.md 하나로 게이트를 무력화하는 약점을 가시화한다(비차단).
                 if (Test-WarnOnce -Kind 'H3') {
                     $warnMsg = "[HARNESS] 이 plan.md에 task 체크박스(- [ ] / - [x])가 하나도 없습니다 — 빈/플레이스홀더 plan일 수 있습니다. " +
                                "plan 존재 게이트는 plan 존재만 보고 통과시키므로, 내용 없는 plan으로 코드 변경이 통과하는 것을 막지 못합니다. karina:plan으로 실제 task를 작성하세요. " +

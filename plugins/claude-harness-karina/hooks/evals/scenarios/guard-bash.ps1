@@ -217,9 +217,6 @@ $rtcUnneeded = Join-Path $work 'rtc-unneeded'; New-Item -ItemType Directory $rtc
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUnneeded '기능: T3 — 검색 요약')
 Assert-Case -Name "rtc: [x] (불요 뿐인 T3 커밋 통과(무출력) (델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 
-# ---- [대장 2026-10-08] 커밋 제목을 -m 밖에서 읽기(RF) — -F 파일·-F - heredoc/here-string·PowerShell 여러 줄 -m ----
-#   제목을 끝내 못 읽으면 차단하지 않고 plan 이 있을 때만 경고한다. 모든 케이스가 cwd 를 픽스처 폴더로 준다
-#   (빼면 러너 레포의 실제 plan.md 를 읽는다). 근거는 `rules/bash-guard-rationale.md` §14.
 $rfJ = { param($cwd, $cmd, $tool = 'Bash') (@{ tool_name = $tool; cwd = $cwd; tool_input = @{ command = $cmd } } | ConvertTo-Json -Compress) }
 $rfUn = Join-Path $work 'rf-unchecked'; New-Item -ItemType Directory $rfUn -Force | Out-Null
 "# plan`n- [ ] T3. 검색 기능" | Set-Content (Join-Path $rfUn 'plan.md')
