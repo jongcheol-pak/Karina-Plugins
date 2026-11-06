@@ -10,7 +10,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 10 / 종결 120
+**▶ 현행 잔량(기계 대조 대상)**: 대기 11 / 종결 120
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -34,6 +34,8 @@
 - [2026-10-22] **세션 시작 대장 신호의 「축 ② 임계 30일」 문구 정리** — `scripts/session-ledger-signal.ps1` 이 대장 최고령을 「축 ② 임계 30일」 과 함께 주입하는데, 그 임계는 소진 batch 착수 조건이고 batch 절차와 batch 회고 대장은 이제 없다. 문구를 현행 용도로 고치거나 신호를 걷고 `scripts/rules/session-context-rationale-plan.md` §12 와 hook 골든 SC44 계열을 함께 맞춘다 (출처: batch 회고 대장 삭제 회차 후보 라운드 — 사용자 보류) (실해: 2026-10-22 세션 시작 주입 「최고령 8일 — 축 ② 임계 30일」 이 없어진 절차의 임계를 안내)
 
 ### hook · 안전망 (차단·경고·골든 러너)
+
+- [2026-11-07] **session-context 골든의 `$env:USERPROFILE` 누수** — `hooks/evals/scenarios/session-context.ps1` 의 앞 케이스(376·658·770행)가 USERPROFILE 을 vault 홈으로 바꾸고 되돌리지 않아, 뒤 블록들(876–880·926·957·978행)이 저마다 저장·복원하고 859–864행 주석이 그 사정을 해명한다. 앞 케이스를 try/finally 로 복원하고 뒤 블록의 보정과 주석을 지운다 (출처: 응답 언어 주기 재주입 회차 주석 정리 MUST KILL) (실해: 2026-10-08 01c09996 — 첫 RED 시도가 이 누수로 무효)
 
 - [2026-11-01] **운영 hook 의 이벤트당 다중 pwsh 기동 통합** — `hooks/hooks.json` 이 도구 호출마다 hook 별로 pwsh 를 띄운다(PreToolUse `Bash|PowerShell` 2 + PostToolUse 2 · `Write|Edit` 2+2 · `Skill` 3). 이벤트·matcher 별 디스패처 하나로 묶되 안전 임계 hook 의 exit 2 합성과 골든 실증이 필요하다. 위키 decisions 2026-10-24 가 문구를 두 곳으로 가르는 안을 기각했으니 문구는 한 곳에 둔다 (출처: hook 골든 in-process 회차 후보 — 사용자 「대장에 등재」) (실해: 2026-11-01 빈 pwsh 기동 약 290ms · guard-bash 단독 약 790ms 가 도구 호출마다 든다 — 사용자 결정 예외)
 
