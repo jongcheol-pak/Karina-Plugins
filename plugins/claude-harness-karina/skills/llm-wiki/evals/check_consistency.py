@@ -658,9 +658,9 @@ def check_type_enumerations(schema_text, types_text, bundle, lint):
     열어야 하는데 그러면 산문 단어 오탐이 들어온다 — 의식적 트레이드오프다(F-7 m2).
     **그 반대 방향은 B5가 목록 등재분에 한해서만 본다**(`RETIRED_TYPES`) — 자동 확장이 아니라
     사람이 적은 이름만 보므로 위 어휘 한정을 깨지 않는다. 즉 미등재 삭제 이름은 여전히 통과한다.
-    **읽는 파일이 셋으로 갈린다** — 타입 집합(`### 2.N`)은 `types_text`, 열거 자리(A1·A2·A5~A7·
+    **읽는 자리가 넷으로 갈린다** — 타입 집합(`### 2.N`)은 `types_text`, 열거 자리(A1·A2·A5~A7·
     B1·B2)는 코어 `schema_text` 이되 §7 항목 자리(A2·A5·A7)는 `schema-lint.md`(`TYPE_ENUM_LINT_SITES`),
-    B5 유령 이름은 번들 네 파일(`bundle`) 전부다.
+    B3 목차는 `templates.md`, B5 유령 이름은 번들 네 파일(`bundle`) 전부다.
     반환: (불일치 목록, 대조 항목 수)."""
     types = {hm.group(1) for hm in SCHEMA_TYPE_HEADING_RX.finditer(types_text)}
     if not types:

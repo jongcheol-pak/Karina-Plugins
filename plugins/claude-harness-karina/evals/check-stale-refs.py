@@ -85,12 +85,10 @@ DEAD = [
     # 구 회차 기록 1 (2026-10-12 감사) — 위키 사용 기록 파일. 읽는 코드·절차가 없어 기록과 규칙을 함께 걷었다.
     'wiki-usage',
     # 구 chain-plan 참조 2 (2026-10-12 감사 2회차) — 이웃 파일의 절로 합쳤다(cli-errors 「시작 이상 응답」·user-relay 「봉투 밖 승인 요청」).
-    #  'delegation.md' 만 쓰면 살아 있는 `plan/references/measure-delegation.md` 가 부분 일치로 잡혀 경로 접두를 붙인다.
     'references/delegation.md', 'worker-start.md',
     # 구 plan 참조 1 (2026-10-18 체인 plan 3) — intent 산출물 폐지. 요구·BASE 는 plan-template 「Goal」 로 옮겼다.
     'intent-rules.md',
     # 구 debugging 참조 1 (2026-10-18 체인 plan 2) — 세 스킬이 함께 읽도록 skills 최상위 PERF-MEASUREMENT.md 로 옮겼다.
-    #  대소문자를 가르는 정규식이라 새 이름은 걸리지 않는다.
     'perf-measurement',
     # 개명 전 이름 5 (2.0.0 플러그인 개명) — 스킬 호출 접두·플러그인 폴더·마켓 이름·hook 태그와 지운 설치 스크립트.
     #  `pjc/` 브랜치 접두와 단어 `pjc` 는 넣지 않는다: 다른 프로젝트 슬러그 `pjc-homepage`·작성자 이니셜이 오탐된다.
@@ -273,15 +271,8 @@ def scan_ledger():
 
 def scan_tree():
     targets = []
-    # 레포 루트의 스크립트·문서 — 하위 재귀는 하지 않는다(그 트리는 아래 루프가 돈다).
-    #   루트를 재귀하면 .git·node_modules 배제를 새로 관리해야 하는데 얻는 것이 없다.
     for pat in ('*.ps1', '*.md'):
         targets.extend(p for p in ROOT.glob(pat) if p.is_file())
-    # 하니스 루트의 폴더는 **목록으로 고른다** — `assets/` 는 옛 이름을 이력으로
-    #   인용해 범위 밖이다. `skills`·`docs` 는 없으면 잴 것이 없다는 뜻이라 앵커 실패고,
-    #   나머지는 선택이다(골든 픽스처는 일부만 갖는다).
-    # `.github` 는 **git 루트**에 있다(모노레포에서 하니스 루트는 git 루트 아래 플러그인 폴더다).
-    #   CI 없는 레포가 정상이라 부재는 건너뛴다.
     for base in RUNTIME_DIRS + ('docs', GIT_ROOT / '.github'):
         d = ROOT / base
         if not d.is_dir():

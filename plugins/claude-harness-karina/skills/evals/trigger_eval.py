@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
 """스킬 트리거 정확도 eval 러너.
 
-사용법:
-  python trigger_eval.py                      # 격리 모드로 전 케이스 1회
-  python trigger_eval.py --isolation both     # 격리·비격리 각 1회 + 대조 요약
-  python trigger_eval.py --filter impl-       # id 접두 필터
-
 각 케이스를 `claude -p <query> --output-format stream-json`으로 실행하고 **Skill 도구 호출을
-관측**해 스킬 발동 여부를 판정한다. 정적 문자열 매칭이 아니라 실제 모델 판단을 관측하는
-이유는, 트리거가 모델이 스킬 목록을 보고 내리는 결정이라 정적으로 재현되지 않기 때문이다.
+관측**해 스킬 발동 여부를 판정한다.
 
 이 러너가 반드시 지키는 세 가지 (전부 과거에 실측된 실패를 막기 위한 것):
   1. **karina 로드 단언** — stream-json의 `init` 이벤트에 실린 plugins/skills/agents 배열로
@@ -60,10 +54,7 @@ CASES_JSON = os.path.join(EVALS_DIR, "trigger-cases.json")
 # 그 탐색만으로 상한에 닿아 **스킬 호출 기회 자체가 없었다**. 스킬이 뜨는 케이스는 첫 Skill
 # 호출에서 끊으므로(run_claude) 상한을 올려도 비용이 늘지 않는다 — 늘어나는 것은 미발동 케이스뿐.
 MAX_TURNS = 8
-# 2026-07-29 기준선 40세션의 최장 케이스가 108.7초였다 — 그보다 넉넉히 잡아 정상 케이스가
-# timeout으로 버려지지 않게 하되, 응답이 끊긴 세션이 러너를 무한정 붙잡지도 않게 한다.
 CASE_TIMEOUT_SEC = 180
-# PASS 가 아닌 케이스에 싣는 진단의 상한. 원인을 읽기엔 충분하고 콘솔 출력을 부풀리지 않는 선.
 MAX_DIAG_TOOLS = 20
 MAX_DIAG_TEXT = 300
 
@@ -231,17 +222,7 @@ def kill_tree(proc):
 
 
 def parse_events(lines):
-    """stream-json 줄들에서 (init, 발동 스킬 목록, result, 도구 시퀀스, 최종 텍스트)를 뽑는다.
-
-    첫 줄이 init이라고 가정하면 안 된다 — karina hook이 있으면 hook_started가 먼저 온다.
-    플러그인 스킬은 네임스페이스 이름(`karina:implement`)으로 등재되므로 그대로 수집한다.
-
-    도구 시퀀스와 최종 텍스트는 **PASS 가 아닌 케이스의 원인 규명용**이다. 이것이 없으면 판정 줄에
-    "발동 안 함"만 남아 ⓐ 질의가 선행 대화를 전제해 모델이 되물은 것 ⓑ 픽스처와 전제가 어긋난 것
-    ⓒ 탐색만 하다 턴이 소진된 것 ⓓ 진짜로 description이 안 맞은 것이 구분되지 않는다(2026-08-06에
-    실제로 그 오진이 Deferred 대장에 등재됐다). 같은 순회에서 함께 모으므로 추가 파싱 비용이 없다.
-
-    `tool_calls`는 호출 **시도**의 기록이다 — 결과(성공/거부)는 보지 않으므로 permission-mode가
+    """`tool_calls`는 호출 **시도**의 기록이다 — 결과(성공/거부)는 보지 않으므로 permission-mode가
     manual일 때 거부된 호출도 들어간다. 분류에 쓸 때 "실제로 그 작업을 했다"로 읽지 말 것.
     """
     init_ev = None
@@ -400,13 +381,6 @@ def judge_case(case, triggered, stop_reason, timed_out):
 
 
 def attach_diagnostics(result, stop_reason, tool_calls, final_text):
-    """PASS 가 아닌 결과에 원인 분류용 진단을 싣는다(제자리 수정).
-
-    없으면 판정 줄에 「FAIL」만 남아 ⓐ 질의가 선행 대화를 전제해 되물은 것 ⓑ 픽스처와
-    전제가 어긋난 것 ⓒ 턴이 소진된 것 ⓓ 진짜로 description 이 안 맞은 것 ⓔ 다른 스킬이
-    먼저 뜬 것이 갈리지 않는다. PASS 에는 싣지 않는다 — 출력만 길어진다. 절단은
-    표시한다(조용한 절단 금지). 찍는 줄은 `diagnostic_lines` 가 만든다.
-    """
     if result.get("status") == "pass":
         return
     result["stop_reason"] = stop_reason
@@ -418,7 +392,6 @@ def attach_diagnostics(result, stop_reason, tool_calls, final_text):
 
 
 def diagnostic_lines(result):
-    """`attach_diagnostics` 가 실은 진단을 케이스 줄 아래 찍을 줄로 바꾼다 — PASS 는 빈 목록."""
     if "tool_calls" not in result:
         return []
     return [f"       stop_reason: {result.get('stop_reason')}",
@@ -427,7 +400,6 @@ def diagnostic_lines(result):
 
 
 def run_case(case, config_dir, model, workspaces):
-    """한 케이스를 실행·판정해 결과 dict를 반환한다. 오류는 1회 재시도한다."""
     ws = workspaces[case["workspace"]]
     started = time.time()
     attempts = 0
@@ -572,11 +544,8 @@ def exit_code(summaries):
 
 
 def run_suite(cases, isolation, model):
-    """한 격리 모드로 전 케이스를 돌리고 요약을 출력한 뒤 요약과 케이스 결과를 반환한다."""
     config_dir = prepare_isolated_config() if isolation == "isolated" else None
     tmp_root = tempfile.mkdtemp(prefix="karina-eval-ws-")
-    # 케이스가 실제로 쓰는 종류만 만든다 — 케이스 파일에 새 workspace가 추가돼도
-    # 이 목록을 함께 고칠 필요가 없다(하드코딩 목록은 곧 조용한 KeyError다).
     workspaces = {}
     for kind in sorted({c["workspace"] for c in cases}):
         path = os.path.join(tmp_root, kind)
@@ -600,8 +569,6 @@ def run_suite(cases, isolation, model):
             for line in diagnostic_lines(result):
                 print(line)
             results.append(result)
-        # `init` 이벤트를 한 번도 못 받으면 위 단언이 아예 돌지 않는다 — 로드 확인 없이
-        # 전 케이스가 "미발동"으로 집계되는 은닉 실패라, 그 자체를 실패로 낸다.
         if load_info is None:
             print(f"[중단] init 이벤트를 한 번도 받지 못해 karina 로드를 확인하지 못했습니다 (mode={isolation}).")
             sys.exit(2)
