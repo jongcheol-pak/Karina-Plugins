@@ -61,7 +61,6 @@ $sub = Invoke-RlSkill 'rl-p4' 'sub-2'
 Assert-Case -Name "inject-reply-language: 서브에이전트 Skill 도 주입한다" -R (Get-RlContext $sub) -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어]'
 Assert-Case -Name "inject-reply-language: 서브에이전트 Skill 은 메인 카운터를 되돌리지 않는다" -R (Invoke-RlPost 'rl-p4' 5) -ExpectContains 'hits=[5]'
 
-# ---- 배선 — 위 케이스는 스크립트에 JSON 을 직접 넣어 hooks.json 을 거치지 않는다 ----
 $rlHooks = Get-Content -LiteralPath (Join-Path $pluginRoot 'hooks/hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $rlUps = @($rlHooks.hooks.UserPromptSubmit | Where-Object { ($_.hooks.command -join ' ') -match 'inject-reply-language' })
 Assert-Case -Name "inject-reply-language: UserPromptSubmit 블록이 이 스크립트를 부르지 않는다" -R @{ code = 0; out = "blocks=$($rlUps.Count)" } -ExpectContains 'blocks=0'
