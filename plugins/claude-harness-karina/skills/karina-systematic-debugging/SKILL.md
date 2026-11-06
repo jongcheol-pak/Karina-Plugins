@@ -37,7 +37,7 @@ argument-hint: "<버그 또는 에러 설명>"
 - **재현은 직접 한다 — 사용자에게 맡기기 전 조건과 재현이 앱 조작일 때의 절차는 `references/investigation-log.md`「직접 재현 (1-B)」 를 Read 한다** — 사용자가 한 재현은 이 세션이 다시 돌릴 수 없어 4-D 재검증의 기준이 되지 못한다. 조작 전후의 화면 가리기는 `../SCREEN-COVER.md`「언제 끄고 켜는가」 다.
 - **재현에서 멈추지 말고 피드백 루프까지 만든다** — "이 버그에서만 레드로 가는 자동 pass/fail 신호". 조사의 최우선 지렛대이며 루프 유형 5종은 `references/investigation-log.md` 「피드백 루프 유형 (1-B)」에 있다(근거 §3).
 - **재현이 앱 화면 조작이면 고치기 전에 깨진 화면을 스크린샷으로 남긴다 — 이름·4-D 의 짝·보고 자리는 `references/investigation-log.md`「화면 증거 (UI 재현)」** — 고친 뒤에는 깨진 화면을 다시 얻을 수 없다.
-- 절차를 조사 로그(`references/investigation-log.md`)에 기록한다.
+- 절차는 조사 로그 서식(`references/investigation-log.md`)을 채워 남긴다.
 - **성능 증상(느려짐·메모리 증가)이면 `../PERF-MEASUREMENT.md`「성능 수치의 판정」 을 Read 한다** — 1회 타이밍은 잡음과 갈리지 않아 원인 판정의 증거가 되지 못한다.
 
 ### 1-C. 최근 변경 검사
