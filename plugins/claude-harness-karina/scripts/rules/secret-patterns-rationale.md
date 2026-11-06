@@ -14,7 +14,7 @@
 #   생기므로, 한 곳만 고치면 두 검사에 반영되게 한다.
 #
 # 이 파일은 stdin을 읽지 않고 함수 정의만 한다(실행 부작용 없음) — hook 목록·hooks.json에 등록하지 않고,
-#   validate.ps1의 $knownHelpers에 등록해 "미등록 스크립트" 경고를 피한다.
+#   scripts/rules/harness-hooks.json 이름 집합에 등록한다 — validate.ps1 은 그 집합에서 hook 을 뺀 나머지를 헬퍼로 본다.
 #
 # 함수 계약: 내용 문자열 → 매치된 시크릿 라벨 배열. 스캔 대상 판단(.env 스킵 등)·경고 문구는
 #   각 caller가 결정한다(이 함수는 "내용→매치"만).

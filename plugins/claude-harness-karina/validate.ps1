@@ -136,23 +136,32 @@ foreach ($a in $actualAgents) {
 Write-Host ""
 
 $hooks = @('block-destructive.ps1', 'guard-bash.ps1', 'guard-write.ps1', 'guard-harness.ps1', 'post-write-checks.ps1', 'suggest-agents-record.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1', 'loop-continue.ps1', 'record-work-start.ps1', 'inject-reply-language.ps1')
-$knownHelpers = @('secret-patterns.ps1', 'git-commit-match.ps1', 'guard-commit-secrets.ps1', 'guard-stale-docs.ps1', 'guard-task-audit.ps1', 'hook-event-log.ps1', 'write-gate-trivial.ps1', 'write-gate-exempt.ps1', 'session-end-cleanup-lib.ps1', 'session-wiki-signals.ps1', 'session-ledger-signal.ps1', 'harness-root.ps1', 'comment-lines.ps1', 'guard-comment.ps1', 'guard-commit-comments.ps1')
-Write-Host "5. Hooks $($hooks.Count)개" -ForegroundColor Yellow
-foreach ($h in $hooks) {
-    $hookPath = Join-Path $pluginRoot "scripts/$h"
-    if (Test-Item-Exists $hookPath "hook: $h") {
-        if (-not (Test-Ps1-Bom $hookPath)) {
+$scriptNamesPath = Join-Path $pluginRoot 'scripts/rules/harness-hooks.json'
+$scriptNames = @()
+try {
+    $scriptNames = @((Get-Content -LiteralPath $scriptNamesPath -Raw -Encoding UTF8 | ConvertFrom-Json).names | ForEach-Object { "$_.ps1" })
+} catch {
+    Write-Host "  [FAIL] scripts/rules/harness-hooks.json 읽기 실패 — 헬퍼 검사를 건너뜀" -ForegroundColor Red
+    Write-Host "         오류: $_" -ForegroundColor DarkGray
+    $script:fail++
+}
+$knownHelpers = @($scriptNames | Where-Object { $hooks -notcontains $_ })
+Write-Host "5. Hooks $($hooks.Count)개 · 헬퍼 $($knownHelpers.Count)개" -ForegroundColor Yellow
+foreach ($h in @($hooks) + $knownHelpers) {
+    $kind = if ($hooks -contains $h) { 'hook' } else { 'helper' }
+    $scriptPath = Join-Path $pluginRoot "scripts/$h"
+    if (Test-Item-Exists $scriptPath "${kind}: $h") {
+        if (-not (Test-Ps1-Bom $scriptPath)) {
             Write-Host "         [WARN] BOM 없음 — 한글 인코딩 문제 가능" -ForegroundColor DarkYellow
-            $script:warnings += "Hook $h 에 UTF-8 BOM 없음"
+            $script:warnings += "$kind $h 에 UTF-8 BOM 없음"
         }
     }
 }
-# scripts/ 에 hook도 known helper도 아닌 .ps1이 있으면 경고 (hook 추가 후 validate/hooks.json 갱신 누락 포착)
 $actualScripts = Get-ChildItem -Path (Join-Path $pluginRoot 'scripts') -Filter '*.ps1' -ErrorAction SilentlyContinue |
     Select-Object -ExpandProperty Name
 foreach ($s in $actualScripts) {
-    if (($hooks -notcontains $s) -and ($knownHelpers -notcontains $s)) {
-        Write-Host "         [WARN] validate 미등록 스크립트: $s (hook이면 목록·hooks.json에 추가 필요)" -ForegroundColor DarkYellow
+    if ($scriptNames.Count -and ($hooks -notcontains $s) -and ($knownHelpers -notcontains $s)) {
+        Write-Host "         [WARN] validate 미등록 스크립트: $s (hook이면 이 목록·hooks.json, 헬퍼면 scripts/rules/harness-hooks.json 에 추가 필요)" -ForegroundColor DarkYellow
         $script:warnings += "validate 미등록 스크립트: $s"
     }
 }
