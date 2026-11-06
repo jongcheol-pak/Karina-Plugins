@@ -55,7 +55,7 @@
   | ship 「base 합치기 필요」(`../../pr/references/ship.md` 7번 영향 판정 참) | 위 base 합치기 뒤 babysit 부터 다시 |
   | `pr-verifier` FAIL · 게이트 완화 서명 거부 | 지적한 결함을 고쳐 커밋·push 한 뒤 babysit 부터 다시 — 지적은 하나의 수정으로 모은다(*"Batch every known fix into one push wave."* — pstack babysit 5 · `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/babysit.md`) |
   | head 가 바뀌어 merge 거부(`--match-head-commit`) | ship 1번부터 다시 |
-  | 화면 확인 대기(`../../pr/references/ship.md` 7번 화면 게이트) | PR 을 열어 둔 채 작업 트리가 깨끗하면 `git switch <base>`(병렬 워커는 건너뛴다) 뒤 `--outcome succeeded` 로 보고한다 — `PR:` 필드는 `열림 — <URL> · 화면 확인 대기`, `남은 일` 에 `PR <URL> 화면 확인 대기 — 사용자가 스크린샷을 보고 「화면 확인함」(게이트 완화가 있었으면 「PR <n> 게이트 완화 확인함」 도) 으로 karina:pr ship 을 요청`. 질문이 아니라 보고다 — 사용자 몫으로 넘기지 않는다 |
+  | 화면 확인 대기(`../../pr/references/ship.md` 7번 화면 게이트) | PR 을 열어 둔 채 작업 트리가 깨끗하면 `git switch <base>`(병렬 워커는 건너뛴다) 뒤 `--outcome succeeded` 로 보고한다 — `PR:` 필드는 `열림 — <URL> · 화면 확인 대기`, `남은 일` 에 `PR <URL> 화면 확인 대기 — 사용자가 스크린샷을 보고 「화면 확인함」(게이트 완화가 있었으면 「PR <n> 게이트 완화 확인함」 도) 으로 karina:pr ship 을 요청`, `화면 확인:` 칸에 ship 보고의 이름 줄(`../../implement/references/report-format.md`「화면 확인 블록」). 질문이 아니라 보고다 — 사용자 몫으로 넘기지 않는다 |
   | 사람 판단 대기(`CHANGES_REQUESTED`·`REVIEW_REQUIRED`·보고만 한 스레드) · 브랜치 보호 등 그 밖의 merge 거부 | 곧바로 정지 — 사람이 정할 자리이고 체인은 그것을 대신 정하지 못한다 |
   | CI 실패가 같은 원인으로 3회 · `pr-verifier` FAIL·서명 거부 3회 · 세 번째 합치기 | 정지 — `../../implement/SKILL.md`「멈추는 넷」 의 동일 원인 3회와 같은 수다 |
 

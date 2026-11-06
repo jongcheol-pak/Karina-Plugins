@@ -37,7 +37,7 @@ PR 모드: <켬 — base <체인 브랜치> | 켬 — base <기본 | 인계> · 
 진행:
 1. karina:plan 을 Skill 도구로 부르되 args 첫 줄에 [chain-plan 중계] 를 두고 위 실측 기준·실험 결정·판정 원칙·병렬·PR 모드·원문·재진술·실측 요지를 그대로 싣는다. 승인되면 karina:implement 를 Skill 도구로 불러 마지막 task 까지 간다. PR 모드가 켬이면 PR 을 연 뒤 최종 보고 전에 chain-plan/references/pr-mode.md「워커」 를(줄 끝이 · 스택 이면 chain-plan/references/stack-mode.md「워커」 를) 따른다.
 2. 질문·승인은 이 배정문 끝의 ask 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 --timeout-ms 86400000 과 2>/dev/null 을 더해 Bash 도구 run_in_background: true 로 보내고 turn 을 끝낸다 — 완료 알림이 오면 출력 파일을 Read 하고, answered:true 가 아니면 relay-edge-cases.md「ask 만료」 를 따른다(포그라운드는 Bash 10분 상한 때문에 기다리는 동안 9분마다 turn 이 돈다). 돌아오는 답은 코디네이터가 사용자의 답을 글자 그대로 옮긴 것이거나 체인 승인 위임 답(Y (체인 승인 위임 — …))이거나 코디네이터 판정 답(… (코디네이터 판정 — …))이라, 셋 다 사용자 응답·승인으로 본다. 워커 화면에는 묻지 않는다(AskUserQuestion 금지).
-3. 보고는 이 배정문 끝의 worker_done 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 아래 --body 를 더한 것이다. 최종 보고 텍스트를 내기 전, 같은 turn 에서 보낸다. 멈추면 --outcome failed 에 --body 로 사유·남은 task·판정·환경 마찰을 싣는다.
+3. 보고는 이 배정문 끝의 worker_done 명령에서 karina-cli 를 CLI 줄의 값(따옴표 포함)으로 바꾸고 아래 --body 를 더한 것이다. 최종 보고 텍스트를 내기 전, 같은 turn 에서 보낸다. 멈추면 --outcome failed 에 --body 로 사유·남은 task·판정·환경 마찰을 싣고, PR 을 열어 둔 채 멈췄으면 PR·화면 확인 칸도 싣는다.
    --body "$(cat <<'BODY'
    결과: <1줄>
    사용자용 요약: <무엇이 바뀌었나 — 사용자 관점 2~3줄>
@@ -47,6 +47,7 @@ PR 모드: <켬 — base <체인 브랜치> | 켬 — base <기본 | 인계> · 
    검증: <실제로 돌린 명령과 결과 요지 — 완료 보고 「검증 결과」 에서>
    HUMAN-VERIFY·미검증: <없으면 「없음」>
    확인할 파일: <완료 보고 「확인할 파일」 줄 그대로 — 없으면 「없음」>
+   화면 확인: <완료 보고 「화면 확인」 블록(implement/references/report-format.md「화면 확인 블록」)의 이름 줄을 ; 로 — 없으면 「없음」>
    판정: <Progress Log 의 판정:·판정(정정): 줄마다 「<무엇을> — <왜> — 근거: <커밋 sha 7자리, 파일:줄 | 없음> — 틀리면: <무엇을 치르는가>」 를 ; 로 잇는다 — 없으면 「없음」>
    소요: <plan.md 의 > 시작: ~ > 완료: 값 — 시작이 없으면 「시작 미기록」>
    PR: <PR 모드면 <URL> · merged <merge 커밋 7자리> | 열림 — <URL> · <멈춘 자리> | 열림 — <URL> · 화면 확인 대기(succeeded) — PR 모드가 꺼짐이면 「없음」>
