@@ -55,7 +55,7 @@ try {
                             $line = if ($peel) { $peel } else { $plain }
                             if (-not $line) {
                                 if (-not $hasMark) {
-                                    Write-Output "[karina 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 karina-v${pushedVer}를 로컬·원격 어디에서도 찾지 못했습니다 — 이 레포 규약은 'main 직행 회차 끝 버전 커밋 push 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create karina-v$pushedVer --target <버전 커밋을 담아 push 한 HEAD — 지금 origin/main HEAD 의 full-sha> (short sha는 거부됩니다)."
+                                    Write-Output "[karina 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 karina-v${pushedVer}를 로컬·원격 어디에서도 찾지 못했습니다 — 이 레포 규약은 '회차 끝 버전 커밋 push 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create karina-v$pushedVer --target <버전 커밋을 담아 push 한 HEAD — 지금 origin/main HEAD 의 full-sha> (short sha는 거부됩니다)."
                                 }
                             } else {
                                 $tagSha = ($line -split '\s+')[0]

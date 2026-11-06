@@ -6,7 +6,7 @@ Claude Code 플러그인 마켓플레이스 `karina-plugins` 와, Karina 앱이 
 
 | 플러그인 | 설명 | 문서 |
 |---|---|---|
-| `karina` | Claude Code 가 계획을 세우고 검증하며 일하게 하는 코딩 하니스 — 계획·자율 구현·디버깅·PR 운영 스킬, 검토 서브에이전트, 위험 명령을 막는 hook | [plugins/claude-harness-karina/README.md](plugins/claude-harness-karina/README.md) |
+| `karina` | Claude Code 가 계획을 세우고 검증하며 일하게 하는 코딩 하니스 — 계획·자율 구현·디버깅 스킬과 push 전 로컬 게이트, 검토 서브에이전트, 위험 명령을 막는 hook | [plugins/claude-harness-karina/README.md](plugins/claude-harness-karina/README.md) |
 
 ### 설치
 

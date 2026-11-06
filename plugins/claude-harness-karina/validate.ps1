@@ -93,7 +93,7 @@ Test-Json-Valid (Join-Path $pluginRoot ".claude-plugin/plugin.json") "plugin.jso
 Test-Json-Valid (Join-Path $pluginRoot "hooks/hooks.json") "hooks.json 파싱" | Out-Null
 Write-Host ""
 
-$skills = @('plan', 'implement', 'karina-systematic-debugging', 'llm-wiki', 'record-project-fact', 'chain-plan', 'pr', 'create-verification-skill', 'maintain-verification-skill', 'create-formal-verification-skill', 'maintain-formal-verification-skill', 'reflect', 'worktree-cleanup', 'no-comments', 'plan-draft', 'temp-cleanup', 'wait-what', 'prototype')
+$skills = @('plan', 'implement', 'karina-systematic-debugging', 'llm-wiki', 'record-project-fact', 'chain-plan', 'create-verification-skill', 'maintain-verification-skill', 'create-formal-verification-skill', 'maintain-formal-verification-skill', 'reflect', 'worktree-cleanup', 'no-comments', 'plan-draft', 'temp-cleanup', 'wait-what', 'prototype')
 Write-Host "3. Skills $($skills.Count)개" -ForegroundColor Yellow
 foreach ($s in $skills) {
     $skillPath = Join-Path $pluginRoot "skills/$s/SKILL.md"

@@ -221,7 +221,7 @@
 
 ## §40 [임시 폴더 정리] karina-plugin 하위 폴더의 기한 지난 항목을 걷는다
 
-**대상과 기한의 정본은 `session-context.ps1` 의 `$sweepTable` 이다** — `plan-variants`(14일) · `verify\<app>\<실행 id>`(깊이 2, 14일) · `scratch`(7일) · `chain` 의 `karina-chain-*-decisions.md`(30일). 폴더 배치는 `skills/TEMP-FILES.md` 가 정한다. 화면 변형·증거는 PR merge 전 화면 게이트와 체인 보고가 경로를 다시 보여 쓴 직후에 지우지 않고, 14일은 사용자 답이다(2026-10-24). 결정 파일 30일은 「plan N부터」 재개를 덮는 기간이다.
+**대상과 기한의 정본은 `session-context.ps1` 의 `$sweepTable` 이다** — `plan-variants`(14일) · `verify\<app>\<실행 id>`(깊이 2, 14일) · `scratch`(7일) · `chain` 의 `karina-chain-*-decisions.md`(30일). 폴더 배치는 `skills/TEMP-FILES.md` 가 정한다. 화면 변형·증거는 push 전 화면 게이트와 체인 보고가 경로를 다시 보여 쓴 직후에 지우지 않고, 14일은 사용자 답이다(2026-10-24). 결정 파일 30일은 「plan N부터」 재개를 덮는 기간이다.
 
 **걷지 않는 것.** `backup\`·`worktree-backup\` 은 원본이 사라진 뒤의 유일한 사본일 수 있어 자동으로 지우지 않는다 — 사용자가 `/karina:temp-cleanup` 으로 고른다. `chain\` 의 `karina-chain-wait-*`·`karina-chain-verify-*` 는 `wait-worker.py`·`run-verify.py` 가 시작할 때 자기 접두만 걷는다 — 실행 중인 래퍼의 잠금을 지우면 그 래퍼가 물러나므로 그 판정은 잠금을 쓰는 쪽에 둔다.
 

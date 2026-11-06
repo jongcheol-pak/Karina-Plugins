@@ -98,13 +98,15 @@ DEAD = [
     'karina-harness', 'claude-harness-pjc',
     # 구 대장 1 (2026-10-22) — 소진 batch 회고. batch 절차가 스킬에 없어 읽는 곳이 그 파일만 재던 정합 축뿐이었다.
     'deferred-history.md',
+    'pr-mode.md', 'stack-mode.md', 'chain-end-pr.md', 'pr_stage', 'gate-countersign', 'concurrent-sessions',
+    'pr-verifier', 'pr-flow.md',
 ]
 
 # DEAD **총량**의 기준선(= 목록 길이). 늘거나 줄면 불일치다 — 이 목록이 곧 검사 대상이라
 #  항목이 조용히 빠지면 그 이름의 잔존이 **검출되지 않는 채 통과**한다(축이 좁아진 것과
 #  전건 통과가 구분되지 않는다). 정당한 증감이면 **이 값을 함께 갱신한다** — 그 diff 가
 #  목록 변경의 기록이다(`check-harness-consistency.py` 의 허용목록 기준선과 같은 형태).
-DEAD_BASELINE = 40
+DEAD_BASELINE = 48
 
 RX = re.compile('|'.join(re.escape(d) for d in DEAD))
 
