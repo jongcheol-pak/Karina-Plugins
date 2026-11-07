@@ -28,6 +28,7 @@ import sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 CONV_MD = os.path.join(ROOT, "docs", "harness-conventions.md")
+MAPPING_MD = os.path.join(ROOT, "docs", "verification-mapping.md")
 LEDGER_MD = os.path.join(ROOT, "docs", "plans", "deferred.md")
 # 대장은 둘이다 — 대기(위)·종결.
 #   ⚠ 두 파일을 여기서 함께 읽지 않으면 계수 축이 **0항목으로 조용히 통과**한다.
@@ -213,8 +214,8 @@ def check_pointer_reachability():
 
         불릿·표 셀을 넣는 이유는 자기 파일 참조(`아래 「…」`)가 그 둘을 자주 가리키기
         때문이다 — 실측 3건이 그 형태였다(`README.md` 의 불릿 「위험한 명령 차단」,
-        `golden-runner.md` 의 표 열 「명령」, `harness-conventions.md` 의 표 행
-        「모든 `*.md` 변경」). 넓히지 않으면 **정당한 참조가 끊김으로 잡히고**, 그것을
+        `golden-runner.md` 의 표 열 「명령」, `harness-conventions.md`(지금은
+        `verification-mapping.md`) 의 표 행 「모든 `*.md` 변경」). 넓히지 않으면 **정당한 참조가 끊김으로 잡히고**, 그것을
         화이트리스트로 막으면 또 하나의 「낡을 목록」이 생긴다.
 
         헤딩의 `§N ---- ` 접두를 벗긴 형태도 함께 등록한다 — 그 접두는 v1.225.0 이
@@ -1227,7 +1228,7 @@ def check_critical_pointers():
 IMPACT_GATE_PREFIXES = (
     "scripts/", "skills/", "agents/",
     "evals/", "hooks/",
-    "docs/harness-conventions.md", "AGENTS.md",
+    "docs/harness-conventions.md", "docs/verification-mapping.md", "AGENTS.md",
 )
 # **라벨만 본다 — 내용은 보지 않는다.** 정본이 *"재지 않은 축은 「없음」이 아니라 「미측정」으로
 #   적는다"* 라 「미측정」도 정당한 기재이고, 내용을 재면 그것을 red 로 만든다.
@@ -1728,6 +1729,8 @@ def check_count_and_version(conv):
         die("절을 찾지 못함: `%s` 「검증 명령 상세」 — 헤딩을 바꿨으면 "
             "COUNT_SECTION_HEADING 을 함께 고쳐라" % os.path.relpath(CONV_MD, ROOT))
     section = conv   # 사정거리는 문서 전체 — 절은 위에서 앵커로만 썼다
+    if os.path.exists(MAPPING_MD):
+        section += "\n" + read(MAPPING_MD)
 
     for line in section.split("\n"):
         if _RX_BASELINE.search(line):

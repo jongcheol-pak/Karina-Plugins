@@ -73,10 +73,10 @@
 1-B 재현이 앱 화면 조작일 때(검증 스킬이든 수동이든) 수정 전후의 같은 화면을 스크린샷 짝으로 남긴다. 단위 테스트·CLI·로그로 재현한 버그는 대상이 아니다 — 판정 줄 원문이 이미 증거다. `karina:implement` 루프 안이면 대상이 아니다 — 그 task 의 `**화면**` 줄이 맡는다. Cursor pstack benny 의 reproduce-and-fix-issues 를 들였다(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md` — *"Only after before-and-after proof:"*).
 
 - **수정 전 — 1-B 재현의 깨진 최종 상태를 `AGENTS.md` `Verify (앱 조작)` 검증 스킬의 Evidence 로 `base-<이름>.png` 에 남긴다. `<이름>` 은 증상을 가리키는 영문 kebab-case 다** — 수정한 뒤에는 깨진 화면을 다시 얻을 수 없다.
-- **수정 후 — 4-D 재실행에서 같은 시나리오의 끝 상태를 `<이름>.png` 에 남긴다. 판정은 수정 전 거짓·수정 후 참일 때만 통과다(판정 표 `../../implement/references/report-format.md`「화면 시나리오 실행」)** — 수정 전에도 참인 화면은 이 수정을 재지 않는다. 이름을 그 절과 맞춰야 `gate-verifier` 와 로컬 게이트의 화면 게이트가 디버깅 수정에서도 읽는다.
+- **수정 후 — 4-D 재실행에서 같은 시나리오의 끝 상태를 `<이름>.png` 에 남긴다. 판정은 수정 전 거짓·수정 후 참일 때만 통과다(판정 표 `../../implement/references/screen-scenarios.md`「화면 시나리오 실행」)** — 수정 전에도 참인 화면은 이 수정을 재지 않는다. 이름을 그 절과 맞춰야 `gate-verifier` 와 로컬 게이트의 화면 게이트가 디버깅 수정에서도 읽는다.
 - **수정 뒤에도 같은 경로를 상태를 리셋해 독립으로 2회 재현하고, 기준선에서 본 것과 같은 실제 상태값을 읽기 전용 조회로 다시 대조한다 — 빌드·단위 테스트·그럴듯한 diff 는 수정 뒤 증거가 아니다** — 한 번의 통과는 이전 시도가 남긴 상태가 만든 것일 수 있고, 다른 값을 보면 같은 증상이 사라졌는지 갈리지 않는다(원문 reproduce-and-fix-issues 13절 *"Repeat it twice."* · *"Cross-check the same real state value used for the baseline."*).
 - **짝 중 하나라도 없으면 4-D 를 통과로 적지 않고 `미검증 — 스크린샷 짝 없음(<사유>)` 으로 적는다. 검증 스킬이 없어 수동으로 재현했으면 `미촬영(HUMAN-VERIFY)` 으로 적고 시나리오·이름·통과 조건을 남긴다** — 판정 줄만으로는 사용자가 화면이 실제로 고쳐졌는지 볼 수 없고, 시나리오가 남아야 사용자가 같은 것을 돌린다.
-- **두 경로를 최종 보고에 `../../implement/references/report-format.md`「화면 확인 블록」 으로 싣고(게이트에 닿지 못했으면 머리 `push 대기 없음 — <사유>`), 커밋에 싣는 자리는 `../../implement/references/push-flow.md`「디버깅 단독 경로」 다** — 사용자가 열어 볼 자리가 보고이고, push 를 막는 자리가 로컬 게이트다.
+- **두 경로를 최종 보고에 `../../implement/references/screen-scenarios.md`「화면 확인 블록」 으로 싣고(게이트에 닿지 못했으면 머리 `push 대기 없음 — <사유>`), 커밋에 싣는 자리는 `../../implement/references/push-flow.md`「디버깅 단독 경로」 다** — 사용자가 열어 볼 자리가 보고이고, push 를 막는 자리가 로컬 게이트다.
 
 ## 덤프·프로파일·트레이스 판독 (1-A)
 

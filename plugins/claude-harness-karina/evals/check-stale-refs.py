@@ -147,6 +147,7 @@ HISTORY_WHY = ('회차 1·2의 제거·개명 이력 — 지우면 다음 세션
 #   백틱을 벗겨** 닫았다 — 면제 목록을 만들지 않는 것이 이 축의 설계다.
 PROSE_TARGETS = (
     'docs/harness-conventions.md',
+    'docs/verification-mapping.md',
     'AGENTS.md',
     'README.md',
     'docs/golden-runner.md',

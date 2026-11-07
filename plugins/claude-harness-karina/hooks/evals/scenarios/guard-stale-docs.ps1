@@ -32,6 +32,14 @@ try {
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
     Assert-Case -Name 'stale-docs: 낡음 없음 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
 
+    '# 매핑' | Set-Content (Join-Path $sdRoot 'docs/verification-mapping.md')
+    & git -C $sdRoot add docs/verification-mapping.md 2>$null
+    Push-Location $sdRoot
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 검증 매핑 문서도 산문 서술 축 고지' -R $r -ExpectExit 0 -ExpectContains '산문 서술'
+    & git -C $sdRoot rm -q --cached docs/verification-mapping.md 2>$null
+    Remove-Item -LiteralPath (Join-Path $sdRoot 'docs/verification-mapping.md') -Force
+
     # 2) 층 3 양성 — `docs/harness-conventions.md` 를 스테이징하면 「산문 서술」 축을 고지한다.
     #    경로로만 판정하므로 내용은 무엇이든 상관없다.
     '# 규약' + [Environment]::NewLine + '변경' | Set-Content (Join-Path $sdRoot 'docs/harness-conventions.md')

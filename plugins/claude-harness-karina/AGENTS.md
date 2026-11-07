@@ -22,7 +22,7 @@
   ```
 - **Plan check**: `python evals/check-harness-consistency.py --plan` — 계획 단계 검사(`karina:plan` Step 6 의 `check-plan` 이 승인 전에 돌린다)
 - **Comment (보존)**: `.` · 경로: `skills/plan/scripts/check-plan.ps1 evals/check-harness-consistency.py evals/run-evals.py skills/llm-wiki/evals/check_consistency.py skills/chain-plan/scripts/run-verify.py skills/chain-plan/scripts/wait-worker.py skills/record-project-fact/scripts/relocate-agents.py skills/temp-cleanup/scripts/temp_cleanup.py skills/worktree-cleanup/scripts/worktree_cleanup.py`
-- **조건부 검증**: 변경 파일 패턴별 명령(합집합)은 `docs/harness-conventions.md` 「검증 매핑 (task 검증 선택)」 — 「줄바꿈 정합」 축은 모든 task. `docs/harness-conventions.md` 「골든 부분 실행의 판정 자격」·`[면제 ⑤]` 대상도 함께 읽는다.
+- **조건부 검증**: 변경 파일 패턴별 명령(합집합)과 `[면제 ⑤]` 대상은 `docs/verification-mapping.md` 「검증 매핑 (task 검증 선택)」 — 「줄바꿈 정합」 축은 모든 task. 골든 부분 실행 규칙은 `docs/harness-conventions.md` 「골든 부분 실행의 판정 자격」 절만 읽는다(`sed -n '/^## 골든 부분 실행의 판정 자격/,/^## /p' docs/harness-conventions.md`).
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 보므로 재설치 후에만 반영된다.
 - **Gate 필수 경로**: `scripts/**` · `hooks/**` — 차단 hook·그 규칙·골든은 크기와 관계없이 push 전 검증자를 거친다(`skills/implement/references/local-gate.md`「경량 면제」).
 - **Release**: 버전 정본은 `plugin.json`(`README.md` 상단 `**버전**:` 은 파생) · 회차 끝 버전 커밋 → 로컬 게이트 → push → 발행 · 발행 여부는 마지막 `karina-v<버전>` 태그 이후 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`) 변경으로 판정 · **릴리즈 발행은 별도 승인** · ⚠ 태그는 원격에만 생겨 확인은 `gh release list`. 정본은 `docs/harness-conventions.md` 「Release (배포·릴리즈 발행)」.

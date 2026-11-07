@@ -13,7 +13,7 @@
 . (Join-Path $PSScriptRoot 'harness-root.ps1')
 
 $script:StaleAxisMap = @(
-    @{ Pattern = '^docs/harness-conventions\.md$'
+    @{ Pattern = '^docs/(harness-conventions|verification-mapping)\.md$'
        Axis    = '산문 서술 — 경로·심볼 실존은 check-stale-refs.py 가 재고, 남는 것은 「동작이 이렇게 돈다」는 문장의 진위와 구분자 없는 순수 식별자다' }
     @{ Pattern = '^AGENTS\.md$'
        Axis    = '외부 사실(권장 Claude Code 버전 등) — 레포 안에 대조 상대가 없다'

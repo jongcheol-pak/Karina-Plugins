@@ -1,6 +1,6 @@
 # 앱 검증 중 화면 가리기
 
-> 일곱 자리가 가리키는 공용 규칙이다 — `implement/references/report-format.md`·`implement/references/loop-exceptions.md`·`implement/references/final-review.md`(`karina:implement`) · `implement/references/local-gate.md`(로컬 게이트의 `gate-verifier` 호출) · `karina-systematic-debugging/SKILL.md` · `create-verification-skill/SKILL.md` · `maintain-verification-skill/SKILL.md`. Karina 앱의 화면 가리기(cover)가 켜진 모니터는 마우스 입력이 막혀(`karina-cli skills get karina-workspace` 「Screen Cover」) 검증 스킬의 조작이 그 모니터에서 실패한다.
+> 여덟 자리가 가리키는 공용 규칙이다 — `implement/references/report-format.md`·`implement/references/screen-scenarios.md`·`implement/references/loop-exceptions.md`·`implement/references/final-review.md`(`karina:implement`) · `implement/references/local-gate.md`(로컬 게이트의 `gate-verifier` 호출) · `karina-systematic-debugging/SKILL.md` · `create-verification-skill/SKILL.md` · `maintain-verification-skill/SKILL.md`. Karina 앱의 화면 가리기(cover)가 켜진 모니터는 마우스 입력이 막혀(`karina-cli skills get karina-workspace` 「Screen Cover」) 검증 스킬의 조작이 그 모니터에서 실패한다.
 
 ## 대상
 

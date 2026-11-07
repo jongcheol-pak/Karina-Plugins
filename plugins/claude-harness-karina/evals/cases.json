@@ -1585,6 +1585,23 @@
     ]
   },
   {
+    "id": "harness-count-mapping-doc-unmarked",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/verification-mapping.md",
+        "find": "**6케이스(기계 미대조)**",
+        "replace": "**6케이스**"
+      }
+    ],
+    "expect_keywords": [
+      "매니페스트 없이 케이스 수를 적은 줄에 `(기계 미대조)` 표시가 없다",
+      "6케이스"
+    ]
+  },
+  {
     "id": "harness-count-anchor-fail",
     "checker": "harness",
     "fixture": "minimal-repo",
@@ -1778,7 +1795,7 @@
     "expect_rc": 0,
     "expect_keywords": [
       "== 산문 경로 실존 ==",
-      "대상 10문서",
+      "대상 11문서",
       "docs/harness-conventions.md — 후보 4건 · 미실존 0건",
       "결과: 후보 5건 전부 실재"
     ],
@@ -1865,7 +1882,7 @@
     "expect_rc": 0,
     "expect_keywords": [
       "== 산문 심볼 실존 ==",
-      "대상 10문서",
+      "대상 11문서",
       "docs/harness-conventions.md — 후보 3건 · 미실존 0건",
       "결과: 후보 5건 전부 실재"
     ],
