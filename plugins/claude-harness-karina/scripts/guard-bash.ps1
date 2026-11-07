@@ -530,7 +530,7 @@ $checks = @(
 )
 $results = New-Object System.Collections.Generic.List[object]
 foreach ($c in $checks) {
-    if (-not (Get-Command $c.fn -ErrorAction SilentlyContinue)) { continue }
+    if (-not (Test-Path ("function:" + $c.fn))) { continue }
     try {
         $r = & $c.fn $data
         if ($r) { $r['Name'] = $c.name; $results.Add($r) }

@@ -2,10 +2,10 @@
 
 function Invoke-GuardComment($Data, [string]$File) {
     $pass = @{ Block = $false; Lines = @() }
-    if (-not (Get-Command Get-AddedCommentBodies -ErrorAction SilentlyContinue)) {
+    if (-not (Test-Path function:Get-AddedCommentBodies)) {
         try { . (Join-Path $PSScriptRoot 'comment-lines.ps1') } catch {}
     }
-    if (-not (Get-Command Get-AddedCommentBodies -ErrorAction SilentlyContinue)) {
+    if (-not (Test-Path function:Get-AddedCommentBodies)) {
         return @{ Block = $false; Lines = @('guard-comment: comment-lines.ps1 로드 실패 — 새 주석 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.') }
     }
     if (-not (Test-CommentTarget $File)) { return $pass }
