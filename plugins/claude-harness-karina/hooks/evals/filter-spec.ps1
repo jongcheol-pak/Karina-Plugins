@@ -60,16 +60,18 @@ function Resolve-ScenarioShard {
 function Get-GroupCostDrift {
     param([hashtable]$CostSec, [object[]]$Measured, [double]$Ratio = 2, [int]$MinDiffSec = 15)
     $known = @($Measured | Where-Object { $null -ne $_.Sec -and $CostSec.ContainsKey([string]$_.Group) -and [double]$CostSec[[string]$_.Group] -gt 0 })
-    if (-not $known.Count) { return @() }
-    $ratios = @($known | ForEach-Object { [double]$_.Sec / [double]$CostSec[[string]$_.Group] } | Sort-Object)
-    $load = $ratios[[int][Math]::Floor(($ratios.Count - 1) / 2)]
-    if ($load -le 0) { $load = 1 }
-    @(foreach ($m in $known) {
-        $expected = [double]$CostSec[[string]$m.Group] * $load
-        $sec = [double]$m.Sec
-        if ([Math]::Abs($sec - $expected) -lt $MinDiffSec) { continue }
-        if ($sec -gt $expected * $Ratio -or $sec -lt $expected / $Ratio) {
-            [pscustomobject]@{ Group = [string]$m.Group; Cost = [double]$CostSec[[string]$m.Group]; Sec = $sec }
+    $sumSec = [double](($known | Measure-Object -Property Sec -Sum).Sum)
+    $sumCost = [double](($known | ForEach-Object { [double]$CostSec[[string]$_.Group] } | Measure-Object -Sum).Sum)
+    $outside = { param([double]$Sec, [double]$Expected) [Math]::Abs($Sec - $Expected) -ge $MinDiffSec -and ($Sec -gt $Expected * $Ratio -or $Sec -lt $Expected / $Ratio) }
+    $load = if ($sumSec -gt 0) { $sumSec / $sumCost } else { $null }
+    $groups = @(foreach ($m in $known) {
+        $cost = [double]$CostSec[[string]$m.Group]
+        $restSec = $sumSec - [double]$m.Sec
+        $restCost = $sumCost - $cost
+        if ($restSec -le 0 -or $restCost -le 0) { continue }
+        if (& $outside ([double]$m.Sec) ($cost * $restSec / $restCost)) {
+            [pscustomobject]@{ Group = [string]$m.Group; Cost = $cost; Sec = [double]$m.Sec }
         }
     })
+    [pscustomobject]@{ Load = $load; Overall = ($null -ne $load -and (& $outside $sumSec $sumCost)); Groups = $groups }
 }

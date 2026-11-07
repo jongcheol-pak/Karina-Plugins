@@ -73,11 +73,26 @@ if ((Test-HookSelected @('block-destructive')) -and ($shardIdx -eq 0)) {
 }
 
 if ((-not $script:FilterSet) -and ($shardIdx -eq 0)) {
+    $driftOut = {
+        param([hashtable]$Cost, [object[]]$Pairs)
+        $d = Get-GroupCostDrift -CostSec $Cost -Measured @(for ($i = 0; $i -lt $Pairs.Count; $i += 2) { [pscustomobject]@{ Group = $Pairs[$i]; Sec = $Pairs[$i + 1] } })
+        $g = @($d.Groups)
+        @{ code = 0; out = ('drift={0} {1} overall={2}' -f $g.Count, (@($g | ForEach-Object { $_.Group }) -join ','), [int][bool]$d.Overall) }
+    }
     $driftCost = @{ 'g-a' = 10; 'g-b' = 30; 'g-c' = 20 }
-    $driftHit = @(Get-GroupCostDrift -CostSec $driftCost -Measured @(
-        [pscustomobject]@{ Group = 'g-a'; Sec = 40 }, [pscustomobject]@{ Group = 'g-b'; Sec = 31 }, [pscustomobject]@{ Group = 'g-c'; Sec = 21 }))
-    Assert-Case -Name "golden-runner: 한 그룹만 비용표의 2배·15초를 넘게 벌어지면 어긋남으로 낸다" -R @{ code = 0; out = ('drift=' + $driftHit.Count + ' ' + (@($driftHit | ForEach-Object { $_.Group }) -join ',')) } -ExpectExit 0 -ExpectContains 'drift=1 g-a'
-    $driftNone = @(Get-GroupCostDrift -CostSec $driftCost -Measured @(
-        [pscustomobject]@{ Group = 'g-a'; Sec = 30 }, [pscustomobject]@{ Group = 'g-b'; Sec = 90 }, [pscustomobject]@{ Group = 'g-c'; Sec = 60 }))
-    Assert-Case -Name "golden-runner: 부하로 전 그룹이 같이 늘면 어긋남으로 내지 않는다 (음성 짝)" -R @{ code = 0; out = ('drift=' + $driftNone.Count) } -ExpectExit 0 -ExpectContains 'drift=0'
+    Assert-Case -Name "golden-runner: 한 그룹만 비용표의 2배·15초를 넘게 벌어지면 그 그룹만 어긋남으로 낸다" -R (& $driftOut $driftCost @('g-a', 40, 'g-b', 31, 'g-c', 21)) -ExpectExit 0 -ExpectContains 'drift=1 g-a overall=0'
+    Assert-Case -Name "golden-runner: 전 그룹이 같이 3배면 그룹별로는 내지 않고 전체 비율로 낸다" -R (& $driftOut $driftCost @('g-a', 30, 'g-b', 90, 'g-c', 60)) -ExpectExit 0 -ExpectContains 'drift=0  overall=1'
+    Assert-Case -Name "golden-runner: 측정 그룹이 하나뿐이어도 비용표의 4배면 전체 비율로 낸다" -R (& $driftOut @{ 'g-a' = 10 } @('g-a', 40)) -ExpectExit 0 -ExpectContains 'drift=0  overall=1'
+    $driftSmall = @{ 'big' = 73 }
+    $driftSmallPairs = @('big', 200)
+    1..6 | ForEach-Object { $driftSmall["s$_"] = 2; $driftSmallPairs += @("s$_", 5) }
+    1..5 | ForEach-Object { $driftSmall["m$_"] = 30; $driftSmallPairs += @("m$_", 30) }
+    Assert-Case -Name "golden-runner: 고정 오버헤드로 부푼 작은 그룹이 과반이어도 큰 그룹의 어긋남을 낸다" -R (& $driftOut $driftSmall $driftSmallPairs) -ExpectExit 0 -ExpectContains 'drift=1 big overall=0'
+    $driftPair = @{ 'g-x' = 30; 'g-y' = 30 }
+    Assert-Case -Name "golden-runner: 두 그룹이 3배 갈리면 느린 쪽 입력에서 둘 다 낸다" -R (& $driftOut $driftPair @('g-x', 30, 'g-y', 90)) -ExpectExit 0 -ExpectContains 'drift=2 g-x,g-y overall=0'
+    Assert-Case -Name "golden-runner: 두 그룹이 3배 갈리면 빠른 쪽 입력에서도 둘 다 낸다 (짝수 대칭)" -R (& $driftOut $driftPair @('g-x', 10, 'g-y', 30)) -ExpectExit 0 -ExpectContains 'drift=2 g-x,g-y overall=0'
+    Assert-Case -Name "golden-runner: 실측이 전부 0 이면 판정할 정보가 없어 아무것도 내지 않는다" -R (& $driftOut $driftCost @('g-a', 0, 'g-b', 0, 'g-c', 0)) -ExpectExit 0 -ExpectContains 'drift=0  overall=0'
+    $driftMajor = @{}
+    1..5 | ForEach-Object { $driftMajor["q$_"] = 30 }
+    Assert-Case -Name "golden-runner: 과반이 같이 3배면 전체 비율로 낸다 — 그룹별 줄은 맞는 소수 쪽을 가리킨다" -R (& $driftOut $driftMajor @('q1', 90, 'q2', 90, 'q3', 90, 'q4', 30, 'q5', 30)) -ExpectExit 0 -ExpectContains 'drift=2 q4,q5 overall=1'
 }

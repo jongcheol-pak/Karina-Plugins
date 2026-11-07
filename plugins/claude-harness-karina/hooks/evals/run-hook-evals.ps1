@@ -485,9 +485,12 @@ if (-not $Filter -and -not $Resume -and -not $deadGroups.Count) {
     $costTable = @{}
     foreach ($k in $groupCostSec.Keys) { $costTable[$k] = $groupCostSec[$k] }
     for ($i = 1; $i -le $script:GoldenShardCounts['stateless']; $i++) { $costTable["stateless-$i"] = $statelessCostSec }
-    $drift = @(Get-GroupCostDrift -CostSec $costTable -Measured @($groupSecs))
-    if ($drift.Count) {
-        Write-Host ('[WARN] 비용표 어긋남 {0}건 — $groupCostSec 을 실측으로 다시 맞추세요: {1}' -f $drift.Count, (@($drift | ForEach-Object { '{0} 비용 {1} · 실측 {2}' -f $_.Group, $_.Cost, $_.Sec }) -join ' · '))
+    $drift = Get-GroupCostDrift -CostSec $costTable -Measured @($groupSecs)
+    if ($drift.Groups.Count) {
+        Write-Host ('[WARN] 비용표 어긋남 {0}건 — $groupCostSec 을 실측으로 다시 맞추세요: {1}' -f $drift.Groups.Count, (@($drift.Groups | ForEach-Object { '{0} 비용 {1} · 실측 {2}' -f $_.Group, $_.Cost, $_.Sec }) -join ' · '))
+    }
+    if ($drift.Overall) {
+        Write-Host ('[WARN] 비용표 전체 비율 {0:N2}배 — 다른 세션 부하가 없었다면 $groupCostSec 전체를 실측으로 다시 맞추세요' -f $drift.Load)
     }
 }
 $deadSuffix = ''
@@ -497,7 +500,7 @@ if ($deadGroups.Count) {
 Write-Host ("결과: {0}/{1} OK (FAIL {2}){3}" -f ($total - $failCount), $total, $failCount, $deadSuffix)
 Write-TimingLine -Total $total
 
-$GoldenTotalBaseline = 1545
+$GoldenTotalBaseline = 1551
 if (-not $deadGroups.Count -and -not $Filter -and $total -ne $GoldenTotalBaseline) {
     Write-Host ("[WARN] 총계가 기준선과 다릅니다: {0} != {1} (`$GoldenTotalBaseline`)." -f $total, $GoldenTotalBaseline)
     Write-Host '        합산 규칙: 선언형(hook-cases.json) + 러너 내장 시나리오. guard-bash 무상태 케이스는 dispatch 에코를 함께 돌아 1건이 2로 셉니다.'
