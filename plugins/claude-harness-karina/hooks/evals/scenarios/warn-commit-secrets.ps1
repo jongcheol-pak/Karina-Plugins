@@ -15,6 +15,7 @@ if (Test-HookSelected @('warn-commit-secrets', 'guard-bash')) {
 # 자격증명 쌍은 오탐이 곧 커밋 차단(자율 루프 정지)이라, 양성만큼 음성(정상 문서)이 중요하다 —
 #   경로·라우트·파일명·버전·역할 열거는 반드시 통과해야 한다.
 . (Join-Path $scriptsDir 'secret-patterns.ps1')
+if (Test-ScenarioUnit 3) {
 $spId = 'ad' + 'min'
 $spPw = 'Zq7' + '#mK21'
 $spBt = [char]96
@@ -123,8 +124,13 @@ if (-not (Compare-Object $hcExpect $hcGot)) {
 } else {
     $script:results.Add(@{ ok = $false; line = "[FAIL] secret-patterns: 고신뢰 라벨 집합 불일치 — 실제 '$($hcGot -join ',')'" })
 }
+}
 
 if ($gitOk) {
+    $btB = [char]96
+    $credLine = '기본 관리자 계정: ' + $btB + 'ad' + 'min' + $btB + ' / ' + $btB + 'Zq7' + '#mK21' + $btB
+    $capNames = 1..51 | ForEach-Object { 'f{0:D3}.txt' -f $_ }
+    if (Test-ScenarioUnit 1) {
     $wcs = Join-Path $work 'wcsrepo'; New-Item -ItemType Directory $wcs -Force | Out-Null
     Push-Location $wcs
     git init -q; git config user.email t@t; git config user.name t
@@ -206,7 +212,9 @@ if ($gitOk) {
     # 7) git commit 아님 → 통과(무출력, fast path)
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git status' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: git commit 아님 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
+    }
 
+    if (Test-ScenarioUnit 2) {
     # ---- [v1.119.0] 고신뢰 라벨 커밋 차단 (exit 2) ----
     # 상태 오염을 피하려고 별도 repo를 쓴다(위 $wcs는 케이스 1~7이 순서 의존으로 공유).
     # 픽스처는 러너 자신이 자사 스캐너·post-write hook에 걸리지 않게 문자열 연결로 분리 기재한다.
@@ -216,8 +224,6 @@ if ($gitOk) {
     'v=1' | Set-Content app.js; git add .; git commit -qm init
     Pop-Location
     $wcsBJson = @{ tool_name = 'Bash'; cwd = $wcsB; tool_input = @{ command = 'git commit -m test' } } | ConvertTo-Json -Compress
-    $btB = [char]96
-    $credLine = '기본 관리자 계정: ' + $btB + 'ad' + 'min' + $btB + ' / ' + $btB + 'Zq7' + '#mK21' + $btB
 
     # (a) 자격증명 쌍(고신뢰) 스테이징 → 차단 + 회복 경로 2종 안내
     Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location
@@ -307,7 +313,9 @@ if ($gitOk) {
     Pop-Location
     $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 시크릿 제거 후 재커밋 통과(회복 가능)" -R $r -ExpectExit 0 -ExpectSilent $true
+    }
 
+    if (Test-ScenarioUnit 3) {
     # ---- [v1.119.0 F-7 B1] 선행 스테이징 경로 (untracked + 'git add' 한 호출) ----
     # PreToolUse는 명령 실행 '전'에 돈다 — add가 아직 안 돌았으므로 인덱스는 비어 있고 untracked는
     #   git diff HEAD에도 없다. 사고의 실제 경로(신규 프로젝트의 새 README)이자 자율 루프의 표준
@@ -372,7 +380,9 @@ if ($gitOk) {
     Push-Location $wcsD; git checkout -q -- .; Set-Content ignored.txt $credLine; Pop-Location
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsD; tool_input = @{ command = 'git add -f ignored.txt && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: ignored 강제 add 자격증명 차단(n3, exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+    }
 
+    if (Test-ScenarioUnit 5) {
     # ---- [v1.182.0 T5] $autoStage 오판정 — `git add -A`가 보완 스캔을 두 번 돌리던 문제 ----
     # 판정 대상이 **호출 횟수**라 hook 출력으로는 볼 수 없다. 자식 프로세스에서 lib를 dot-source하고
     #   `Get-DiffHeadAdded`를 세는 함수로 덮어써 실제 호출 수를 읽는다 — 러너 프로세스에서 덮어쓰면
@@ -478,13 +488,17 @@ if ($gitOk) {
             $script:results.Add(@{ ok = $false; line = "[FAIL] commit-secrets: $($t6.n) — 기대 $($t6.e), 실제 '$t6Got'" })
         }
     }
+    }
 
+    if (Test-ScenarioUnit 2) {
     # (g) 디스패처 경유도 동일 차단 — lib 함수 공유라 두 경로가 갈리면 안 된다(D3).
     Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location
     $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 디스패처 경유 자격증명 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
     Push-Location $wcsB; git rm -q --cached README.md; Remove-Item README.md -Force; Pop-Location
+    }
 
+    if (Test-ScenarioUnit 1) {
     # ---- [v1.99.0 T6] 디스패처 동등성 + 디스패처 고유 분기 (git repo 필요) ----
     # 현재 $wcs 상태: app.js에 시크릿(-am 자동스테이징 대상), ok.txt 미스테이징. 명시 스테이징 시크릿을 다시 심는다.
     Push-Location $wcs; Set-Content secret2.js $fakeApi; git add secret2.js; Pop-Location
@@ -503,7 +517,9 @@ if ($gitOk) {
     Assert-Case -Name "dispatch: warn 2개 병합 (external) — exit 0" -R $r -ExpectExit 0 -ExpectContains 'EXTERNAL OP'
     if (($r.out -match 'COMMIT SECRET') -and ($r.out -match 'EXTERNAL OP')) { $script:results.Add(@{ ok = $true; line = "[PASS] dispatch: warn 2개(secret+external) additionalContext 병합" }) }
     else { $script:results.Add(@{ ok = $false; line = "[FAIL] dispatch: warn 병합 누락 | 출력: $(($r.out -split "`r?`n" | Select-Object -First 2) -join ' / ')" }) }
+    }
 
+    if (Test-ScenarioUnit 4) {
     # ---- [T1] 스캔 캡 도달 fail-closed (50개 상한) ----
     # 캡 게이트는 **둘**이고 서로 다른 분기다 — 경로 나열 루프(추적 파일·디렉터리·글롭)와
     #   untracked 정독 루프. 한쪽만 케이스를 걸면 다른 쪽이 fail-open으로 남아도 전건 green이 된다
@@ -516,7 +532,6 @@ if ($gitOk) {
     $wcsCapT = Join-Path $work 'wcscaptracked'; New-Item -ItemType Directory $wcsCapT -Force | Out-Null
     Push-Location $wcsCapT
     git init -q; git config user.email t@t; git config user.name t
-    $capNames = 1..51 | ForEach-Object { 'f{0:D3}.txt' -f $_ }
     foreach ($n in $capNames) { 'v=1' | Set-Content $n }
     git add .; git commit -qm init
     Pop-Location
@@ -566,7 +581,9 @@ if ($gitOk) {
     Assert-Case -Name "commit-secrets: 캡 차단이 저신뢰 검출분을 삼키지 않는다(T1 ⓔ, exit 2)" -R $r -ExpectExit 2 -ExpectContains '확인 필요'
     if ($r.out -match '검출된 시크릿은 없') { $script:results.Add(@{ ok = $false; line = "[FAIL] commit-secrets: 저신뢰 검출이 있는데 '없음'으로 표기됨(T1 ⓔ)" }) }
     else { $script:results.Add(@{ ok = $true; line = "[PASS] commit-secrets: 저신뢰 검출 시 '없음' 고정 문구 미사용(T1 ⓔ)" }) }
+    }
 
+    if (Test-ScenarioUnit 6) {
     # ⓑ untracked 정독 루프: `git add -A` 경로. 위 ⓐ와 다른 분기라 별도 repo·별도 쌍이 필요하다.
     $wcsCapU = Join-Path $work 'wcscapuntracked'; New-Item -ItemType Directory $wcsCapU -Force | Out-Null
     Push-Location $wcsCapU
@@ -612,6 +629,7 @@ if ($gitOk) {
     $hdPyReal = "python3 - <<PY`nprint(1)`nPY`ngit add -A && git commit -m x"
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsCapU; tool_input = @{ command = $hdPyReal } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 비-data-sink heredoc 밖의 진짜 커밋은 그대로 판정한다 (HD4, exit 2)" -R $r -ExpectExit 2 -ExpectContains '50개 상한'
+    }
 } else {
     Write-Host "[SKIP] warn-commit-secrets 시나리오 (git 없음)"
 }

@@ -96,10 +96,16 @@ $scenarioGroups = @(
     @('stateless-8'),
     @('guard-write'),
     @('guard-harness'),
-    @('guard-bash'),
+    @('guard-bash-1'),
+    @('guard-bash-2'),
+    @('guard-bash-3'),
+    @('guard-bash-4'),
     @('suggest-agents-record'),
     @('post-write-checks'),
-    @('warn-commit-secrets'),
+    @('warn-commit-secrets-1'),
+    @('warn-commit-secrets-2'),
+    @('warn-commit-secrets-3'),
+    @('warn-commit-secrets-4'),
     @('warn-version-drift'),
     @('guard-harness-installed', 'hook-event-log'),
     @('session-context'),
@@ -110,7 +116,10 @@ $scenarioGroups = @(
     @('loop-continue'),
     @('work-clock'),
     @('screen-cover'),
-    @('check-plan'),
+    @('check-plan-1'),
+    @('check-plan-2'),
+    @('check-plan-3'),
+    @('check-plan-4'),
     @('record-work-start'),
     @('inject-reply-language'),
     @('guard-comment')
@@ -118,11 +127,13 @@ $scenarioGroups = @(
 
 $statelessCostSec = 25
 $groupCostSec = @{
-    'check-plan' = 184; 'warn-commit-secrets' = 167; 'screen-cover' = 103; 'guard-bash' = 92
-    'session-context' = 76; 'post-write-checks' = 50; 'guard-harness' = 47; 'guard-write' = 41
-    'guard-stale-docs' = 34; 'guard-task-audit' = 15; 'warn-version-drift' = 29; 'work-clock' = 17; 'loop-continue' = 12
-    'guard-harness-content' = 10; 'guard-harness-installed+hook-event-log' = 10; 'suggest-agents-record' = 8
-    'session-end-cleanup' = 8; 'record-work-start' = 5; 'inject-reply-language' = 4; 'guard-comment' = 13
+    'warn-commit-secrets-1' = 111; 'warn-commit-secrets-2' = 95; 'warn-commit-secrets-3' = 30; 'warn-commit-secrets-4' = 19
+    'check-plan-1' = 43; 'check-plan-2' = 65; 'check-plan-3' = 54; 'check-plan-4' = 53
+    'guard-bash-1' = 70; 'guard-bash-2' = 86; 'guard-bash-3' = 40; 'guard-bash-4' = 27
+    'screen-cover' = 86; 'session-context' = 43; 'post-write-checks' = 36; 'guard-harness' = 59; 'guard-write' = 37
+    'guard-stale-docs' = 34; 'guard-task-audit' = 41; 'warn-version-drift' = 31; 'work-clock' = 22; 'loop-continue' = 11
+    'guard-harness-content' = 9; 'guard-harness-installed+hook-event-log' = 9; 'suggest-agents-record' = 10
+    'session-end-cleanup' = 9; 'record-work-start' = 6; 'inject-reply-language' = 18; 'guard-comment' = 33
 }
 $launchGroups = @(
     for ($i = 0; $i -lt $scenarioGroups.Count; $i++) {
@@ -470,6 +481,15 @@ $groupSecText = @($groupSecs) |
     Sort-Object @{ Expression = { if ($null -eq $_.Sec) { -1 } else { $_.Sec } }; Descending = $true } |
     ForEach-Object { '{0}={1}' -f $_.Group, $(if ($null -eq $_.Sec) { '?' } else { $_.Sec }) }
 Write-Host ('[TIMING-GROUPS] ' + (@($groupSecText) -join ' '))
+if (-not $Filter -and -not $Resume -and -not $deadGroups.Count) {
+    $costTable = @{}
+    foreach ($k in $groupCostSec.Keys) { $costTable[$k] = $groupCostSec[$k] }
+    for ($i = 1; $i -le $script:GoldenShardCounts['stateless']; $i++) { $costTable["stateless-$i"] = $statelessCostSec }
+    $drift = @(Get-GroupCostDrift -CostSec $costTable -Measured @($groupSecs))
+    if ($drift.Count) {
+        Write-Host ('[WARN] 비용표 어긋남 {0}건 — $groupCostSec 을 실측으로 다시 맞추세요: {1}' -f $drift.Count, (@($drift | ForEach-Object { '{0} 비용 {1} · 실측 {2}' -f $_.Group, $_.Cost, $_.Sec }) -join ' · '))
+    }
+}
 # 미완주가 있으면 **결과 줄 자체**에 분모의 성격을 적는다 — 위 [WARN]은 결과 줄 위에 따로 떠서
 # 읽는 사람이 `FAIL 1`을 회귀로 오해한다(v1.173.0 F-7에서 실제로 메인·리뷰어가 둘 다 오독했다).
 # 미실행 케이스 수는 세지 않는다 — 그러려면 시나리오 파서가 필요한데, 막으려는 것이 오독이라
@@ -481,7 +501,7 @@ if ($deadGroups.Count) {
 Write-Host ("결과: {0}/{1} OK (FAIL {2}){3}" -f ($total - $failCount), $total, $failCount, $deadSuffix)
 Write-TimingLine -Total $total
 
-$GoldenTotalBaseline = 1530
+$GoldenTotalBaseline = 1532
 if (-not $deadGroups.Count -and -not $Filter -and $total -ne $GoldenTotalBaseline) {
     Write-Host ("[WARN] 총계가 기준선과 다릅니다: {0} != {1} (`$GoldenTotalBaseline`)." -f $total, $GoldenTotalBaseline)
     Write-Host '        합산 규칙: 선언형(hook-cases.json) + 러너 내장 시나리오. guard-bash 무상태 케이스는 dispatch 에코를 함께 돌아 1건이 2로 셉니다.'

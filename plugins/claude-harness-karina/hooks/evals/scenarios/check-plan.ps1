@@ -77,7 +77,11 @@ function Invoke-CheckPlan([string]$Text, [string]$Dir = '', [string]$Exe = 'pwsh
     $out = & $Exe -NoProfile -ExecutionPolicy Bypass -File $cpPath $file 2>&1
     return @{ code = $LASTEXITCODE; out = (($out | Out-String)).Trim() }
 }
+$cpScreen = '- **화면**: 시나리오 메뉴에서 데모 열기 · 스크린샷 demo.png · 통과 조건 데모 창이 보인다'
+function New-ScreenPlan([string]$Line) { return $cpBase.Replace('- **Acceptance**:', ($Line + "`n- **Acceptance**:")) }
+$cpWinPs = Get-Command powershell.exe -ErrorAction SilentlyContinue
 
+if (Test-ScenarioUnit 1) {
 # ---- 정상 ----
 $r = Invoke-CheckPlan $cpBase
 Assert-Case -Name "check-plan: 정상 plan 은 위반 0 으로 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
@@ -128,7 +132,9 @@ $r = Invoke-CheckPlan ($cpBase.Replace("> 요구: 데모 기능을 추가해줘`
 Assert-Case -Name "check-plan: B2 첫 절 앞의 요구 줄이 빠지면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'goal-head request'
 $r = Invoke-CheckPlan ($cpBase.Replace("## Out of Scope`n`n- 없음`n`n", ''))
 Assert-Case -Name "check-plan: 경량 표지가 없으면 Out of Scope 누락을 잡는다" -R $r -ExpectExit 1 -ExpectContains 'missing-section out-of-scope'
+}
 
+if (Test-ScenarioUnit 2) {
 # ---- 경량 plan — Goal 의 「> 경량:」 줄이 Out of Scope·검증 방법을 면제하고 경량 조건을 잰다 ----
 $cpLight = $cpBase.Replace("> 완료: <done>`n", "> 완료: <done>`n> 경량: 파일 2 · 새 공개 표면 없음 · 승인 필요 없음 · DB/외부 없음`n").Replace("## Out of Scope`n`n- 없음`n`n", '').Replace("## 검증 방법`n`n| task | 명령 | 판정 |`n|---|---|---|`n| T1 | ``run`` | 통과 |`n`n", '')
 $r = Invoke-CheckPlan $cpLight
@@ -167,10 +173,10 @@ $r = Invoke-CheckPlan ($cpBase.Replace("- **검증**: ``run`` → OK`n", ''))
 Assert-Case -Name "check-plan: B4 task 에 검증 줄이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'task-line T1 verify'
 $r = Invoke-CheckPlan ($cpBase.Replace('- [ ] **T1-1** 한다', "- [x] **T1-1** 한다`n- [X] **T1-2** 한다`n- [/] **T1-3** 하는 중`n- [x] **T1-4** (불요 — 근거)`n- [x] (불요 — 근거) **T1-5** 끝"))
 Assert-Case -Name "check-plan: 하위 항목 상태 x·X·/·불요 표기를 받아들인다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+}
 
+if (Test-ScenarioUnit 1) {
 # ---- 화면 줄 — 줄이 있으면 시나리오·스크린샷·통과 조건 셋을 다 가져야 한다 ----
-$cpScreen = '- **화면**: 시나리오 메뉴에서 데모 열기 · 스크린샷 demo.png · 통과 조건 데모 창이 보인다'
-function New-ScreenPlan([string]$Line) { return $cpBase.Replace('- **Acceptance**:', ($Line + "`n- **Acceptance**:")) }
 $r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + ' · (BASE 대조)'))
 Assert-Case -Name "check-plan: 화면 줄 세 요소와 (BASE 대조) 표지를 받아들인다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 $r = Invoke-CheckPlan (New-ScreenPlan $cpScreen.Replace(' · 통과 조건 데모 창이 보인다', ''))
@@ -191,13 +197,14 @@ Assert-EvalParentAlive
 $cpMissing = pwsh -NoProfile -ExecutionPolicy Bypass -File $cpPath (Join-Path $cpRoot 'no-such-plan.md') 2>&1
 $r = @{ code = $LASTEXITCODE; out = (($cpMissing | Out-String)).Trim() }
 Assert-Case -Name "check-plan: 파일이 없으면 ERROR 와 exit 2" -R $r -ExpectExit 2 -ExpectContains 'check-plan: ERROR'
+}
 
+if (Test-ScenarioUnit 2) {
 # ---- 출력 ASCII · PS 5.1 ----
 $cpMulti = $cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', '| 크기 |  | 10 |').Replace('- [ ] **T1-1** 한다', '- [ ] T1-1 한다').Replace('`grep -c x a.ps1` ≥1 (착수 0)', '`grep -c x a.ps1` ≥1')
 $r = Invoke-CheckPlan $cpMulti
 $cpAscii = if ($r.out -match '[^\x00-\x7F]') { 'NON-ASCII' } else { 'ASCII-ONLY' }
 Assert-Case -Name "check-plan: 위반이 여럿이어도 출력은 ASCII 뿐이다" -R @{ code = $r.code; out = $cpAscii } -ExpectExit 1 -ExpectContains 'ASCII-ONLY'
-$cpWinPs = Get-Command powershell.exe -ErrorAction SilentlyContinue
 if ($cpWinPs) {
     $r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', '| 크기 |  | 10 |')) '' $cpWinPs.Source
     Assert-Case -Name "check-plan: PS 5.1 에서도 위반을 잡는다" -R $r -ExpectExit 1 -ExpectContains 'empty-command'
@@ -211,7 +218,9 @@ if ($cpWinPs) {
     Assert-Case -Name "check-plan: PS 5.1 에서 정상 plan 은 통과한다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
     Assert-Case -Name "check-plan: PS 5.1 에서도 화면 줄 요소 누락을 잡는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'screen-line T1 predicate'
 }
+}
 
+if (Test-ScenarioUnit 3) {
 # ---- 증거 대조 (-Base) — 임시 git 레포에 BASE 커밋을 두고 그 앞뒤로 task 커밋을 쌓는다 ----
 # 커밋 메시지는 파일(-F)로 넘긴다 — 한글 메시지가 인자 인코딩을 거치지 않게 한다.
 $cpEvSeq = 0
@@ -300,6 +309,13 @@ if ($cpWinPs) {
     Assert-Case -Name "check-plan 증거: PS 5.1 에서도 본문 증거 없음을 잡는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'no-commit-evidence T1'
 }
 
+$ev = New-EvidenceRepo @()
+[System.IO.File]::WriteAllText((Join-Path $ev.dir 'AGENTS.md'), "# AGENTS.md`n`n- **Plan check**: ``exit 3```n", (New-Object System.Text.UTF8Encoding($false)))
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan Plan check: -Base 모드에서는 돌리지 않는다" -R $r -ExpectExit 1 -ExpectNotContains 'plan-check'
+}
+
+if (Test-ScenarioUnit 4) {
 $cpPcSeq = 0
 function New-PlanCheckDir([string]$AgentsLine, [switch]$Git, [string]$Sub = '') {
     $script:cpPcSeq++
@@ -375,10 +391,6 @@ if ($cpWinPs) {
     Assert-Case -Name "check-plan Plan check: PS 5.1 에서도 상한을 넘으면 timeout 위반을 낸다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'plan-check timeout 2'
     Assert-Case -Name "check-plan Plan check: PS 5.1 시간 초과 뒤에도 손자 프로세스가 남지 않고 곧 끝난다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectContains 'left=0 fast=True'
 }
-
-$ev = New-EvidenceRepo @()
-[System.IO.File]::WriteAllText((Join-Path $ev.dir 'AGENTS.md'), "# AGENTS.md`n`n- **Plan check**: ``exit 3```n", (New-Object System.Text.UTF8Encoding($false)))
-$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
-Assert-Case -Name "check-plan Plan check: -Base 모드에서는 돌리지 않는다" -R $r -ExpectExit 1 -ExpectNotContains 'plan-check'
+}
 
 }

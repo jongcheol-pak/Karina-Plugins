@@ -2,7 +2,7 @@
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook·New-WriteJson·New-CommitJson)와 공유 변수($work·$iso·$gitOk·$pw·$vdCache)를 그대로 쓴다.
 # 파일명은 검증 대상 hook 기준이고, Invoke-Hook에 넘기는 문자열은 scripts/ 아래 hook 파일명이다.
 # ==== 아래는 본체에서 원문 그대로 옮긴 구간 (순수 이동 — 재조립 등가 검사의 경계) ====
-if (Test-HookSelected @('guard-bash')) {
+if ((Test-HookSelected @('guard-bash')) -and (Test-ScenarioUnit 1)) {
 # [v1.101.0 T4 → 감사 3회차 T1] 디스패처 로드 가드 — 커밋 판정 라이브러리는 **존재만 매 호출 확인**하고(부재 시
 #   stderr 경고 1줄 — 침묵 fail-open 금지) **dot-source 는 명령에 commit 이 있을 때만** 한다. 부재여도 나머지
 #   검사(차단 게이트 포함)는 돈다 — 종전에는 commit-secrets 부재가 `exit 0` 으로 7검사를 전부 껐다.
@@ -111,6 +111,11 @@ Assert-Case -Name "guard-bash: 커밋 판정 정의 부재여도 비커밋 명�
 # 게이트 태그 2개: dispatch 동등성 블록이 이 섹션의 plan 픽스처($rtcUn·$rtcOk)를 재사용하므로
 # guard-bash 필터에서도 섹션 전체를 실행한다(초과 실행 허용 원칙).
 if (Test-HookSelected @('guard-bash')) {
+function New-BashJson([string]$cmd) {
+    return (@{ tool_name = 'Bash'; tool_input = @{ command = $cmd } } | ConvertTo-Json -Compress)
+}
+
+if (Test-ScenarioUnit 2) {
 $rtcUn = Join-Path $work 'rtc-unchecked'; New-Item -ItemType Directory $rtcUn -Force | Out-Null
 "# plan`n- [ ] T3. 검색 기능`n- [x] T1. 완료분" | Set-Content (Join-Path $rtcUn 'plan.md')
 $rtcIn = Join-Path $work 'rtc-inprog'; New-Item -ItemType Directory $rtcIn -Force | Out-Null
@@ -280,15 +285,14 @@ $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcOk 'T3: 검색 요약')
 Assert-Case -Name "dispatch=rtc: 완료 [x] T3 커밋 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUn '문서: 릴리즈 노트 (T3: 반영)')
 Assert-Case -Name "dispatch=rtc: 제목 아닌 T3 언급 통과 (제목 한정)" -R $r -ExpectExit 0 -ExpectSilent $true
+}
 
+if (Test-ScenarioUnit 3) {
 # ---- [회차 51] block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 ----
 #   회차 50 이 Deferred 절 교체 스크립트로 plan.md 를 29줄만 남기고 잘랐다. plan.md 는 gitignore 라
 #   git 으로 복구할 수 없어 경고가 아니라 차단이다. 판정은 「쓰기 구문의 **대상 인자**가 plan.md 인가」
 #   하나이고, 「명령 어딘가에 plan.md 가 있는가」가 아니다 — 후자면 대장의 그 줄을 지우는 정상 작업이
 #   막힌다(대장에 리터럴 plan.md 가 20회 있다). 그래서 음성 4건이 양성 1건과 짝을 이룬다.
-function New-BashJson([string]$cmd) {
-    return (@{ tool_name = 'Bash'; tool_input = @{ command = $cmd } } | ConvertTo-Json -Compress)
-}
 
 # BPW1 (양성): 회차 50 의 사고 명령 형태 — 변수를 거쳐 지시하므로 리터럴 매치로는 새어 나간다.
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'PY'`np='plan.md'`ns=open(p).read()`nopen(p,'w').write(s)`nPY")
@@ -400,7 +404,9 @@ $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'Copy-Item notes.md plan.md')
 Assert-Case -Name "bpw: Copy-Item 의 대상이 plan.md 면 차단 (ST8)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "pwsh -c ""[System.IO.File]::WriteAllText('plan.md','x')""")
 Assert-Case -Name "bpw: [System.IO.File]::WriteAllText 의 첫 인자가 plan.md 면 차단 (ST9)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+}
 
+if (Test-ScenarioUnit 1) {
 # ---- 데이터 싱크 heredoc 본문(HD) — 오탐 수정 + 차단 유지 짝 ----
 #   cat·tee 가 .txt 같은 데이터 파일로 쓰는 heredoc 본문 속 `> plan.md` 는 실행되지 않는 문자열이다.
 #   ⓑ 리다이렉션 검사만 그 본문을 걷은 명령을 보고, ⓐ open(w)·[System.IO.File] 와 실행 가능 스크립트 대상은
@@ -463,10 +469,11 @@ $eojBlock = @{ tool_name = 'Bash'; tool_input = @{ command = 'echo x > plan.md' 
 $outEojB = $eojBlock | pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $noJson 'guard-bash.ps1') 2>&1
 $rEojB = @{ code = $LASTEXITCODE; out = (($outEojB | Out-String)).Trim() }
 Assert-Case -Name "eoj: json 부재여도 block-plan-write 차단은 유지 (EOJ2)" -R $rEojB -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+}
 
 }
 
-if ((Test-HookSelected @('guard-bash')) -and $gitOk) {
+if ((Test-HookSelected @('guard-bash')) -and $gitOk -and (Test-ScenarioUnit 4)) {
 $ccRoot = Join-Path $work 'ccrepos'; New-Item -ItemType Directory $ccRoot -Force | Out-Null
 $ccSeq = 0
 function New-CcRepo {

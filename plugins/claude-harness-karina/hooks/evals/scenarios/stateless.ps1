@@ -71,3 +71,10 @@ if ((Test-HookSelected @('block-destructive')) -and ($shardIdx -eq 0)) {
         Assert-Case -Name "block-destructive.ps1: QUICK=1 이어도 rm -rf / 차단 (우회 변수 무시 계약, 회차 44 T7)" -R $r -ExpectExit 2 -ExpectContains '재귀 삭제 + 위험 루트 대상 감지'
     } finally { $env:CLAUDE_HARNESS_QUICK = $savedQuickBd }
 }
+
+if ((-not $script:FilterSet) -and ($shardIdx -eq 0)) {
+    $driftHit = @(Get-GroupCostDrift -CostSec @{ 'g-a' = 10 } -Measured @([pscustomobject]@{ Group = 'g-a'; Sec = 40 }))
+    Assert-Case -Name "golden-runner: 실측이 비용표의 2배·15초를 넘으면 어긋남으로 낸다" -R @{ code = 0; out = ('drift=' + $driftHit.Count + ' ' + (@($driftHit | ForEach-Object { $_.Group }) -join ',')) } -ExpectExit 0 -ExpectContains 'drift=1 g-a'
+    $driftNone = @(Get-GroupCostDrift -CostSec @{ 'g-b' = 30 } -Measured @([pscustomobject]@{ Group = 'g-b'; Sec = 35 }))
+    Assert-Case -Name "golden-runner: 비용표 안의 실측은 어긋남으로 내지 않는다 (음성 짝)" -R @{ code = 0; out = ('drift=' + $driftNone.Count) } -ExpectExit 0 -ExpectContains 'drift=0'
+}

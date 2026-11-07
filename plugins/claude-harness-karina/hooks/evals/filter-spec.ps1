@@ -47,12 +47,25 @@ function Write-UnknownFilterWarning {
     }
 }
 
-$script:GoldenShardCount = 8
+$script:GoldenShardCounts = @{ 'stateless' = 8; 'warn-commit-secrets' = 4; 'check-plan' = 4; 'guard-bash' = 4 }
 
 function Resolve-ScenarioShard {
     param([string]$Name)
-    if ($Name -match '^stateless-(\d+)$') {
-        return @{ File = 'stateless'; Index = ([int]$Matches[1] - 1); Count = $script:GoldenShardCount }
+    if ($Name -match '^(.+)-(\d+)$' -and $script:GoldenShardCounts.ContainsKey($Matches[1])) {
+        return @{ File = $Matches[1]; Index = ([int]$Matches[2] - 1); Count = $script:GoldenShardCounts[$Matches[1]] }
     }
     return @{ File = $Name; Index = 0; Count = 1 }
+}
+
+function Get-GroupCostDrift {
+    param([hashtable]$CostSec, [object[]]$Measured, [double]$Ratio = 2, [int]$MinDiffSec = 15)
+    @(foreach ($m in $Measured) {
+        if ($null -eq $m.Sec -or -not $CostSec.ContainsKey([string]$m.Group)) { continue }
+        $cost = [double]$CostSec[[string]$m.Group]
+        $sec = [double]$m.Sec
+        if ([Math]::Abs($sec - $cost) -lt $MinDiffSec) { continue }
+        if ($sec -gt $cost * $Ratio -or $sec -lt $cost / $Ratio) {
+            [pscustomobject]@{ Group = [string]$m.Group; Cost = $cost; Sec = $sec }
+        }
+    })
 }

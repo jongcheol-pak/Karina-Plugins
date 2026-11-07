@@ -87,6 +87,14 @@ function Test-HookSelected {
     return $false
 }
 
+function Test-ScenarioUnit {
+    param([int]$Unit)
+    $count = if ($script:ShardCount -and [int]$script:ShardCount -gt 1) { [int]$script:ShardCount } else { 1 }
+    if ($count -eq 1) { return $true }
+    $index = if ($null -ne $script:ShardIndex) { [int]$script:ShardIndex } else { 0 }
+    return (($Unit % $count) -eq $index)
+}
+
 # ---- 크로스섹션 공유 정의 (필터 게이트 밖 — 반드시 top-level) ----
 # 섹션 게이트가 어떤 조합으로 건너뛰어도 후속 섹션이 깨지지 않도록, 둘 이상의 섹션이 쓰는
 # 변수·함수·픽스처는 여기서 무조건 정의한다. 특히 $gitOk는 게이트로 건너뛰면 오류 없이
