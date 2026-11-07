@@ -49,7 +49,7 @@
 
 ### 판정 재사용
 
-- **판정 뒤 HEAD 가 움직였으면 두 경우에만 다시 돌지 않는다 — ⓐ 판정 SHA..HEAD 의 바뀐 파일이 전부 문서(`.md`·`.txt`)이고 그 레포 검증 매핑(`AGENTS.md` 또는 그것이 지목한 문서)이 그 경로에 명령을 걸지 않는다 ⓑ `git diff <base SHA>..<판정 SHA> | git patch-id --stable` 과 `git diff <새 base>..HEAD | git patch-id --stable` 이 같다(같은 패치가 다른 base 위로 옮겨졌다)** — 문구만 바뀐 변경을 다시 검증하면 같은 판정을 두 번 산다(*"a wording-only change gets none"*). 검증 매핑이 `*.md` 에 명령을 거는 레포(이 하니스)는 ⓐ 가 늘 거짓이다.
+- **판정 뒤 HEAD 가 움직였으면 두 경우에만 다시 돌지 않는다 — ⓐ 판정 SHA..HEAD 의 바뀐 파일이 전부 문서(`.md`·`.txt`)이고 그중에 `AGENTS.md`·검증 매핑 문서가 없고 그 레포 검증 매핑(`AGENTS.md` 또는 그것이 지목한 문서)이 그 경로에 명령을 걸지 않는다 ⓑ `git diff <base SHA>..<판정 SHA> | git patch-id --stable` 과 `git diff <새 base>..HEAD | git patch-id --stable` 이 같다(같은 패치가 다른 base 위로 옮겨졌다)** — 문구만 바뀐 변경을 다시 검증하면 같은 판정을 두 번 산다(*"a wording-only change gets none"*). 매핑 문서를 고친 변경은 문구가 아니라 어느 검사가 도는지를 바꿔 재사용하지 않는다(원문 autopilot-full *"a change to which checks run"* — `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/autopilot-full.md`). 검증 매핑이 `*.md` 에 명령을 거는 레포(이 하니스)는 ⓐ 가 늘 거짓이다.
 - **판정 기록은 `plan.md` 의 Progress Log 한 줄이다 — `로컬 게이트: <판정> · head <full SHA> · base <full SHA> · patch-id <값>`** — 재사용 판정이 이 줄을 대조한다. 체인 끝은 아래 「체인 끝」 의 결정 파일이다.
 
 ### 게이트 완화 서명
