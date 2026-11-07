@@ -83,7 +83,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 - **리뷰어를 부르기 전에 `"<skill>/scripts/check-plan.ps1" "<plan.md>"` 를 work-clock 과 같은 호출형(`../implement/references/report-format.md`「소요 기록」)으로 돌려 exit 0 을 본다 — 고치기·오탐·미해소·미실행 처리와 리뷰어 전달물은 `references/review-rounds.md`「check-plan 처리」 다** — 문자열로 갈리는 판정은 결정적 검사가 먼저 걸러야 리뷰 라운드가 판단에만 쓰인다. 코드 뜻은 스크립트 머리 주석이 정본이다.
 - **`karina:plan-reviewer` 서브에이전트를 호출한다(최소 1회) — 경량 계획이면 부르지 않는다(`references/interview.md`「경량 계획」)** — 전달: `plan.md` 경로, 대상 레포 경로, `AGENTS.md` 경로.
 - **리뷰어는 read-only 라 고치는 것은 이 세션이다.** **호출되지 않는 환경이면 그 사실을 plan 에 적고 승인 단계로 간다** — 리뷰 부재를 통과로 적지 않는다.
-- **`plan-reviewer` 지적은 BLOCKER·MAJOR 를 고쳐 다시 부르되 3라운드에서 멈추고, 남은 지적은 승인 제시 `남은 리뷰 지적:` 에 싣는다 — 기각·MINOR·라운드 계수 세부는 `references/review-rounds.md`「리뷰 라운드」 다** — 지적이 남은 계획을 숨기고 승인받으면 그 결함이 구현 중에 드러난다.
+- **`plan-reviewer` 지적은 BLOCKER·MAJOR 를 고치고, 다시 부르는 것은 BLOCKER 가 있었거나 수정이 task 구조(Files·검증 명령)를 바꿨을 때뿐이며 3라운드에서 멈추고, 남은 지적은 승인 제시 `남은 리뷰 지적:` 에 싣는다 — 기각·MINOR·라운드 계수 세부는 `references/review-rounds.md`「리뷰 라운드」 다** — 지적이 남은 계획을 숨기고 승인받으면 그 결함이 구현 중에 드러난다.
 - **승인이 필요한 항목(파괴적·외부 비가역 작업, 복구 경로 없는 삭제)이 `## 승인 필요 항목`에 있는지 확인한다** — `plan-reviewer` 는 그 항목에 회피 설계가 있는지를 보고, 누락은 복구 경로 없는 삭제만 센다. 그 밖의 누락은 여기서 잡지 않으면 실행 시점에 루프가 멈춘다.
 - **`plan.md`를 쓴 뒤 화면에 요약을 내고 승인을 받는다** — 서식은 `references/interview.md`의 「승인 제시」. 중계 모드면 화면 대신 `ask` 로 보낸다(`references/relay-mode.md`「중계 모드」).
   - **승인 답이 `G`·`S`·`C` 면 `references/rare-paths.md`「승인 답 갈래」 를 따른다 — 셋 다 이 turn 에 `karina:implement` 를 부르지 않는다.**
