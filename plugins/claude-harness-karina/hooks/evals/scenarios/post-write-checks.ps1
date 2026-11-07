@@ -470,5 +470,25 @@ foreach ($n in 'w1', 'w2') {
 $eolWtCache = @(Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.claude/.state/post-write-warn') -Filter 'eol-wt_eolcache_*' -ErrorAction SilentlyContinue)
 Assert-Case -Name "post-write: worktree 안에서도 eol 표본 캐시를 쓴다 (EOL12b)" -R @{ code = 0; out = ('cache=' + $eolWtCache.Count) } -ExpectExit 0 -ExpectContains 'cache=1'
 
+$eolOtherCrlf = Join-Path $work 'eol-other-crlf'; $eolOtherLf = Join-Path $work 'eol-other-lf'; $eolOtherCwd = Join-Path $work 'eol-other-cwd'
+New-Item -ItemType Directory $eolOtherCwd -Force | Out-Null
+foreach ($d in $eolOtherCrlf, $eolOtherLf) {
+    New-Item -ItemType Directory $d -Force | Out-Null
+    $nl = if ($d -eq $eolOtherCrlf) { "`r`n" } else { "`n" }
+    Push-Location $d
+    git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
+    1..10 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $d "c$_.md"), "줄$nl") }
+    git add -A 2>$null; git commit -qm init
+    Pop-Location
+}
+$p = Join-Path $eolOtherCrlf 'new.md'
+[System.IO.File]::WriteAllText($p, "LF 로 저장`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolOtherCwd; session_id = 'eol-other-a'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: cwd 가 레포 밖이어도 쓴 파일의 CRLF 레포 기준으로 경고 (EOL13)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
+$p = Join-Path $eolOtherLf 'new.md'
+[System.IO.File]::WriteAllText($p, "LF 로 저장`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolOtherCrlf; session_id = 'eol-other-b'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: cwd 가 CRLF 레포여도 쓴 파일의 LF 레포 기준으로 무경고 (EOL13b)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+
 }
 

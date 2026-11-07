@@ -55,8 +55,8 @@ function Test-WarnOnce {
 
 # H3 표본 캐시 — 근거는 `rules/post-write-rationale.md` §15
 function Get-EolSampleRows {
-    param([string]$Top, [string]$IndexPath, [string[]]$Specs)
-    $fresh = { param([string[]]$Paths) @(& git -c core.quotepath=off ls-files --full-name --eol -- $Paths 2>$null) }
+    param([string]$Dir, [string]$Top, [string]$IndexPath, [string[]]$Specs)
+    $fresh = { param([string[]]$Paths) @(& git -C $Dir -c core.quotepath=off ls-files --full-name --eol -- $Paths 2>$null) }
     if (-not $Top -or -not $IndexPath -or -not (Test-Path -LiteralPath $IndexPath)) { return (& $fresh $Specs) }
     try {
         $indexTicks = [string][System.IO.File]::GetLastWriteTimeUtc($IndexPath).Ticks
@@ -392,7 +392,8 @@ try {
     if ($file -match '(?i)\.(md|ps1|py|json|psm1|psd1)$' -and
         $file -notmatch '(?i)[\\/]llm-wiki[\\/]evals[\\/]fixtures[\\/]') {
         # gitignore 가 아니면 대상 — exit 1 만 「repo 안이고 ignore 아님」이다(§15)
-        $null = & git check-ignore -q -- $file 2>$null
+        $eolDir = Split-Path -Parent $file
+        $null = & git -C $eolDir check-ignore -q -- $file 2>$null
         $notIgnored = ($LASTEXITCODE -eq 1)
         # 이 hook 은 플러그인이 붙은 **모든 프로젝트**에서 돈다 — 레포 규약을 증거 없이 CRLF 로 단정하면
         #   LF·혼합 레포에서 저장마다 틀린 지시가 붙는다. 판정 순서와 그 이유(기계 설정을 버린 이유 포함)는
@@ -405,12 +406,12 @@ try {
             $lf = ($eolText.Length - $eolText.Replace("`n", '').Length) - $crlf
             $crlfRepo = $false; $repoCrlf = 0; $repoTotal = 0
             if ($lf -gt 0 -and -not (Test-WarnedAlready "eol|$file")) {
-                $eolAttr = ((& git check-attr eol -- $file 2>$null) -join '')
+                $eolAttr = ((& git -C $eolDir check-attr eol -- $file 2>$null) -join '')
                 if ($eolAttr -match 'eol:\s*(lf|crlf)\s*$') {
                     $crlfRepo = ($Matches[1] -eq 'crlf')
                 } else {
                     $eolSampleMin = 5; $eolCrlfRatioMin = 0.9
-                    $revOut = @(& git rev-parse --path-format=absolute --show-toplevel --git-path index 2>$null)
+                    $revOut = @(& git -C $eolDir rev-parse --path-format=absolute --show-toplevel --git-path index 2>$null)
                     $top = if ($revOut.Count -ge 1) { ([string]$revOut[0]).Trim() } else { '' }
                     $indexPath = if ($revOut.Count -ge 2 -and $top) { ([string]$revOut[1]).Trim() } else { $null }
                     $self = ($file -replace '\\', '/')
@@ -418,7 +419,7 @@ try {
                         $self = $self.Substring($top.Length + 1)
                     }
                     $specs = @('md', 'ps1', 'py', 'json', 'psm1', 'psd1' | ForEach-Object { ':(top,icase)*.' + $_ })
-                    foreach ($row in @(Get-EolSampleRows -Top $top -IndexPath $indexPath -Specs $specs)) {
+                    foreach ($row in @(Get-EolSampleRows -Dir $eolDir -Top $top -IndexPath $indexPath -Specs $specs)) {
                         $cols = $row -split "`t", 2
                         if ($cols.Count -lt 2) { continue }
                         $path = $cols[1]
