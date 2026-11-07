@@ -32,6 +32,8 @@
 #   종전대로 전체를 훑으므로 이 제거는 오탐만 줄이고 미탐을 새로 만들지 않는다.
 ```
 
+**PowerShell here-string 도 같은 데이터다** — `@'`·`@"` 로 줄이 끝나고 줄머리 `'@`·`"@` 로 닫히는 본문을 heredoc 과 같이 걷는다. 감사 세션(2026-11-07)에서 PowerShell 도구 명령의 here-string 안 `command='dotnet build'` 가 [AGENTS 기록 제안] 으로 잡혔다. 줄 중간의 `@'` 처럼 줄이 끝나지 않는 형태는 here-string 이 아니라 걷지 않는다(골든 `hooks/evals/scenarios/suggest-agents-record.ps1` 의 here-string 네 케이스).
+
 ## §3 데이터 문맥 제거 2단: 「메시지 인자」 플래그 뒤의 인용 블록도 데이터다
 
 ```

@@ -40,6 +40,18 @@ Assert-Case -Name "suggest: 다른 레포 대상 명령은 제안 안 함 (오�
 $sjHd = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6b'; tool_input = @{ command = ("python - <<'EOF'`ndoc = 'cargo build'`nEOF") } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjHd
 Assert-Case -Name "suggest: heredoc 본문의 명령 문자열은 제안 안 함 (오탐 차단)" -R $r -ExpectExit 0 -ExpectSilent $true
+$sjHsSq = @{ tool_name = 'PowerShell'; cwd = $aproj; session_id = 'hs-sq'; tool_input = @{ command = ("`$s = @'`ncommand='cargo build'`n'@") } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjHsSq
+Assert-Case -Name "suggest: 작은따옴표 here-string 본문의 명령 문자열은 제안 안 함 (오탐 차단)" -R $r -ExpectExit 0 -ExpectSilent $true
+$sjHsDq = @{ tool_name = 'PowerShell'; cwd = $aproj; session_id = 'hs-dq'; tool_input = @{ command = ("`$s = @`"`ncommand='cargo build'`n`"@") } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjHsDq
+Assert-Case -Name "suggest: 큰따옴표 here-string 본문의 명령 문자열은 제안 안 함 (오탐 차단)" -R $r -ExpectExit 0 -ExpectSilent $true
+$sjHsAfter = @{ tool_name = 'PowerShell'; cwd = $aproj; session_id = 'hs-after'; tool_input = @{ command = ("`$s = @'`nx`n'@`ncargo build") } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjHsAfter
+Assert-Case -Name "suggest: here-string 이 닫힌 뒤 줄의 명령은 제안 (음성 짝)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+$sjHsInline = @{ tool_name = 'PowerShell'; cwd = $aproj; session_id = 'hs-inline'; tool_input = @{ command = ("Write-Output `"@'`"; cargo build") } } | ConvertTo-Json -Compress
+$r = Invoke-Hook 'suggest-agents-record.ps1' $sjHsInline
+Assert-Case -Name "suggest: 줄 중간 @' 문자열 뒤 명령은 제안 (here-string 아님 · 음성 짝)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
 # 델타 음성 — 새 경계가 정상 발화까지 막지 않는지 본다(통과만 확인하는 무회귀 케이스로는 근거가 안 된다).
 $sjSame = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6c'; tool_input = @{ command = ('cd "' + $aproj + '" && cargo build') } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjSame

@@ -24,6 +24,7 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 
 # 데이터 문맥 제거: heredoc 본문은 파일 내용이지 실행 명령이 아니다 — 근거는 `rules/suggest-record-rationale.md` §2
 $cmdScan = [regex]::Replace($cmd, "(?ms)<<-?\s*(['`"]?)(\w+)\1\r?\n.*?^\2\r?$", ' ')
+$cmdScan = [regex]::Replace($cmdScan, "(?ms)@(['`"])[ \t]*\r?\n.*?^\1@", ' ')
 
 # 데이터 문맥 제거 2단: 「메시지 인자」 플래그 뒤의 인용 블록도 데이터다 — 근거는 `rules/suggest-record-rationale.md` §3
 $msgFlags = if ($cmdScan -match '(?i)\bpy(thon[\w.]*)?(\.exe)?\s+(-\S+\s+)*-m\b') {
