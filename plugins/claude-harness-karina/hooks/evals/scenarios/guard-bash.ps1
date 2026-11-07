@@ -1,12 +1,5 @@
 ﻿# scenarios/guard-bash.ps1 — guard-bash 로드 가드 시나리오 (dot-source 대상 부재 시 fail-open 가시화) (dot-source 전용, 단독 실행 금지)
-# 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook·New-WriteJson·New-CommitJson)와 공유 변수($work·$iso·$gitOk·$pw·$vdCache)를 그대로 쓴다.
-# 파일명은 검증 대상 hook 기준이고, Invoke-Hook에 넘기는 문자열은 scripts/ 아래 hook 파일명이다.
-# ==== 아래는 본체에서 원문 그대로 옮긴 구간 (순수 이동 — 재조립 등가 검사의 경계) ====
 if ((Test-HookSelected @('guard-bash')) -and (Test-ScenarioUnit 1)) {
-# [v1.101.0 T4 → 감사 3회차 T1] 디스패처 로드 가드 — 커밋 판정 라이브러리는 **존재만 매 호출 확인**하고(부재 시
-#   stderr 경고 1줄 — 침묵 fail-open 금지) **dot-source 는 명령에 commit 이 있을 때만** 한다. 부재여도 나머지
-#   검사(차단 게이트 포함)는 돈다 — 종전에는 commit-secrets 부재가 `exit 0` 으로 7검사를 전부 껐다.
-#   lib 없는 임시 사본에서 디스패처를 단독 실행한다(Invoke-Hook은 $scriptsDir 고정이라 lib가 항상 옆에 있음).
 $noLib = Join-Path $work 'dispatch-nolib'; New-Item -ItemType Directory $noLib -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noLib -Force
 Copy-Item (Join-Path $scriptsDir 'git-commit-match.ps1') $noLib -Force
@@ -108,8 +101,6 @@ Assert-Case -Name "guard-bash: 커밋 판정 정의 부재여도 비커밋 명�
 # =====================================================================
 # hook은 command 문자열 파싱 + plan 파일 Read만 하므로 git repo가 필요 없다.
 # 무상태 음성(비커밋·checkpoint·merge 등)은 hook-cases.json, 여기는 plan 상태 필요분.
-# 게이트 태그 2개: dispatch 동등성 블록이 이 섹션의 plan 픽스처($rtcUn·$rtcOk)를 재사용하므로
-# guard-bash 필터에서도 섹션 전체를 실행한다(초과 실행 허용 원칙).
 if (Test-HookSelected @('guard-bash')) {
 function New-BashJson([string]$cmd) {
     return (@{ tool_name = 'Bash'; tool_input = @{ command = $cmd } } | ConvertTo-Json -Compress)
@@ -288,13 +279,7 @@ Assert-Case -Name "dispatch=rtc: 제목 아닌 T3 언급 통과 (제목 한정)"
 }
 
 if (Test-ScenarioUnit 3) {
-# ---- [회차 51] block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 ----
-#   회차 50 이 Deferred 절 교체 스크립트로 plan.md 를 29줄만 남기고 잘랐다. plan.md 는 gitignore 라
-#   git 으로 복구할 수 없어 경고가 아니라 차단이다. 판정은 「쓰기 구문의 **대상 인자**가 plan.md 인가」
-#   하나이고, 「명령 어딘가에 plan.md 가 있는가」가 아니다 — 후자면 대장의 그 줄을 지우는 정상 작업이
-#   막힌다(대장에 리터럴 plan.md 가 20회 있다). 그래서 음성 4건이 양성 1건과 짝을 이룬다.
 
-# BPW1 (양성): 회차 50 의 사고 명령 형태 — 변수를 거쳐 지시하므로 리터럴 매치로는 새어 나간다.
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'PY'`np='plan.md'`ns=open(p).read()`nopen(p,'w').write(s)`nPY")
 Assert-Case -Name "bpw: python open(p,'w') 로 plan.md 쓰기 차단 (BPW1)" -R $r -ExpectExit 2 -ExpectContains 'plan.md 를 스크립트로 쓰려 합니다'
 
@@ -407,10 +392,6 @@ Assert-Case -Name "bpw: [System.IO.File]::WriteAllText 의 첫 인자가 plan.md
 }
 
 if (Test-ScenarioUnit 1) {
-# ---- 데이터 싱크 heredoc 본문(HD) — 오탐 수정 + 차단 유지 짝 ----
-#   cat·tee 가 .txt 같은 데이터 파일로 쓰는 heredoc 본문 속 `> plan.md` 는 실행되지 않는 문자열이다.
-#   ⓑ 리다이렉션 검사만 그 본문을 걷은 명령을 보고, ⓐ open(w)·[System.IO.File] 와 실행 가능 스크립트 대상은
-#   그대로 막는다(차단 범위 불변). 근거는 `rules/bash-guard-rationale.md` §16.
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > a.txt <<'EOF'`necho x > plan.md`nEOF")
 Assert-Case -Name "hd: cat > a.txt 데이터 싱크 본문의 > plan.md 는 통과 (HD1 오탐 수정)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "mkdir -p d && cat > d/a.txt <<'EOF'`necho x > plan.md`nEOF")

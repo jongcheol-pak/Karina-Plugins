@@ -82,7 +82,6 @@ function New-ScreenPlan([string]$Line) { return $cpBase.Replace('- **Acceptance*
 $cpWinPs = Get-Command powershell.exe -ErrorAction SilentlyContinue
 
 if (Test-ScenarioUnit 1) {
-# ---- 정상 ----
 $r = Invoke-CheckPlan $cpBase
 Assert-Case -Name "check-plan: 정상 plan 은 위반 0 으로 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 
@@ -135,7 +134,6 @@ Assert-Case -Name "check-plan: 경량 표지가 없으면 Out of Scope 누락을
 }
 
 if (Test-ScenarioUnit 2) {
-# ---- 경량 plan — Goal 의 「> 경량:」 줄이 Out of Scope·검증 방법을 면제하고 경량 조건을 잰다 ----
 $cpLight = $cpBase.Replace("> 완료: <done>`n", "> 완료: <done>`n> 경량: 파일 2 · 새 공개 표면 없음 · 승인 필요 없음 · DB/외부 없음`n").Replace("## Out of Scope`n`n- 없음`n`n", '').Replace("## 검증 방법`n`n| task | 명령 | 판정 |`n|---|---|---|`n| T1 | ``run`` | 통과 |`n`n", '')
 $r = Invoke-CheckPlan $cpLight
 Assert-Case -Name "check-plan 경량: Out of Scope·검증 방법 없는 경량 plan 은 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
@@ -176,7 +174,6 @@ Assert-Case -Name "check-plan: 하위 항목 상태 x·X·/·불요 표기를 �
 }
 
 if (Test-ScenarioUnit 1) {
-# ---- 화면 줄 — 줄이 있으면 시나리오·스크린샷·통과 조건 셋을 다 가져야 한다 ----
 $r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + ' · (BASE 대조)'))
 Assert-Case -Name "check-plan: 화면 줄 세 요소와 (BASE 대조) 표지를 받아들인다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 $r = Invoke-CheckPlan (New-ScreenPlan $cpScreen.Replace(' · 통과 조건 데모 창이 보인다', ''))
@@ -200,7 +197,6 @@ Assert-Case -Name "check-plan: 파일이 없으면 ERROR 와 exit 2" -R $r -Expe
 }
 
 if (Test-ScenarioUnit 2) {
-# ---- 출력 ASCII · PS 5.1 ----
 $cpMulti = $cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', '| 크기 |  | 10 |').Replace('- [ ] **T1-1** 한다', '- [ ] T1-1 한다').Replace('`grep -c x a.ps1` ≥1 (착수 0)', '`grep -c x a.ps1` ≥1')
 $r = Invoke-CheckPlan $cpMulti
 $cpAscii = if ($r.out -match '[^\x00-\x7F]') { 'NON-ASCII' } else { 'ASCII-ONLY' }
@@ -221,8 +217,6 @@ if ($cpWinPs) {
 }
 
 if (Test-ScenarioUnit 3) {
-# ---- 증거 대조 (-Base) — 임시 git 레포에 BASE 커밋을 두고 그 앞뒤로 task 커밋을 쌓는다 ----
-# 커밋 메시지는 파일(-F)로 넘긴다 — 한글 메시지가 인자 인코딩을 거치지 않게 한다.
 $cpEvSeq = 0
 function New-EvidenceRepo([string[]]$After = @(), [string[]]$Before = @()) {
     $script:cpEvSeq++

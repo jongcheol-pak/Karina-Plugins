@@ -12,8 +12,6 @@ if (Test-HookSelected @('warn-commit-secrets', 'guard-bash')) {
 
 # ---- [v1.119.0] secret-patterns 라벨 판정 (함수 단위 — hook 실행 전 단계) ----
 # 실사고: README의 "관리자 계정: `<id>` / `<pw>`"가 종전 7패턴 어디에도 안 걸려 공개 커밋됐다.
-# 자격증명 쌍은 오탐이 곧 커밋 차단(자율 루프 정지)이라, 양성만큼 음성(정상 문서)이 중요하다 —
-#   경로·라우트·파일명·버전·역할 열거는 반드시 통과해야 한다.
 . (Join-Path $scriptsDir 'secret-patterns.ps1')
 if (Test-ScenarioUnit 3) {
 $spId = 'ad' + 'min'
@@ -209,15 +207,11 @@ if ($gitOk) {
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m update' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: -m 미스테이징 미탐(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 
-    # 7) git commit 아님 → 통과(무출력, fast path)
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git status' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: git commit 아님 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
     }
 
     if (Test-ScenarioUnit 2) {
-    # ---- [v1.119.0] 고신뢰 라벨 커밋 차단 (exit 2) ----
-    # 상태 오염을 피하려고 별도 repo를 쓴다(위 $wcs는 케이스 1~7이 순서 의존으로 공유).
-    # 픽스처는 러너 자신이 자사 스캐너·post-write hook에 걸리지 않게 문자열 연결로 분리 기재한다.
     $wcsB = Join-Path $work 'wcsblock'; New-Item -ItemType Directory $wcsB -Force | Out-Null
     Push-Location $wcsB
     git init -q; git config user.email t@t; git config user.name t
@@ -225,7 +219,6 @@ if ($gitOk) {
     Pop-Location
     $wcsBJson = @{ tool_name = 'Bash'; cwd = $wcsB; tool_input = @{ command = 'git commit -m test' } } | ConvertTo-Json -Compress
 
-    # (a) 자격증명 쌍(고신뢰) 스테이징 → 차단 + 회복 경로 2종 안내
     Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location
     $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 자격증명 쌍 커밋 차단(exit 2 — 차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '커밋될 변경에 자격증명으로 보이는 값이 있습니다'
@@ -316,10 +309,6 @@ if ($gitOk) {
     }
 
     if (Test-ScenarioUnit 3) {
-    # ---- [v1.119.0 F-7 B1] 선행 스테이징 경로 (untracked + 'git add' 한 호출) ----
-    # PreToolUse는 명령 실행 '전'에 돈다 — add가 아직 안 돌았으므로 인덱스는 비어 있고 untracked는
-    #   git diff HEAD에도 없다. 사고의 실제 경로(신규 프로젝트의 새 README)이자 자율 루프의 표준
-    #   커밋 형태(`git add -A && git commit`)라, 여기서 안 잡히면 게이트 전체가 무의미하다.
     $wcsC = Join-Path $work 'wcsuntracked'; New-Item -ItemType Directory $wcsC -Force | Out-Null
     Push-Location $wcsC
     git init -q; git config user.email t@t; git config user.name t
@@ -383,10 +372,6 @@ if ($gitOk) {
     }
 
     if (Test-ScenarioUnit 5) {
-    # ---- [v1.182.0 T5] $autoStage 오판정 — `git add -A`가 보완 스캔을 두 번 돌리던 문제 ----
-    # 판정 대상이 **호출 횟수**라 hook 출력으로는 볼 수 없다. 자식 프로세스에서 lib를 dot-source하고
-    #   `Get-DiffHeadAdded`를 세는 함수로 덮어써 실제 호출 수를 읽는다 — 러너 프로세스에서 덮어쓰면
-    #   같은 세션의 다른 케이스가 그 가짜 함수를 쓰게 되므로 반드시 분리한다.
     $wcsF = Join-Path $work 'wcsautostage'; New-Item -ItemType Directory $wcsF -Force | Out-Null
     Push-Location $wcsF
     git init -q; git config user.email t@t; git config user.name t
@@ -491,7 +476,6 @@ if ($gitOk) {
     }
 
     if (Test-ScenarioUnit 2) {
-    # (g) 디스패처 경유도 동일 차단 — lib 함수 공유라 두 경로가 갈리면 안 된다(D3).
     Push-Location $wcsB; Set-Content README.md $credLine; git add README.md; Pop-Location
     $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 디스패처 경유 자격증명 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
@@ -499,8 +483,6 @@ if ($gitOk) {
     }
 
     if (Test-ScenarioUnit 1) {
-    # ---- [v1.99.0 T6] 디스패처 동등성 + 디스패처 고유 분기 (git repo 필요) ----
-    # 현재 $wcs 상태: app.js에 시크릿(-am 자동스테이징 대상), ok.txt 미스테이징. 명시 스테이징 시크릿을 다시 심는다.
     Push-Location $wcs; Set-Content secret2.js $fakeApi; git add secret2.js; Pop-Location
     # (a) commit-secrets 양성 → 디스패처 경유도 경고 유지
     $r = Invoke-Hook 'guard-bash.ps1' $wcsJson
@@ -520,12 +502,6 @@ if ($gitOk) {
     }
 
     if (Test-ScenarioUnit 4) {
-    # ---- [T1] 스캔 캡 도달 fail-closed (50개 상한) ----
-    # 캡 게이트는 **둘**이고 서로 다른 분기다 — 경로 나열 루프(추적 파일·디렉터리·글롭)와
-    #   untracked 정독 루프. 한쪽만 케이스를 걸면 다른 쪽이 fail-open으로 남아도 전건 green이 된다
-    #   (대장 [2026-08-19] 「차단 범위 확대의 델타 음성 요구가 경계 단위로 강제되지 않는다」).
-    #   그래서 **게이트마다 양성 + 델타 음성 쌍**을 둔다.
-    # 픽스처는 내용이 없어도 된다 — 판정 축이 스캔 개수이지 시크릿 검출이 아니다(ⓒ만 예외).
 
     # ⓐ 경로 나열 루프: 픽스처가 **추적 파일**이어야 이 게이트를 탄다.
     #   untracked면 $addTargets로 넘어가 아래 ⓑ 게이트에서만 계수된다(그러면 ⓐ가 ⓑ를 재게 된다).
@@ -584,7 +560,6 @@ if ($gitOk) {
     }
 
     if (Test-ScenarioUnit 6) {
-    # ⓑ untracked 정독 루프: `git add -A` 경로. 위 ⓐ와 다른 분기라 별도 repo·별도 쌍이 필요하다.
     $wcsCapU = Join-Path $work 'wcscapuntracked'; New-Item -ItemType Directory $wcsCapU -Force | Out-Null
     Push-Location $wcsCapU
     git init -q; git config user.email t@t; git config user.name t

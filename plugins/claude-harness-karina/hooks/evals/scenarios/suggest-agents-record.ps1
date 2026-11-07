@@ -52,7 +52,6 @@ Assert-Case -Name "suggest: here-string 이 닫힌 뒤 줄의 명령은 제안 (
 $sjHsInline = @{ tool_name = 'PowerShell'; cwd = $aproj; session_id = 'hs-inline'; tool_input = @{ command = ("Write-Output `"@'`"; cargo build") } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjHsInline
 Assert-Case -Name "suggest: 줄 중간 @' 문자열 뒤 명령은 제안 (here-string 아님 · 음성 짝)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
-# 델타 음성 — 새 경계가 정상 발화까지 막지 않는지 본다(통과만 확인하는 무회귀 케이스로는 근거가 안 된다).
 $sjSame = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 't6c'; tool_input = @{ command = ('cd "' + $aproj + '" && cargo build') } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sjSame
 Assert-Case -Name "suggest: cd 대상이 이 프로젝트면 종전대로 제안 (델타 음성)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'

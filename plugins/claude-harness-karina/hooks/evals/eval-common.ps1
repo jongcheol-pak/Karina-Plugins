@@ -95,10 +95,6 @@ function Test-ScenarioUnit {
     return (($Unit % $count) -eq $index)
 }
 
-# ---- 크로스섹션 공유 정의 (필터 게이트 밖 — 반드시 top-level) ----
-# 섹션 게이트가 어떤 조합으로 건너뛰어도 후속 섹션이 깨지지 않도록, 둘 이상의 섹션이 쓰는
-# 변수·함수·픽스처는 여기서 무조건 정의한다. 특히 $gitOk는 게이트로 건너뛰면 오류 없이
-# falsy가 되어 §7 impact·§9가 침묵 skip되는 사각이므로(plan-reviewer M1) top-level 고정.
 $gitOk = $null -ne (Get-Command git -ErrorAction SilentlyContinue)   # §4·§7·§9 게이트
 $pw = Join-Path $work 'pwproj'; New-Item -ItemType Directory $pw -Force | Out-Null   # §6·§7 후속·Pre.cs 픽스처
 $vdCache = Join-Path $iso '.claude/plugins/cache/karina-plugins/karina/1.0.0/scripts'      # §10 개조 차단·§11(d) 경로

@@ -50,7 +50,7 @@ function Test-WarnOnce {
         if (Test-Path -LiteralPath $mk) { return $false }
         New-Item -Force -ItemType File -Path $mk | Out-Null
         return $true
-    } catch { return $true }   # 마커 실패 시 경고 누락보다 중복이 낫다(fail-open)
+    } catch { return $true }
 }
 
 # H3 표본 캐시 — 근거는 `rules/post-write-rationale.md` §15
@@ -99,8 +99,6 @@ function Get-EolSampleRows {
 
 # H2: 하니스 hook 개조 감지 — 근거는 `rules/post-write-rationale.md` §4
 $normFileH2 = $file -replace '\\', '/'
-# 이름 집합은 `rules/harness-hooks.json`이 단일 정본이다 — 탐지(이 파일)와 차단(guard-harness)이
-#   같은 값을 써야 대칭이 성립하는데, 복제하면 hook 신설 시 한쪽만 갱신돼 그 이름이 무방비가 된다.
 $harnessHookName = ''
 # `-ErrorAction Stop` 없이는 이 catch 가 안 걸린다(파일 전역이 'SilentlyContinue') — 아래 폴백이
 #   경고 없이 H2 를 끄므로, 탐지가 사라진 것을 아무도 모른다(회차 53 실측).
@@ -411,9 +409,6 @@ try {
                 if ($eolAttr -match 'eol:\s*(lf|crlf)\s*$') {
                     $crlfRepo = ($Matches[1] -eq 'crlf')
                 } else {
-                    # 표본 — 대상 확장자 추적 파일(레포 전체 · 대소문자 무시)의 `w/` 열. 방금 쓴 파일은 빼고
-                    #   (그 `w/` 는 새 내용이다), llm-wiki 픽스처도 뺀다(의도된 LF 테스트 입력 — 위 제외와 같은 이유).
-                    #   `quotepath=off` 는 한글 경로가 이스케이프돼 「쓴 파일」 비교가 빗나가지 않게 한다.
                     $eolSampleMin = 5; $eolCrlfRatioMin = 0.9
                     $revOut = @(& git rev-parse --show-toplevel --git-path index 2>$null)
                     $top = if ($revOut.Count -ge 1) { ([string]$revOut[0]).Trim() } else { '' }

@@ -1728,7 +1728,7 @@ def check_count_and_version(conv):
         #  통과로 읽히면 안 되므로 다른 앵커 실패와 같은 exit 2 를 쓴다.
         die("절을 찾지 못함: `%s` 「검증 명령 상세」 — 헤딩을 바꿨으면 "
             "COUNT_SECTION_HEADING 을 함께 고쳐라" % os.path.relpath(CONV_MD, ROOT))
-    section = conv   # 사정거리는 문서 전체 — 절은 위에서 앵커로만 썼다
+    section = conv   # 사정거리는 문서 전체와 검증 매핑 문서(아래) — 절은 위에서 앵커로만 썼다
     if os.path.exists(MAPPING_MD):
         section += "\n" + read(MAPPING_MD)
 

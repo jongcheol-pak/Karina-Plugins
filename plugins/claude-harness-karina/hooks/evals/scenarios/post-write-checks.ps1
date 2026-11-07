@@ -468,5 +468,5 @@ foreach ($n in 'w1', 'w2') {
     Assert-Case -Name "post-write: worktree 안 LF 쓰기도 종전대로 경고 ($n.md · EOL12)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
 }
 
-}   # ---- §6·§7·Pre.cs 게이트 끝 (post-write-checks) ----
+}
 

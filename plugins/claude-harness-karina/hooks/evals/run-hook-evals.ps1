@@ -490,10 +490,6 @@ if (-not $Filter -and -not $Resume -and -not $deadGroups.Count) {
         Write-Host ('[WARN] 비용표 어긋남 {0}건 — $groupCostSec 을 실측으로 다시 맞추세요: {1}' -f $drift.Count, (@($drift | ForEach-Object { '{0} 비용 {1} · 실측 {2}' -f $_.Group, $_.Cost, $_.Sec }) -join ' · '))
     }
 }
-# 미완주가 있으면 **결과 줄 자체**에 분모의 성격을 적는다 — 위 [WARN]은 결과 줄 위에 따로 떠서
-# 읽는 사람이 `FAIL 1`을 회귀로 오해한다(v1.173.0 F-7에서 실제로 메인·리뷰어가 둘 다 오독했다).
-# 미실행 케이스 수는 세지 않는다 — 그러려면 시나리오 파서가 필요한데, 막으려는 것이 오독이라
-# "분모가 전체가 아니다"를 말하는 것으로 충분하다.
 $deadSuffix = ''
 if ($deadGroups.Count) {
     $deadSuffix = ' — ⚠ 그룹 {0}개 미완주, 분모는 실행분 기준(전체 아님)' -f $deadGroups.Count
