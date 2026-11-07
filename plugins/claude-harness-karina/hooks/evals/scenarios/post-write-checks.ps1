@@ -467,6 +467,8 @@ foreach ($n in 'w1', 'w2') {
     $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolWtTree; session_id = 'eol-wt'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress)
     Assert-Case -Name "post-write: worktree 안 LF 쓰기도 종전대로 경고 ($n.md · EOL12)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
 }
+$eolWtCache = @(Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.claude/.state/post-write-warn') -Filter 'eol-wt_eolcache_*' -ErrorAction SilentlyContinue)
+Assert-Case -Name "post-write: worktree 안에서도 eol 표본 캐시를 쓴다 (EOL12b)" -R @{ code = 0; out = ('cache=' + $eolWtCache.Count) } -ExpectExit 0 -ExpectContains 'cache=1'
 
 }
 

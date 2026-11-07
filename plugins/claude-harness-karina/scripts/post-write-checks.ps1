@@ -410,9 +410,9 @@ try {
                     $crlfRepo = ($Matches[1] -eq 'crlf')
                 } else {
                     $eolSampleMin = 5; $eolCrlfRatioMin = 0.9
-                    $revOut = @(& git rev-parse --show-toplevel --git-path index 2>$null)
+                    $revOut = @(& git rev-parse --path-format=absolute --show-toplevel --git-path index 2>$null)
                     $top = if ($revOut.Count -ge 1) { ([string]$revOut[0]).Trim() } else { '' }
-                    $indexPath = if ($revOut.Count -ge 2 -and $top) { [System.IO.Path]::GetFullPath((Join-Path $PWD.Path ([string]$revOut[1]).Trim())) } else { $null }
+                    $indexPath = if ($revOut.Count -ge 2 -and $top) { ([string]$revOut[1]).Trim() } else { $null }
                     $self = ($file -replace '\\', '/')
                     if ($top -and $self.StartsWith($top + '/', [System.StringComparison]::OrdinalIgnoreCase)) {
                         $self = $self.Substring($top.Length + 1)
