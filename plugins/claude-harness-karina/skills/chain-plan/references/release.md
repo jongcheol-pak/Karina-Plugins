@@ -1,6 +1,6 @@
 # 닫기 (`karina:chain-plan` — succeeded 뒤)
 
-> `../SKILL.md` 「워커 루프」가 `worker_done` 의 `succeeded` 를 받았을 때 이 파일을 연다 — 보고의 정본은 `--body` 라 곧바로 그 탭을 닫는다(「닫기」). 워커는 인계·plan 커밋을 마친 뒤 최종 보고 텍스트보다 먼저 `worker_done` 을 보내므로, 닫으면 잘리는 것은 아무도 다시 읽지 않는 화면 텍스트뿐이다. `continuation.md` 의 이어받기와 `cli-errors.md` 의 `duplicate_worker` 이 Run 갈래도 「닫기」 를 쓴다. 사후 완료 status 를 받았을 때도(`manual-resume.md`「사후 완료」) 「닫기」 를 쓴다.
+> `../SKILL.md` 「워커 루프」가 `worker_done` 의 `succeeded` 를 받았을 때 이 파일을 연다 — 보고의 정본은 `--body` 라 곧바로 그 탭을 닫는다(「닫기」) — 병렬 그룹은 병합 커밋 뒤다(`parallel.md`「닫기」). 워커는 인계·plan 커밋을 마친 뒤 최종 보고 텍스트보다 먼저 `worker_done` 을 보내므로, 닫으면 잘리는 것은 아무도 다시 읽지 않는 화면 텍스트뿐이다. `continuation.md` 의 이어받기와 `cli-errors.md` 의 `duplicate_worker` 이 Run 갈래도 「닫기」 를 쓴다. 사후 완료 status 를 받았을 때도(`manual-resume.md`「사후 완료」) 「닫기」 를 쓴다.
 
 ## 닫기
 
