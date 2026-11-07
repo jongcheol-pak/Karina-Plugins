@@ -423,5 +423,50 @@ Assert-Case -Name "post-write: llm-wiki 픽스처는 표본에서 빼고 판정�
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-c'; tool_input = @{ file_path = $eolFxFile } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: llm-wiki 픽스처의 LF 는 무경고 (EOL3)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
 
+$eolCacheRepo = Join-Path $work 'eol-cache-repo'; New-Item -ItemType Directory $eolCacheRepo -Force | Out-Null
+Push-Location $eolCacheRepo
+git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
+1..10 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolCacheRepo "c$_.md"), "줄`r`n") }
+'a', 'b' | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolCacheRepo "$_.md"), "줄`r`n") }
+git add -A 2>$null; git commit -qm init
+Pop-Location
+foreach ($n in 'a', 'b') {
+    $p = Join-Path $eolCacheRepo "$n.md"
+    [System.IO.File]::WriteAllText($p, "LF 로 저장`n")
+    $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolCacheRepo; session_id = 'eol-cache'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "post-write: 같은 세션의 두 번째 LF 쓰기도 종전대로 경고 ($n.md · EOL10)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
+}
+$eolInvalRepo = Join-Path $work 'eol-inval-repo'; New-Item -ItemType Directory $eolInvalRepo -Force | Out-Null
+Push-Location $eolInvalRepo
+git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
+1..10 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolInvalRepo "c$_.md"), "줄`r`n") }
+'x', 'y' | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolInvalRepo "$_.md"), "줄`r`n") }
+git add -A 2>$null; git commit -qm init
+Pop-Location
+$p = Join-Path $eolInvalRepo 'x.md'
+[System.IO.File]::WriteAllText($p, "LF 로 저장`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolInvalRepo; session_id = 'eol-inval'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 무효화 대조 전 첫 LF 쓰기는 경고 (EOL11a)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
+1..8 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolInvalRepo "c$_.md"), "줄`n") }
+$p = Join-Path $eolInvalRepo 'y.md'
+[System.IO.File]::WriteAllText($p, "LF 로 저장`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolInvalRepo; session_id = 'eol-inval'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 앞 쓰기 뒤 다른 추적 파일이 LF 로 바뀌어 CRLF 비율이 떨어지면 경고하지 않는다 (EOL11)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+
+$eolWtMain = Join-Path $work 'eol-wt-main'; New-Item -ItemType Directory $eolWtMain -Force | Out-Null
+$eolWtTree = Join-Path $work 'eol-wt-tree'
+Push-Location $eolWtMain
+git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
+1..10 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolWtMain "c$_.md"), "줄`r`n") }
+git add -A 2>$null; git commit -qm init
+git worktree add -q --detach $eolWtTree 2>$null
+Pop-Location
+foreach ($n in 'w1', 'w2') {
+    $p = Join-Path $eolWtTree "$n.md"
+    [System.IO.File]::WriteAllText($p, "LF 로 저장`n")
+    $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolWtTree; session_id = 'eol-wt'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "post-write: worktree 안 LF 쓰기도 종전대로 경고 ($n.md · EOL12)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
+}
+
 }   # ---- §6·§7·Pre.cs 게이트 끝 (post-write-checks) ----
 

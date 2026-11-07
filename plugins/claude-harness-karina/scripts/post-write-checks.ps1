@@ -35,16 +35,66 @@ $sharedDiffOk = $false
 $pwStateDir = Join-Path $env:USERPROFILE '.claude/.state/post-write-warn'
 try { New-Item -Force -ItemType Directory -Path $pwStateDir | Out-Null } catch {}
 $pwSid = if ($data.session_id) { ([string]$data.session_id) -replace '[^\w.-]', '_' } else { 'nosid' }
+function Get-PwKeyHash([string]$Key) {
+    $md5 = [System.Security.Cryptography.MD5]::Create()
+    return (($md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Key)) | ForEach-Object { $_.ToString('x2') }) -join '')
+}
+function Test-WarnedAlready {
+    param([string]$Key)
+    try { return (Test-Path -LiteralPath (Join-Path $pwStateDir ($pwSid + '_' + (Get-PwKeyHash $Key)))) } catch { return $false }
+}
 function Test-WarnOnce {
     param([string]$Key)
     try {
-        $md5 = [System.Security.Cryptography.MD5]::Create()
-        $hash = ($md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Key)) | ForEach-Object { $_.ToString('x2') }) -join ''
-        $mk = Join-Path $pwStateDir ($pwSid + '_' + $hash)
+        $mk = Join-Path $pwStateDir ($pwSid + '_' + (Get-PwKeyHash $Key))
         if (Test-Path -LiteralPath $mk) { return $false }
         New-Item -Force -ItemType File -Path $mk | Out-Null
         return $true
     } catch { return $true }   # 마커 실패 시 경고 누락보다 중복이 낫다(fail-open)
+}
+
+# H3 표본 캐시 — 근거는 `rules/post-write-rationale.md` §15
+function Get-EolSampleRows {
+    param([string]$Top, [string]$IndexPath, [string[]]$Specs)
+    $fresh = { param([string[]]$Paths) @(& git -c core.quotepath=off ls-files --full-name --eol -- $Paths 2>$null) }
+    if (-not $Top -or -not $IndexPath -or -not (Test-Path -LiteralPath $IndexPath)) { return (& $fresh $Specs) }
+    try {
+        $indexTicks = [string][System.IO.File]::GetLastWriteTimeUtc($IndexPath).Ticks
+        $cachePath = Join-Path $pwStateDir ($pwSid + '_eolcache_' + (Get-PwKeyHash $Top))
+        $rows = New-Object System.Collections.Specialized.OrderedDictionary ([System.StringComparer]::Ordinal)
+        $lines = if (Test-Path -LiteralPath $cachePath) { [System.IO.File]::ReadAllLines($cachePath) } else { @() }
+        if ($lines.Count -ge 1 -and $lines[0] -eq $indexTicks) {
+            $changed = New-Object System.Collections.Generic.List[string]
+            for ($i = 1; $i -lt $lines.Count; $i++) {
+                $parts = $lines[$i] -split "`t", 3
+                if ($parts.Count -lt 3) { continue }
+                $rows[$parts[2]] = @($parts[0], $parts[1])
+                $now = [string][System.IO.File]::GetLastWriteTimeUtc((Join-Path $Top $parts[2])).Ticks
+                if ($now -ne $parts[1]) { $changed.Add($parts[2]) }
+            }
+            if ($changed.Count) {
+                foreach ($p in $changed) { $rows.Remove($p) }
+                foreach ($row in @(& $fresh @($changed | ForEach-Object { ':(top,literal)' + $_ }))) {
+                    $cols = $row -split "`t", 2
+                    if ($cols.Count -lt 2) { continue }
+                    $rows[$cols[1]] = @($cols[0], [string][System.IO.File]::GetLastWriteTimeUtc((Join-Path $Top $cols[1])).Ticks)
+                }
+            }
+        } else {
+            foreach ($row in @(& $fresh $Specs)) {
+                $cols = $row -split "`t", 2
+                if ($cols.Count -lt 2) { continue }
+                $rows[$cols[1]] = @($cols[0], [string][System.IO.File]::GetLastWriteTimeUtc((Join-Path $Top $cols[1])).Ticks)
+            }
+        }
+        $out = New-Object System.Collections.Generic.List[string]
+        $out.Add($indexTicks)
+        foreach ($k in $rows.Keys) { $out.Add($rows[$k][0] + "`t" + $rows[$k][1] + "`t" + $k) }
+        try { [System.IO.File]::WriteAllLines($cachePath, $out) } catch {}
+        return @(foreach ($k in $rows.Keys) { $rows[$k][0] + "`t" + $k })
+    } catch {
+        return (& $fresh $Specs)
+    }
 }
 
 # H2: 하니스 hook 개조 감지 — 근거는 `rules/post-write-rationale.md` §4
@@ -356,7 +406,7 @@ try {
             $crlf = ([regex]::Matches($eolText, "`r`n")).Count
             $lf = ($eolText.Length - $eolText.Replace("`n", '').Length) - $crlf
             $crlfRepo = $false; $repoCrlf = 0; $repoTotal = 0
-            if ($lf -gt 0) {
+            if ($lf -gt 0 -and -not (Test-WarnedAlready "eol|$file")) {
                 $eolAttr = ((& git check-attr eol -- $file 2>$null) -join '')
                 if ($eolAttr -match 'eol:\s*(lf|crlf)\s*$') {
                     $crlfRepo = ($Matches[1] -eq 'crlf')
@@ -365,13 +415,15 @@ try {
                     #   (그 `w/` 는 새 내용이다), llm-wiki 픽스처도 뺀다(의도된 LF 테스트 입력 — 위 제외와 같은 이유).
                     #   `quotepath=off` 는 한글 경로가 이스케이프돼 「쓴 파일」 비교가 빗나가지 않게 한다.
                     $eolSampleMin = 5; $eolCrlfRatioMin = 0.9
-                    $top = ((& git rev-parse --show-toplevel 2>$null) -join '').Trim()
+                    $revOut = @(& git rev-parse --show-toplevel --git-path index 2>$null)
+                    $top = if ($revOut.Count -ge 1) { ([string]$revOut[0]).Trim() } else { '' }
+                    $indexPath = if ($revOut.Count -ge 2 -and $top) { [System.IO.Path]::GetFullPath((Join-Path $PWD.Path ([string]$revOut[1]).Trim())) } else { $null }
                     $self = ($file -replace '\\', '/')
                     if ($top -and $self.StartsWith($top + '/', [System.StringComparison]::OrdinalIgnoreCase)) {
                         $self = $self.Substring($top.Length + 1)
                     }
                     $specs = @('md', 'ps1', 'py', 'json', 'psm1', 'psd1' | ForEach-Object { ':(top,icase)*.' + $_ })
-                    foreach ($row in @(& git -c core.quotepath=off ls-files --full-name --eol -- $specs 2>$null)) {
+                    foreach ($row in @(Get-EolSampleRows -Top $top -IndexPath $indexPath -Specs $specs)) {
                         $cols = $row -split "`t", 2
                         if ($cols.Count -lt 2) { continue }
                         $path = $cols[1]
