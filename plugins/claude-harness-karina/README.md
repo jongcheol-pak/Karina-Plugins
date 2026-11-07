@@ -129,7 +129,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 
 작업 흐름과 별개로, **위험한 명령은 자동으로 차단**됩니다. 이건 끌 수 없습니다.
 
-- 파일 전체 삭제(`rm -rf /`·`rm -rf ~/*` 등 홈·시스템 루트와 그 내용물 글롭), git 히스토리 파괴 — 강제 push 는 막되, 에이전트가 만든 karina/ 접두 브랜치를 이름으로 지정한 `git push --force-with-lease origin karina/<이름>` 만은 통과시킵니다(브랜치를 생략하거나 main 이 섞이면 막습니다)
+- 파일 전체 삭제(`rm -rf /`·`rm -rf ~/*` 등 홈·시스템 루트와 그 내용물 글롭), git 히스토리 파괴 — 강제 push(`--force`·`--force-with-lease`)는 브랜치와 무관하게 막습니다
 - **DB 데이터 삭제·변조**: 전체 삭제(`DELETE` WHERE 없이), 전체 변조(`UPDATE` WHERE 없이), `DROP`/`TRUNCATE`, ORM 대량 삭제 등
 - 단, `WHERE 조건`이 있는 일상적인 DB 작업은 그대로 통과합니다
 

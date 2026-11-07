@@ -1832,108 +1832,122 @@
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소] 자기 karina/ 브랜치를 명시한 force-with-lease 통과",
+      "name": "[2026-11-07 미탐 보완] karina/ 브랜치를 명시한 force-with-lease 도 차단",
       "command": "git push --force-with-lease origin karina/feat-x",
-      "expect_exit": 0,
-      "expect_silent": true
+      "expect_exit": 2,
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소] karina/ 브랜치 뒤에 lease 플래그가 와도 통과",
+      "name": "[2026-11-07 미탐 보완] karina/ 브랜치 뒤에 lease 플래그가 와도 차단",
       "command": "git push -u origin karina/feat-x --force-with-lease --force-if-includes",
-      "expect_exit": 0,
-      "expect_silent": true
+      "expect_exit": 2,
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소] HEAD:karina/<이름> refspec 의 force-with-lease 통과",
+      "name": "[2026-11-07 미탐 보완] HEAD:karina/<이름> refspec 의 force-with-lease 차단",
       "command": "git push --force-with-lease origin HEAD:karina/feat-x",
-      "expect_exit": 0,
-      "expect_silent": true
+      "expect_exit": 2,
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소] karina/ force-with-lease 끝의 2>&1 은 refspec 이 아니다 — 통과",
+      "name": "[2026-11-07 미탐 보완] karina/ force-with-lease 끝에 2>&1 이 붙어도 차단",
       "command": "git push --force-with-lease origin karina/feat-x 2>&1",
-      "expect_exit": 0,
-      "expect_silent": true
+      "expect_exit": 2,
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소] karina/ force-with-lease 끝의 > 파일 리다이렉션 통과",
+      "name": "[2026-11-07 미탐 보완] karina/ force-with-lease 끝에 > 파일 리다이렉션이 붙어도 차단",
       "command": "git push --force-with-lease origin karina/feat-x > out.txt",
-      "expect_exit": 0,
-      "expect_silent": true
+      "expect_exit": 2,
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소 경계] 브랜치를 생략한 force-with-lease 차단",
+      "name": "[2026-11-07 미탐 보완 경계] 브랜치를 생략한 force-with-lease 차단",
       "command": "git push --force-with-lease",
       "expect_exit": 2,
-      "expect_contains": "refspec 으로 명시한 경우만 통과"
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소 경계] main 대상 force-with-lease 차단",
+      "name": "[2026-11-07 미탐 보완 경계] main 대상 force-with-lease 차단",
       "command": "git push --force-with-lease origin main",
       "expect_exit": 2,
-      "expect_contains": "refspec 으로 명시한 경우만 통과"
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-20 이름 교체 경계] 옛 접두 브랜치의 force-with-lease 차단 — 면제는 karina/ 로 옮겨 갔다",
+      "name": "[2026-11-07 미탐 보완 경계] 옛 접두 브랜치의 force-with-lease 차단",
       "command": "git push --force-with-lease origin pjc/feat-x  # 개명 전",
       "expect_exit": 2,
-      "expect_contains": "refspec 으로 명시한 경우만 통과"
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소 경계] karina/ 와 main 을 함께 올리는 force-with-lease 차단",
+      "name": "[2026-11-07 미탐 보완 경계] karina/ 와 main 을 함께 올리는 force-with-lease 차단",
       "command": "git push --force-with-lease origin karina/feat-x main",
       "expect_exit": 2,
-      "expect_contains": "refspec 으로 명시한 경우만 통과"
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소 경계] karina/x:main (대상이 main) force-with-lease 차단",
+      "name": "[2026-11-07 미탐 보완 경계] karina/x:main (대상이 main) force-with-lease 차단",
       "command": "git push --force-with-lease origin karina/feat-x:main",
       "expect_exit": 2,
-      "expect_contains": "refspec 으로 명시한 경우만 통과"
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소 경계] karina/ 브랜치라도 --force 는 차단",
+      "name": "[2026-11-07 미탐 보완 경계] karina/ 브랜치의 --force 차단",
       "command": "git push --force origin karina/feat-x",
       "expect_exit": 2,
       "expect_contains": "BLOCKED"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소 경계] --all 을 동반한 force-with-lease 차단",
+      "name": "[2026-11-07 미탐 보완 경계] --all 을 동반한 force-with-lease 차단",
       "command": "git push --force-with-lease --all origin",
       "expect_exit": 2,
-      "expect_contains": "refspec 으로 명시한 경우만 통과"
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소 경계] --mirror 를 동반한 force-with-lease 차단",
+      "name": "[2026-11-07 미탐 보완 경계] --mirror 를 동반한 force-with-lease 차단",
       "command": "git push --force-with-lease --mirror origin",
       "expect_exit": 2,
-      "expect_contains": "refspec 으로 명시한 경우만 통과"
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소 경계] --tags 를 동반하면 karina/ 여도 force-with-lease 차단",
+      "name": "[2026-11-07 미탐 보완 경계] --tags 를 동반한 karina/ force-with-lease 차단",
       "command": "git push --force-with-lease --tags origin karina/feat-x",
       "expect_exit": 2,
-      "expect_contains": "refspec 으로 명시한 경우만 통과"
+      "expect_contains": "브랜치와 무관하게 차단"
     },
     {
       "hook": "block-destructive.ps1",
-      "name": "[2026-10-17 범위 축소 경계] 브랜치 자리가 HEAD 인 force-with-lease 차단",
+      "name": "[2026-11-07 미탐 보완 경계] 브랜치 자리가 HEAD 인 force-with-lease 차단",
       "command": "git push --force-with-lease origin HEAD",
       "expect_exit": 2,
-      "expect_contains": "refspec 으로 명시한 경우만 통과"
+      "expect_contains": "브랜치와 무관하게 차단"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[2026-11-07 미탐 보완 델타 음성] lease 없는 일반 karina/ push 통과",
+      "command": "git push origin karina/feat-x",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "[2026-11-07 미탐 보완 델타 음성] upstream 설정 karina/ push 끝의 2>&1 통과",
+      "command": "git push -u origin karina/feat-x 2>&1",
+      "expect_exit": 0,
+      "expect_silent": true
     },
     {
       "hook": "block-destructive.ps1",
