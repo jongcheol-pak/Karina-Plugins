@@ -19,7 +19,7 @@ disable-model-invocation: true
 ## 진행
 
 1. **하니스 루트인가를 가른다** — 작업 디렉터리의 `.claude-plugin/plugin.json` 의 `name` 이 `karina` 이고 `docs/plans/deferred.md` 가 있으면 하니스 루트다. 아니면 플러그인 루트는 이 SKILL.md 의 두 단계 위(설치본)다. **하니스 루트가 아니면 작업 레포도 정한다** — 작업 디렉터리에서 git 최상위까지 올라가며 처음 만나는 `AGENTS.md` 의 폴더가 작업 레포 루트이고, 그 파일 `## Plan Location` 이 가리키는 Deferred 대장 경로가 레포 대장이다(없으면 「없음」). 글로벌 지침은 `~/.claude/CLAUDE.md` 를 절대 경로로 푼다.
-2. **요약을 만든다** — `python "<skill>/scripts/digest_transcript.py" --out <스크래치 경로>/reflect-digest.txt`(`<skill>` 은 이 SKILL.md 의 폴더). 현재 세션은 환경변수 `CLAUDE_CODE_SESSION_ID` 로 정해지고, 그 세션의 서브에이전트 전사까지 읽는다. **exit 2·3 이면 출력 원문을 보고하고 멈춘다** — 2 는 세션 파일을 하나로 정하지 못한 것, 3 은 전사 형식이 바뀌었을 수 있다는 것이다. 다른 세션 파일로 대신하지 않는다.
+2. **요약을 만든다** — `python "<skill>/scripts/digest_transcript.py" --out <스크래치 경로>/reflect-digest.txt`(`<skill>` 은 이 SKILL.md 의 폴더). 현재 세션은 환경변수 `CLAUDE_CODE_SESSION_ID` 로 정해지고, 그 세션의 서브에이전트 전사까지 읽는다. **exit 0 이 아니면(명령 없음 포함) 출력 원문을 보고하고 멈춘다** — 2 는 세션 파일을 하나로 정하지 못한 것, 3 은 전사 형식이 바뀌었을 수 있다는 것이다. 다른 세션 파일로 대신하지 않는다.
    - **인자가 `이력` 이면 전사 대신 커밋 이력을 요약한다** — `python "<skill>/scripts/digest_history.py" --repo <작업 레포 루트 — 하니스 루트면 하니스 레포> --out <스크래치 경로>/reflect-history.txt`(기본 90일, 출력 형식은 그 스크립트의 모듈 docstring). exit 2 면 출력 원문을 보고하고 멈춘다. 같은 실수가 세션을 넘어 반복되는 것은 한 세션 전사에 보이지 않는다(pstack correct 「Find the mistake classes」).
 3. **`reflect-reviewer` 를 이름으로 1회 부른다** — 입력은 모드(`세션` | `이력`) · 요약 경로 · 플러그인 루트 · 대장 경로(`<플러그인 루트>/docs/plans/deferred.md`) · 하니스 루트 여부 · 작업 레포 루트 · 레포 대장 경로 · 글로벌 지침 절대 경로 · 오늘 날짜다.
 4. **표를 그대로 보이고 번호로 고르게 한다** — 리뷰어의 「후보」 표와 「뺀 것」을 고치지 않고 싣는다. 하한선 ✗ 후보도 고를 수 있다 — 등재 하한선은 자동 발견의 문턱이고 사용자가 고른 것은 그 예외다(`../plan/references/deferred-rules.md`「등재 하한선」). **고른 것이 없으면 여기서 끝낸다.**
