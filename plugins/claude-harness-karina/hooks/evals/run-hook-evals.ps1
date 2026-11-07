@@ -125,15 +125,15 @@ $scenarioGroups = @(
     @('guard-comment')
 )
 
-$statelessCostSec = 25
+$statelessCostSec = 10
 $groupCostSec = @{
-    'warn-commit-secrets-1' = 111; 'warn-commit-secrets-2' = 95; 'warn-commit-secrets-3' = 30; 'warn-commit-secrets-4' = 19
-    'check-plan-1' = 43; 'check-plan-2' = 65; 'check-plan-3' = 54; 'check-plan-4' = 53
-    'guard-bash-1' = 70; 'guard-bash-2' = 86; 'guard-bash-3' = 40; 'guard-bash-4' = 27
-    'screen-cover' = 86; 'session-context' = 43; 'post-write-checks' = 36; 'guard-harness' = 59; 'guard-write' = 37
-    'guard-stale-docs' = 34; 'guard-task-audit' = 41; 'warn-version-drift' = 31; 'work-clock' = 22; 'loop-continue' = 11
-    'guard-harness-content' = 9; 'guard-harness-installed+hook-event-log' = 9; 'suggest-agents-record' = 10
-    'session-end-cleanup' = 9; 'record-work-start' = 6; 'inject-reply-language' = 18; 'guard-comment' = 33
+    'warn-commit-secrets-1' = 73; 'warn-commit-secrets-2' = 64; 'warn-commit-secrets-3' = 18; 'warn-commit-secrets-4' = 10
+    'check-plan-1' = 29; 'check-plan-2' = 45; 'check-plan-3' = 38; 'check-plan-4' = 37
+    'guard-bash-1' = 42; 'guard-bash-2' = 48; 'guard-bash-3' = 23; 'guard-bash-4' = 9
+    'screen-cover' = 60; 'session-context' = 28; 'post-write-checks' = 25; 'guard-harness' = 29; 'guard-write' = 22
+    'guard-stale-docs' = 21; 'guard-task-audit' = 20; 'warn-version-drift' = 18; 'work-clock' = 10; 'loop-continue' = 4
+    'guard-harness-content' = 3; 'guard-harness-installed+hook-event-log' = 4; 'suggest-agents-record' = 4
+    'session-end-cleanup' = 3; 'record-work-start' = 2; 'inject-reply-language' = 7; 'guard-comment' = 15
 }
 $launchGroups = @(
     for ($i = 0; $i -lt $scenarioGroups.Count; $i++) {
