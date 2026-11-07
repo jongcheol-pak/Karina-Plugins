@@ -8,7 +8,7 @@
 
 ## 진행 판정
 
-- **벽시계로 끊지 않고 진행으로 멈춤을 가른다** — 빌드·테스트는 어떤 시한보다도 오래 걸릴 수 있어, 시한으로 끊으면 정상 작업이 미검증이 된다(사용자 요구 「멈춘 것을 확인해서 다시 실행하는 것」). 외부 선례도 같다 — pstack `poteto-mode/playbooks/multi-phase-plan.md` *"judge progress by side effects only"*.
+- **벽시계로 끊지 않고 진행으로 멈춤을 가른다** — 빌드·테스트는 어떤 시한보다도 오래 걸릴 수 있어, 시한으로 끊으면 정상 작업이 미검증이 된다(사용자 요구 「멈춘 것을 확인해서 다시 실행하는 것」). 외부 선례도 같다 — pstack `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/multi-phase-plan.md` *"judge progress by side effects only"*.
 - **진행 신호는 둘이다 — 출력 파일이 늘었거나, 직전 진행 이후 Job 누적 CPU 가 `--cpu-sec` 이상 늘었다** — run_34c092d3 의 정지는 출력 0바이트 고정 · 자식 없음이었다(karina-ea 관측).
 - **CPU 는 「0 초과」 가 아니라 문턱(기본 30초)을 넘어야 진행이다** — 정지 상태 pwsh 도 타이머·GC 로 60초에 234ms 를 썼다(2026-10-23 실측 — 10분 환산 약 2.3초). 「0 초과」 면 그런 정지가 영영 안 잡힌다. 30초/10분(한 코어 5%)은 그 열 배 넘게 위다.
 - **창은 고정 구간이 아니라 마지막 진행 시점 기준이다** — 고정 구간이면 멈춘 시점에 따라 감지가 두 배까지 늦어진다. 감지 지연은 최대 `--stall-sec` + `--poll-sec`.
@@ -16,8 +16,8 @@
 
 ## 재실행
 
-- **멈춤에만 1회 다시 돌린다 — `fail`·`unrunnable`·`deadline`·`overtime` 은 다시 돌리지 않는다** — 실제 실패를 다시 돌리면 같은 실패를 한 번 더 기다린다(pstack `references/bugbot-triage.md` *"binary is not installed" is a different situation from "the command ran and failed"*). 무한 루프는 다시 돌려도 같은 루프다.
-- **횟수는 1회다** — 멈춤마다 10분 넘게 쓰므로 2회면 체인이 30분 넘게 선다. 같은 멈춤이 두 번이면 일시적 현상이 아니다(pstack `babysit.md` *"One retry only. An identical second failure means it was never flake"*).
+- **멈춤에만 1회 다시 돌린다 — `fail`·`unrunnable`·`deadline`·`overtime` 은 다시 돌리지 않는다** — 실제 실패를 다시 돌리면 같은 실패를 한 번 더 기다린다(pstack `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/references/bugbot-triage.md` *"binary is not installed" is a different situation from "the command ran and failed"*). 무한 루프는 다시 돌려도 같은 루프다.
+- **횟수는 1회다** — 멈춤마다 10분 넘게 쓰므로 2회면 체인이 30분 넘게 선다. 같은 멈춤이 두 번이면 일시적 현상이 아니다(pstack `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/babysit.md` *"One retry only. An identical second failure means it was never flake"*).
 
 ## 프로세스 정리
 
