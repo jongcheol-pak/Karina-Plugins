@@ -59,13 +59,17 @@ function Resolve-ScenarioShard {
 
 function Get-GroupCostDrift {
     param([hashtable]$CostSec, [object[]]$Measured, [double]$Ratio = 2, [int]$MinDiffSec = 15)
-    @(foreach ($m in $Measured) {
-        if ($null -eq $m.Sec -or -not $CostSec.ContainsKey([string]$m.Group)) { continue }
-        $cost = [double]$CostSec[[string]$m.Group]
+    $known = @($Measured | Where-Object { $null -ne $_.Sec -and $CostSec.ContainsKey([string]$_.Group) -and [double]$CostSec[[string]$_.Group] -gt 0 })
+    if (-not $known.Count) { return @() }
+    $ratios = @($known | ForEach-Object { [double]$_.Sec / [double]$CostSec[[string]$_.Group] } | Sort-Object)
+    $load = $ratios[[int][Math]::Floor(($ratios.Count - 1) / 2)]
+    if ($load -le 0) { $load = 1 }
+    @(foreach ($m in $known) {
+        $expected = [double]$CostSec[[string]$m.Group] * $load
         $sec = [double]$m.Sec
-        if ([Math]::Abs($sec - $cost) -lt $MinDiffSec) { continue }
-        if ($sec -gt $cost * $Ratio -or $sec -lt $cost / $Ratio) {
-            [pscustomobject]@{ Group = [string]$m.Group; Cost = $cost; Sec = $sec }
+        if ([Math]::Abs($sec - $expected) -lt $MinDiffSec) { continue }
+        if ($sec -gt $expected * $Ratio -or $sec -lt $expected / $Ratio) {
+            [pscustomobject]@{ Group = [string]$m.Group; Cost = [double]$CostSec[[string]$m.Group]; Sec = $sec }
         }
     })
 }

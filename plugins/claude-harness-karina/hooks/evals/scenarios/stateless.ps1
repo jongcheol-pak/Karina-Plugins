@@ -73,8 +73,11 @@ if ((Test-HookSelected @('block-destructive')) -and ($shardIdx -eq 0)) {
 }
 
 if ((-not $script:FilterSet) -and ($shardIdx -eq 0)) {
-    $driftHit = @(Get-GroupCostDrift -CostSec @{ 'g-a' = 10 } -Measured @([pscustomobject]@{ Group = 'g-a'; Sec = 40 }))
-    Assert-Case -Name "golden-runner: 실측이 비용표의 2배·15초를 넘으면 어긋남으로 낸다" -R @{ code = 0; out = ('drift=' + $driftHit.Count + ' ' + (@($driftHit | ForEach-Object { $_.Group }) -join ',')) } -ExpectExit 0 -ExpectContains 'drift=1 g-a'
-    $driftNone = @(Get-GroupCostDrift -CostSec @{ 'g-b' = 30 } -Measured @([pscustomobject]@{ Group = 'g-b'; Sec = 35 }))
-    Assert-Case -Name "golden-runner: 비용표 안의 실측은 어긋남으로 내지 않는다 (음성 짝)" -R @{ code = 0; out = ('drift=' + $driftNone.Count) } -ExpectExit 0 -ExpectContains 'drift=0'
+    $driftCost = @{ 'g-a' = 10; 'g-b' = 30; 'g-c' = 20 }
+    $driftHit = @(Get-GroupCostDrift -CostSec $driftCost -Measured @(
+        [pscustomobject]@{ Group = 'g-a'; Sec = 40 }, [pscustomobject]@{ Group = 'g-b'; Sec = 31 }, [pscustomobject]@{ Group = 'g-c'; Sec = 21 }))
+    Assert-Case -Name "golden-runner: 한 그룹만 비용표의 2배·15초를 넘게 벌어지면 어긋남으로 낸다" -R @{ code = 0; out = ('drift=' + $driftHit.Count + ' ' + (@($driftHit | ForEach-Object { $_.Group }) -join ',')) } -ExpectExit 0 -ExpectContains 'drift=1 g-a'
+    $driftNone = @(Get-GroupCostDrift -CostSec $driftCost -Measured @(
+        [pscustomobject]@{ Group = 'g-a'; Sec = 30 }, [pscustomobject]@{ Group = 'g-b'; Sec = 90 }, [pscustomobject]@{ Group = 'g-c'; Sec = 60 }))
+    Assert-Case -Name "golden-runner: 부하로 전 그룹이 같이 늘면 어긋남으로 내지 않는다 (음성 짝)" -R @{ code = 0; out = ('drift=' + $driftNone.Count) } -ExpectExit 0 -ExpectContains 'drift=0'
 }
