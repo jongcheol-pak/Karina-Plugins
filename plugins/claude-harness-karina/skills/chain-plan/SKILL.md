@@ -78,11 +78,11 @@ EOF
 
 ```
 <CLI> orchestration worker-start --json --task <task id> --agent claude --worktree "<대상 레포 경로>" 2>/dev/null
-python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --repo "<대상 레포 경로>" --label "Plan <N>/<총>"
+python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --repo "<작업 폴더 경로>" --label "Plan <N>/<총>"
 ```
 
 - **계획의 첫 `worker-start` 직전 HEAD 를 결정 기록에 남긴다(`references/chain-decisions.md`「결정 기록」 — 이어받기는 다시 재지 않는다).**
-- **대상 레포 경로는 대상 레포에서 `git rev-parse --show-toplevel` 로 얻는다** — `current` 는 Karina 앱 화면의 활성 워크트리 그룹이라 사용자가 다른 그룹을 보고 있으면 다른 레포에 뜬다.
+- **대상 레포 경로는 대상 레포에서 `git rev-parse --show-toplevel` 로 얻는다 — `<작업 폴더 경로>` 는 그 뒤에 spec `작업 폴더:`(`references/spec-format.md`「spec 서식」)를 붙인 경로이고, `plan.md`·`AGENTS.md`·인계 경로·검증 명령 cwd 는 그것을, 그 밖(`worker-start`·`workingDir` 대조·병렬·git 범위)은 대상 레포 경로를 쓴다** — `current` 는 Karina 앱 화면의 활성 워크트리 그룹이라 사용자가 다른 그룹을 보고 있으면 다른 레포에 뜬다.
 - **`worker-start` 응답은 `references/cli-errors.md`「오류 응답」(`ok: false`)·「시작 이상 응답」 에 걸리지 않을 때만 대기로 간다** — 성공 경로만 두면 권한 프롬프트에 걸리거나 배정문을 못 받은 워커를 끝없이 기다린다.
 - **대기는 둘째 줄(`<skill>` 은 이 SKILL.md 의 폴더)을 Bash 도구 `run_in_background: true` 로 띄우고(샌드박스를 풀었으면 같은 플래그로) 무엇을 기다리는지(plan N/총 · dispatch) 한 줄 알린 뒤 turn 을 끝낸다 — 완료 알림이 오면 출력 파일을 Read 해 첫 줄 `RESULT: <갈래> — <지시>` 의 지시를 따른다. RESULT 줄이 없으면 `references/wait-exit.md`「RESULT 없음」 을 따른다** — 이 세션이 주기적으로 깨어나 큰 컨텍스트를 다시 읽지 않도록 반복 확인과 멈춤 판정을 스크립트가 맡는다.
 - **대기는 한 번에 하나이고 새 대기가 앞 대기를 물린다 — 띄우는 자리는 `worker-start` 직후 · 배치를 처리한 뒤 · 사용자 답을 `reply` 한 직후 · 압축 복원 뒤 · 사용자 입력 turn 에서 대기가 도는지 모를 때다(자리 대기 중이면 `--place` 대기 — `references/cli-errors.md`「오류 응답」). 사용자에게 넘긴 질문이 열려 있는 동안의 대기는 `references/user-relay.md`「미답 기본값」 을 따른다** — 평소 대기는 답을 기다리는 워커 화면이 그대로라 멈춤으로 오판한다.
