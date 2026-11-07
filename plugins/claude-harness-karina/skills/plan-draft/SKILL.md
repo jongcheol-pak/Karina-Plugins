@@ -39,7 +39,7 @@ disable-model-invocation: true
      - `W`: 세 단계로 한다.
        1. `git worktree add <경로> -b karina/<초안 slug>` 를 안내하고, 만든 뒤 알려 달라고 한다.
        2. 사용자가 답하면 `git worktree list` 로 그 경로를 확인하고, 초안을 그 worktree 의 `plans/drafts/` 에 같은 이름으로 Write 한다. 그 worktree 에서 다시 읽어 내용이 같은지 본 뒤 원본을 지운다. 초안은 한 곳에만 둔다.
-       3. 「그 worktree 에서 새 세션을 열고 `/karina:plan-draft` 를 부른다」를 안내하고 끝낸다.
+       3. 「그 worktree 에서 새 세션을 열고 `/karina:plan-draft` 를 부른다」를 안내하고 끝낸다 — 그 브랜치는 기본 브랜치가 아니라 회차 끝 게이트·push 가 돌지 않는다는 것과 「병합 뒤 기본 브랜치에서 게이트를 거쳐 push」 도 함께 안내한다(`../implement/references/push-flow.md`「기본 브랜치 push」).
 
        무시 규칙은 `.git/info/exclude` 라 linked worktree 에도 걸린다.
      - `L`: 아무것도 바꾸지 않고 끝낸다.
