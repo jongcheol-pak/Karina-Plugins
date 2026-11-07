@@ -361,11 +361,6 @@ Assert-Case -Name "bpw: pathlib 로 다른 파일 쓰기는 통과 (BPW22 델타
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo x > "D:\Personal Project\r\notes.md"')
 Assert-Case -Name "bpw: 따옴표 공백 경로의 다른 파일 리다이렉션은 통과 (BPW23 델타 음성)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
 
-# ---- [회차 52] 따옴표 인식 분할(Split-TopLevel 이식) ----
-#   착수 시점의 분할 넷은 전부 정규식이었고 따옴표 안의 구분자에서 쪼갰다. 그 결과 마지막 조각의
-#   첫 토큰이 `"` 가 되어, 쓰기 동사를 첫 실효 토큰으로 판정하는 block-plan-write 가 새어 나갔다.
-#   경고 검사 셋에는 이 축을 재는 케이스가 착수 0건이었다 — 아래 셋이 그 그물이다.
-
 # ST1 (양성 — ②의 본체): 회차 51 이 실측한 유일한 MISS 형태.
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'sed -i "s|a|b|" plan.md')
 Assert-Case -Name "split: 따옴표 안의 | 가 든 sed -i 도 plan.md 쓰기로 차단 (ST1)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
