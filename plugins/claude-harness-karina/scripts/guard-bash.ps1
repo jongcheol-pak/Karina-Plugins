@@ -211,7 +211,7 @@ function Invoke-BlockPlanWrite {
         if ($a -match '^\$?\{?([A-Za-z_][A-Za-z0-9_]*)\}?$' -and $assigned.ContainsKey($Matches[1])) {
             $a = $assigned[$Matches[1]]
         }
-        return ($a -match '^(\./)?plan\.md$')
+        return ($a -match '(^|[\\/])plan\.md$')
     }
 
     $hits = New-Object System.Collections.Generic.List[string]
@@ -219,8 +219,12 @@ function Invoke-BlockPlanWrite {
     foreach ($m in [regex]::Matches($cmd, '(?i)\bopen\s*\(\s*([^,()]+?)\s*,\s*[''"]([rwaxb+]+)[''"]')) {
         if ($m.Groups[2].Value -match '[wa]' -and (Test-PlanTarget $m.Groups[1].Value)) { $hits.Add('open(w)') }
     }
+    foreach ($m in [regex]::Matches($cmd, '(?i)\bPath\s*\(\s*([^()]+?)\s*\)\s*\.\s*(write_text|write_bytes|open)\s*\(\s*(?:mode\s*=\s*)?(?:[''"]([rwaxb+]+)[''"])?')) {
+        $isWrite = ($m.Groups[2].Value -ne 'open') -or ($m.Groups[3].Value -match '[wa]')
+        if ($isWrite -and (Test-PlanTarget $m.Groups[1].Value)) { $hits.Add('pathlib') }
+    }
     $stripped = Remove-HeredocDataSink $cmd
-    foreach ($m in [regex]::Matches($stripped, '>>?\s*(\S+)')) {
+    foreach ($m in [regex]::Matches($stripped, '>>?\s*("[^"]*"|''[^'']*''|\S+)')) {
         if (Test-PlanTarget $m.Groups[1].Value) { $hits.Add('>') }
     }
     foreach ($m in [regex]::Matches($cmd, '(?i)\[System\.IO\.File\]::(WriteAll\w+|AppendAllText)\s*\(\s*([^,()]+)')) {

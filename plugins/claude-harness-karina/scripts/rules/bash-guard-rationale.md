@@ -151,9 +151,13 @@ dot-source 는 넷 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 
 **변수 역참조가 필요하다.** 사고 명령의 형태가 `p='plan.md'` → `open(p,'w')` 라 `open()` 의 첫 인자는 식별자였다. 리터럴만 매치하면 **재현 케이스가 그대로 샌다.** `Invoke-WarnDangerousAssignment` 가 쓰는 `$assigned` 해시 방식을 그대로 쓴다.
 
-**대상 특정 7종** — ⓐ `open(…, 'w'|'a')` 의 첫 인자 ⓑ `>`·`>>` 의 대상 ⓒ `sed -i` 의 **마지막 위치 인자**(패턴 안은 대상이 아니다) ⓓ `Set-Content`·`Out-File`·`Add-Content`·`tee` 의 대상 ⓔ `cp`·`mv` 의 마지막 인자 ⓕ `Copy-Item`·`Move-Item`·`Rename-Item`(ⓔ는 별칭 텍스트만 매치한다) ⓖ `[System.IO.File]::WriteAll*`·`AppendAllText` 의 첫 인자.
+**대상 특정 8종** — ⓐ `open(…, 'w'|'a')` 의 첫 인자 ⓑ `>`·`>>` 의 대상(따옴표로 감싼 경로는 공백이 있어도 하나로 읽는다) ⓒ `sed -i` 의 **마지막 위치 인자**(패턴 안은 대상이 아니다) ⓓ `Set-Content`·`Out-File`·`Add-Content`·`tee` 의 대상 ⓔ `cp`·`mv` 의 마지막 인자 ⓕ `Copy-Item`·`Move-Item`·`Rename-Item`(ⓔ는 별칭 텍스트만 매치한다) ⓖ `[System.IO.File]::WriteAll*`·`AppendAllText` 의 첫 인자 ⓗ pathlib `Path(…).write_text`·`write_bytes` 와 `Path(…).open('w'|'a')` 의 `Path` 인자(모드 없는 `open()`·`read_text` 는 읽기라 통과).
 
-**단어 경계를 두는 이유** — `plan-template.md`·`docs/plans/deferred.md` 가 부분문자열로 걸리면 정당한 작업이 막힌다. 회차 51 자신이 두 파일을 다 다뤘다.
+**대상 판정은 「경로 구분자 뒤 `plan.md` 로 끝나는 인자」다(2026-11-07 미탐 보완)** — 처음 판은 `plan.md`·`./plan.md` 꼴만 막아 `../plan.md`·절대경로·백슬래시 경로가 샜는데, 문서(`plan/SKILL.md` Step 5)는 스크립트 쓰기 전부를 막는다고 적었다. 구분자는 `[\\/]` 로 둘 다 받는다. gitignore 아닌 추적 파일 `evals/fixtures/minimal-repo/plan.md` 도 함께 막히지만 그것을 스크립트로 쓰는 코드가 없고 Edit 로 고칠 수 있다.
+
+**단어 경계를 두는 이유** — `plan-template.md`·`docs/plans/deferred.md`·`myplan.md`·`plan.md.bak` 이 부분문자열로 걸리면 정당한 작업이 막힌다. 회차 51 자신이 앞의 두 파일을 다 다뤘다.
+
+**한계 — pathlib 은 호출식 안의 인자만 본다.** `p = Path('plan.md')` 뒤 `p.write_text(…)` 처럼 변수를 거치면 못 본다 — `$assigned` 는 문자열 대입만 기록한다.
 
 **읽기는 막지 않는다** — `grep`·`cat`·`sed -n`·`awk`, 그리고 **`plan.md` 를 읽어 다른 파일로 내보내는 형태**(`head -12 plan.md > other.txt`)까지 통과한다. 오차단이 나면 실측·조사 자체가 막힌다.
 

@@ -333,6 +333,34 @@ Assert-Case -Name "bpw: Set-Content -Path plan.md 차단 (BPW9)" -R $r -ExpectEx
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python -c ""p='plan.md'; open(p,'w').write('x')""")
 Assert-Case -Name "bpw: 한 줄 -c 형태의 변수 대입도 역참조 (BPW10)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
 
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo x > ../plan.md')
+Assert-Case -Name "bpw: 상위 경로 plan.md 리다이렉션 차단 (BPW11 미탐 보완)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i 's/a/b/' /d/repo/plan.md")
+Assert-Case -Name "bpw: 절대 경로 plan.md 의 sed -i 차단 (BPW12 미탐 보완)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "Set-Content -Path 'C:\r\plan.md' -Value x")
+Assert-Case -Name "bpw: 백슬래시 경로 plan.md 의 Set-Content 차단 (BPW13 미탐 보완)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo x > "D:\Personal Project\r\plan.md"')
+Assert-Case -Name "bpw: 따옴표로 감싼 공백 경로 plan.md 리다이렉션 차단 (BPW14 미탐 보완)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'python -c "from pathlib import Path; Path(''plan.md'').write_text(''x'')"')
+Assert-Case -Name "bpw: pathlib write_text 로 plan.md 쓰기 차단 (BPW15 미탐 보완)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'python -c "import pathlib; pathlib.Path(''../plan.md'').open(''w'').write(''x'')"')
+Assert-Case -Name "bpw: pathlib open(w) 로 상위 경로 plan.md 쓰기 차단 (BPW16 미탐 보완)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'cat ../plan.md')
+Assert-Case -Name "bpw: 상위 경로 plan.md 조회는 통과 (BPW17 델타 음성)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo x > myplan.md')
+Assert-Case -Name "bpw: plan.md 로 끝나는 다른 이름 myplan.md 쓰기는 통과 (BPW18 델타 음성)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'cp plan.md plan.md.bak')
+Assert-Case -Name "bpw: plan.md 를 plan.md.bak 으로 복사하는 것은 통과 (BPW19 델타 음성)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'python -c "from pathlib import Path; print(Path(''plan.md'').read_text())"')
+Assert-Case -Name "bpw: pathlib read_text 조회는 통과 (BPW20 델타 음성)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'python -c "from pathlib import Path; Path(''plan.md'').open().read()"')
+Assert-Case -Name "bpw: 모드 없는 pathlib open 조회는 통과 (BPW21 델타 음성)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'python -c "from pathlib import Path; Path(''notes.md'').write_text(''x'')"')
+Assert-Case -Name "bpw: pathlib 로 다른 파일 쓰기는 통과 (BPW22 델타 음성)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo x > "D:\Personal Project\r\notes.md"')
+Assert-Case -Name "bpw: 따옴표 공백 경로의 다른 파일 리다이렉션은 통과 (BPW23 델타 음성)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'
+
 # ---- [회차 52] 따옴표 인식 분할(Split-TopLevel 이식) ----
 #   착수 시점의 분할 넷은 전부 정규식이었고 따옴표 안의 구분자에서 쪼갰다. 그 결과 마지막 조각의
 #   첫 토큰이 `"` 가 되어, 쓰기 동사를 첫 실효 토큰으로 판정하는 block-plan-write 가 새어 나갔다.
