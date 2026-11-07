@@ -461,14 +461,19 @@ git init -q; git config user.email t@t; git config user.name t; git config core.
 git add -A 2>$null; git commit -qm init
 git worktree add -q --detach $eolWtTree 2>$null
 Pop-Location
-foreach ($n in 'w1', 'w2') {
-    $p = Join-Path $eolWtTree "$n.md"
-    [System.IO.File]::WriteAllText($p, "LF 로 저장`n")
-    $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolWtTree; session_id = 'eol-wt'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress)
-    Assert-Case -Name "post-write: worktree 안 LF 쓰기도 종전대로 경고 ($n.md · EOL12)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
+$p = Join-Path $eolWtTree 'w1.md'
+[System.IO.File]::WriteAllText($p, "LF 로 저장`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolWtTree; session_id = 'eol-wt'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: worktree 안 LF 쓰기도 종전대로 경고 (w1.md · EOL12)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
+foreach ($c in @(Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.claude/.state/post-write-warn') -Filter 'eol-wt_eolcache_*' -ErrorAction SilentlyContinue)) {
+    $lines = [System.IO.File]::ReadAllLines($c.FullName)
+    for ($i = 1; $i -lt $lines.Count; $i++) { $lines[$i] = $lines[$i].Replace('w/crlf', 'w/lf') }
+    [System.IO.File]::WriteAllLines($c.FullName, $lines)
 }
-$eolWtCache = @(Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.claude/.state/post-write-warn') -Filter 'eol-wt_eolcache_*' -ErrorAction SilentlyContinue)
-Assert-Case -Name "post-write: worktree 안에서도 eol 표본 캐시를 쓴다 (EOL12b)" -R @{ code = 0; out = ('cache=' + $eolWtCache.Count) } -ExpectExit 0 -ExpectContains 'cache=1'
+$p = Join-Path $eolWtTree 'w2.md'
+[System.IO.File]::WriteAllText($p, "LF 로 저장`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolWtTree; session_id = 'eol-wt'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: worktree 안 두 번째 쓰기는 캐시 행으로 판정한다 — 위조한 LF 행을 따라 무경고 (EOL12b)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
 
 $eolOtherCrlf = Join-Path $work 'eol-other-crlf'; $eolOtherLf = Join-Path $work 'eol-other-lf'; $eolOtherCwd = Join-Path $work 'eol-other-cwd'
 New-Item -ItemType Directory $eolOtherCwd -Force | Out-Null
