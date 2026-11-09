@@ -543,6 +543,29 @@ $d = New-CcAuditRepo 'rw.rs' "fn a() {}`nfn b() {}`nfn c() {`n    /// 아틀라�
 Set-CcFile $d 'rw.rs' "/// 썸네일을 칠하는 설정 창.`npub fn bind() {}`nfn a() {}`nfn b() {}`nfn c() {`n    /// 아틀라스에서 그림을 직접 내리지 않는다.`n    let x = 1;`n}`n"; git -C $d add rw.rs
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-reword-split'
 Assert-Case -Name "commit-comments: 새 pub doc(앞 hunk) + 다른 hunk 의 doc 문구 수정 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$d = New-CcRepo
+Set-CcFile $d 'hk.cs' "// 첫 설명`nint a;`nint b;`nint c;`nint d;`n"; git -C $d add hk.cs; git -C $d commit -qm hk
+Set-CcFile $d 'hk.cs' "int a;`nint b;`nint c;`n// 전혀 다른 내용`nint d;`n"; git -C $d add hk.cs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-hunk-far'
+Assert-Case -Name "commit-comments: 한 hunk 에서 지운 주석이 떨어진 hunk 의 다른 새 주석을 봐주지 않는다" -R $r -ExpectExit 2 -ExpectContains '전혀 다른 내용'
+$d = New-CcRepo
+Set-CcFile $d 'mv.cs' "// 이동할 설명`nint a;`nint b;`nint c;`nint d;`n"; git -C $d add mv.cs; git -C $d commit -qm mv
+Set-CcFile $d 'mv.cs' "int a;`nint b;`nint c;`n// 이동할 설명`nint d;`n"; git -C $d add mv.cs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-hunk-move'
+Assert-Case -Name "commit-comments: 파일 안 주석을 떨어진 자리로 옮긴 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$d = New-CcAuditRepo 'sh.rs' "pub fn a() {}`n/// 옛 설명 문장이다.`nfn b() {}`n"
+Set-CcFile $d 'sh.rs' "pub fn a() {}`n/// 새 공개 함수.`npub fn n() {}`n/// 옛 설명 문장을 고쳤다.`nfn b() {}`n"; git -C $d add sh.rs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-hunk-same'
+Assert-Case -Name "commit-comments: 한 hunk 안 새 pub doc + 문구 수정 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$ccTwoBase = "fn a() {}`nfn b() {}`nfn c() {}`nfn d() {}`npub fn e() {}`nfn f() {}`n"
+$d = New-CcAuditRepo 'h2.rs' $ccTwoBase
+Set-CcFile $d 'h2.rs' "fn a2() {}`nfn b() {}`nfn c() {}`nfn d() {}`npub fn e() {}`n/// 두 번째 hunk 설명.`nfn f() {}`n"; git -C $d add h2.rs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-hunk2-priv'
+Assert-Case -Name "commit-comments: 두 번째 hunk 의 비공개 fn 위 /// 커밋 차단" -R $r -ExpectExit 2 -ExpectContains '두 번째 hunk 설명'
+$d = New-CcAuditRepo 'h3.rs' $ccTwoBase
+Set-CcFile $d 'h3.rs' "fn a2() {}`nfn b() {}`nfn c() {}`nfn d() {}`n/// 두 번째 hunk 설명.`npub fn e() {}`nfn f() {}`n"; git -C $d add h3.rs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-hunk2-pub'
+Assert-Case -Name "commit-comments: 두 번째 hunk 의 pub fn 위 /// 커밋 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 $d = New-CcRepo
 [System.IO.File]::WriteAllText((Join-Path $d 'h.ps1'), "$([char]0xFEFF)# h.ps1 — 옛 머리 설명`n`$h = 1`n")

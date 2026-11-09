@@ -13,7 +13,13 @@ function Get-CommitCommentDiff([string[]]$GitArgs) {
 }
 
 function New-CommitCommentEntry([string]$Source) {
-    return @{ Plus = New-Object System.Collections.Generic.List[string]; PlusLine = New-Object System.Collections.Generic.List[int]; Minus = New-Object System.Collections.Generic.List[string]; Source = $Source }
+    return @{ Plus = New-Object System.Collections.Generic.List[string]; PlusLine = New-Object System.Collections.Generic.List[int]; Minus = New-Object System.Collections.Generic.List[string]; Hunks = New-Object System.Collections.Generic.List[object]; Source = $Source }
+}
+
+function Add-CommitCommentHunk($Entry) {
+    $h = @{ Minus = New-Object System.Collections.Generic.List[string]; PlusStart = $Entry.Plus.Count; PlusCount = 0 }
+    $Entry.Hunks.Add($h)
+    return $h
 }
 
 function Get-CommitCommentEntry($Files, [string]$Path, [string]$Source) {
@@ -28,11 +34,12 @@ function Get-CommitCommentEntry($Files, [string]$Path, [string]$Source) {
 
 function Add-CommitCommentDiff($Files, $Lines, [string]$Source) {
     $entry = $null
+    $hunk = $null
     $inHeader = $false
     $next = 0
     $seen = @{}
     foreach ($l in $Lines) {
-        if ($l.StartsWith('diff --git ')) { $inHeader = $true; $entry = $null; continue }
+        if ($l.StartsWith('diff --git ')) { $inHeader = $true; $entry = $null; $hunk = $null; continue }
         if ($inHeader) {
             if ($l.StartsWith('+++ ')) {
                 $inHeader = $false
@@ -48,10 +55,12 @@ function Add-CommitCommentDiff($Files, $Lines, [string]$Source) {
         if ($l.StartsWith('@@')) {
             $m = [regex]::Match($l, '\+(\d+)')
             $next = if ($m.Success) { [int]$m.Groups[1].Value } else { 0 }
+            $hunk = Add-CommitCommentHunk $entry
             continue
         }
-        if ($l.StartsWith('+')) { $entry.Plus.Add($l.Substring(1)); $entry.PlusLine.Add($next); $next++ }
-        elseif ($l.StartsWith('-')) { $entry.Minus.Add($l.Substring(1)) }
+        if ($null -eq $hunk) { continue }
+        if ($l.StartsWith('+')) { $entry.Plus.Add($l.Substring(1)); $entry.PlusLine.Add($next); $next++; $hunk.PlusCount++ }
+        elseif ($l.StartsWith('-')) { $entry.Minus.Add($l.Substring(1)); $hunk.Minus.Add($l.Substring(1)) }
     }
 }
 
@@ -98,8 +107,9 @@ function Add-CommitCommentPreAdd($Files, [string]$PreText) {
 function Add-CommitCommentNewFile($Files, [string]$Path) {
     if (-not (Test-CommentTarget $Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
     $Files[$Path] = New-CommitCommentEntry 'worktree'
+    $hunk = Add-CommitCommentHunk $Files[$Path]
     $n = 1
-    foreach ($l in @(Get-Content -LiteralPath $Path -Encoding UTF8 -TotalCount ($script:CommitCommentLineMax + 1))) { $Files[$Path].Plus.Add([string]$l); $Files[$Path].PlusLine.Add($n); $n++ }
+    foreach ($l in @(Get-Content -LiteralPath $Path -Encoding UTF8 -TotalCount ($script:CommitCommentLineMax + 1))) { $Files[$Path].Plus.Add([string]$l); $Files[$Path].PlusLine.Add($n); $n++; $hunk.PlusCount++ }
 }
 
 function Invoke-BlockCommitComments {
@@ -151,9 +161,9 @@ function Invoke-BlockCommitComments {
         foreach ($k in ($targets | Sort-Object)) {
             $full = if ($top) { [System.IO.Path]::GetFullPath((Join-Path $top $k)) } else { [System.IO.Path]::GetFullPath($k) }
             $entry = $files[$k]
-            $pair = @(, @(($entry.Minus -join "`n"), ($entry.Plus -join "`n")))
+            $pairs = @($entry.Hunks | ForEach-Object { , @(($_.Minus -join "`n"), ($entry.Plus.GetRange($_.PlusStart, $_.PlusCount) -join "`n")) })
             $added = New-Object System.Collections.Generic.List[object]
-            foreach ($c in (Get-AddedCommentBodies $k $pair $rewriteBudget)) { if (-not $moved.Contains($c.Body)) { $added.Add($c) } }
+            foreach ($c in (Get-AddedCommentBodies $k $pairs $rewriteBudget)) { if (-not $moved.Contains($c.Body)) { $added.Add($c) } }
             $text = $null
             if ($entry.Source -eq 'index') {
                 $shown = @(& git -c core.quotepath=off show ":$k" 2>$null)
@@ -163,10 +173,10 @@ function Invoke-BlockCommitComments {
             }
             if ($null -ne $text) {
                 $post = @($text -split '\r?\n')
-                foreach ($a in $added) { $a.Indexes = @([int]$entry.PlusLine[$a.Line] - 1) }
+                foreach ($a in $added) { $a.Indexes = @([int]$entry.PlusLine[$entry.Hunks[$a.Pair].PlusStart + $a.Line] - 1) }
             } else {
                 $post = @($entry.Plus)
-                foreach ($a in $added) { $a.Indexes = @($a.Line) }
+                foreach ($a in $added) { $a.Indexes = @($entry.Hunks[$a.Pair].PlusStart + $a.Line) }
             }
             $blocked = Get-BlockedCommentBodies $full $added $post $baseBudget
             foreach ($c in $blocked) { $found.Add($c) }
