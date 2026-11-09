@@ -539,6 +539,10 @@ Set-CcFile $d 'z.rs' "/// 설명.`nfn z() {}`n"; git -C $d add z.rs
 Set-CcFile $d 'z.rs' "/// 설명.`npub fn z() {}`n"
 $r = Invoke-CcCommit $d 'git add z.rs && git commit -m x' 'cc-two-src'
 Assert-Case -Name "commit-comments: git add x && git commit: staged 는 비공개 fn 위, 작업 트리는 pub 위 /// 이면 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$d = New-CcAuditRepo 'rw.rs' "fn a() {}`nfn b() {}`nfn c() {`n    /// 아틀라스에서 그림을 내리지 않는다.`n    let x = 1;`n}`n"
+Set-CcFile $d 'rw.rs' "/// 썸네일을 칠하는 설정 창.`npub fn bind() {}`nfn a() {}`nfn b() {}`nfn c() {`n    /// 아틀라스에서 그림을 직접 내리지 않는다.`n    let x = 1;`n}`n"; git -C $d add rw.rs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-reword-split'
+Assert-Case -Name "commit-comments: 새 pub doc(앞 hunk) + 다른 hunk 의 doc 문구 수정 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 $d = New-CcRepo
 [System.IO.File]::WriteAllText((Join-Path $d 'h.ps1'), "$([char]0xFEFF)# h.ps1 — 옛 머리 설명`n`$h = 1`n")

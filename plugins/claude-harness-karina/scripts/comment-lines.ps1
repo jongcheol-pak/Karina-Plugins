@@ -60,7 +60,54 @@ $script:CommentTodoRx = '\b(TODO|FIXME|XXX)\b'
 $script:CommentBaseBudgetMs = 10000
 $script:CommentKeepLineRx = '^- \*\*Comment \(보존\)\*\*: `(?<rx>[^`]+)` · 경로: `(?<paths>[^`]+)`'
 
-function Get-AddedCommentBodies([string]$Path, $Pairs) {
+$script:CommentRewriteBudgetPairs = 2000
+
+function New-CommentRewriteBudget { return @{ Pairs = $script:CommentRewriteBudgetPairs } }
+
+function Get-CommentBigrams([string]$Body) {
+    $t = $Body -replace '^(/{2,}!?|/\*+!?|\*+|<#|#+)\s*', ''
+    $set = New-Object System.Collections.Generic.HashSet[string]
+    for ($i = 0; $i -lt $t.Length - 1; $i++) { [void]$set.Add($t.Substring($i, 2)) }
+    return , $set
+}
+
+function Get-RewordedCandidateIndexes($Gone, $Candidates, $Budget) {
+    $picked = New-Object System.Collections.Generic.HashSet[int]
+    $n = [Math]::Min($Gone.Count, $Candidates.Count)
+    $cost = $Gone.Count * $Candidates.Count
+    if ($Candidates.Count -le $Gone.Count -or $cost -gt $Budget.Pairs) {
+        for ($i = 0; $i -lt $n; $i++) { [void]$picked.Add($i) }
+        return , $picked
+    }
+    $Budget.Pairs -= $cost
+    $candGrams = @($Candidates | ForEach-Object { , (Get-CommentBigrams $_.Body) })
+    $scores = New-Object 'System.Collections.Generic.List[System.ValueTuple[double,int,int]]'
+    for ($g = 0; $g -lt $Gone.Count; $g++) {
+        $goneGrams = Get-CommentBigrams $Gone[$g]
+        for ($c = 0; $c -lt $Candidates.Count; $c++) {
+            $total = $goneGrams.Count + $candGrams[$c].Count
+            $s = 0.0
+            if ($goneGrams.Count -gt 0 -and $candGrams[$c].Count -gt 0) {
+                $shared = [System.Collections.Generic.HashSet[string]]::new($goneGrams)
+                $shared.IntersectWith($candGrams[$c])
+                $s = (2.0 * $shared.Count) / $total
+            }
+            $scores.Add([System.ValueTuple]::Create(-$s, $c, $g))
+        }
+    }
+    $scores.Sort()
+    $usedGone = New-Object System.Collections.Generic.HashSet[int]
+    foreach ($s in $scores) {
+        if ($picked.Count -ge $n) { break }
+        if ($usedGone.Contains($s.Item3) -or $picked.Contains($s.Item2)) { continue }
+        [void]$usedGone.Add($s.Item3)
+        [void]$picked.Add($s.Item2)
+    }
+    return , $picked
+}
+
+function Get-AddedCommentBodies([string]$Path, $Pairs, $Budget = $null) {
+    if ($null -eq $Budget) { $Budget = New-CommentRewriteBudget }
     $added = New-Object System.Collections.Generic.List[object]
     for ($p = 0; $p -lt @($Pairs).Count; $p++) {
         $pair = @($Pairs)[$p]
@@ -70,11 +117,12 @@ function Get-AddedCommentBodies([string]$Path, $Pairs) {
         foreach ($o in ([string]$pair[0] -split '\r?\n')) { [void]$oldSet.Add($o.Trim()) }
         $newSet = New-Object System.Collections.Generic.HashSet[string]
         foreach ($c in $newLines) { [void]$newSet.Add($c.Body) }
-        $rewritten = @($oldBodies | Where-Object { -not $newSet.Contains($_) }).Count
-        foreach ($c in $newLines) {
-            if ($oldSet.Contains($c.Body)) { continue }
-            if ($rewritten -gt 0) { $rewritten--; continue }
-            $added.Add(@{ Body = $c.Body; Pair = $p; Line = $c.Line; Indexes = @() })
+        $gone = @($oldBodies | Where-Object { -not $newSet.Contains($_) })
+        $candidates = @($newLines | Where-Object { -not $oldSet.Contains($_.Body) })
+        $reworded = Get-RewordedCandidateIndexes $gone $candidates $Budget
+        for ($i = 0; $i -lt $candidates.Count; $i++) {
+            if ($reworded.Contains($i)) { continue }
+            $added.Add(@{ Body = $candidates[$i].Body; Pair = $p; Line = $candidates[$i].Line; Indexes = @() })
         }
     }
     return , $added

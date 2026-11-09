@@ -147,12 +147,13 @@ function Invoke-BlockCommitComments {
         $found = New-Object System.Collections.Generic.List[string]
         $perFile = New-Object System.Collections.Generic.List[string]
         $baseBudget = New-CommentBaseBudget
+        $rewriteBudget = New-CommentRewriteBudget
         foreach ($k in ($targets | Sort-Object)) {
             $full = if ($top) { [System.IO.Path]::GetFullPath((Join-Path $top $k)) } else { [System.IO.Path]::GetFullPath($k) }
             $entry = $files[$k]
             $pair = @(, @(($entry.Minus -join "`n"), ($entry.Plus -join "`n")))
             $added = New-Object System.Collections.Generic.List[object]
-            foreach ($c in (Get-AddedCommentBodies $k $pair)) { if (-not $moved.Contains($c.Body)) { $added.Add($c) } }
+            foreach ($c in (Get-AddedCommentBodies $k $pair $rewriteBudget)) { if (-not $moved.Contains($c.Body)) { $added.Add($c) } }
             $text = $null
             if ($entry.Source -eq 'index') {
                 $shown = @(& git -c core.quotepath=off show ":$k" 2>$null)
