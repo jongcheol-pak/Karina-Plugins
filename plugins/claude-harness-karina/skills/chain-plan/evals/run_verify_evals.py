@@ -784,6 +784,59 @@ def real_git_stamp_then_reuse():
         shutil.rmtree(d, ignore_errors=True)
 
 
+def _repo(files):
+    d = tempfile.mkdtemp()
+    g = ['git', '-C', d, '-c', 'user.name=eval', '-c', 'user.email=eval@example.invalid']
+    subprocess.run(['git', 'init', '-q', d], check=True)
+    for name, body in files.items():
+        with open(os.path.join(d, name), 'w', encoding='utf-8') as f:
+            f.write(body)
+    subprocess.run(g + ['add', '-A'], check=True)
+    subprocess.run(g + ['commit', '-q', '-m', 'init'], check=True)
+    return d, g
+
+
+def _drop_stamp(d):
+    try:
+        os.remove(rv.stamp_file(d, rv.git_call, CHAIN_DIR))
+    except (OSError, TypeError):
+        pass
+
+
+@case
+def real_git_tracked_plan_dirty_still_stamps():
+    d, _ = _repo({'plan.md': 'a\n', 'a.txt': 'x\n'})
+    try:
+        with open(os.path.join(d, 'plan.md'), 'a', encoding='utf-8') as f:
+            f.write('b\n')
+        cmd = ['--stamp', '--', sys.executable, '-c', 'print("plan-ok")']
+        first = _wrap(cmd, d).stdout.decode('utf-8', errors='replace')
+        second = _wrap(cmd, d).stdout.decode('utf-8', errors='replace')
+        assert 'STAMP: 기록 안 함' not in first, first[-400:]
+        assert 'RESULT: reused — ' in second, second[-400:]
+    finally:
+        _drop_stamp(d)
+        shutil.rmtree(d, ignore_errors=True)
+
+
+@case
+def real_git_reuse_docs_bare_mention_vs_literal():
+    d, g = _repo({'a.rs': '// see foo.md\nconst X: &str = include_str!("bar.md");\n',
+                  'foo.md': '1\n', 'bar.md': '1\n'})
+    try:
+        cmd = ['--stamp', '--reuse-docs', '--', sys.executable, '-c', 'print("docs-ok")']
+        assert 'RESULT: pass — ' in _wrap(cmd, d).stdout.decode('utf-8', errors='replace')
+        for name, want in (('foo.md', 'RESULT: reused — '), ('bar.md', 'RESULT: pass — ')):
+            with open(os.path.join(d, name), 'a', encoding='utf-8') as f:
+                f.write('2\n')
+            subprocess.run(g + ['commit', '-q', '-am', name], check=True)
+            out = _wrap(cmd, d).stdout.decode('utf-8', errors='replace')
+            assert want in out, (name, out[-400:])
+    finally:
+        _drop_stamp(d)
+        shutil.rmtree(d, ignore_errors=True)
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
     failed = 0

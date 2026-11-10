@@ -162,7 +162,7 @@ def git_call(cwd, args):
                            timeout=GIT_TIMEOUT_SEC)
     except (OSError, subprocess.SubprocessError):
         return 128, ''
-    return p.returncode, p.stdout.decode('utf-8', errors='replace').strip()
+    return p.returncode, p.stdout.decode('utf-8', errors='replace').rstrip('\r\n')
 
 
 def _git_out(git, cwd, args):
