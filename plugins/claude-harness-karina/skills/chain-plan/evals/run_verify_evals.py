@@ -1,10 +1,3 @@
-"""chain-plan 검증 래퍼(scripts/run-verify.py) 골든.
-
-시계·잠금·자식 프로세스·git 을 가짜로 주입해 갈래(pass·fail·stalled·deadline·overtime·superseded·unrunnable·reused)마다
-RESULT 줄과 종료 호출, --stamp 의 기록·재사용 조건을 잰다. 끝의 실프로세스 케이스만 실제로 띄운다 — 짧은 명령 ·
-출력 없는 정지 · `$` 가 든 pwsh 파일 · 메인이 끝난 뒤 남은 손자 정리(Windows) · cp949 stdout 에서의 RESULT 줄 ·
-임시 git 레포에서 기록 뒤 재사용.
-"""
 import importlib.util
 import os
 import shutil
@@ -336,7 +329,6 @@ def sweep_removes_week_old_verify_files():
 
 
 class FakeGit:
-    """git(cwd, args) → (exit, stdout). diff 는 '<기록 HEAD>..<HEAD>' 범위마다 바뀐 경로, refs 는 문자열 리터럴로 참조되는 파일 이름."""
 
     def __init__(self, head='a' * 40, dirty=(), top='/repo', prefix='', diff=None, refs=(), fail=False):
         self.head, self.dirty, self.top, self.prefix = head, list(dirty), top, prefix
@@ -385,7 +377,6 @@ def stamp_files(folder):
 
 
 def seeded(git, argv=(), cmd=('bash', 'v1.sh')):
-    """같은 폴더에 기록 하나를 남겨 두고 그 폴더를 돌려준다(기록 HEAD = git.head)."""
     _, _, calls, folder = stamped(git, argv, cmd=cmd)
     assert calls == [1] and stamp_files(folder), '기록이 남지 않았다'
     return folder

@@ -16,7 +16,7 @@
 
 --stamp 를 주면 실행 전에 기록을 보고, 통과(pass)했고 실행 전·후 HEAD 가 같고 미커밋 추적 변경이 없으면
 (작업 폴더 바로 아래 plan.md·notes.md 는 세지 않는다) chain 폴더의 `karina-chain-verify-stamp-*.json` 에 기록한다.
-기록·재사용을 하지 못한 사유는 `STAMP:` 줄로 낸다. 재사용은 기록 HEAD 가 지금 HEAD 와 같을 때이고,
+기록·재사용을 하지 못한 사유는 `STAMP:` 줄로 낸다. 재사용은 미커밋 추적 변경이 없고(같은 제외) 기록 HEAD 가 지금 HEAD 와 같을 때이고,
 --reuse-docs 를 함께 주면 그 사이 바뀐 파일이 전부 .md·.txt 이고 AGENTS.md·CLAUDE.md 가 없으며 그 이름이
 .md·.txt 밖 추적 파일에 따옴표 앞 문자열로 나오지 않을 때도 재사용한다.
 
@@ -193,7 +193,6 @@ def stamp_file(cwd, git, folder):
 
 
 def _tree(git, cwd):
-    """(HEAD, 판정 밖 파일을 뺀 미커밋 추적 파일 목록, 작업 폴더 prefix) — git 이 실패하면 None."""
     head = _git_out(git, cwd, ['rev-parse', 'HEAD'])
     prefix = _git_out(git, cwd, ['rev-parse', '--show-prefix'])
     status = _git_out(git, cwd, ['status', '--porcelain', '--untracked-files=no', '--no-renames'])
@@ -245,7 +244,6 @@ def _reusable(opts, git, entry, tree):
 
 
 def run_stamped(opts, git, run_fn, emit, folder, now=time.time):
-    """기록이 재사용되면 명령을 띄우지 않고 reused 줄과 기록된 꼬리를 낸다. 아니면 돌리고 pass 면 기록한다."""
     path = stamp_file(opts.cwd, git, folder)
     before = _tree(git, opts.cwd)
     if path is None or before is None:
