@@ -58,6 +58,7 @@ description: 사용자가 나눠 준 계획 목록(plan 1, plan 2, …)을 순�
 체인 승인을 받으면 Run 하나와 계획마다 Task 하나를 만든다. 뒤 Task 는 `--deps` 로 앞 Task 에 건다 — **첫 Task 는 `--deps` 를 뺀다**(값 없는 `--deps` 는 `invalid_argument`).
 
 - **모든 `<CLI>` 응답이 `ok: false` 면 `references/cli-errors.md`「오류 응답」 을 읽고 따른다** — 재전송·재실행으로 복구되는 코드가 있다.
+- **응답 키를 읽는 `orchestration` 호출에는 `--full` 을 붙이고, 그것이 `invalid_argument`(`--full` 을 모르는 옛 판 — inbox 밖)로 거절되면 `--full` 없이 같은 명령을 다시 낸다** — 새 판(Orca `8138232c4f1` 정합)은 기본 출력이 간결해 키가 `result` 아래로 들어가고 `workingDir`·`turnStart`·`injected`·`runId`·`count`·`spec` 이 빠진다. `--full` 응답과 옛 판 응답은 같은 모양(최상위 키)이라 이 문서들의 키 이름이 그대로 맞는다.
 
 ```
 <CLI> orchestration run-create --json --objective "<계획 목록 한 줄> [미지정: plan <N> <한 줄> · 문답 <k>건; …(있을 때만)] [체인 시작: <시각>] [미답 시한: <N>분] [체인 승인: <사용자 답 원문>]"
@@ -70,7 +71,7 @@ EOF
 - **task 를 만들기 전에 `references/spec-format.md`「spec 서식」 을 Read 해 채운다** — 계획마다 한 번 쓰는 서식이라 본문에 상시 두지 않는다.
 - **압축 뒤 체인 승인 답 원문·task·dispatch id 가 안 보이면 `references/compaction.md`「압축 뒤 복원」 을 따른다.**
 - **`--task-title` 을 반드시 준다** — 없으면 배정문의 `Task:` 줄이 spec 전문을 되풀이한다.
-- **objective·spec·`reply` 본문은 spec 처럼 작은따옴표 heredoc 치환으로 넘긴다** — 세 명령 모두 파일·stdin 입력이 없고, 본문의 백틱·`$`·따옴표가 셸에서 변조된다.
+- **objective·spec·`reply` 본문은 spec 처럼 작은따옴표 heredoc 치환으로 넘긴다** — 옛 판은 세 명령 모두 파일·stdin 입력이 없고(새 판의 `task-create --spec-file` 은 옛 판이 거절하므로 쓰지 않는다), 본문의 백틱·`$`·따옴표가 셸에서 변조된다.
 
 ## 워커 루프
 

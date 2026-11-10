@@ -888,7 +888,7 @@ def place_command_arguments():
         ww.make_call, ww.FileLock, sys.stdout = saved
     chk, lst = cli.calls[0], cli.calls[1]
     assert chk[:1] == ['check'] and chk[chk.index('--timeout-ms') + 1] == '60000', chk
-    assert lst == ['worker-list', '--json'], lst
+    assert lst == ['worker-list', '--json', '--full'], lst
     assert locks == ['place-disp_o'], locks
     assert printed.startswith('RESULT: freed — '), printed[:200]
 
@@ -1383,6 +1383,44 @@ def orphaned_when_middle_parent_killed():
             except OSError:
                 pass
         shutil.rmtree(d, ignore_errors=True)
+
+
+@case
+def concise_output_is_read_like_the_full_record():
+    data, err = ww._parse(json.dumps({'ok': True, 'result': {
+        'messages': [{'id': 'msg_1', 'type': 'question', 'from': 'tab'}], 'deliveryId': 'dlv_1'}}))
+    assert err is None, err
+    assert data['count'] == 1 and data['deliveryId'] == 'dlv_1', data
+    empty, _ = ww._parse(json.dumps({'ok': True, 'result': {'messages': []}}))
+    assert empty['count'] == 0, empty
+    lines, _ = ww._parse(json.dumps({'ok': True, 'result': {'lines': ['a'], 'cursor': 'c'}}))
+    assert lines['lines'] == ['a'], lines
+
+
+@case
+def full_record_is_asked_and_dropped_once_an_old_cli_refuses_it():
+    seen = []
+
+    def new_cli(args):
+        seen.append(list(args))
+        return json.dumps({'ok': True, 'count': 0, 'messages': []})
+    call = ww.with_full_record(new_cli)
+    call(['check', '--json'])
+    assert seen == [['check', '--json', '--full']], seen
+
+    old_seen = []
+
+    def old_cli(args):
+        old_seen.append(list(args))
+        if '--full' in args:
+            return json.dumps({'ok': False, 'code': 'invalid_argument',
+                               'error': 'check 에 쓸 수 없는 옵션입니다: --full'})
+        return json.dumps({'ok': True, 'count': 0, 'messages': []})
+    call = ww.with_full_record(old_cli)
+    first = call(['check', '--json'])
+    call(['worker-list', '--json'])
+    assert json.loads(first)['ok'] is True, first
+    assert old_seen == [['check', '--json', '--full'], ['check', '--json'], ['worker-list', '--json']], old_seen
 
 
 @case

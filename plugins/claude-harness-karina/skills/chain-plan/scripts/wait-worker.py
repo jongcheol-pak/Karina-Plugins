@@ -128,14 +128,40 @@ def _compact(obj):
 
 
 def _parse(raw):
-    """CLI 출력을 JSON 으로 읽는다. 실패나 ok:false 면 (None, 오류 원문) 을 돌려준다."""
+    """CLI 출력을 JSON 으로 읽는다. 실패나 ok:false 면 (None, 오류 원문) 을 돌려준다.
+    새 판 간결 출력(`{"ok":true,"result":{...}}`)은 result 를 최상위로 펴고, 빠진 count 는 messages 수로 채운다."""
     try:
         data = json.loads(raw)
     except ValueError:
         return None, raw[:RAW_LIMIT]
     if not isinstance(data, dict) or data.get('ok') is not True:
         return None, raw[:RAW_LIMIT]
+    if isinstance(data.get('result'), dict):
+        data = dict(data['result'], ok=True)
+    if 'count' not in data and isinstance(data.get('messages'), list):
+        data['count'] = len(data['messages'])
     return data, None
+
+
+def with_full_record(call):
+    """`--full` 을 붙여 부른다 — 새 판은 그것으로 전체 기록(runId·lines 등)을 그대로 낸다. 옛 판은 inbox 밖의
+    `--full` 을 invalid_argument 로 거절하므로, 그 거절을 한 번 보면 그 뒤로는 붙이지 않는다(옛·새 둘 다 읽는다)."""
+    state = {'full': True}
+
+    def wrapped(args):
+        if state['full']:
+            raw = call(list(args) + ['--full'])
+            try:
+                data = json.loads(raw)
+            except ValueError:
+                return raw
+            refused = (isinstance(data, dict) and data.get('ok') is False
+                       and data.get('code') == 'invalid_argument' and '--full' in str(data.get('error', '')))
+            if not refused:
+                return raw
+            state['full'] = False
+        return call(args)
+    return wrapped
 
 
 def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=None, alive=None,
@@ -653,14 +679,14 @@ def main(argv=None):
     alive = make_alive()
     if a.place is not None:
         lock = FileLock('place-%s' % a.place)
-        out = place_loop(make_call(a.cli), lock, a.place, a.poll_ms or 60000, alive=alive)
+        out = place_loop(with_full_record(make_call(a.cli)), lock, a.place, a.poll_ms or 60000, alive=alive)
         lock.release()
         print('\n'.join(out), flush=True)
         return 0
     sweep_stale(chain_dir(), time.time())
     if a.watch:
         lock = FileLock(a.dispatch[0])
-        out = watch_loop(make_call(a.cli), lock, a.dispatch[0], a.poll_ms or 60000, alive=alive)
+        out = watch_loop(with_full_record(make_call(a.cli)), lock, a.dispatch[0], a.poll_ms or 60000, alive=alive)
         lock.release()
         print('\n'.join(out), flush=True)
         return 0
@@ -673,7 +699,7 @@ def main(argv=None):
                     for d, r, lb in zip(ids, a.repo, labels)]
         poll_ms = poll_ms or 60000
     lock = FileLock(ids[0]) if len(ids) == 1 else AllLocks([FileLock(d) for d in ids])
-    out = wait_loop(make_call(a.cli), lock, dispatch=ids if len(ids) > 1 else ids[0], timeout_ms=a.timeout_ms,
+    out = wait_loop(with_full_record(make_call(a.cli)), lock, dispatch=ids if len(ids) > 1 else ids[0], timeout_ms=a.timeout_ms,
                     stall=a.stall, poll_ms=poll_ms, progress=progress, alive=alive, answer_by=a.answer_by)
     lock.release()
     print('\n'.join(out), flush=True)

@@ -8,11 +8,14 @@ description: >-
   act on elements (click, fill, select, check, hover, type, press a key, and
   similar); and drive the mouse (move, press, release, wheel, drag). Use for
   any request about a page open in Karina's own browser tabs — reading it,
-  acting on it, or using the login the user already has there.
+  acting on it, or using the login the user already has there. Also use for
+  opening, testing, screenshotting, or checking how a local or external web page
+  renders while working in Karina, unless the user or project names another
+  browser tool; plain HTTP or API calls (curl, fetch) do not need it.
   Use karina-computer-use only when a visible window outside Karina needs GUI
   control that a CLI, filesystem, or API cannot do, and use karina-orchestration
   for coordinating work between agent terminals.
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Karina Browser Use (Windows)
