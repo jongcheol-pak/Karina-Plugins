@@ -42,7 +42,7 @@
 - **사용자 응답을 기다리며 turn 을 끝내는 모든 자리는 `ask` 로 묻는다** — 위 외부 계약 갈림길 질문 · `interview.md`「계획 불필요 판정과 면제 표식」의 A/B · Step 1 의 `AGENTS.md` 저장 승인 · 아키텍처 선언 부재 · 검증 명령 부재 · `[면제 ③]` 이 여기다. 워커 화면의 질문에는 아무도 답하지 않는다. **`AskUserQuestion` 도 화면 질문도 쓰지 않는다** — 화면에서 답을 받으면 코디네이터에 보낸 질문이 열린 채 남고 그 답이 체인 기록에서 빠진다. 본문은 `interview.md` 2-2 의 `Q:`/`GUESS:` 그대로다. **명령·시한·백그라운드 실행·보고 `--body` 필드는 배정문 `진행:` 2·3 이 정본이다(`../../chain-plan/references/spec-format.md`「spec 서식」)** — 송신(배정문)과 수신(체인 보고)이 둘 다 chain-plan 이라, 여기는 그 위에 얹는 워커 쪽 규칙만 둔다:
 
   ```
-  <CLI> orchestration ask --from <핸들> <진행 2 의 시한 플래그> --question "$(cat <<'EOF'
+  <CLI> orchestration ask --json --from <핸들> <진행 2 의 시한 플래그> --question "$(cat <<'EOF'
   Q: …
   GUESS: …
   EOF
