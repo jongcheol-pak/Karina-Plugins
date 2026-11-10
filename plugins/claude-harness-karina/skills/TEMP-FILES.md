@@ -25,5 +25,5 @@
 
 - **직접 지우지 않는다.** 기한이 지난 것은 아래 두 곳이 지우고, 그 밖은 사용자가 `/karina:temp-cleanup` 으로 고른 것만 지운다.
 - **세션 시작 정리** — `scripts/session-context.ps1` 이 `plan-variants\`·`verify\`·`scratch\` 와 `chain\` 의 결정 파일을 기한(값은 그 스크립트의 표가 정본이다)이 지나면 지운다. 화면 변형·증거는 push 전 화면 게이트와 체인 보고가 경로를 다시 보이므로 쓴 직후에 지우지 않는다.
-- **체인 스크립트** — `wait-worker.py`·`run-verify.py` 가 시작할 때 `chain\` 의 자기 접두 파일만 기한이 지나면 지운다.
+- **체인 스크립트** — `wait-worker.py`·`run-verify.py` 가 시작할 때 `chain\` 의 자기 접두 파일만 기한이 지나면 지운다. `run-verify.py --stamp` 의 검증 기록(`karina-chain-verify-stamp-*.json`)도 그 접두라 함께 걷힌다.
 - **백업 두 폴더(`backup\`·`worktree-backup\`)는 자동으로 지우지 않는다** — 원본이 사라진 뒤의 유일한 사본일 수 있다.

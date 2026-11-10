@@ -1,8 +1,9 @@
 """chain-plan 검증 래퍼(scripts/run-verify.py) 골든.
 
-시계·잠금·자식 프로세스를 가짜로 주입해 갈래(pass·fail·stalled·deadline·overtime·superseded·unrunnable)마다
-RESULT 줄과 종료 호출을 잰다. 끝의 실프로세스 케이스만 실제로 띄운다 — 짧은 명령 · 출력 없는 정지 ·
-`$` 가 든 pwsh 파일 · 메인이 끝난 뒤 남은 손자 정리(Windows) · cp949 stdout 에서의 RESULT 줄.
+시계·잠금·자식 프로세스·git 을 가짜로 주입해 갈래(pass·fail·stalled·deadline·overtime·superseded·unrunnable·reused)마다
+RESULT 줄과 종료 호출, --stamp 의 기록·재사용 조건을 잰다. 끝의 실프로세스 케이스만 실제로 띄운다 — 짧은 명령 ·
+출력 없는 정지 · `$` 가 든 pwsh 파일 · 메인이 끝난 뒤 남은 손자 정리(Windows) · cp949 stdout 에서의 RESULT 줄 ·
+임시 git 레포에서 기록 뒤 재사용.
 """
 import importlib.util
 import os
@@ -334,6 +335,276 @@ def sweep_removes_week_old_verify_files():
         shutil.rmtree(d)
 
 
+class FakeGit:
+    """git(cwd, args) → (exit, stdout). diff 는 '<기록 HEAD>..<HEAD>' 범위마다 바뀐 경로, refs 는 문자열 리터럴로 참조되는 파일 이름."""
+
+    def __init__(self, head='a' * 40, dirty=(), top='/repo', prefix='', diff=None, refs=(), fail=False):
+        self.head, self.dirty, self.top, self.prefix = head, list(dirty), top, prefix
+        self.diff, self.refs, self.fail = diff or {}, set(refs), fail
+        self.calls = []
+
+    def __call__(self, cwd, args):
+        self.calls.append(list(args))
+        if self.fail:
+            return 128, ''
+        if args[:2] == ['rev-parse', 'HEAD']:
+            return 0, self.head
+        if args[:2] == ['rev-parse', '--show-toplevel']:
+            return 0, self.top
+        if args[:2] == ['rev-parse', '--show-prefix']:
+            return 0, self.prefix
+        if args[0] == 'status':
+            return 0, '\n'.join(' M ' + p for p in self.dirty)
+        if args[0] == 'diff':
+            rng = [a for a in args if '..' in a][0]
+            return 0, '\n'.join(self.diff.get(rng, []))
+        if args[0] == 'grep':
+            pats = [args[i + 1] for i, a in enumerate(args) if a == '-e']
+            return (0, 'src/x.rs') if any(p[:-1] in self.refs for p in pats) else (1, '')
+        raise AssertionError('예상하지 못한 git 호출: %s' % args)
+
+
+PASS_LINES = ['RESULT: pass — 통과 — 다음 명령으로 간다', '꼬리 1', '꼬리 2']
+
+
+def stamped(git, argv=(), run_lines=PASS_LINES, folder=None, cmd=('bash', 'v1.sh'), cwd='.'):
+    folder = folder or tempfile.mkdtemp(prefix='karina-stamp-eval-')
+    opts = rv.parse_args(['--stamp'] + list(argv) + ['--cwd', cwd, '--'] + list(cmd))
+    calls, out = [], []
+
+    def run_fn():
+        calls.append(1)
+        return run_lines() if callable(run_lines) else list(run_lines)
+
+    lines = rv.run_stamped(opts, git, run_fn, out.append, folder)
+    return lines, out, calls, folder
+
+
+def stamp_files(folder):
+    return [f for f in os.listdir(folder) if f.startswith('karina-chain-verify-stamp-')]
+
+
+def seeded(git, argv=(), cmd=('bash', 'v1.sh')):
+    """같은 폴더에 기록 하나를 남겨 두고 그 폴더를 돌려준다(기록 HEAD = git.head)."""
+    _, _, calls, folder = stamped(git, argv, cmd=cmd)
+    assert calls == [1] and stamp_files(folder), '기록이 남지 않았다'
+    return folder
+
+
+H1, H2 = 'a' * 40, 'b' * 40
+
+
+@case
+def stamp_written_on_pass():
+    git = FakeGit()
+    lines, _, calls, folder = stamped(git)
+    try:
+        assert result(lines).startswith('RESULT: pass — ') and calls == [1], lines
+        files = stamp_files(folder)
+        assert len(files) == 1, files
+        with open(os.path.join(folder, files[0]), encoding='utf-8') as f:
+            text = f.read()
+        assert H1 in text and '꼬리 2' in text, text
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def stamp_skipped_on_fail():
+    lines, out, _, folder = stamped(FakeGit(), run_lines=['RESULT: fail — 실패(exit 1) — 실패로 판정한다'])
+    try:
+        assert any(l.startswith('STAMP: 기록 안 함 — ') for l in out), out
+        assert not stamp_files(folder)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def stamp_skipped_when_tree_dirty():
+    lines, out, _, folder = stamped(FakeGit(dirty=['src/a.rs']))
+    try:
+        assert any(l.startswith('STAMP: 기록 안 함 — ') for l in out), out
+        assert not stamp_files(folder)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def stamp_written_when_only_plan_dirty():
+    git = FakeGit(prefix='sub/', dirty=['sub/plan.md', 'sub/notes.md'])
+    _, out, _, folder = stamped(git)
+    try:
+        assert len(stamp_files(folder)) == 1, out
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def stamp_skipped_when_head_moves_during_run():
+    git = FakeGit()
+
+    def moving():
+        git.head = H2
+        return list(PASS_LINES)
+
+    _, out, _, folder = stamped(git, run_lines=moving)
+    try:
+        assert any(l.startswith('STAMP: 기록 안 함 — ') for l in out), out
+        assert not stamp_files(folder)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def reuse_same_head_skips_run():
+    git = FakeGit()
+    folder = seeded(git)
+    try:
+        lines, _, calls, _ = stamped(git, folder=folder)
+        r = result(lines)
+        assert r.startswith('RESULT: reused — ') and H1[:7] in r, lines
+        assert calls == [], '재사용인데 명령을 띄웠다'
+        assert '꼬리 2' in lines, '기록된 꼬리를 다시 내야 기대값을 대조한다'
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def reuse_same_head_dirty_runs():
+    git = FakeGit()
+    folder = seeded(git)
+    try:
+        git.dirty = ['src/a.rs']
+        lines, _, calls, _ = stamped(git, folder=folder)
+        assert calls == [1] and result(lines).startswith('RESULT: pass — '), lines
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def reuse_other_head_runs():
+    git = FakeGit()
+    folder = seeded(git)
+    try:
+        git.head = H2
+        git.diff = {H1 + '..' + H2: ['src/a.rs']}
+        lines, _, calls, _ = stamped(git, ['--reuse-docs'], folder=folder)
+        assert calls == [1], lines
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def reuse_docs_only_with_flag():
+    git = FakeGit()
+    folder = seeded(git)
+    try:
+        git.head = H2
+        git.diff = {H1 + '..' + H2: ['docs/plans/deferred.md', 'docs/conventions.md', 'plan.md']}
+        lines, _, calls, _ = stamped(git, ['--reuse-docs'], folder=folder)
+        assert calls == [] and result(lines).startswith('RESULT: reused — '), lines
+        assert any('--no-renames' in c for c in git.calls if c[0] == 'diff'), git.calls
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def reuse_docs_only_without_flag_runs():
+    git = FakeGit()
+    folder = seeded(git)
+    try:
+        git.head = H2
+        git.diff = {H1 + '..' + H2: ['docs/conventions.md']}
+        _, _, calls, _ = stamped(git, folder=folder)
+        assert calls == [1]
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def reuse_docs_agents_md_runs():
+    git = FakeGit()
+    folder = seeded(git)
+    try:
+        git.head = H2
+        git.diff = {H1 + '..' + H2: ['AGENTS.md']}
+        _, _, calls, _ = stamped(git, ['--reuse-docs'], folder=folder)
+        assert calls == [1]
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def reuse_docs_literal_reference_runs():
+    git = FakeGit(refs=['case.txt'])
+    folder = seeded(git)
+    try:
+        git.head = H2
+        git.diff = {H1 + '..' + H2: ['src/fixtures/case.txt']}
+        _, _, calls, _ = stamped(git, ['--reuse-docs'], folder=folder)
+        assert calls == [1]
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def reuse_docs_rename_counts_both_paths():
+    git = FakeGit()
+    folder = seeded(git)
+    try:
+        git.head = H2
+        git.diff = {H1 + '..' + H2: ['src/a.rs', 'docs/a.md']}
+        _, _, calls, _ = stamped(git, ['--reuse-docs'], folder=folder)
+        assert calls == [1]
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def reuse_git_failure_runs():
+    lines, out, calls, folder = stamped(FakeGit(fail=True))
+    try:
+        assert calls == [1] and result(lines).startswith('RESULT: pass — '), lines
+        assert not stamp_files(folder)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def command_key_follows_file_content():
+    d = tempfile.mkdtemp()
+    try:
+        a, b, c = (os.path.join(d, n) for n in ('w.sh', 'c.sh', 'x.sh'))
+        for p, body in ((a, 'cargo test\r\n'), (b, '  cargo test\n'), (c, 'cargo clippy\n')):
+            with open(p, 'w', encoding='utf-8', newline='') as f:
+                f.write(body)
+        assert rv.command_key(['bash', a], d) == rv.command_key(['bash', b], d), '경로·줄바꿈만 다르면 같은 키'
+        assert rv.command_key(['bash', a], d) != rv.command_key(['bash', c], d), '내용이 다르면 다른 키'
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+@case
+def stamp_file_keyed_by_git_toplevel():
+    folder = tempfile.mkdtemp(prefix='karina-stamp-eval-')
+    try:
+        git = FakeGit(top='D:/r', prefix='')
+        p1 = rv.stamp_file('/d/r', git, folder)
+        p2 = rv.stamp_file('D:\\r', git, folder)
+        assert p1 == p2, '작업 폴더 표기가 달라도 같은 레포·폴더면 같은 기록'
+        assert os.path.dirname(p1) == folder and os.path.basename(p1).startswith('karina-chain-verify-stamp-'), p1
+        assert rv.stamp_file('/d/r', FakeGit(top='D:/r', prefix='sub/'), folder) != p1, '작업 폴더가 다르면 갈린다'
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def reuse_docs_needs_stamp():
+    p = subprocess.run([sys.executable, SCRIPT, '--reuse-docs', '--cwd', '.', '--', 'bash', 'x.sh'],
+                       capture_output=True, encoding='utf-8', errors='replace', timeout=60)
+    assert p.returncode == 2 and '--stamp' in p.stderr, (p.returncode, p.stderr[-300:])
+
+
 def _wrap(args, cwd, env=None, timeout=90):
     return subprocess.run([sys.executable, SCRIPT, '--cwd', cwd] + args, capture_output=True,
                           env=env, timeout=timeout)
@@ -496,6 +767,29 @@ def real_result_survives_cp949_stdout():
         assert p.returncode == 0, (p.returncode, p.stderr[-400:])
         assert 'RESULT: fail — ' in text, text[-300:]
     finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+@case
+def real_git_stamp_then_reuse():
+    d = tempfile.mkdtemp()
+    try:
+        g = ['git', '-C', d, '-c', 'user.name=eval', '-c', 'user.email=eval@example.invalid']
+        subprocess.run(['git', 'init', '-q', d], check=True)
+        with open(os.path.join(d, 'a.txt'), 'w', encoding='utf-8') as f:
+            f.write('x\n')
+        subprocess.run(g + ['add', 'a.txt'], check=True)
+        subprocess.run(g + ['commit', '-q', '-m', 'init'], check=True)
+        cmd = ['--stamp', '--', sys.executable, '-c', 'print("stamp-ok")']
+        first = _wrap(cmd, d).stdout.decode('utf-8', errors='replace')
+        second = _wrap(cmd, d).stdout.decode('utf-8', errors='replace')
+        assert 'RESULT: pass — ' in first, first[-400:]
+        assert 'RESULT: reused — ' in second and 'stamp-ok' in second, second[-400:]
+    finally:
+        try:
+            os.remove(rv.stamp_file(d, rv.git_call, CHAIN_DIR))
+        except (OSError, AttributeError):
+            pass
         shutil.rmtree(d, ignore_errors=True)
 
 

@@ -12,12 +12,20 @@
 - overtime   (본체) 진행이 이어져도 --max-sec 에 닿았다. 재실행하지 않는다.
 - superseded 같은 --cwd 의 새 래퍼가 잠금을 가져갔다. 이 결과는 판정에 쓰지 않는다.
 - unrunnable 명령을 띄우지 못했거나(실행 파일 없음) exit 126/127 이다.
+- reused     (--stamp) 같은 작업 폴더·같은 명령 내용의 통과 기록이 지금 HEAD 에 맞아 띄우지 않았다. 기록된 꼬리를 낸다.
+
+--stamp 를 주면 실행 전에 기록을 보고, 통과(pass)했고 실행 전·후 HEAD 가 같고 미커밋 추적 변경이 없으면
+(작업 폴더 바로 아래 plan.md·notes.md 는 세지 않는다) chain 폴더의 `karina-chain-verify-stamp-*.json` 에 기록한다.
+기록·재사용을 하지 못한 사유는 `STAMP:` 줄로 낸다. 재사용은 기록 HEAD 가 지금 HEAD 와 같을 때이고,
+--reuse-docs 를 함께 주면 그 사이 바뀐 파일이 전부 .md·.txt 이고 AGENTS.md·CLAUDE.md 가 없으며 그 이름이
+.md·.txt 밖 추적 파일에 따옴표 앞 문자열로 나오지 않을 때도 재사용한다.
 
 어느 갈래로 끝나든 명령이 남긴 자손 프로세스를 끝낸다(Windows 는 Job Object, 그 밖은 프로세스 그룹).
 판정 근거는 `../references/run-verify-rationale.md` 가 정본이다.
 """
 import argparse
 import hashlib
+import json
 import os
 import shutil
 import signal
@@ -34,6 +42,11 @@ DEFAULT_POLL_SEC = 15
 DEFAULT_MAX_SEC = 3 * 3600
 UNRUNNABLE_EXITS = (126, 127)
 SWEEP_AGE_SEC = 7 * 24 * 3600
+STAMP_PREFIX = LOCK_PREFIX + 'stamp-'
+NOTE_FILES = ('plan.md', 'notes.md')
+DOC_EXTS = ('.md', '.txt')
+BLOCKING_DOCS = ('AGENTS.md', 'CLAUDE.md')
+GIT_TIMEOUT_SEC = 60
 
 
 class Parser(argparse.ArgumentParser):
@@ -53,6 +66,8 @@ def parse_args(argv):
     p.add_argument('--retries', type=int, default=1)
     p.add_argument('--max-sec', type=float, default=None)
     p.add_argument('--deadline-sec', type=float, default=None)
+    p.add_argument('--stamp', action='store_true')
+    p.add_argument('--reuse-docs', action='store_true')
     p.add_argument('cmd', nargs=argparse.REMAINDER)
     opts = p.parse_args(argv)
     if opts.cmd[:1] == ['--']:
@@ -61,6 +76,8 @@ def parse_args(argv):
         p.error('실행할 명령이 없다 — `--` 뒤에 명령 argv 를 준다')
     if opts.max_sec is not None and opts.deadline_sec is not None:
         p.error('--max-sec 와 --deadline-sec 은 함께 줄 수 없다 — 사전 단계는 --deadline-sec 하나다')
+    if opts.reuse_docs and not opts.stamp:
+        p.error('--reuse-docs 는 --stamp 와 함께만 준다')
     if opts.max_sec is None and opts.deadline_sec is None:
         opts.max_sec = DEFAULT_MAX_SEC
     return opts
@@ -137,6 +154,134 @@ def run(opts, launch, clock, sleep, lock, emit):
         why = ' — 앞 시도 멈춤(%g초 동안 진행 없음)' % opts.stall_sec
     return _result('stalled', '멈춤 재현(재실행 %d회 뒤) — 미검증으로 적고 다음으로 간다'
                    % (attempts - 1), tail)
+
+
+def git_call(cwd, args):
+    try:
+        p = subprocess.run(['git', '-C', cwd] + list(args), stdin=subprocess.DEVNULL, capture_output=True,
+                           timeout=GIT_TIMEOUT_SEC)
+    except (OSError, subprocess.SubprocessError):
+        return 128, ''
+    return p.returncode, p.stdout.decode('utf-8', errors='replace').strip()
+
+
+def _git_out(git, cwd, args):
+    code, out = git(cwd, args)
+    return out if code == 0 else None
+
+
+def command_key(cmd, cwd):
+    parts = [os.path.splitext(os.path.basename(cmd[0]))[0].lower()]
+    for arg in cmd[1:]:
+        path = arg if os.path.isabs(arg) else os.path.join(cwd, arg)
+        if os.path.isfile(path):
+            with open(path, 'rb') as f:
+                body = f.read().replace(b'\r\n', b'\n').strip()
+            parts.append('f:' + hashlib.sha256(body).hexdigest())
+        else:
+            parts.append('a:' + arg)
+    return hashlib.sha256('\0'.join(parts).encode('utf-8')).hexdigest()
+
+
+def stamp_file(cwd, git, folder):
+    top = _git_out(git, cwd, ['rev-parse', '--show-toplevel'])
+    prefix = _git_out(git, cwd, ['rev-parse', '--show-prefix'])
+    if top is None or prefix is None:
+        return None
+    key = hashlib.sha1(('%s\0%s' % (os.path.normcase(top.replace('\\', '/')), prefix)).encode('utf-8'))
+    return os.path.join(folder, '%s%s.json' % (STAMP_PREFIX, key.hexdigest()[:16]))
+
+
+def _tree(git, cwd):
+    """(HEAD, 판정 밖 파일을 뺀 미커밋 추적 파일 목록, 작업 폴더 prefix) — git 이 실패하면 None."""
+    head = _git_out(git, cwd, ['rev-parse', 'HEAD'])
+    prefix = _git_out(git, cwd, ['rev-parse', '--show-prefix'])
+    status = _git_out(git, cwd, ['status', '--porcelain', '--untracked-files=no', '--no-renames'])
+    if head is None or prefix is None or status is None:
+        return None
+    exempt = {prefix + n for n in NOTE_FILES}
+    dirty = [l[3:] for l in status.splitlines() if l[3:] and l[3:] not in exempt]
+    return head, dirty, prefix
+
+
+def _load(path):
+    try:
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _docs_only(git, cwd, since, head, prefix):
+    changed = _git_out(git, cwd, ['diff', '--name-only', '--no-renames', '%s..%s' % (since, head)])
+    if changed is None:
+        return '바뀐 파일을 읽지 못했다'
+    top = _git_out(git, cwd, ['rev-parse', '--show-toplevel'])
+    for path in changed.splitlines():
+        if path in {prefix + n for n in NOTE_FILES}:
+            continue
+        name = path.rsplit('/', 1)[-1]
+        if not name.lower().endswith(DOC_EXTS) or name in BLOCKING_DOCS:
+            return '문서 밖 변경 — %s' % path
+        code, _ = git(top or cwd, ['grep', '-l', '-F', '-e', name + '"', '-e', name + "'", '--',
+                                   '.', ':!*.md', ':!*.txt'])
+        if code != 1:
+            return '코드가 문자열로 참조하는 문서 — %s' % path
+    return None
+
+
+def _reusable(opts, git, entry, tree):
+    if not entry:
+        return '기록 없음'
+    head, dirty, prefix = tree
+    if dirty:
+        return '미커밋 변경 — %s' % dirty[0]
+    if entry.get('head') == head:
+        return None
+    if not opts.reuse_docs:
+        return 'HEAD 가 다르다(기록 %s)' % entry.get('head', '')[:7]
+    return _docs_only(git, opts.cwd, entry.get('head', ''), head, prefix)
+
+
+def run_stamped(opts, git, run_fn, emit, folder, now=time.time):
+    """기록이 재사용되면 명령을 띄우지 않고 reused 줄과 기록된 꼬리를 낸다. 아니면 돌리고 pass 면 기록한다."""
+    path = stamp_file(opts.cwd, git, folder)
+    before = _tree(git, opts.cwd)
+    if path is None or before is None:
+        emit('STAMP: 기록 안 함 — git 상태를 읽지 못했다')
+        return run_fn()
+    key = command_key(opts.cmd, opts.cwd)
+    stamps = _load(path)
+    entry = stamps.get(key)
+    why = _reusable(opts, git, entry, before)
+    if why is None:
+        return _result('reused', '%s 에서 통과한 기록을 재사용한다 — 다음 명령으로 간다' % entry['head'][:7],
+                       entry.get('tail', []))
+    emit('STAMP: 재사용 안 함 — %s' % why)
+    lines = run_fn()
+    after = _tree(git, opts.cwd)
+    if not lines or not lines[0].startswith('RESULT: pass '):
+        why = '통과가 아니다'
+    elif before[1]:
+        why = '실행 전 미커밋 변경 — %s' % before[1][0]
+    elif after is None or after[0] != before[0] or after[1]:
+        why = '실행 중 HEAD 나 트리가 바뀌었다'
+    else:
+        why = None
+    if why:
+        emit('STAMP: 기록 안 함 — %s' % why)
+        return lines
+    stamps = _load(path)
+    stamps[key] = {'head': before[0], 'tail': lines[1:], 'at': int(now())}
+    tmp = path + '.tmp'
+    try:
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(stamps, f, ensure_ascii=False)
+        os.replace(tmp, path)
+    except OSError as e:
+        emit('STAMP: 기록 안 함 — 쓰기 실패(%s)' % e)
+    return lines
 
 
 def chain_dir():
@@ -353,11 +498,15 @@ def main(argv):
         print(line, flush=True)
 
     sweep_stale(chain_dir(), time.time())
-    lock = FileLock(opts.cwd)
-    try:
-        lines = run(opts, RealProc, time.monotonic, lambda proc, sec: proc.pause(sec), lock, emit)
-    finally:
-        lock.release()
+
+    def run_locked():
+        lock = FileLock(opts.cwd)
+        try:
+            return run(opts, RealProc, time.monotonic, lambda proc, sec: proc.pause(sec), lock, emit)
+        finally:
+            lock.release()
+
+    lines = run_stamped(opts, git_call, run_locked, emit, chain_dir()) if opts.stamp else run_locked()
     for line in lines:
         print(line)
     return 0
