@@ -21,6 +21,7 @@ $gcBlock = '[HARNESS] BLOCKED: 새 주석을 더하는 편집을 막습니다'
 $r = Invoke-GcEdit 'line.rs' 'fn a() {}' "// 섹션의 첫 행인가`nfn a() {}" 'gc-retry'
 Assert-Case -Name "guard-comment: 줄 주석을 더한 Edit 첫 시도는 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 Assert-Case -Name "guard-comment: 차단 사유가 예외 목록과 다시 내도 통과하지 않음을 낸다" -R $r -ExpectExit 2 -ExpectContains '같은 편집을 다시 내도 통과하지 않습니다'
+Assert-Case -Name "guard-comment: 차단 사유가 낡은 옛 주석을 고치거나 지우라고 안내한다" -R $r -ExpectExit 2 -ExpectContains '새 주석만 빼고 낡은 주석을 남기지 마세요'
 
 $r = Invoke-GcEdit 'doc.rs' 'pub fn b() {}' "/// 그 모니터 작업 영역 가운데.`npub fn b() {}"
 Assert-Case -Name "guard-comment: doc 주석(///) 추가도 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
