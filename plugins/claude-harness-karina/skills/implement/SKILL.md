@@ -25,6 +25,7 @@ description: 승인된 plan.md(`## Goal` 아래 `> 승인:` 줄에 날짜가 있
 
 > Deliver what was asked, at the scope intended. Make routine judgment calls yourself, and check in only when different readings of the request would lead to materially different work. If the request seems mistaken or a better approach exists, say so in a sentence and continue with the task as asked rather than quietly narrowing, widening, or transforming it. Finish the whole task, and stop short of actions that are clearly beyond what was asked.
 
+- **task 를 서브에이전트에 하나씩 차례로 맡기지 않는다 — 직접 실행한다** — 맡길 때마다 맥락을 다시 읽고 다시 빌드해 대기만 는다(2026-11-10 Karina 워커 — task 9개를 차례로 넘겨 380분 중 도구 실행 11분).
 - **프로젝트가 다른 패턴을 명시했으면 그것이 스킬 절차를 이긴다** — `AGENTS.md`(또는 그것이 가리키는 문서)가 아키텍처·배치·도구를 정해 두었으면 그 프로젝트의 결정이 먼저다. 스킬 절차를 그대로 밀면 그 레포에서만 이질적인 코드가 남는다.
 - **루프 진입 전 1회, `plan.md` 의 승인 표지(`^> 승인: [0-9]{4}-` 줄 — 서식 정본 `../plan/references/plan-template.md` 「Goal」)를 본다** — 없으면 승인 전 초안일 수 있다. 없으면 `references/loop-exceptions.md`「승인 표지 없음」 을 Read 한다 — 확인 방식이 이 루프의 여덟 정지와 갈리는 막힘형 호출이라 그 절에 있다.
 - **루프 진입 전 1회 `references/push-flow.md`「기본 브랜치 push」 를 Read 한다** — 브랜치를 그대로 두고 지금 브랜치에 커밋하며, 회차 끝에 `references/local-gate.md`「회차 끝 게이트」 를 거쳐 push 한다. PR 은 열지 않는다.
