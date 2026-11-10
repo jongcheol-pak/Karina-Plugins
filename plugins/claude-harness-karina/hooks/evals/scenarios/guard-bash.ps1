@@ -480,6 +480,7 @@ Set-CcFile $d 'a.cs' "// 기존 설명`n// 새 설명`nint a;`n"; git -C $d add 
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-retry'
 Assert-Case -Name "commit-comments: staged 새 주석이 있는 커밋 첫 시도는 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
 Assert-Case -Name "commit-comments: 차단 사유가 다시 내도 통과하지 않음을 낸다" -R $r -ExpectExit 2 -ExpectContains '같은 커밋을 다시 내도 통과하지 않습니다'
+Assert-Case -Name "commit-comments: 차단 사유가 낡은 옛 주석을 고치거나 지우라고 안내한다" -R $r -ExpectExit 2 -ExpectContains '새 주석만 빼고 낡은 주석을 남기지 마세요'
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-retry'
 Assert-Case -Name "commit-comments: 같은 주석 집합 두 번째도 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
 $d = New-CcRepo

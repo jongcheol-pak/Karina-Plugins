@@ -187,6 +187,7 @@ function Invoke-BlockCommitComments {
         $lines = @("[HARNESS] BLOCKED: 커밋에 새 주석이 있습니다 (주석 $($found.Count)줄)") + @($perFile) + @(Format-CommentGatePreview $found) + @(
             $script:CommentGateRule,
             '  - 같은 커밋을 다시 내도 통과하지 않습니다. 주석을 지우고 다시 커밋하고, 남길 이유는 커밋 본문에 적으세요.',
+            '  - 고친 코드를 설명하던 옛 주석이 있으면 같은 자리(같은 hunk)에서 같은 줄 수 안에서 고치거나 지우세요 — 문구 수정·삭제는 막지 않습니다. 새 주석만 빼고 낡은 주석을 남기지 마세요.',
             '  - 위 예외에 드는데 막혔으면 멈추고 사용자에게 보고하세요.')
         return New-HookResult -Block $true -Stderr $lines
     } catch {
