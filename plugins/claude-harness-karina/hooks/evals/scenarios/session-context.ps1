@@ -278,29 +278,29 @@ if (Test-HookSelected @('session-context')) {
 
     & $scFire 'sc42' 'karina:implement'
     $r = & $scCompact $scPlanless 'sc42'
-    Assert-Case -Name "session-context: compact 큐 기록 규약 절 주입 (SC42)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고'
-    Assert-Case -Name "session-context: 큐 규약 주입에 발췌 표기 (SC42b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — llm-wiki/references/queue-rules.md'
-    Assert-Case -Name "session-context: 큐 규약 주입이 K 5-2 끝까지 포함 (SC42f)" -R $r -ExpectExit 0 -ExpectContains '레포 자신의 결정은 큐 대신' -ExpectNotContains '쓰기 예외는 하나뿐이다'
+    Assert-Case -Name "session-context: compact 결정 기록 규약 절 주입 (SC42)" -R $r -ExpectExit 0 -ExpectContains '트리거는 둘이다'
+    Assert-Case -Name "session-context: 결정 기록 규약 주입에 발췌 표기 (SC42b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — REPO-DECISIONS.md 「쓰기」'
+    Assert-Case -Name "session-context: 결정 기록 규약 주입이 「쓰기」 끝까지 포함 (SC42f)" -R $r -ExpectExit 0 -ExpectContains '그 회차의 마지막 커밋에 함께 넣는다' -ExpectNotContains '새 항목을 쓰지 않는다'
     # SC42c (델타 음성): startup엔 주입하지 않는다(SC41c와 같은 취지).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: startup엔 큐 규약 미주입 (SC42c)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
+    Assert-Case -Name "session-context: startup엔 결정 기록 규약 미주입 (SC42c)" -R $r -ExpectExit 0 -ExpectNotContains '트리거는 둘이다'
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 미완료 task 세션엔 큐 규약 미주입 (SC42d)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
+    Assert-Case -Name "session-context: 미완료 task 세션엔 결정 기록 규약 미주입 (SC42d)" -R $r -ExpectExit 0 -ExpectNotContains '트리거는 둘이다'
     & $scFire 'sc42g' 'karina:plan'
     $r = & $scCompact $scPlanless 'sc42g'
-    Assert-Case -Name "session-context: plan 만 발동한 compact 엔 큐 규약 미주입 (SC42g)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
+    Assert-Case -Name "session-context: plan 만 발동한 compact 엔 결정 기록 규약 미주입 (SC42g)" -R $r -ExpectExit 0 -ExpectNotContains '트리거는 둘이다'
     $r = & $scCompact $scPlanless 'sc42h'
-    Assert-Case -Name "session-context: 발동 기록 없는 compact 엔 큐 규약 미주입 (SC42h)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
+    Assert-Case -Name "session-context: 발동 기록 없는 compact 엔 결정 기록 규약 미주입 (SC42h)" -R $r -ExpectExit 0 -ExpectNotContains '트리거는 둘이다'
     & $scFire 'sc42i' 'karina:plan'
     & $scFire 'sc42i' 'karina:implement'
     $r = & $scCompact $scPlanless 'sc42i'
-    Assert-Case -Name "session-context: plan 뒤 implement 발동 compact 엔 큐 규약 주입 (SC42i)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고'
+    Assert-Case -Name "session-context: plan 뒤 implement 발동 compact 엔 결정 기록 규약 주입 (SC42i)" -R $r -ExpectExit 0 -ExpectContains '트리거는 둘이다'
     & $scFire 'sc41h' 'karina:plan'
     & $scFire 'sc41h' 'karina:implement'
     & $scFire 'sc41h' 'karina:plan'
     $r = & $scCompact $scPlanless 'sc41h'
     Assert-Case -Name "session-context: implement 뒤 plan 재발동 compact 엔 계획 규칙 주입 (SC41h)" -R $r -ExpectExit 0 -ExpectContains '모든 사실 주장은 명령을 실행해 얻는다'
-    Assert-Case -Name "session-context: implement 뒤 plan 재발동 compact 엔 큐 규약 미주입 (SC42j)" -R $r -ExpectExit 0 -ExpectNotContains 'LLM이 나중에 이 항목만 보고'
+    Assert-Case -Name "session-context: implement 뒤 plan 재발동 compact 엔 결정 기록 규약 미주입 (SC42j)" -R $r -ExpectExit 0 -ExpectNotContains '트리거는 둘이다'
 
     # SC43~SC43f: 계획 세션에 **위키 조회 절차 경로 지시** (v1.220.0 — 원문 주입에서 전환).
     #   원문 15,402B를 싣는 대신 경로 1줄만 준다. ⚠ 회차 46에서 **가리키는 파일이 바뀌었다** —
@@ -424,7 +424,7 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: 조회 절차 지시도 vault 게이팅 신호 아님 (SC43e)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:' -ExpectNotContains '위키 vault: 설정'
     & $scFire 'sc42e' 'karina:implement'
     $r = & $scCompact $scEmptyAg 'sc42e'
-    Assert-Case -Name "session-context: 큐 규약 주입도 vault 게이팅 신호 아님 (SC42e)" -R $r -ExpectExit 0 -ExpectContains 'LLM이 나중에 이 항목만 보고' -ExpectNotContains '위키 vault: 설정'
+    Assert-Case -Name "session-context: 결정 기록 규약 주입도 vault 게이팅 신호 아님 (SC42e)" -R $r -ExpectExit 0 -ExpectContains '트리거는 둘이다' -ExpectNotContains '위키 vault: 설정'
 
     # SC31/SC31b (회귀 고정 — **vault가 설정된 구간에서 돌아야 의미가 있다**): compact + plan.md는 있으나
     #   task 체크박스 0개인 세션. 계획 지시가 뜨면서도 **vault 라인이 함께 유지**되어야 한다.
