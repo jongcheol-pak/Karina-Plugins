@@ -13,7 +13,6 @@
 #
 # 코드와 뜻 — 이 표가 정본이다(plan/SKILL.md Step 6 은 여기를 가리킨다):
 #   empty-command                Investigation Log 표의 명령 칸이 비었거나 줄표(-·—·–)뿐인 행
-#   no-wiki-row                  Investigation Log 표의 주장 칸에 「위키 참조」 가 있는 행이 없음
 #   no-closed-trace              레포가 deferred-closed.md 를 추적하는데 Log 에 「deferred-closed」 가 없음
 #   open-question                Open Questions 절에 「- [ ]」 가 남음
 #   acceptance-baseline T<N>     Acceptance 줄에 백틱(판정 명령·리터럴)이 있는데 「착수」 가 없음
@@ -229,13 +228,11 @@ if ($isLight) {
     if (@($requestLines | Where-Object { $_.Text.Contains($relayMark) }).Count) { Add-Problem $requestLines[0].N 'light-relay' }
 }
 
-# ---- A1·A2·A3 Investigation Log ----
+# ---- A1·A3 Investigation Log ----
 $log = Find-Section 'Investigation Log'
 if ($log) {
     $logProse = Get-ProseLines $log
     $dashes = @('-', [string][char]0x2014, [string][char]0x2013)
-    $wikiLabel = [string][char]0xC704 + [char]0xD0A4 + ' ' + [char]0xCC38 + [char]0xC870    # 위키 참조
-    $hasWikiRow = $false
     for ($i = 0; $i -lt $logProse.Count; $i++) {
         $row = $logProse[$i].Text
         if (-not $row.TrimStart().StartsWith('|')) { continue }
@@ -245,9 +242,7 @@ if ($log) {
         $cells = @(Split-Row $row)
         if ($cells.Count -lt 2) { continue }
         if ($cells[1] -eq '' -or $dashes -contains $cells[1]) { Add-Problem $logProse[$i].N 'empty-command' }
-        if ($cells[0].Contains($wikiLabel)) { $hasWikiRow = $true }
     }
-    if (-not $hasWikiRow) { Add-Problem $log.N 'no-wiki-row' }
 
     # A3 — 대장 위치는 레포마다 다르다. git 레포 전체에서 추적 여부만 본다.
     $planDir = Split-Path -Parent (Resolve-Path -LiteralPath $PlanPath).Path

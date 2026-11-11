@@ -623,12 +623,9 @@ if (Test-HookSelected @('session-context')) {
     $env:USERPROFILE = $isoV2
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: vault 설정 경로 부재 주입 (SC19)" -R $r -ExpectExit 0 -ExpectContains '설정 경로 부재'
-    # SC19b (**기록 형식 출처**): 부재 라인은 「1줄 기록하세요」를 지시하는데 그 **형식이 어디
-    #   있는지**가 함께 있어야 한다. 회차 46 전에는 절차 K 1 형식을 가리켜, 그 파일을 로드하지
-    #   않는 계획 세션이 형식 없이 기록하게 돼 있었다(SC18e와 같은 기전).
-    Assert-Case -Name "session-context: 부재 라인이 기록 형식 출처를 지목 (SC19b)" -R $r -ExpectExit 0 -ExpectContains 'skills/WIKI.md'
-    # SC19c (**경로 실재**): SC14c 와 같은 축 — 부재 라인의 기록 형식 출처도 실재하는 절대 경로를 준다.
-    Assert-Case -Name "session-context: 부재 라인 기록 형식 출처가 절대 경로 (SC19c)" -R $r -ExpectExit 0 -ExpectContains "$scSkillsAbs/WIKI.md"
+    Assert-Case -Name "session-context: 부재 라인이 기록을 요구하지 않는다 (SC19d)" -R $r -ExpectExit 0 -ExpectNotContains '1줄 기록'
+    Assert-Case -Name "session-context: 부재 라인이 위키 연동 정본을 지목 (SC19b)" -R $r -ExpectExit 0 -ExpectContains 'skills/WIKI.md'
+    Assert-Case -Name "session-context: 부재 라인 위키 연동 정본이 절대 경로 (SC19c)" -R $r -ExpectExit 0 -ExpectContains "$scSkillsAbs/WIKI.md"
 
     # SC20 (무회귀): config 없는 홈 → vault 라인 미주입. 미설정은 무출력이 설계다(노이즈 방지).
     $env:USERPROFILE = $iso
