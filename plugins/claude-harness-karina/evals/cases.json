@@ -1674,8 +1674,8 @@
     "mutate": [
       {
         "file": "skills/implement/SKILL.md",
-        "find": "K 5-2가 정본이다",
-        "replace": "K 5-9가 정본이다"
+        "find": "보류·기각·번복 결정 기록은",
+        "replace": "보류·기각·번복 결정 처리는"
       }
     ],
     "expect_keywords": [
