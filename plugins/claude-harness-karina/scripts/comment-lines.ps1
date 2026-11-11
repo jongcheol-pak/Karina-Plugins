@@ -300,6 +300,17 @@ function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index, [boo
 
 function New-CommentBaseBudget { return @{ LeftMs = [int]$script:CommentBaseBudgetMs } }
 
+function New-CommentBaseShowInfo([string]$Root, [string]$Spec) {
+    $psi = New-Object System.Diagnostics.ProcessStartInfo 'git'
+    $psi.Arguments = "-C `"$Root`" -c core.quotepath=off show `"$Spec`""
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardInput = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding($false)
+    return $psi
+}
+
 function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budget) {
     try {
         if (-not $Root -or $File.Contains('"') -or -not $File.StartsWith($Root, [System.StringComparison]::OrdinalIgnoreCase)) { return @() }
@@ -314,13 +325,7 @@ function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budge
         $left = [int]$Budget.LeftMs
         if ($left -le 0) { return @() }
         $rel = $File.Substring($Root.Length).TrimStart('\', '/') -replace '\\', '/'
-        $psi = New-Object System.Diagnostics.ProcessStartInfo 'git'
-        $psi.Arguments = "-C `"$Root`" -c core.quotepath=off show `"$($m.Groups[1].Value):$rel`""
-        $psi.UseShellExecute = $false
-        $psi.RedirectStandardInput = $true
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError = $true
-        $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding($false)
+        $psi = New-CommentBaseShowInfo $Root "$($m.Groups[1].Value):$rel"
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
         $p = [System.Diagnostics.Process]::Start($psi)
         $p.StandardInput.Close()

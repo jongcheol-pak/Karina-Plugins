@@ -270,22 +270,54 @@ Assert-Case -Name "guard-comment: 레포에 없는 BASE 면 복원 Edit 차단" 
 Set-GbPlan "> BASE: $gbBase`n> 승인: 2026-11-05 · 화면 Y"
 $gbBudgetScript = Join-Path $gc 'base-budget.ps1'
 [System.IO.File]::WriteAllText($gbBudgetScript, @'
-param([string]$Lib, [string]$File, [int]$Ms, [int]$SleepMs)
+param([string]$Lib, [string]$File, [int]$Ms, [int]$SleepMs, [int]$FakeDelayMs = 0)
 . $Lib
+$pidFile = "$File.fake-pid"
+if ($FakeDelayMs -gt 0) {
+    [System.IO.File]::Delete($pidFile)
+    function New-CommentBaseShowInfo([string]$Root, [string]$Spec) {
+        $psi = New-Object System.Diagnostics.ProcessStartInfo (Get-Process -Id $PID).Path
+        foreach ($a in @('-NoProfile', '-Command', "Set-Content -LiteralPath '$pidFile' `$PID; Start-Sleep -Milliseconds $FakeDelayMs; git -C '$Root' -c core.quotepath=off show '$Spec'")) { $psi.ArgumentList.Add($a) }
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardInput = $true
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding($false)
+        return $psi
+    }
+}
 $script:CommentBaseBudgetMs = $Ms
 $budget = New-CommentBaseBudget
 Start-Sleep -Milliseconds $SleepMs
 $body = '/// 화면에 보이는 줄 범위를 센다.'
 $added = New-Object System.Collections.Generic.List[object]
 $added.Add(@{ Body = $body; Pair = 0; Line = 0; Indexes = @(0) })
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
 $blocked = Get-BlockedCommentBodies $File $added @($body, 'fn rows() {}') $budget
-"blocked=$($blocked.Count)"
+$ms = $sw.ElapsedMilliseconds
+$alive = 0
+if ($FakeDelayMs -gt 0) {
+    $until = [DateTime]::UtcNow.AddMilliseconds(3000)
+    while ([DateTime]::UtcNow -lt $until) {
+        if (Test-Path -LiteralPath $pidFile) {
+            $fake = [int](Get-Content -LiteralPath $pidFile -Raw).Trim()
+            if (Get-Process -Id $fake -ErrorAction SilentlyContinue) { $alive = 1; break }
+        }
+        Start-Sleep -Milliseconds 200
+    }
+    if ($alive) { Stop-Process -Id $fake -Force -ErrorAction SilentlyContinue }
+}
+"blocked=$($blocked.Count) alive=$alive fast=$($ms -lt 8000)"
 '@, [System.Text.UTF8Encoding]::new($true))
 $gbLib = Join-Path $pluginRoot 'scripts/comment-lines.ps1'
 $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 3000 3300 2>&1
 Assert-Case -Name "guard-comment: BASE 예산 — 판정 처리 시간이 예산을 넘어도 BASE 복원 doc 은 통과" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=0'
 $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 0 0 2>&1
 Assert-Case -Name "guard-comment: BASE 예산 — 예산이 바닥났으면 복원 doc 도 차단" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=1'
+$out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 1500 0 15000 2>&1
+$gbSlow = @{ code = $LASTEXITCODE; out = ($out -join "`n") }
+Assert-Case -Name "guard-comment: BASE 예산 — git 대기가 예산을 넘으면 Kill 하고 복원 doc 도 차단" -R $gbSlow -ExpectExit 0 -ExpectContains 'blocked=1 alive=0'
+Assert-Case -Name "guard-comment: BASE 예산 — 시간 초과 때 예산만큼만 기다린다" -R $gbSlow -ExpectExit 0 -ExpectContains 'fast=True'
 [System.IO.File]::Delete($gbPlan)
 $r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
 Assert-Case -Name "guard-comment: plan.md 가 없으면 복원 Edit 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
