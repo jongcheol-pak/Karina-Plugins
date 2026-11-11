@@ -60,7 +60,7 @@
 
 ### llm-wiki · vault
 
-- [2026-11-11] **vault 하니스 페이지가 폐지된 위키 결정 큐를 현행으로 서술한다** — `20_projects/personal/claude-harness-karina/feat-llm-wiki-queues.md` 와 허브의 큐·pending 서술을 다음 하니스 위키 ingest 가 걷는다(일반 기능 서술이라 plan 2 범위 밖 — 사용자 범위 답). (출처: 계획 체인 plan 2) (실해: 2026-11-11 feat-llm-wiki-queues.md 의 큐 서술 6줄이 폐지 뒤에도 남음)
+- [2026-11-11] **vault 하니스 페이지가 폐지된 위키 결정 큐를 현행으로 서술한다** — `20_projects/personal/claude-harness-karina/feat-llm-wiki-queues.md` 와 허브의 큐·pending 서술을 다음 하니스 위키 ingest 가 걷는다 — 넘김 사유: 다른 종류의 세션(기능 서술 갱신은 위키 ingest 절차 B 몫) · 체인 승인의 재진술이 「위키 허브·feature 페이지의 일반 기능」 을 범위 밖으로 정했다. (출처: 계획 체인 plan 2) (실해: 2026-11-11 feat-llm-wiki-queues.md 의 큐 서술 6줄이 폐지 뒤에도 남음)
 
 ### eval · 측정
 

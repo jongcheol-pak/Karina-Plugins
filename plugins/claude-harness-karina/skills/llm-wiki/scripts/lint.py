@@ -1571,7 +1571,7 @@ def _run_prescriptions(ses):
 
 
 def _split_items(section_text):
-    """`- [YYYY-MM-DD] …` 항목 목록을 **블록 단위**로 자른다(§2.8·§8 「항목 단위로만 자른다」).
+    """`- [YYYY-MM-DD] …` 항목 목록을 **블록 단위**로 자른다(§8 「항목 단위로만 자른다」).
 
     다음 항목 불릿 직전까지가 한 블록이라 하위 불릿이 딸려 있어도 통째로 따라온다 — 규정이
     말하는 「하위 불릿 포함 블록이 한 항목」이 이 split만으로 성립한다.
@@ -2825,7 +2825,7 @@ def main():
                              f"({eff_chars / budget * 100:.0f}%, type={typ}) "
                              f"— 재판정 마진 초과 시 자동 재발화")
 
-        # platform 통제어휘 (90_archive/ 제외 — 동결 백업은 schema-types §2.8 · schema-budget §8 자동 제외 원칙)
+        # platform 통제어휘 (90_archive/ 제외 — 동결 백업은 schema-budget §8 자동 제외 원칙)
         plat = fm.get("platform")
         if plat and plat not in PLATFORM_VOCAB and not in_archive:
             errors.append(f"platform 통제어휘 위반: {r} -> '{plat}'")
@@ -2871,7 +2871,7 @@ def main():
             warn(f"updated 누락: {r} (type={typ}) — 최종 수정일 추적 불가 (schema §7-9)", r)
         if upd:
             if upd > today and not in_archive:
-                # 미래 날짜 ERR도 90_archive/ 제외 — 동결 백업이 exit 1을 유발하지 않게 (§2.8·§8 자동 제외)
+                # 미래 날짜 ERR도 90_archive/ 제외 — 동결 백업이 exit 1을 유발하지 않게 (§8 자동 제외)
                 errors.append(f"미래 날짜: {r} updated={upd}")
 
         # 네이밍 규칙
