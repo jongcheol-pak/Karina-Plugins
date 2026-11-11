@@ -222,7 +222,6 @@ VOCAB_LINES = {
     "origin": (r"\*\*`origin` 통제 어휘\(고정\)\*\*:(.+)", "ORIGIN_VOCAB"),
     "confidence": (r"\*\*`confidence` 통제 어휘\(고정\)\*\*:(.+)", "CONFIDENCE_VOCAB"),
     "category": (r"\*\*`category` 통제 어휘\(고정\)\*\*:(.+)", "CATEGORY_VOCAB"),
-    "decision": (r"\*\*결정 통제 어휘\(고정, decision-log 항목\)\*\*:(.+)", "DECISION_VOCAB"),
 }
 
 
@@ -551,7 +550,7 @@ PROSE_SET_ALIASES = {"origin 필수 타입": "ORIGIN_REQUIRED_TYPES"}
 #  구간을 넓게 잡으면 안 된다 — 이물 토큰이 섞이면 문서를 고쳐도 영원히 불일치가 된다(A4 주석 참조).
 TYPE_ENUM_SITES_LINT = {
     # §3 origin/confidence 두 줄: '—' 뒤 ~ '공통 필수 필드' 앞. 그 뒤 괄호 부기
-    #  ('(decision-log·convention은 대상 아님)')는 리터럴 뒤라 자동 배제된다.
+    #  는 리터럴 뒤라 자동 배제된다.
     "A1-origin": (r"^- \*\*`origin` 통제 어휘\(고정\)\*\*:[^\n]*?—(.+?)공통 필수 필드",
                   lambda lint: lint.ORIGIN_REQUIRED_TYPES),
     "A1-confidence": (r"^- \*\*`confidence` 통제 어휘\(고정\)\*\*:[^\n]*?—(.+?)공통 필수 필드",
@@ -559,20 +558,18 @@ TYPE_ENUM_SITES_LINT = {
     # §7-9: 상수명을 문서가 직접 인용하는 자리 (PROSE_SET_ALIASES 치환 대상)
     "A2-updated": (r"`UPDATED_REQUIRED_TYPES` = (.+?),", lambda lint: lint.UPDATED_REQUIRED_TYPES),
     # (A3-freshness 자리 — §7-3 신선도 축이 v1.238.0에 폐지되면서 대조 대상이 사라졌다.
-    #  라벨은 재사용하지 않는다: 남은 A1·A2·A5~A7은 그대로 두어 이력에서 번호가 밀리지 않게 한다.)
+    #  라벨은 재사용하지 않는다: 남은 A1·A2·A5·A6은 그대로 두어 이력에서 번호가 밀리지 않게 한다.)
     # §7-28: '**제외**:' 뒤 ~ 첫 ' — ' 앞
     "A5-release": (r"\*\*제외\*\*: (.+?) — ", lambda lint: lint.RELEASE_MARKER_EXEMPT_TYPES),
-    # §7-29: '**제외 타입**:' 뒤 ~ 첫 ' — ' 앞. A5의 '**제외**: '와는 문면이 달라 서로 물지 않는다.
-    #  구간을 첫 ' — '에서 끊는 것이 필수다 — 그 뒤에 'question은 제외하지 않는다'는 근거가 오는데,
-    #  구간에 들어오면 found에 question이 섞여 엄격 비교가 영원히 불일치가 된다(A4·A6 주석과 같은 함정).
-    "A7-emoji": (r"\*\*제외 타입\*\*: (.+?) — ", lambda lint: lint.EMOJI_EXEMPT_TYPES),
+    # (A7-emoji 자리 — §7-29 의 제외 타입이 결정 이력 타입 폐지(2026-11-11)로 비어 대조 대상이
+    #  사라졌다. 라벨은 재사용하지 않는다.)
     # §11 적용 대상 줄. '적용 대상'만으로 잡으면 §4의 '- **적용 대상**: 하위 페이지 분리 처방을
     #  가진 전 타입 — feature·entity·…'(볼드)를 먼저 물어 green에 도달할 수 없다 → §11로 스코프 한정.
     "A6-validation": (r"^## 11\.[\s\S]*?^- 적용 대상: (.+)$", lambda lint: lint.ORIGIN_REQUIRED_TYPES),
 }
 
 # ⑩-ⓐ 중 §7 검사 항목 본문에 있는 자리 — §7 이 `schema-lint.md` 로 나가 그 파일에서 읽는다.
-TYPE_ENUM_LINT_SITES = {"A2-updated", "A5-release", "A7-emoji"}
+TYPE_ENUM_LINT_SITES = {"A2-updated", "A5-release"}
 
 # ⑩-ⓑ 전 타입 커버 — 값의 정본이 schema §2 타입 집합인 자리. 기대 집합을 계산으로 도출하므로
 #  코드에 타입 값을 적지 않는다(B2의 매핑 2건만 예외 — 태그 표기가 타입명과 갈리는 지점).
@@ -594,14 +591,15 @@ TAG_EXTRA = {"recipe"}
 #  같은 규약을 schema-types.md §2 서두에도 적어 두 곳에서 보이게 했다(한쪽만 보고 지나치지 않게).
 # 이름이 **다른 의미의 일반어로 재사용**되면(예: 타입명이 아닌 문맥의 같은 단어) 오탐이 나므로,
 #  그때는 사유란에 문맥 한정을 적거나 그 이름을 목록에서 뺀다.
-RETIRED_TYPES = {"convention": "작업 규약 타입 — 2026-10-20 레포 docs/conventions.md 로 이관 후 폐지(lint §7-41)"}
+RETIRED_TYPES = {"convention": "작업 규약 타입 — 2026-10-20 레포 docs/conventions.md 로 이관 후 폐지(lint §7-41)",
+                 "decision-log": "결정 이력 타입 — 2026-11-11 레포 docs/decisions.md 로 이관 후 폐지"}
 
 
 def extract_type_tokens(text, vocab):
     """구간 text에서 어휘 vocab에 속하는 타입 토큰만 뽑아 집합으로 반환.
 
     길이 내림차순 alternation이 필수다 — 'source-stub'이 'source'로 잘리면 B2가 항상 불일치한다.
-    앞뒤 경계로 [a-z-]를 배제해 'decision-log'가 'decision'으로 잘리는 것과 '20_projects'의
+    앞뒤 경계로 [a-z-]를 배제해 하이픈 복합 타입명이 앞부분으로 잘리는 것과 '20_projects'의
     'project' 오탐을 함께 막는다(뒤에 's'가 오면 매치되지 않는다). 백틱·볼드 마크업은 무시된다.
     숫자·언더스코어는 배제 클래스에 넣지 않았다 — 현재 10개 자리의 문면에 'project_'류 인접
     표기가 없어서이며, 그런 표기가 들어오는 자리가 생기면 [a-z0-9_-]로 넓힌다(\b를 쓰지 않는
@@ -638,8 +636,8 @@ def check_type_enumerations(schema_text, types_text, bundle, lint):
     열어야 하는데 그러면 산문 단어 오탐이 들어온다 — 의식적 트레이드오프다(F-7 m2).
     **그 반대 방향은 B5가 목록 등재분에 한해서만 본다**(`RETIRED_TYPES`) — 자동 확장이 아니라
     사람이 적은 이름만 보므로 위 어휘 한정을 깨지 않는다. 즉 미등재 삭제 이름은 여전히 통과한다.
-    **읽는 자리가 넷으로 갈린다** — 타입 집합(`### 2.N`)은 `types_text`, 열거 자리(A1·A2·A5~A7·
-    B1·B2)는 코어 `schema_text` 이되 §7 항목 자리(A2·A5·A7)는 `schema-lint.md`(`TYPE_ENUM_LINT_SITES`),
+    **읽는 자리가 넷으로 갈린다** — 타입 집합(`### 2.N`)은 `types_text`, 열거 자리(A1·A2·A5·A6·
+    B1·B2)는 코어 `schema_text` 이되 §7 항목 자리(A2·A5)는 `schema-lint.md`(`TYPE_ENUM_LINT_SITES`),
     B3 목차는 `templates.md`, B5 유령 이름은 번들 네 파일(`bundle`) 전부다.
     반환: (불일치 목록, 대조 항목 수)."""
     types = {hm.group(1) for hm in SCHEMA_TYPE_HEADING_RX.finditer(types_text)}
@@ -891,12 +889,10 @@ TRIGGER_ALLOWLIST = [
     #  형태를 말하지 않으면 근거가 성립하지 않는다(임계 상수 근거 주석과 같은 예외 축).
     (LINT_PY, ["없으면 None(그 경우 종료 기준은", "「예산 이내」가 아니다"], "budget_state target 필드 설명 — §7-2 종료 조건 구현"),
     (LINT_PY, "**발동은 §7-2 조건이고, 목표치는", "rollover_log 발동 판정 — §7-2 조건을 정의하지 않고 인용"),
-    (LINT_PY, ["처방이 **어디까지 내려가야 멈추는가**", "§8 log · §2.8 decision-log"],
-     "rollover_target docstring — §8·§2.8 목표치를 모은 자리(조건 정의가 아니라 인용)"),
+    (LINT_PY, ["처방이 **어디까지 내려가야 멈추는가**", "(§8 log). 없으면 None"],
+     "rollover_target docstring — §8 목표치를 모은 자리(조건 정의가 아니라 인용)"),
     (LINT_PY, ["**명시 목표보다 LOG_ROLLOVER_SLACK만큼 더 내려간다**", "§4 7번 기록 1줄이"],
      "rollover_target의 log 여유분 근거 — §8 기록 1줄이 만드는 재발동"),
-    (LINT_PY, ["이 타입에는 명시 목표치가 없다", "딱 맞추면"],
-     "rollover_target의 decision-log 목표 근거 — §2.8"),
     (LINT_PY, "**「예산 이내」가 종료 기준이 아니다**", "budget_resolved docstring — §7-2 종료 조건 정본 인용"),
 
     # ── §2.2 항목 개수 축 — `## 최근 주요 변경`은 6번째 항목이 트리거이고 문자 예산과 무관하다
@@ -915,8 +911,6 @@ TRIGGER_ALLOWLIST = [
     (CONTENT_MD, ["5. **델타 신뢰도 점검**", "30일 초과면"], "허브 `updated` 30일 초과 = ingest 델타 신뢰도 축"),
     (LOOKUP_RULES_MD, ['**"범용 패턴"(`30_knowledge/patterns/`)을 먼저 보고**', "프로젝트 경계를 넘는 지식이라"], "절차 K 조회 순서 — 「경계를 넘는 지식」"),
     (LINT_PY, "#   기존 `[^\\n]*`는 줄바꿈을 못 넘어", "펜스 정규식 구현 주석 — 예산 무관"),
-    (LINT_PY, "「뒷부분」으로 넘어가고 롤오버 대상에서",
-     "_decision_body_span docstring — 코드펜스가 항목 구간 경계를 가로챌 때의 결과 서술이지 예산 조건이 아니다"),
     (LINT_PY, ["#  「최근 변경」 절만 훑으므로 여기 놓인 항목은", "영영 아카이브로 넘어가지 않고"],
      "아카이브 인덱스 오배치 검사 주석 — 롤오버가 훑는 절 범위 서술이지 예산 조건이 아니다"),
 
@@ -971,8 +965,6 @@ TRIGGER_ALLOWLIST = [
                        "auto-split 처방이 없어 ⓐ 침묵으로 새지 않는다",
                        "근접·임박 계층에서 빠지면서"],
      "억제·재판정 케이스 실증 서술"),
-    (LINT_CASES_JSON, ['"rationale": "**항목 구간의 경계를 코드펜스가', "「뒷부분」으로 넘기고"],
-     "dec-fenced 케이스 실증 서술 — 경계 오인의 결과(항목이 롤오버에서 빠짐)이지 예산 조건이 아니다"),
     (LINT_CASES_JSON, ['"rationale": "**롤오버가 훑지 않는 구역에', "영영 월별 파일로 넘어가지 않고"],
      "log-stray 케이스 실증 서술 — 절 오배치의 결과이지 예산 조건이 아니다"),
 
@@ -989,7 +981,7 @@ TRIGGER_ALLOWLIST = [
 #  ⚠ 정당한 추가면 여기를 올리는 것이 정답이다. 숫자를 맞추려고 면제를 지우면 안 된다 —
 #   그 자리는 다시 위반으로 잡혀 결국 조건어 문면을 피해 쓰게 되고, 그것이 T11이 금지한
 #   "회피"다(면제는 기록이 남지만 회피는 아무 흔적도 남기지 않는다).
-TRIGGER_ALLOWLIST_BASELINE = 77   # 결정 큐 폐지로 queue-rules.md 의 큐 입도·잔량 임계 면제 2건과 lint.py 큐 형식 접두 주석 면제 1건이 소멸했다(2026-11-11). 그 전은 80 — 작업 규약 타입 폐지로 그 예산 계층·초과 케이스·스택 공통 지식 라우팅 면제 8건이 소멸했다(2026-10-20). 그 전은 88 — B-1a 의 「14일·5파일」 축소 조건을 파일 추가·삭제·이름변경 트리거로 바꾸며 그 개수 조건 면제 1건이
+TRIGGER_ALLOWLIST_BASELINE = 74   # 결정 큐·결정 이력 타입 폐지로 면제 6건이 소멸했다(2026-11-11 — 큐 기록 규약의 입도·잔량 임계 2 · lint.py 큐 형식 접두 주석 1 · rollover_target 결정 목표 근거 1 · 결정 항목 구간 docstring 1 · dec-fenced 골든 서술 1). 그 전은 80 — 작업 규약 타입 폐지로 그 예산 계층·초과 케이스·스택 공통 지식 라우팅 면제 8건이 소멸했다(2026-10-20). 그 전은 88 — B-1a 의 「14일·5파일」 축소 조건을 파일 추가·삭제·이름변경 트리거로 바꾸며 그 개수 조건 면제 1건이
                                   #  소멸했다(2026-10-18 위키 경량화). 그 전은 89 — F-1 번호 목록이 schema-lint §7 로 합쳐지며 F-1 라벨 면제 2건(§7-14·§7-32)이
                                   #  소멸했다(v1.319.0 — 같은 조건어는 §7 본문 쪽 면제가 계속 덮는다).
                                   #  그 전은 91(schema §5 2b 를 절차 B-1 5 포인터로 줄이며 -1, v1.317.0), 그 전은 92(convention을 예산 신호 계층에서 빼며 -4 +6), 그 전은 90(큐 4종 폐기 직후).

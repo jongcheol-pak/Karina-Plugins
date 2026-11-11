@@ -8,25 +8,22 @@
       / updated 필드 누락(§7-9 — 최종 수정일 추적 전제) / feature 폐지 절 보유(§7-38 — 구현 방법·동작(사용법)·UI·UX·관련 파일·facts 동작·구조·관련 지식·레시피)
       / 고아 페이지(간이) / 미래 날짜 / 기능별 인덱스·허브 동기화 / 네이밍 규칙 / 타입 미지정
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계
-      / 본문 코드 경로(§7-40 — project·feature·decision-log 본문의 `a/b.ext` 백틱 토큰. 각주 정의 줄·펜스·허브 경로 줄·URL·아카이브 포인터 제외)
+      / 본문 코드 경로(§7-40 — project·feature 본문의 `a/b.ext` 백틱 토큰. 각주 정의 줄·펜스·허브 경로 줄·URL·아카이브 포인터 제외)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
-      / decision-log 정합(§7-24 — '## 아카이브' 포인터 ↔ 실파일 양방향 + 항목 결정 어휘)
       / log 아카이브 인덱스 정합
       / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
       / index.md 부재·읽기 실패(ERR — 인덱스 기반 검사 불능 신호. 두 사유는 처방이 정반대라
         각각 다른 ERR: 부재는 골격 생성, 읽기 실패는 인코딩 복구)
-      / 상대 참조(§7-39 — project·feature·decision-log 본문의 「위 절」 같은 고정 표현 WARN, deprecated 제외)
+      / 상대 참조(§7-39 — project·feature 본문의 「위 절」 같은 고정 표현 WARN, deprecated 제외)
       / (미검증)·미해결 question 집계(INFO)
-      / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
-      / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트·decision-log 제외)
+      / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. question 제외)
+      / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트 제외)
       / 이동·분리 도달 경로 정합(§7-30 — ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향)
       / 폐지 타입·태그 보유(§7-41 — 옛 작업 규약 타입 페이지·index.md 증상별 인덱스 절 WARN)
       / 섹션 구역화 권장(§7-32 — feature의 한 섹션이 SECTION_H3_CHARS를 초과하면서 '### ' 0개면 INFO).
-      / decision-log 방향 미기재(§7-33 — 기각·보류 항목의 판정 직후 ': {실제 방향}' 부재).
       / patterns 관측 폭 집계(INFO — '## 프로젝트 사례' 절 미보유 건수 / 전체, §7-35).
-      / decision-log 정정 표기 형식(§7-36 — '정정'을 적은 항목의 '(정정 날짜: 옛 → 새, 근거 …)' 형식 위반).
 출력: 사람이 읽는 보고(오류/경고/정보). 기본 실행은 파일을 수정하지 않는다(읽기 전용) —
-      `--fix`는 §7 참조 무결성 안전 3종(§7-23·§7-24·§7-19 stale 행)만 적용(승인 후 실행, 비 git vault 만 자동 백업 — schema §7 서두·non-git-backup.md 정본).
+      `--fix`는 §7 참조 무결성 안전 2종(§7-23·§7-19 stale 행)만 적용(승인 후 실행, 비 git vault 만 자동 백업 — schema §7 서두·non-git-backup.md 정본).
 범위: vault 만 다룬다 — 레포에 접근하지 않는다
       (서술↔코드 사실 정합은 §7-10 에이전트 표본이 담당).
 환경변수: LLM_WIKI_TODAY(ISO 날짜) — 시간 기반 판정의 「오늘」을 고정한다(_today 참조).
@@ -63,7 +60,7 @@ def _today():
 BUDGET_NEAR_RATIO = 0.8
 
 # 예산 임박 임계 — 선행 게이트가 참인 파일 중 아래 둘 중 하나면 이 계층에 든다.
-#  왜 두 축인가: 비율만 쓰면 여유 414자인 decision-log(93%)를 놓치고, 절대값만 쓰면 예산이 작은
+#  왜 두 축인가: 비율만 쓰면 여유 400자대인 예산 큰 파일(93%)을 놓치고, 절대값만 쓰면 예산이 작은
 #  타입(source-stub 1800)에서 72%짜리가 임박이 된다. 선행 게이트 + OR 결합이 실측 분포를 정확히 가른다.
 #  왜 단일 단계인가: 80% INFO를 함께 내던 때는 여유 28자와 1,624자가 같은 줄로 나와 정작 급한 것이
 #  INFO 더미에 묻혔다(실측 INFO 99건 중 10건). 묻히는 층을 없애고 하나만 남긴다.
@@ -86,7 +83,6 @@ BUDGET = {  # type -> 최대 문자 수 (references/wiki-ops-rules.md 「파일 
     #  log.md도 이미 문자 수(SPECIAL_BUDGET). 즉 산문 타입만 이 딕셔너리로 문자 수 판정한다.
     "source-stub": 1800, "project": 13000, "feature": 22000,
     "entity": 6000, "concept": 5000, "question": 3500,
-    "decision-log": 6000,  # 결정 이력 (schema-types §2.8 — §7-2 발동 시 90_archive 원경로 이동)
 }
 GUIDE_BUDGET = {"platform-bootstrap": 9000, "ui-ux": 6000, "recipe": 8500}
 # §7-16(병기)·§7-14(행수)가 「기능별 인덱스 유형 행」으로 인정하는 **대상 토큰**.
@@ -119,16 +115,6 @@ def is_generated(rel):
     return rel.startswith(GENERATED_DIRS)
 
 
-# decision-log 항목 결정 어휘 (schema-types §2.8 · wiki-schema §3 — 어긋나면 타임라인 합성·번복 추적 누락)
-DECISION_VOCAB = {"채택", "보류", "기각", "번복"}
-# §7-33 방향 풀어쓰기를 요구하는 판정 (schema-types §2.8) — 주제 자리에 행위·부정문이 오면
-#  이 둘만 방향이 뒤집혀 읽힌다. 채택·번복은 주제와 방향이 같아 대상이 아니다.
-VERDICT_PROSE_REQUIRED = {"기각", "보류"}
-# §7-36 사실 오기 정정 표기 (schema-types §2.8) — 항목 불변의 예외라 **형식이 곧 감사 기록**이다.
-#  표기 없이 값만 덮어쓰면 무엇이 언제 왜 바뀌었는지가 사라져 불변 규칙을 우회하는 수단이 된다.
-#  「정정」이 들어간 항목만 보므로 정정하지 않은 기존 항목은 대상이 아니다.
-DECISION_FIX_RX = re.compile(
-    r"\(정정 \d{4}-\d{2}-\d{2}: .+? → .+?, 근거 .+?\)")
 # §7-35 patterns(concept)의 관측 기록 절 이름 — schema-types §2.5가 정본.
 #  **이름을 하나로 고정하는 이유**: 조회자가 `confidence`를 「현재 실증 폭」으로 읽는데 그 필드는
 #  §2.5 「소급 비적용」상 **등재 시점 판정**이라 갈린다(실측 2026-09-07 — medium 20건 중 정확 절로 세어 5건, 아래 변형 이름까지 세면 6건이
@@ -164,12 +150,7 @@ EMOJI_RX = re.compile(
     "️"                  # VS16(이모지 표현 강제) — text-default 기호를 이모지화한 신호
     "]")
 
-# decisions '## 아카이브' 포인터 패턴 — §7-24 판정(main)과 --fix(apply_fixes)가 같은 대상을 보도록
-#  단일 출처로 둔다(한쪽만 고치면 lint 판정과 fix 대상이 조용히 어긋나는 드리프트 방지 — T2 리뷰 m1).
-DEC_PTR_RX = re.compile(r"(90_archive/[^\s`()]+decisions\.md)")
-# 허브 '## 아카이브' 포인터 패턴 (§7-30ⓐ — 최근 주요 변경 롤오버 대상). DEC_PTR_RX와 같은 형태를
-#  대상 파일만 바꿔 쓴다. 통합 함수를 만들지 않는 이유: 대상 섹션·현행 경로 도출 규칙·--fix 대상
-#  여부가 달라(§7-30은 --fix 비대상) 분기 파라미터만 늘고 --fix 안전 경계가 흐려진다.
+# 허브 '## 아카이브' 포인터 패턴 (§7-30ⓐ — 최근 주요 변경 롤오버 대상). 
 CHG_PTR_RX = re.compile(r"(90_archive/[^\s`()]+changes\.md)")
 # 자동 분할 하위의 복귀 링크(§4 공통 규약) — 이 줄이 있어야 「분리해 나온 하위」로 본다.
 SUBDOC_BACK_RX = re.compile(r"(?m)^>\s*상위 문서:\s*\[\[([^\]|]+)")
@@ -188,7 +169,7 @@ ORIGIN_REQUIRED_TYPES = {"feature", "project", "entity", "concept", "guide"}
 CATEGORY_VOCAB = {"personal", "work"}
 # updated 필수 타입 (§7-9 — 필드가 없으면 미래날짜 검사가 조용히 건너뛰어져 추적 사각.
 #  source-stub은 불변 스텁이라 갱신 날짜가 없어 제외)
-UPDATED_REQUIRED_TYPES = ORIGIN_REQUIRED_TYPES | {"question", "decision-log"}
+UPDATED_REQUIRED_TYPES = ORIGIN_REQUIRED_TYPES | {"question"}
 # log.md는 문자 수 예산(줄 수 아님 — 한 항목이 길면 줄 수가 실제 분량을 못 담음, schema-budget §4·§8)
 SPECIAL_BUDGET = {"log.md": 6000}
 # 타입별 **더 낮은 목표치** — 처방을 어디까지 수행하고 멈추는가(§7-2 종료 조건의 마지막 문장:
@@ -208,16 +189,8 @@ INFRA_TYPES = {"index", "log", "schema"}
 #  폐지하면서 두 상수의 유일한 소비처인 60/90일 분기가 사라졌다. 면제 목록은 면제할 검사가
 #  있을 때만 존재한다.)
 # §7-28 본문 릴리즈 마커 검사에서 제외하는 타입 — 재작성 대상이 아닌 동결 기록이라 WARN이
-#  수리 불가능한 소음이 된다(decision-log는 항목 불변 이력, question은 발견 원문 인용 보존).
-RELEASE_MARKER_EXEMPT_TYPES = {"decision-log", "question"}
-# §7-29 장식 이모지 검사에서 제외하는 타입 — decision-log는 §2.8 「항목 불변」이라 항목에 이모지가
-#  섞여 들어오면 **고칠 수 없는 WARN**이 영구히 남는다(규약이 수정을 금지한 파일에 수리를 요구하는 모순).
-#  RELEASE_MARKER_EXEMPT_TYPES와 값을 공유하지 않고 따로 두는 이유는 제외 근거가 다르기 때문이다 —
-#  그쪽은 "동결 기록이라 재작성 대상이 아님"이고 여기는 "규약상 수정이 금지됨"이라, 한쪽 제외를
-#  바꿀 때 다른 쪽이 조용히 따라 바뀌면 안 된다.
-#  question을 넣지 않은 이유: 항목 불변 규정이 없어 본문 편집이 가능하고, 인용 원문의 이모지는
-#  대개 코드펜스 안이라 strip_code가 이미 걷어낸다.
-EMOJI_EXEMPT_TYPES = {"decision-log"}
+#  수리 불가능한 소음이 된다(question은 발견 원문 인용 보존).
+RELEASE_MARKER_EXEMPT_TYPES = {"question"}
 # index.md 분할 신호 임계 (schema-budget.md §4 — index.md 초과는 B/F 세션이 2단계 파일 분할을 자동 수행,
 #   sub-index(순번 파일) 초과는 순번 파일(index-{cat}-{n}.md)로 자동 분할)
 INDEX_BODY_LINES = 400   # index.md 전체 줄 수(frontmatter 포함)
@@ -485,7 +458,7 @@ BudgetState = collections.namedtuple(
 
 
 def rollover_target(rel_path, typ, budget):
-    """처방이 **어디까지 내려가야 멈추는가**(§8 log · §2.8 decision-log). 없으면 None.
+    """처방이 **어디까지 내려가야 멈추는가**(§8 log). 없으면 None.
 
     None이면 종료 기준은 「§7-2 발동이 풀릴 때까지」다(`budget_resolved`) — 산문 하위 분리가
     그 경우다. 두 롤오버는 그보다 낮은 목표를 갖는데, 값의 근거가 각자 처방 안 주석에만
@@ -497,12 +470,6 @@ def rollover_target(rel_path, typ, budget):
         #  log.md에 append되므로, 목표에 딱 맞춰 멈추면 그 한 줄 때문에 다음 실행이 또
         #  롤오버한다(실측 3,081/3,000). 기록 몫을 미리 비워 매 실행 조금씩 도는 것을 막는다.
         return max(0, fixed - LOG_ROLLOVER_SLACK)
-    if typ == "decision-log":
-        # 이 타입에는 명시 목표치가 없다. §7-2 종료 조건(발동 해소)의 선에 딱 맞추면 **결정
-        #  한 건에 곧 재발동**하므로 예산의 BUDGET_NEAR_RATIO를 쓴다 — 결정 몇 건분 여유가
-        #  남는다. 조회 목적(§2.8 — 계획 전에 보류·기각을 회수)을 해치지 않음을 실측했다:
-        #  실 vault에서 최근 6일치가 남고 그 이전은 `## 아카이브` 포인터로 도달한다.
-        return int(budget * BUDGET_NEAR_RATIO)
     return None
 
 
@@ -1670,7 +1637,7 @@ def _archive_span(text):
 
     불릿 셋은 롤오버가 옮기는 단위(`_split_items`)와 같고, 날짜는 **앞부분만** 읽는다 —
     `- [2026-09-26~27]` 같은 범위 표기도 한 항목으로 센다. `strip_code` 사본으로 세는 것은
-    코드펜스 안에 인용된 `- [날짜]` 줄을 항목으로 세지 않기 위해서다(`_decision_body_span` 과 같다)."""
+    코드펜스 안에 인용된 `- [날짜]` 줄을 항목으로 세지 않기 위해서다"""
     dates = sorted(re.findall(r"(?m)^[-*+] \[(\d{4}-\d{2}-\d{2})", strip_code(text)))
     if not dates:
         return 0, None, None
@@ -1678,9 +1645,9 @@ def _archive_span(text):
 
 
 def _rollover_items(items, fits, keep_min=1):
-    """항목 목록에서 **가장 오래된 것부터** 이동 대상을 고른다(§2.8·§8 롤오버 공용).
+    """항목 목록에서 **가장 오래된 것부터** 이동 대상을 고른다(§8·§2.2 롤오버 공용).
 
-    **순서는 파일 위치가 아니라 날짜로 정한다.** log.md·decisions.md는 **최신이 위**라
+    **순서는 파일 위치가 아니라 날짜로 정한다.** log.md는 **최신이 위**라
     위치로 고르면 정반대(최신부터)가 된다 — 실측: 실 vault log.md가 내림차순이고, 그
     상태에서 앞에서부터 옮기면 방금 쓴 기록이 아카이브로 간다. 같은 날짜끼리는 파일에서
     **아래쪽이 더 오래된 것**이므로 그쪽을 먼저 고른다.
@@ -1811,127 +1778,11 @@ def rollover_log(ses):
 PRESCRIPTIONS.append(rollover_log)
 
 
-def _decision_body_span(text):
-    """decision-log의 **항목 구간**을 (앞부분, 항목 구간, 뒷부분)으로 가른다.
-
-    `log.md`와 달리 이 타입은 항목이 섹션 없이 본문에 바로 온다(§2.8) — `# {프로젝트}
-    결정 이력` 헤딩 뒤부터 `## 아카이브` 앞까지다. 그래서 `section()`으로 스코프를 잡을 수
-    없고, 뒷부분(아카이브 포인터·주석)을 그대로 보존하려면 세 조각으로 갈라야 한다.
-
-    **경계 판정은 `strip_code` 사본으로 한다** -- 항목 본문의 코드펜스 안에 `## `로 시작하는
-    줄이 있으면(결정 근거로 마크다운을 인용하는 항목이 그렇다) 거기서 잘려 **그 뒤 항목이 통째로
-    「뒷부분」으로 넘어가고 롤오버 대상에서 조용히 빠진다.** 사본은 길이를 보존하므로 오프셋을
-    원문에 그대로 쓸 수 있다."""
-    probe = strip_code(text)
-    m = re.search(r"(?m)^(- \[\d{4}-\d{2}-\d{2})", probe)
-    if not m:
-        return text, "", ""
-    tail_m = re.search(r"(?m)^##\s", probe[m.start():])
-    end = m.start() + tail_m.start() if tail_m else len(text)
-    return text[:m.start()], text[m.start():end], text[end:]
-
-
-def rollover_decisions(ses):
-    """decision-log 롤오버(§2.8) — 오래된 항목부터 `90_archive/{원경로}`로 옮긴다.
-
-    **항목 불변**(§2.8)이라 옮기는 본문을 손대지 않는다. 목적지에 파일이 있으면 덮어쓰지
-    않고 append한다 — 덮어쓰면 이미 이동된 과거 결정이 사라진다."""
-    for rel in sorted(_decision_log_paths(ses.vault)):
-        path = os.path.join(ses.vault, rel.replace("/", os.sep))
-        text, bom, nl = _read_page(path)
-        if text is None:
-            continue
-        st = budget_state(rel, frontmatter(text), text)
-        if not st or not (st.critical or st.over) or st.suppressed:
-            continue
-        head, body, tail = _decision_body_span(text)
-        if not body:
-            continue
-        _h, items = _split_items(body)
-        if not items:
-            continue
-        # 목표치의 근거는 `rollover_target`에 있다(세 처방이 같은 술어를 쓰게 모았다).
-        fits = lambda blocks: budget_resolved(st._replace(
-            eff_chars=len(head) + len("".join(blocks)) + len(tail)))
-        moving, kept = _rollover_items(items, fits)
-        if not moving:
-            continue
-
-        arch_rel = "90_archive/" + rel
-        arch_path = os.path.join(ses.vault, arch_rel.replace("/", os.sep))
-        if not ses.claim(path, arch_path) or not ses.backup(path, arch_path):
-            ses.notes.append(f"{rel} 롤오버 건너뜀 — 다른 처방이 맡았거나 사본 실패")
-            continue
-
-        blocks = [b for _d, b in moving]
-        if os.path.exists(arch_path):
-            prev, abom, anl = _read_archive(arch_path, arch_rel)
-            arch_text = prev.rstrip("\n") + "\n" + "".join(blocks)
-        else:
-            abom, anl = False, nl
-            ses.mark_created(arch_path)
-            proj = frontmatter(text).get("project", "") or os.path.basename(os.path.dirname(rel))
-            # 아카이브는 frontmatter 없이 둔다(§2.8) — type을 남기면 무한 성장 파일에
-            #  예산 검사가 걸릴 이유가 없는데도 걸린다.
-            arch_text = "# %s 결정 이력 아카이브\n\n" % proj + "".join(blocks)
-        new_body = "".join(b for _d, b in kept)
-        # 마지막 항목이 이동하면 그 뒤 빈 줄까지 딸려가 다음 헤딩이 붙는다 — 원본이 빈 줄로 끝났으면 그 형상을 유지한다.
-        if body.endswith("\n\n") and not new_body.endswith("\n\n"):
-            new_body += "\n"
-        new_text = head + new_body + tail
-        # `## 아카이브` 포인터(§2.8·§7-24). **기존 포인터가 있으면 그 형식을 유지**하고
-        #  날짜·건수만 갱신한다 — 실 vault는 규정 문면과 다른 wikilink 형식을 쓰는데(실측),
-        #  그것도 §7-24를 통과하므로 형식을 갈아엎을 이유가 없다.
-        total, first, last = _archive_span(arch_text)
-        span = "%s~%s, 누적 %d건" % (first, last, total)
-        sec = section(new_text, "아카이브")
-        if sec and DEC_PTR_RX.search(sec):
-            new_sec = re.sub(r"\(\d{4}-\d{2}-\d{2}~\d{4}-\d{2}-\d{2}, 누적 \d+건\)",
-                             "(%s)" % span, sec)
-            if new_sec == sec:
-                # 옛 포인터에 날짜·건수 표기가 없으면 **그 줄 끝에 덧붙인다**. 그냥 두면
-                #  포인터가 실제 아카이브 상태와 어긋난 채 남아, 조회 세션이 「어디까지
-                #  옮겨졌는지」를 알 수 없다(§2.8이 그 표기를 요구하는 이유다).
-                lines_ = new_sec.split("\n")
-                for k, ln in enumerate(lines_):
-                    if DEC_PTR_RX.search(ln):
-                        lines_[k] = ln.rstrip() + " (%s)" % span
-                        break
-                new_sec = "\n".join(lines_)
-            new_text = new_text.replace(sec, new_sec, 1)
-        else:
-            new_text = new_text.rstrip("\n") + (
-                "\n\n## 아카이브\n\n- 이전 이력: %s (%s)\n" % (arch_rel, span))
-        if not ses.dry_run:
-            os.makedirs(os.path.dirname(arch_path), exist_ok=True)
-            # 아카이브 먼저, 원본 나중 — 앞이 실패하면 예외가 올라 원본에 도달하지 않는다.
-            _write_or_abort(arch_path, arch_text, abom, anl, arch_rel)
-            _write_or_abort(path, new_text, bom, nl, rel)
-        ses.record("롤오버", rel, [arch_rel])
-
-
-def _decision_log_paths(vault):
-    """vault의 현행 decision-log 상대경로 목록(90_archive 제외)."""
-    out = []
-    for p in glob.glob(os.path.join(glob.escape(vault), "**", "decisions.md"), recursive=True):
-        rel = os.path.relpath(p, vault).replace("\\", "/")
-        if rel.startswith("90_archive/") or is_generated(rel):
-            continue
-        text, _bom, _nl = _read_page(p)
-        if text is not None and frontmatter(text).get("type") == "decision-log":
-            out.append(rel)
-    return out
-
-
-PRESCRIPTIONS.append(rollover_decisions)
-
-
 def _project_hub_paths(vault):
     """vault의 현행 project 허브 상대경로 목록(90_archive 제외).
 
     허브는 `20_projects/{카테고리}/{프로젝트}.md`라 파일명으로 특정할 수 없다 —
-    그 자리의 `.md`를 전부 훑고 frontmatter type으로 가른다(`_decision_log_paths`와
-    같은 방식이되 glob 패턴만 다르다)."""
+    그 자리의 `.md`를 전부 훑고 frontmatter type으로 가른다."""
     out = []
     for f in glob.glob(os.path.join(glob.escape(vault), "20_projects", "*", "*.md")):
         rel = os.path.relpath(f, vault).replace("\\", "/")
@@ -1962,7 +1813,7 @@ def rollover_hub_changes(ses):
         if not moving:
             continue
 
-        # 경로 도출이 §7-24와 다르다 — 허브는 `{proj}.md` 파일인데 아카이브는
+        # 경로 도출 — 허브는 `{proj}.md` 파일인데 아카이브는
         #  `{proj}/changes.md`라 폴더가 된다(§7-30ⓐ 역방향이 지적한 비대칭).
         arch_rel = "90_archive/" + rel[:-len(".md")] + "/changes.md"
         arch_path = os.path.join(ses.vault, arch_rel.replace("/", os.sep))
@@ -1988,7 +1839,7 @@ def rollover_hub_changes(ses):
             new_sec += "\n"
         new_text = _replace_section(text, "최근 주요 변경", new_sec)
 
-        # `## 아카이브` 포인터(§2.2 — 정합은 §7-30ⓐ). decision-log와 같은 처리다:
+        # `## 아카이브` 포인터(§2.2 — 정합은 §7-30ⓐ).
         #  기존 포인터가 있으면 그 형식을 유지한 채 날짜·건수만 갱신하고, 없을 때만 규정
         #  형식으로 신설한다(실 vault 포인터가 규정 문면과 다른 wikilink 형식을 쓴다).
         total, first, last = _archive_span(arch_text)
@@ -2043,7 +1894,7 @@ TYPE_REQUIRED_SECTIONS = {
 RELOCATE_TYPES = tuple(t for t in TYPE_REQUIRED_SECTIONS if t != "project")
 ABOLISHED_FEATURE_RX = re.compile(r"(?m)^##[ \t]+(구현 방법|동작\(사용법\)|UI·UX|관련 파일|동작|구조|관련 지식·레시피)[ \t]*$")
 FOOTNOTE_DEF_RX = re.compile(r"(?m)^\[\^[^\]\n]+\]:.*$")
-BODY_PATH_TYPES = ("project", "feature", "decision-log")
+BODY_PATH_TYPES = ("project", "feature")
 BODY_PATH_RX = re.compile(r"`([^`\s]*[\w.-]/[^`\s]*\.[A-Za-z0-9]{1,6})`")
 
 
@@ -2347,11 +2198,11 @@ def _rollover_movable(items, keep_min=1):
 def prescribable(rel, fm, text, nl, vault=None):
     """`--auto-split`이 이 파일에 **수행할 처방을 갖는가**(§7-2 발동 ⓐ/ⓑ′ 판정용).
 
-    `relocatable`만으로는 부족하다 — auto-split의 처방은 다섯인데(§8 log 롤오버 · §2.8
-    decision-log 롤오버 · §2.2 허브 변경 이력 롤오버 · 산문 하위 분리 · 허브 하위 행 정리) 그
-    함수는 산문 분리 하나만 답한다. **이 함수가 판정하는 것은 그중 넷**이다 — log 롤오버는 호출부가 먼저 갈라
+    `relocatable`만으로는 부족하다 — auto-split의 처방은 넷인데(§8 log 롤오버
+    · §2.2 허브 변경 이력 롤오버 · 산문 하위 분리 · 허브 하위 행 정리) 그
+    함수는 산문 분리 하나만 답한다. **이 함수가 판정하는 것은 그중 셋**이다 — log 롤오버는 호출부가 먼저 갈라
     자기 분기에서 답하므로 여기 오지 않는다. 허브 하위 행 정리는 하위를 읽어야 판정되므로
-    `vault`가 주어질 때만 본다. 롤오버 셋을 빼고 판정하면 **롤오버가 맡은 파일까지 「처방 없음」으로 몰려**
+    `vault`가 주어질 때만 본다. 롤오버 둘을 빼고 판정하면 **롤오버가 맡은 파일까지 「처방 없음」으로 몰려**
     사람에게 할 일이 없는 경고가 다시 쌓이고, 반대로 산문 술어만 참으로 두면
     `source-stub`처럼 **어느 처방도 없는 타입이 조용해진다**(초과 전까지 무신호).
 
@@ -2361,10 +2212,6 @@ def prescribable(rel, fm, text, nl, vault=None):
     # `log.md`(SPECIAL_BUDGET)는 여기 오지 않는다 — 호출부(:2371 부근)가 그 경로를 먼저
     #  갈라 자기 분기에서 침묵을 결정한다. 여기 분기를 두면 도달하지 않는 죽은 코드다.
     typ = str(fm.get("type", "")).strip()
-    if typ == "decision-log":
-        # `rollover_decisions` — 항목이 본문에 바로 오므로 세 조각으로 갈라 본다.
-        _h, body, _t = _decision_body_span(text)
-        return bool(body) and _rollover_movable(_split_items(body)[1])
     if typ == "project":
         # `rollover_hub_changes` — **문자 예산과 별개 트리거**라 항목 수만 본다(§7-2 ⓑ).
         #  5개 이하면 이 처방의 대상이 아니고, 그때 문자 쪽 처방은 아래 산문 분리다.
@@ -2516,11 +2363,11 @@ def auto_split(vault, dry_run):
     **수행 주체가 세션에서 코드로 바뀐 근거**: 종전 §7-2는 *"무엇을 옮길지는 판단"*이라며
     스크립트 수행을 배제했는데, 그 전제는 **옮길 단위를 임의로 잡을 때만** 참이다. 경계를
     스키마가 이미 정한 `## ` 섹션과 항목 단위로 고정하면 「무엇을 옮길지」가 크기·시간
-    순서로 결정돼 판단이 사라진다. 롤오버 3종은 §2.8·§8이 이미 그렇게 규정하고 있었다.
+    순서로 결정돼 판단이 사라진다. 롤오버는 §2.2·§8이 이미 그렇게 규정하고 있었다.
 
     실행 순서(각 처방은 자기 절에서 정의된다):
       ① index 계열 -- `build_index`가 담당(생성 마커 vault). 여기서는 마지막에 연쇄 호출한다.
-      ② 롤오버 -- log.md · decision-log · project 허브 `## 최근 주요 변경`
+      ② 롤오버 -- log.md · project 허브 `## 최근 주요 변경`
       ③ 산문 하위 분리 -- 필수 섹션 헤딩은 남기고 본문만 옮긴 뒤 포인터 1줄
       ④ 기록·재점검 -- §4 7번 기록을 남기고, 그 기록이 log.md를 밀었으면 처방을 1회 더
          돌린다. **그 회차의 수행분도 수행 목록·기록에 합류한다**(보고에 없는 파일은
@@ -2650,12 +2497,10 @@ def auto_split(vault, dry_run):
 
 
 def apply_fixes(vault, dry_run=False):
-    """--fix 모드: 판단이 필요 없는 '참조 무결성 동기' 3종만 자동 수정한다 (§7 —fix 규약) —
+    """--fix 모드: 판단이 필요 없는 '참조 무결성 동기' 2종만 자동 수정한다 (§7 —fix 규약) —
       ① §7-23 미해결 질문 인덱스 동기(양방향: open 미등록 행 추가 + resolved 잔존 행 제거 —
          섹션이 표면 표 행, 아니면 불릿으로 추가: insert_into_section)
-      ② §7-24 decisions '## 아카이브' 포인터 동기(양방향: 깨진 포인터 행 제거 + 실재 아카이브 포인터 행 추가
-         — 제거는 '## 아카이브' 섹션 안 행만, 결정 항목 본문 인용은 불변 §2.8)
-      ③ §7-19 log 아카이브 인덱스 stale 행 '제거만' (누락 행 추가는 이 경로가 하지 않는다 —
+      ② §7-19 log 아카이브 인덱스 stale 행 '제거만' (누락 행 추가는 이 경로가 하지 않는다 —
          §8이 요구하는 「그 달 주요 작업 키워드」가 요약 판단이기 때문이다. **추가는 `--auto-split`의
          롤오버가 맡는다** — 그쪽은 자기가 옮긴 항목을 알기에 `{N}건 ({최古}~{최新})` 결정론 형식으로
          쓸 수 있다. 키워드 요약은 사람이 나중에 덧붙이는 추가이지 그 줄의 부재를 대신하지 못한다.
@@ -2728,8 +2573,7 @@ def apply_fixes(vault, dry_run=False):
         같은 파일의 `_atomic_write`와 규약을 맞춘다 — 직접 덮어쓰면 쓰기 도중 실패가 그
         파일만 깨뜨린다. 줄바꿈은 `new_raw`가 이미 원본 형상을 갖고 있어 변환하지 않는다."""
         bom, _ = raws[r]
-        # 메모리 상태는 dry-run에서도 갱신한다 — 한 파일에 두 번째 수정이 걸릴 때(§7-24는
-        #  제거와 추가가 같은 파일을 잇달아 손댄다) 그것이 첫 수정 결과 위에서 판정돼야
+        # 메모리 상태는 dry-run에서도 갱신한다 — 한 파일에 두 번째 수정이 걸릴 때 그것이 첫 수정 결과 위에서 판정돼야
         #  미리보기가 실제 실행과 같은 목록을 낸다.
         raws[r] = (bom, new_raw)
         if dry_run:
@@ -2750,7 +2594,7 @@ def apply_fixes(vault, dry_run=False):
         cell이 주어지고 섹션에 표(`|` 시작 행)가 있으면 불릿 대신 **표 행**으로 삽입한다 —
         부트스트랩 골격(SKILL J 2 "표는 헤더만")의 표 섹션에 불릿을 섞지 않는다(§7 --fix 규약).
         컬럼 수는 섹션 첫 `|` 행(헤더) 기준, 첫 셀에 cell·나머지는 빈 셀. 표가 없으면
-        new_line(불릿) 그대로 — 기존 불릿형 vault 하위호환(§7-24 포인터 추가도 불릿 경로).
+        new_line(불릿) 그대로 — 기존 불릿형 vault 하위호환.
         반환: (새 텍스트, 섹션 신설 여부)."""
         nl = nl_of(raw)
         span = section_span(raw, heading)
@@ -2821,43 +2665,7 @@ def apply_fixes(vault, dry_run=False):
         except OSError as e:
             failed.append(f"index.md 수정 실패({type(e).__name__}) — 건너뜀")
 
-    # ── ② §7-24 decisions '## 아카이브' 포인터 동기 (패턴 단일 출처: DEC_PTR_RX) ──
-    dec_rx = DEC_PTR_RX
-    for r in sorted(pages):
-        fm, typ, norm = pages[r]
-        if typ != "decision-log" or r.startswith("90_archive/"):
-            continue
-        try:
-            acted = False
-            broken = sorted({t for t in dec_rx.findall(norm) if t not in pages})
-            if broken:
-                bom, raw = raws[r]
-                # 제거는 '## 아카이브' 섹션 안 행만 — 결정 항목 본문이 깨진 아카이브 경로를 인용해도
-                #   지우지 않는다(§2.8 항목 불변·수정 삭제 금지). 섹션 밖 깨진 포인터는 제거 0건으로
-                #   남고 본 lint의 §7-24 WARN이 계속 가리킨다(검출 광역·수정 보수 — §7-19 '제거만' 동형).
-                span = section_span(raw, "아카이브")
-                if span:
-                    new_seg, n = remove_lines(raw[span[0]:span[1]], lambda ln: any(b in ln for b in broken))
-                    if n:
-                        backup(r)
-                        raws[r] = (bom, raw[:span[0]] + new_seg + raw[span[1]:])
-                        acted = True
-                        fixed.append(f"{r}: 깨진 decisions 아카이브 포인터 {n}행 제거 (§7-24 — '## 아카이브' 섹션 내)")
-            arch = "90_archive/" + r
-            if arch in pages and arch not in raws[r][1]:
-                backup(r)
-                bom, raw = raws[r]
-                new_raw, created = insert_into_section(raw, "아카이브", f"- {arch}")
-                raws[r] = (bom, new_raw)
-                acted = True
-                fixed.append(f"{r}: 아카이브 포인터 추가 — {arch} (§7-24)"
-                             + (" [섹션 신설]" if created else ""))
-            if acted:
-                write(r, raws[r][1])
-        except OSError as e:
-            failed.append(f"{r} 수정 실패({type(e).__name__}) — 건너뜀")
-
-    # ── ③ §7-19 log 아카이브 인덱스 stale 행 제거 (제거만 — 추가는 수동) ──
+    # ── ② §7-19 log 아카이브 인덱스 stale 행 제거 (제거만 — 추가는 수동) ──
     if "log.md" in pages:
         try:
             norm = pages["log.md"][2]
@@ -2879,7 +2687,7 @@ def apply_fixes(vault, dry_run=False):
             failed.append(f"log.md 수정 실패({type(e).__name__}) — 건너뜀")
 
     head = "== --fix --dry-run (파일 미변경)" if dry_run else "== --fix 적용"
-    print(head + " (안전 3종: §7-23 / §7-24 / §7-19 stale 제거) ==")
+    print(head + " (안전 2종: §7-23 / §7-19 stale 제거) ==")
     for c in cleaned:
         print("[CLEANUP] 백업 제거: " + c)
     for c in cleanup_failed:
@@ -3073,8 +2881,7 @@ def main():
                     warn(f"경로 없는 wikilink(명시적 경로 필수): {r} -> [[{t}]]", r)
 
         # 예산 — log.md는 문자 수(len), 그 외 타입은 줄 수.
-        #  90_archive/ 하위는 제외 — "아카이브는 lint 자동 제외" 서술과 동작 일치(§8),
-        #  특히 append 성장하는 decisions 롤오버 파일에 영구 WARN이 걸리는 것 방지(§2.8).
+        #  90_archive/ 하위는 제외 — "아카이브는 lint 자동 제외" 서술과 동작 일치(§8).
         if r in SPECIAL_BUDGET:
             st = budget_state(r, fm, text)
             chars = st.chars
@@ -3111,7 +2918,6 @@ def main():
                 # 수리 경로가 정해진 타입은 초과 시점에도 그 처방을 병기한다 — 임박 WARN에서만
                 #  안내하고 초과 WARN에서 침묵하면, 정작 고쳐야 할 시점에 방법을 못 받는다.
                 hint = {
-                    "decision-log": " — 오래된 항목을 90_archive 원경로로 롤오버 + '## 아카이브' 포인터 갱신 (schema-types §2.8)",
                     "project": " — '최근 주요 변경' 초과분을 90_archive/…/changes.md로 롤오버 + '## 아카이브' 포인터 갱신 (schema-types §2.2)",
                 }.get(typ, "")
                 warn(f"예산 초과: {r} {eff_chars}/{budget}자 (type={typ}{eff_note}){hint}", r)
@@ -3138,7 +2944,6 @@ def main():
                     #  때문이다(바뀐 것은 처방이 있는 파일이 여기서 빠졌다는 것뿐이다).
                     np_hint = {
                         "project": " — '최근 주요 변경'이 5개 이하라 §2.2 롤오버 대상이 아니다. 내용을 줄여야 한다 (schema-types §2.2)",
-                        "decision-log": " — 옮길 항목을 찾지 못했다. §2.8 롤오버 대상 형식을 확인 (schema-types §2.8)",
                     }.get(typ, "")
                     if not np_hint:
                         np_hint = (" — auto-split이 옮길 `## ` 경계가 없다. 주제별 헤딩으로 구역화 (schema-budget §4)"
@@ -3268,8 +3073,7 @@ def main():
         #  위키 본문은 평문이 원칙(장식 이모지는 정보가 아니라 소음). 코드펜스·인라인코드는 strip_code로 제외
         #  (코드 스니펫의 이모지는 정당할 수 있음), lint-* 리포트는 자체 심각도 이모지(🔴🟡🔵)를 담으므로
         #  제외(§7-12·§7-28의 lint-* 제외와 동일 계열). 화살표(→)·흑백 기호(⚠★✔)는 EMOJI_RX 정의상 비검출.
-        #  타입 제외(EMOJI_EXEMPT_TYPES 정의부에 근거): decision-log는 §2.8 항목 불변이라 수리 불가.
-        if r.startswith(("20_", "30_", "40_")) and not is_lint_report(r) and typ not in EMOJI_EXEMPT_TYPES:
+        if r.startswith(("20_", "30_", "40_")) and not is_lint_report(r):
             emo_body = strip_code(re.sub(r"^---\n.*?\n---", "", text, count=1, flags=re.S))
             emo_fm_lines = text.count("\n") - emo_body.count("\n")  # 본문 시작 줄 오프셋(줄 번호 보고용, §7-22 방식)
             for eli, eline in enumerate(emo_body.splitlines(), start=emo_fm_lines + 1):
@@ -3457,71 +3261,10 @@ def main():
                  f"롤오버가 훑지 않는 구역이라 아카이브로 넘어가지 않는다('## 최근 변경'으로 이동)",
                  "log.md")
 
-    # decision-log 정합 (§7-24): ⓐ '## 아카이브' 포인터 ↔ 실파일 양방향 ⓑ 항목 결정 어휘.
-    #  포인터는 wikilink가 아닌 평문 경로라 §7-1 깨진 링크 검사에 안 잡힘 — 누락·오기 시
-    #  조회(K 2·G 2b)가 현행 파일만 읽고 "기록 없음"으로 침묵 오답하므로 기계 검사한다.
-    dec_ptr_rx = DEC_PTR_RX   # 패턴 단일 출처(모듈 상수) — apply_fixes와 동일 대상 보장
-    dec_item_rx = re.compile(r"^-\s*\[\d{4}-\d{2}-\d{2}\]")
-    dec_vocab_rx = re.compile(r"\*\*(" + "|".join(DECISION_VOCAB) + r")\*\*")
-    for r, (fm, typ, text) in pages.items():
-        if typ != "decision-log" or r.startswith("90_archive/"):
-            continue
-        # ⓐ-정방향: 포인터가 가리키는 아카이브 파일 실재
-        for m in dec_ptr_rx.finditer(text):
-            if m.group(1) not in pages:
-                warn(f"decisions 아카이브 포인터 깨짐: {r} -> {m.group(1)} 없음 (schema-types §2.8)", r)
-        # ⓑ 항목 결정 어휘 (하위 불릿은 들여쓰기라 ^- 매치에서 자연 제외)
-        bad = sum(1 for ln in text.splitlines()
-                  if dec_item_rx.match(ln) and not dec_vocab_rx.search(ln))
-        if bad:
-            warn(f"decision-log 어휘 위반: {r} {bad}건 (고정 어휘 채택|보류|기각|번복 — schema-types §2.8)", r)
-        # ⓒ §7-33 기각·보류 항목의 방향 풀어쓰기 (schema-types §2.8).
-        #  **항목의 첫 판정만 본다** — 채택 항목의 본문이 대안을 "**기각**"으로 언급하는
-        #  형태가 실 vault에 다수라(21건 중 6건), 줄 어디든 매치로 세면 그것들이 전부 잡힌다.
-        #  괄호 부기는 `:`를 대체하지 못한다(§2.8) — 방향인 것과 메타 정보인 것이 같은 형태다.
-        vague = 0
-        for ln in text.splitlines():
-            if not dec_item_rx.match(ln):
-                continue
-            m = dec_vocab_rx.search(ln)
-            if not m or m.group(1) not in VERDICT_PROSE_REQUIRED:
-                continue
-            if not ln[m.end():].startswith(":"):
-                vague += 1
-        if vague:
-            warn(f"decision-log 방향 미기재: {r} {vague}건 — 기각·보류는 판정 직후 "
-                 f"': {{실제 방향}}'이 필요하다(괄호 부기는 대체 불가, schema-types §2.8 · schema-lint §7-33)", r)
-        # ⓓ §7-36 사실 오기 정정 표기 형식 (schema-types §2.8).
-        #  항목 불변의 예외라 **표기가 곧 감사 기록**이다 — 「정정」을 적었는데 형식이
-        #  어긋나면 무엇이 언제 왜 바뀌었는지가 남지 않아 불변 규칙을 우회하는 수단이 된다.
-        #  「정정」이 든 항목만 보므로 정정하지 않은 기존 항목은 모집단 밖이다.
-        #  ⚠ 모집단은 **`(정정 ` 또는 `정정:`** 이지 「정정」 글자가 아니다.
-        #    ⓐ 글자만 보면 「…를 정정한다」처럼 정정이 **결정의 내용**인 항목이 잡힌다
-        #      (실 vault `90_archive/…/maid/decisions.md` 2건 — 회차 66 완료 리뷰 1R).
-        #    ⓑ 그렇다고 `(정정 ` 접두만 보면 **괄호 없이 산문으로 적은 정정**(`정정: 61을
-        #      59로`)이 빠지는데, 그것이 §2.8 이 막으려는 「표기 없이 값만 덮어쓰기」에
-        #      가장 가까운 형태다(2R). 둘을 함께 보면 ⓐ 는 여전히 밖이고 ⓑ 만 돌아온다.
-        badfix = sum(1 for ln in text.splitlines()
-                     if dec_item_rx.match(ln) and ("(정정 " in ln or "정정:" in ln)
-                     and not DECISION_FIX_RX.search(ln))
-        if badfix:
-            warn(f"decision-log 정정 표기 형식 위반: {r} {badfix}건 — "
-                 f"'(정정 YYYY-MM-DD: {{옛 값}} → {{새 값}}, 근거 {{정본}})' 형식이 필요하다"
-                 f"(schema-types §2.8 · schema-lint §7-36)", r)
-    # ⓐ-역방향: 롤오버 아카이브가 실재하는데 대응 현행 파일에 포인터 미등재 (검색 유실).
-    #  대응 현행 파일 자체가 없으면 절차 C 보존-삭제 이력이므로 건너뜀(§7-24).
-    for r in pages:
-        if not (r.startswith("90_archive/") and r.endswith("decisions.md")):
-            continue
-        cur = r[len("90_archive/"):]
-        if cur in pages and r not in pages[cur][2]:
-            warn(f"decisions 아카이브 포인터 누락: {cur}의 '## 아카이브'에 {r} 미등재 "
-                 f"— 오래된 결정이 검색에서 유실 (schema-types §2.8)", cur)
-
     # 이동·분리한 내용의 도달 경로 정합 (§7-30): ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향.
     #  "옮긴 자리를 읽는 경로"를 검사한다 — §2.2 롤오버는 압축을 없앤 대가로 도달 경로에 의존하므로, 그 경로가 깨지면
-    #  이동이 곧 유실이 된다(§7-24 decisions 포인터·§7-15 sub-index 목록·§7-19 log 인덱스와 동일 계열).
-    #  --fix 대상은 아니다 — §7 서두가 --fix를 참조 무결성 3종으로 한정한다.
+    #  이동이 곧 유실이 된다(§7-15 sub-index 목록·§7-19 log 인덱스와 동일 계열).
+    #  --fix 대상은 아니다 — §7 서두가 --fix를 참조 무결성 2종으로 한정한다.
     for r, (fm, typ, text) in pages.items():
         if typ != "project" or r.startswith("90_archive/"):
             continue
@@ -3530,9 +3273,8 @@ def main():
             if m.group(1) not in pages:
                 warn(f"변경 이력 아카이브 포인터 깨짐: {r} -> {m.group(1)} 없음 (schema-types §2.2 · schema-budget §8)", r)
     # ⓐ-역방향: changes 아카이브가 실재하는데 대응 현행 허브에 포인터 미등재 (검색 유실).
-    #  경로 도출이 §7-24와 다르다 — decisions는 아카이브·현행이 같은 파일명이라 접두만 떼면 되지만,
     #  changes는 '90_archive/20_projects/{cat}/{proj}/changes.md' → 현행 허브 '20_projects/{cat}/{proj}.md'로
-    #  폴더가 파일이 된다. 대응 허브가 없으면 절차 C 보존-삭제 이력이므로 건너뛴다(§7-24 동형 —
+    #  폴더가 파일이 된다. 대응 허브가 없으면 절차 C 보존-삭제 이력이므로 건너뛴다 —
     #  없으면 삭제된 프로젝트의 아카이브가 영구 WARN이 된다).
     for r in pages:
         if not (r.startswith("90_archive/") and r.endswith("/changes.md")):

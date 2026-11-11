@@ -18,4 +18,3 @@ updated: 2026-07-19
 | 이력 (history) | 릴리즈 마커 양성 fixture | [[20_projects/personal/demo/feat-hist\|상세]] |
 
 ## 관련 위키 지식
-- [[20_projects/personal/demo/decisions|결정 이력 (decisions.md)]]

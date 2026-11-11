@@ -18,4 +18,3 @@ updated: 2026-08-15
 | (없음) | 이 픽스처는 결정 이력만 담는다 | - |
 
 ## 관련 위키 지식
-- [[20_projects/personal/demo/decisions|결정 이력 (decisions.md)]]

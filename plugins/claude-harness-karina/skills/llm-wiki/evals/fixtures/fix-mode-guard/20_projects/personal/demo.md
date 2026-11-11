@@ -16,4 +16,3 @@ tags: [project, personal, demo]
 fix-mode-guard fixture용 데모 허브.
 
 ## 관련 위키 지식
-- [[20_projects/personal/demo/decisions|결정 이력]]

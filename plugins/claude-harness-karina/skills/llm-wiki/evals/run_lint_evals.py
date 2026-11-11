@@ -456,7 +456,7 @@ def check_case(case):
     #  ① --fix 실행 출력에 expect_keywords([FIXED] 요약) 전부 존재
     #  ② 수정 후 재lint 출력에 after_expect_absent(원 위반 문구) 전부 부재
     #  ③ 수정 후 재lint 출력에 after_expect_keywords 전부 존재 — "--fix가 건드리지 않아야 하는
-    #     위반이 그대로 남았는가"(보수 동작: §7-24 섹션 밖 비제거 등)를 실증하는 보조 필드
+    #     위반이 그대로 남았는가"(보수 동작)를 실증하는 보조 필드
     # backup_cleanup 케이스: §8 백업 정리(cleanup_backups)를 폴더 집합으로 대조한다.
     #  stdout 키워드만으로는 "지워지지 않아야 할 것이 남았는가"를 증명할 수 없어(출력이 없는 것은
     #  보존의 증거가 아니다) 실제 디렉터리 목록을 본다. 무플래그 실행도 함께 돌려 read-only 계약
