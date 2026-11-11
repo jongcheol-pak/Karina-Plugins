@@ -111,7 +111,7 @@ foreach ($a in $actualSkills) {
 }
 Write-Host ""
 
-$guides = @('DESIGN.md', 'AUTHORING.md', 'BUDGET.md', 'WIKI.md', 'AGENTS-BOUNDARY.md', 'WRITING.md', 'PERF-MEASUREMENT.md', 'REPO-CONVENTIONS.md', 'READONLY-SUBAGENTS.md', 'TEMP-FILES.md', 'SCREEN-COVER.md')
+$guides = @('DESIGN.md', 'AUTHORING.md', 'BUDGET.md', 'WIKI.md', 'AGENTS-BOUNDARY.md', 'WRITING.md', 'PERF-MEASUREMENT.md', 'REPO-CONVENTIONS.md', 'REPO-DECISIONS.md', 'READONLY-SUBAGENTS.md', 'TEMP-FILES.md', 'SCREEN-COVER.md')
 Write-Host "3-1. 가이드 문서 $($guides.Count)개" -ForegroundColor Yellow
 foreach ($g in $guides) {
     Test-Item-Exists (Join-Path $pluginRoot "skills/$g") "guide: $g" | Out-Null
