@@ -151,9 +151,28 @@ $drSnap = Join-Path $csRoot 'docscope-snap.txt'
 $null = Invoke-Cs @('-Snapshot', $drSnap, '-Repo', $dr)
 Set-CsFile $dr 'a.rs' "fn old_doc() {}`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`n"
 $r = Invoke-Cs @('-CheckDeletions', '-Base', $drBase, '-Before', $drSnap, '-Repo', $dr, '-Restore')
-Assert-Case -Name "comment-scope: doc 대상 — 문구만 고친 회차 전 doc 의 삭제는 되살리고 새로 단 doc 의 삭제는 둔다" -R $r -ExpectExit 1 -ExpectContains 'RESULT: 되살림 1 · 회차 삭제 1 · 건너뜀 0'
+Assert-Case -Name "comment-scope: doc 대상 — 문구만 고친 회차 전 doc 의 삭제는 되살린다" -R $r -ExpectExit 1 -ExpectContains "RESTORE a.rs:1`t/// 옛 설명을 고침."
+Assert-Case -Name "comment-scope: doc 대상 — 새로 단 doc 의 삭제는 되살리지 않는다" -R $r -ExpectExit 1 -ExpectNotContains '새로 단 설명'
+Assert-Case -Name "comment-scope: doc 대상 — 되살림·회차 삭제 수" -R $r -ExpectExit 1 -ExpectContains 'RESULT: 되살림 1 · 회차 삭제 1 · 건너뜀 0'
 $drA = [System.IO.File]::ReadAllText((Join-Path $dr 'a.rs'))
 Assert-Case -Name "comment-scope: doc 대상 — 되살린 doc 은 제자리에 있다" -R @{ code = 0; out = ('match=' + ($drA -eq "/// 옛 설명을 고침.`nfn old_doc() {}`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`n")) } -ExpectExit 0 -ExpectContains 'match=True'
+
+$nr = New-CsRepo 'noprefix'
+git -C $nr config diff.noprefix true
+git -C $nr config diff.mnemonicPrefix true
+Set-CsFile $nr 'a.rs' "// 회차 전 표식.`nfn a() {}`n"
+git -C $nr add .; git -C $nr commit -qm base
+$nrBase = (git -C $nr rev-parse HEAD).Trim()
+Set-CsFile $nr 'a.rs' "// 회차 전 표식.`n// 회차가 단 주석.`nfn a() {}`n"
+git -C $nr commit -qam round
+$nrOut = Join-Path $csRoot 'noprefix-out.txt'
+$r = Invoke-Cs @('-Base', $nrBase, '-Out', $nrOut, '-Repo', $nr)
+Assert-Case -Name "comment-scope: diff.noprefix·mnemonicPrefix 설정에서도 회차 주석을 목록에 낸다" -R $r -ExpectExit 0 -ExpectContains 'RESULT: 대상 1 · 회차 전 1'
+$nrSnap = Join-Path $csRoot 'noprefix-snap.txt'
+$null = Invoke-Cs @('-Snapshot', $nrSnap, '-Repo', $nr)
+Set-CsFile $nr 'a.rs' "// 회차가 단 주석.`nfn a() {}`n"
+$r = Invoke-Cs @('-CheckDeletions', '-Base', $nrBase, '-Before', $nrSnap, '-Repo', $nr)
+Assert-Case -Name "comment-scope: diff.noprefix·mnemonicPrefix 설정에서도 회차 전 주석 삭제를 찾는다" -R $r -ExpectExit 1 -ExpectContains "RESTORE a.rs:1`t// 회차 전 표식."
 
 }
 

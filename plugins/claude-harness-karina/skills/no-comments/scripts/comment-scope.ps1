@@ -65,7 +65,7 @@ function Get-ScopeBoundary([string]$Root, [string]$BaseSha, [string]$Rel) {
 function Get-ScopeAddedLines([string]$Root, [string]$BaseSha) {
     $byFile = @{}
     $set = $null
-    $r = Invoke-ScopeGit $Root @('diff', '-U0', '-M', '--no-color', '--no-ext-diff', $BaseSha, 'HEAD')
+    $r = Invoke-ScopeGit $Root @('diff', '-U0', '-M', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaseSha, 'HEAD')
     foreach ($l in $r.Lines) {
         if ($l.StartsWith('+++ ')) {
             $set = $null
@@ -81,7 +81,6 @@ function Get-ScopeAddedLines([string]$Root, [string]$BaseSha) {
     }
     return $byFile
 }
-
 
 function Get-ScopeBaseInfo([string]$Root, [string]$BaseSha, [string]$Rel) {
     $info = @{
@@ -202,7 +201,7 @@ function Get-ScopeDeletionHunks([string]$Root) {
     $files = [ordered]@{}
     $cur = $null
     $hunk = $null
-    foreach ($l in (Invoke-ScopeGit $Root @('diff', '-U0', '--no-color', '--no-ext-diff', 'HEAD')).Lines) {
+    foreach ($l in (Invoke-ScopeGit $Root @('diff', '-U0', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', 'HEAD')).Lines) {
         if ($l.StartsWith('diff --git ')) { $cur = $null; $hunk = $null; continue }
         if ($l.StartsWith('+++ ')) {
             $cur = if ($l -eq '+++ /dev/null') { $null } else { $l.Substring(6) }
