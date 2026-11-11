@@ -81,6 +81,46 @@ $csLib = Join-Path $pluginRoot 'scripts/comment-lines.ps1'
 $out = & pwsh -NoProfile -Command ". '$csLib'; `$a = Get-CommentBodyLines 'x.ts' @('// eslint-disable-next-line no-console', 'x();'); `$b = Get-CommentBodyLines 'x.ts' @('// eslint-disable-next-line no-console', 'x();') -KeepDirectives; ""gate=`$(`$a.Count) keep=`$(`$b.Count)""" 2>&1
 Assert-Case -Name "comment-scope: 게이트 판별은 스위치 없이 억제 지시문을 계속 건너뛴다" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'gate=0 keep=1'
 
+$cr = New-CsRepo 'check'
+Set-CsFile $cr 'a.rs' "fn a() {}`n// 회차 전 표식.`nfn b() {}`n// 섞임 전.`nfn c() {}`nfn d() {}`n// 아래 전.`nfn e() {}`n"
+$crCs = [byte[]](0xEF, 0xBB, 0xBF) + [System.Text.Encoding]::UTF8.GetBytes("class A {`r`n// 회차 전 cs.`r`nint x;`r`n}`r`n")
+[System.IO.File]::WriteAllBytes((Join-Path $cr 'w.cs'), $crCs)
+Set-CsFile $cr 'm.rs' "// 코드 옆 전.`nfn m() {}`n"
+Set-CsFile $cr 'u.rs' "// 사용자 전.`nfn u() {}`n"
+git -C $cr add .; git -C $cr commit -qm base
+$crBase = (git -C $cr rev-parse HEAD).Trim()
+Set-CsFile $cr 'a.rs' "fn a() {}`n// 회차 전 표식.`nfn b() {}`n// 섞임 전.`n// 섞임 회차.`nfn c() {}`n// 회차 주석.`nfn d() {}`n// 아래 전.`nfn e() {}`n"
+git -C $cr commit -qam round
+Set-CsFile $cr 'u.rs' "fn u() {}`n"
+$crSnap = Join-Path $csRoot 'check-snap.txt'
+$r = Invoke-Cs @('-Snapshot', $crSnap, '-Repo', $cr)
+$snapText = if (Test-Path -LiteralPath $crSnap) { [System.IO.File]::ReadAllText($crSnap) } else { 'missing' }
+Assert-Case -Name "comment-scope: 스냅숏은 정리 전 미커밋 경로를 적는다" -R @{ code = $r.code; out = $snapText } -ExpectExit 0 -ExpectContains 'u.rs'
+Set-CsFile $cr 'a.rs' "fn a() {}`nfn b() {}`nfn c() {}`nfn d() {}`nfn e() {}`n"
+[System.IO.File]::WriteAllBytes((Join-Path $cr 'w.cs'), ([byte[]](0xEF, 0xBB, 0xBF) + [System.Text.Encoding]::UTF8.GetBytes("class A {`r`nint x;`r`n}`r`n")))
+Set-CsFile $cr 'm.rs' "fn m2() {}`n"
+$crBeforeA = [System.IO.File]::ReadAllText((Join-Path $cr 'a.rs'))
+
+$r = Invoke-Cs @('-CheckDeletions', '-Base', $crBase, '-Before', $crSnap, '-Repo', $cr)
+Assert-Case -Name "comment-scope: 회차 전 주석의 순수 삭제를 찾으면 exit 1 과 RESTORE 줄을 낸다" -R $r -ExpectExit 1 -ExpectContains "RESTORE a.rs:2`t// 회차 전 표식."
+Assert-Case -Name "comment-scope: -Restore 없이는 파일을 바꾸지 않는다" -R @{ code = 0; out = ('same=' + ([System.IO.File]::ReadAllText((Join-Path $cr 'a.rs')) -eq $crBeforeA)) } -ExpectExit 0 -ExpectContains 'same=True'
+
+$r = Invoke-Cs @('-CheckDeletions', '-Base', $crBase, '-Before', $crSnap, '-Repo', $cr, '-Restore')
+Assert-Case -Name "comment-scope: 되살림·회차 삭제·건너뜀 수를 낸다" -R $r -ExpectExit 1 -ExpectContains 'RESULT: 되살림 4 · 회차 삭제 2 · 건너뜀 1'
+$crA = [System.IO.File]::ReadAllText((Join-Path $cr 'a.rs'))
+$crWant = "fn a() {}`n// 회차 전 표식.`nfn b() {}`n// 섞임 전.`nfn c() {}`nfn d() {}`n// 아래 전.`nfn e() {}`n"
+Assert-Case -Name "comment-scope: 여러 hunk 의 회차 전 주석을 제자리에 되살린다" -R @{ code = 0; out = ('match=' + ($crA -eq $crWant)) } -ExpectExit 0 -ExpectContains 'match=True'
+Assert-Case -Name "comment-scope: 한 hunk 에 섞이면 회차 전 주석만 되살린다" -R @{ code = 0; out = $crA } -ExpectExit 0 -ExpectNotContains '섞임 회차'
+Assert-Case -Name "comment-scope: 회차 주석의 순수 삭제는 되살리지 않는다" -R @{ code = 0; out = $crA } -ExpectExit 0 -ExpectNotContains '// 회차 주석.'
+$crCsNow = [System.IO.File]::ReadAllBytes((Join-Path $cr 'w.cs'))
+Assert-Case -Name "comment-scope: CRLF·BOM 파일은 줄바꿈·BOM 을 지켜 되살린다" -R @{ code = 0; out = ('bytes=' + ([System.Convert]::ToBase64String($crCsNow) -eq [System.Convert]::ToBase64String($crCs))) } -ExpectExit 0 -ExpectContains 'bytes=True'
+Assert-Case -Name "comment-scope: + 줄이 있는 hunk 는 건드리지 않는다" -R @{ code = 0; out = [System.IO.File]::ReadAllText((Join-Path $cr 'm.rs')) } -ExpectExit 0 -ExpectNotContains '코드 옆 전'
+Assert-Case -Name "comment-scope: 정리 전부터 미커밋이던 파일은 건너뛴다" -R @{ code = 0; out = [System.IO.File]::ReadAllText((Join-Path $cr 'u.rs')) } -ExpectExit 0 -ExpectNotContains '사용자 전'
+$crDiff = (git -C $cr diff -U0 HEAD -- a.rs w.cs) -join "`n"
+Assert-Case -Name "comment-scope: 되살린 뒤 diff 에 회차 전 주석 삭제가 남지 않는다" -R @{ code = 0; out = $crDiff } -ExpectExit 0 -ExpectNotContains '전 표식'
+$r = Invoke-Cs @('-CheckDeletions', '-Base', $crBase, '-Before', $crSnap, '-Repo', $cr)
+Assert-Case -Name "comment-scope: 회차 주석 삭제만 남으면 exit 0" -R $r -ExpectExit 0 -ExpectContains 'RESULT: 되살림 0 · 회차 삭제 2 · 건너뜀 1'
+
 }
 
 }

@@ -2,7 +2,11 @@
 param(
     [string]$Base = '',
     [string]$Out = '',
-    [string]$Repo = '.'
+    [string]$Repo = '.',
+    [string]$Snapshot = '',
+    [switch]$CheckDeletions,
+    [string]$Before = '',
+    [switch]$Restore
 )
 
 $ErrorActionPreference = 'Stop'
@@ -132,6 +136,93 @@ function Invoke-ScopeList([string]$Root, [string]$BaseSha, [string]$OutPath) {
     exit 0
 }
 
+function Invoke-ScopeSnapshot([string]$Root, [string]$OutPath) {
+    $paths = [System.Collections.Generic.SortedSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($l in (Invoke-ScopeGit $Root @('diff', '--name-only', 'HEAD')).Lines) { if ($l) { [void]$paths.Add($l) } }
+    foreach ($l in (Invoke-ScopeGit $Root @('ls-files', '--others', '--exclude-standard')).Lines) { if ($l) { [void]$paths.Add($l) } }
+    $text = if ($paths.Count) { (@($paths) -join "`n") + "`n" } else { '' }
+    [System.IO.File]::WriteAllText([System.IO.Path]::GetFullPath($OutPath), $text, [System.Text.UTF8Encoding]::new($false))
+    "RESULT: 스냅숏 $($paths.Count)"
+    exit 0
+}
+
+function Get-ScopeDeletionHunks([string]$Root) {
+    $files = [ordered]@{}
+    $cur = $null
+    $hunk = $null
+    foreach ($l in (Invoke-ScopeGit $Root @('diff', '-U0', '--no-color', '--no-ext-diff', 'HEAD')).Lines) {
+        if ($l.StartsWith('diff --git ')) { $cur = $null; $hunk = $null; continue }
+        if ($l.StartsWith('+++ ')) {
+            $cur = if ($l -eq '+++ /dev/null') { $null } else { $l.Substring(6) }
+            if ($cur -and -not $files.Contains($cur)) { $files[$cur] = New-Object System.Collections.Generic.List[object] }
+            continue
+        }
+        $m = [regex]::Match($l, '^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@')
+        if ($m.Success) {
+            $hunk = $null
+            $newCount = if ($m.Groups[4].Success) { [int]$m.Groups[4].Value } else { 1 }
+            if ($cur -and $newCount -eq 0) {
+                $hunk = @{ Old = [int]$m.Groups[1].Value; After = [int]$m.Groups[3].Value; Lines = New-Object System.Collections.Generic.List[string] }
+                $files[$cur].Add($hunk)
+            }
+            continue
+        }
+        if ($hunk -and $l.StartsWith('-')) { $hunk.Lines.Add($l.Substring(1)) }
+    }
+    return $files
+}
+
+function Restore-ScopeLines([string]$Full, $Inserts) {
+    $bytes = [System.IO.File]::ReadAllBytes($Full)
+    $bom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+    $text = [System.Text.UTF8Encoding]::new($false).GetString($bytes, $(if ($bom) { 3 } else { 0 }), $bytes.Length - $(if ($bom) { 3 } else { 0 }))
+    $nl = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.AddRange([string[]]($text -split '\r?\n'))
+    foreach ($ins in @($Inserts | Sort-Object { $_.After } -Descending)) {
+        $lines.InsertRange([Math]::Min($ins.After, $lines.Count), [string[]]$ins.Lines)
+    }
+    $out = [System.Text.UTF8Encoding]::new($false).GetBytes(($lines -join $nl))
+    if ($bom) { $out = [byte[]](0xEF, 0xBB, 0xBF) + $out }
+    [System.IO.File]::WriteAllBytes($Full, $out)
+}
+
+function Invoke-ScopeCheck([string]$Root, [string]$BaseSha, [string]$BeforePath, [bool]$DoRestore) {
+    if (-not $BeforePath -or -not (Test-Path -LiteralPath $BeforePath -PathType Leaf)) { Stop-Scope '인자 누락 — -Before <스냅숏 파일>' }
+    $before = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($l in [System.IO.File]::ReadAllLines([System.IO.Path]::GetFullPath($BeforePath))) { if ($l) { [void]$before.Add($l.Trim()) } }
+    $restored = 0; $roundDel = 0; $skipped = 0
+    $files = Get-ScopeDeletionHunks $Root
+    foreach ($rel in $files.Keys) {
+        if ($files[$rel].Count -eq 0 -or -not (Test-CommentTarget $rel)) { continue }
+        if ($before.Contains($rel)) { $skipped++; continue }
+        $baseBodies = $null
+        $inserts = New-Object System.Collections.Generic.List[object]
+        foreach ($h in $files[$rel]) {
+            $comments = Get-CommentBodyLines $rel ([string[]]$h.Lines) -KeepDirectives
+            if ($comments.Count -eq 0) { continue }
+            $boundary = Get-ScopeBoundary $Root $BaseSha $rel @('-L', "$($h.Old),+$($h.Lines.Count)")
+            if ($null -eq $baseBodies) { $baseBodies = Get-ScopeBaseBodies $Root $BaseSha $rel }
+            $isComment = @{}
+            foreach ($c in $comments) { $isComment[[int]$c.Line] = $c.Body }
+            $keep = New-Object System.Collections.Generic.List[string]
+            for ($i = 0; $i -lt $h.Lines.Count; $i++) {
+                if (-not $isComment.ContainsKey($i)) { continue }
+                if ($boundary[$h.Old + $i] -or $baseBodies.Contains($isComment[$i])) {
+                    $keep.Add($h.Lines[$i])
+                    "RESTORE ${rel}:$($h.Old + $i)`t$($isComment[$i])"
+                } else { $roundDel++ }
+            }
+            if ($keep.Count) { $restored += $keep.Count; $inserts.Add(@{ After = $h.After; Lines = $keep.ToArray() }) }
+        }
+        if ($DoRestore -and $inserts.Count) { Restore-ScopeLines ([System.IO.Path]::GetFullPath((Join-Path $Root $rel))) $inserts }
+    }
+    "RESULT: 되살림 $restored · 회차 삭제 $roundDel · 건너뜀 $skipped"
+    exit $(if ($restored) { 1 } else { 0 })
+}
+
 $root = Resolve-ScopeRepo $Repo
+if ($Snapshot) { Invoke-ScopeSnapshot $root $Snapshot }
 $baseSha = Resolve-ScopeBase $root $Base
+if ($CheckDeletions) { Invoke-ScopeCheck $root $baseSha $Before ([bool]$Restore) }
 Invoke-ScopeList $root $baseSha $Out
