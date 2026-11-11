@@ -281,7 +281,6 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: compact 결정 기록 규약 절 주입 (SC42)" -R $r -ExpectExit 0 -ExpectContains '트리거는 둘이다'
     Assert-Case -Name "session-context: 결정 기록 규약 주입에 발췌 표기 (SC42b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — REPO-DECISIONS.md 「쓰기」'
     Assert-Case -Name "session-context: 결정 기록 규약 주입이 「쓰기」 끝까지 포함 (SC42f)" -R $r -ExpectExit 0 -ExpectContains '그 회차의 마지막 커밋에 함께 넣는다' -ExpectNotContains '새 항목을 쓰지 않는다'
-    # SC42c (델타 음성): startup엔 주입하지 않는다(SC41c와 같은 취지).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: startup엔 결정 기록 규약 미주입 (SC42c)" -R $r -ExpectExit 0 -ExpectNotContains '트리거는 둘이다'
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
@@ -302,12 +301,6 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: implement 뒤 plan 재발동 compact 엔 계획 규칙 주입 (SC41h)" -R $r -ExpectExit 0 -ExpectContains '모든 사실 주장은 명령을 실행해 얻는다'
     Assert-Case -Name "session-context: implement 뒤 plan 재발동 compact 엔 결정 기록 규약 미주입 (SC42j)" -R $r -ExpectExit 0 -ExpectNotContains '트리거는 둘이다'
 
-    # SC43~SC43f: 계획 세션에 **위키 조회 절차 경로 지시** (v1.220.0 — 원문 주입에서 전환).
-    #   원문 15,402B를 싣는 대신 경로 1줄만 준다. ⚠ 회차 46에서 **가리키는 파일이 바뀌었다** —
-    #   계획·구현 세션의 위키 조회 정본은 `skills/WIKI.md` 하나이고 절차 K(`lookup-rules.md`)는
-    #   디버깅 세션 전용으로 좁혀졌다. 그 전에는 이 주입이 계획 세션을 절차 K로 보내
-    #   조회 정본이 이중이었다. 세 어서션이 재는 축도 함께 바뀌었다 — 종전의 「발췌 표기」·「추출
-    #   경계」는 주입이 없어져 소멸했고, 그 자리를 「경로 정확성」·「행동 지시」가 잇는다.
     & $scFire 'sc43' 'karina:plan'
     $r = & $scCompact $scPlanless 'sc43'
     Assert-Case -Name "session-context: compact 조회 절차 경로 지시 (SC43)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:'
@@ -426,9 +419,7 @@ if (Test-HookSelected @('session-context')) {
     $r = & $scCompact $scEmptyAg 'sc42e'
     Assert-Case -Name "session-context: 결정 기록 규약 주입도 vault 게이팅 신호 아님 (SC42e)" -R $r -ExpectExit 0 -ExpectContains '트리거는 둘이다' -ExpectNotContains '위키 vault: 설정'
 
-    # SC31/SC31b (회귀 고정 — **vault가 설정된 구간에서 돌아야 의미가 있다**): compact + plan.md는 있으나
-    #   task 체크박스 0개인 세션. 계획 지시가 뜨면서도 **vault 라인이 함께 유지**되어야 한다.
-    #   계획 지시 줄이 $cwdBaseCount를 전체 재설정하면(`= $lines.Count`) 그 앞의 「plan 존재」 신호까지
+    # SC31b: 계획 지시 줄이 $cwdBaseCount를 전체 재설정하면(`= $lines.Count`) 그 앞의 「plan 존재」 신호까지
     #   흡수돼 vault가 조용히 빠진다 — `++`여야 하는 이유를 SC31b가 고정한다.
     #   ⚠ 이 두 케이스를 vault 설정($env:USERPROFILE = $isoV) **앞**에 두면 $vaultLine이 $null이라
     #     게이팅 로직 자체가 안 돌아 회귀를 못 잡는다(초안이 그 자리에 있었고 리뷰 2종이 각각 잡았다).

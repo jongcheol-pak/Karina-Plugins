@@ -1,38 +1,15 @@
 #!/usr/bin/env python3
-"""재실패 방지 회로 검사 — 작업 함정이 기록되고 다음 작업이 그것을 읽는가.
+"""재실패 방지 회로 검사 — 작업 함정·결정 이력이 기록되고 다음 작업이 그것을 읽는가.
 
-「같은 함정에 두 번 걸리지 않는다」는 기능은 아래 회로 목록의 지점이 한 줄로
-이어져야 성립한다(수를 여기 적지 않는 이유는 목록만 늘리고 머리글을 두어
-갈린 전력이 있기 때문이다).
+「같은 함정에 두 번 걸리지 않는다」·「기각한 것을 다시 제안하지 않는다」는 기능은
+`checks` 목록의 지점이 한 줄로 이어져야 성립한다(수를 여기 적지 않는 이유는
+목록만 늘리고 머리글을 두어 갈린 전력이 있기 때문이다).
 어느 한 곳이 끊기면 기록은 남지만 다음 세션이 그것을 읽지 않거나, 읽으려 해도
 기록이 도착하지 않는다. 그 연결을 파일 내용으로 검사한다.
 
 함정의 기록처는 레포 docs/conventions.md 이고 규약 정본은 skills/REPO-CONVENTIONS.md 다
 (2026-10-19 — 그 전에는 vault 큐를 거쳐 위키 conventions.md 로 갔다. 2026-10-20 에 위키 쪽 폴백을 걷었다).
-
-회로:
-  1. implement/SKILL.md 가 완료 시 REPO-CONVENTIONS.md 를 따르라고 지시한다
-  2. REPO-CONVENTIONS.md 가 2회 트리거와 1회차 기록 자리(plan.md)를 정의한다
-  3. REPO-CONVENTIONS.md 「쓰기」 절이 docs/conventions.md 에 쓰라고 지시한다
-  4. REPO-CONVENTIONS.md 「읽기」 절이 계획 단계(karina:plan)에 docs/conventions.md 를 읽으라고 지시한다
-  5. plan/SKILL.md 가 REPO-CONVENTIONS.md 와 docs/conventions.md 를 가리킨다
-  6. 디버깅 조회(llm-wiki lookup-rules.md)가 docs/conventions.md 를 본다
-  7. 완료 리뷰(agents/completion-reviewer.md)가 2회 기록을 docs/conventions.md 와 대조한다
-
-결정 이력의 기록처는 레포 docs/decisions.md 이고 규약 정본은 skills/REPO-DECISIONS.md 다
-(2026-11-11 — 그 전에는 모든 프로젝트가 함께 쓰는 vault pending.md 큐를 거쳤다).
-
-결정 회로:
-  8. implement/SKILL.md 가 완료 시 REPO-DECISIONS.md 를 따르라고 지시한다
- 9. REPO-DECISIONS.md 「쓰기」 절이 docs/decisions.md 에 쓰라고 지시한다
- 10. REPO-DECISIONS.md 「읽기」 절이 karina:plan 에 docs/decisions.md 를 읽으라고 지시한다
- 11. plan/SKILL.md 가 REPO-DECISIONS.md 와 docs/decisions.md 를 가리킨다
- 12. chain-plan/SKILL.md 가 후보 라운드 전에 docs/decisions.md 를 grep 한다
- 13. 완료 흐름(implement/SKILL.md·final-review.md)이 vault 큐(pending.md·queue-rules)를 가리키지 않는다
-
-판정은 「한 줄에 두 키워드」 또는 「한 절 안에」로 한다 — 파일 전체 `in` 판정은 서로 다른
-맥락에 따로 있는 두 문자열로 참이 되는 거짓 통과를 낸 전력이 있다(옛 회로 4 — 소비 규칙이
-그 파일을 떠난 뒤에도 다른 절이 두 문자열을 함께 담아 통과했다).
+결정 이력의 기록처는 레포 docs/decisions.md 이고 규약 정본은 skills/REPO-DECISIONS.md 다.
 
 실행: python skills/evals/check_wiki_circuit.py [--skills <경로>]
 종료 코드: 0 통과 / 1 실패
@@ -61,7 +38,6 @@ _parser.add_argument(
 SKILLS = _parser.parse_args().skills.resolve()
 AGENTS = SKILLS.parent / "agents"
 
-# 회로를 잇는 두 이름. 이 값이 문서와 갈리면 기록이 도착하지 않는다.
 SINK = "docs/conventions.md"
 RULES = "REPO-CONVENTIONS.md"
 DSINK = "docs/decisions.md"
