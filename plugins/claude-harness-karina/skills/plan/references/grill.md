@@ -1,7 +1,7 @@
 # 따지기
 
 > `interview.md`「승인 제시」에서 사용자가 `G` 를 골랐을 때만 읽는다 — 다 쓴 `plan.md` 를 놓고, 모델이 묻지 않고 정한 것을 사용자와 끝까지 따지는 절차다. 질문 형식은 `interview.md`「2-2. 한 번에 한 질문, 추측을 붙여서」 를 그대로 쓰고 여기서 다시 쓰지 않는다.
-> 외부 선례: mattpocock/skills `grilling` (`https://github.com/mattpocock/skills/blob/5beb35b040e3de97e54fa9e386d7e42d15c295c2/skills/productivity/grilling/SKILL.md`) — *"The session is done when the frontier is empty: every branch of the design tree visited, nothing left silently assumed."* 라운드 묶음 상한은 들이지 않았다(위키 결정 이력 2026-10-20 「인터뷰 질문 묶음」).
+> 외부 선례: mattpocock/skills `grilling` (`https://github.com/mattpocock/skills/blob/5beb35b040e3de97e54fa9e386d7e42d15c295c2/skills/productivity/grilling/SKILL.md`) — *"The session is done when the frontier is empty: every branch of the design tree visited, nothing left silently assumed."* 라운드 묶음 상한은 들이지 않았다(`docs/decisions-archive.md` 의 2026-10-20 항목 「인터뷰 질문 묶음」).
 
 ## 무엇을 따지는가
 

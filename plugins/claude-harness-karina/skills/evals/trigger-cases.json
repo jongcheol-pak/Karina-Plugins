@@ -549,7 +549,7 @@
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "결제 모듈에 환불 기능은 이번에 안 넣기로 했어. 이 결정 기록해 둬",
-      "why": "rec-pos-9 의 짝 음성 — 기능의 보류·기각 결정은 사실·함정이 아니라 [DECISION] 큐(queue-rules K 5-2) 몫이다. 「기록해」 어휘만으로 이 스킬이 발동하면 안 된다"
+      "why": "rec-pos-9 의 짝 음성 — 기능의 보류·기각 결정은 사실·함정이 아니라 레포 docs/decisions.md(REPO-DECISIONS.md 「쓰기」의 수동 요청) 몫이다. 「기록해」 어휘만으로 이 스킬이 발동하면 안 된다"
     },
     {
       "id": "rec-pos-10",

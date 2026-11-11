@@ -63,7 +63,7 @@
 
 - **plan은 루트 `plan.md` 하나**다(덮어쓰기).
 - **`plan.md` 는 `.gitignore`** — **영구 기록은 git 커밋**이고 미처리 Deferred 는 **대장 2파일**이 담는다(`docs/plans/deferred.md` 대기 · `deferred-closed.md` 종결 — 둘 다 `docs/plans/` · 연산 규칙은 그 머리말이 정본).
-- **PRD는 쓰지 않는다** — 요구는 `plan.md`, 결정은 위키 `decisions.md`, 미착수는 대장이 담는다.
+- **PRD는 쓰지 않는다** — 요구는 `plan.md`, 결정은 `docs/decisions.md`, 미착수는 대장이 담는다.
 
 ## OS/플랫폼
 
