@@ -339,9 +339,9 @@ plan 의 `- **Files**:` 줄이 아직 없는 `skills/<이름>/SKILL.md`·`agents
 
 ## §6 축 ③④ — 픽스처·이력·로컬 전용 파일을 빼는 이유
 
-ⓐ 픽스처는 **의도적으로 깨뜨린** 파일이라 검사 대상이 되면 축이 상시 실패한다 ⓑ docs/plans/ 의 날짜 이름 회차 문서(YYYY-MM-DD-이름.md)는 과거 회차의 이력 자산이고 그 시점의 사실이라 고치지 않는다 (`deferred.md`는 살아 있는 자산이라 **제외하지 않는다** — 가장 활발히 편집되는 문서다) ⓑ-2 docs/.agents-presplit/ 도 같은 이유로 제외한다 — 이관 전 문서 사본이라 **고칠 수 없고**, (그 근거는 `harness-consistency-rationale.md` 의 「축 ③④ — 아카이브 제외의 근거」) ⓒ `plan.md`·`notes.md`는 gitignore 로컬 전용이라 회차마다 통째로 교체된다.
+ⓐ 픽스처는 **의도적으로 깨뜨린** 파일이라 검사 대상이 되면 축이 상시 실패한다 ⓑ docs/plans/ 의 날짜 이름 회차 문서(YYYY-MM-DD-이름.md)는 과거 회차의 이력 자산이고 그 시점의 사실이라 고치지 않는다 (`deferred.md`는 살아 있는 자산이라 **제외하지 않는다** — 가장 활발히 편집되는 문서다) ⓑ-2 docs/.agents-presplit/ 도 같은 이유로 제외한다 — 이관 전 문서 사본이라 **고칠 수 없고**, (그 근거는 `harness-consistency-rationale.md` 의 「축 ③④ — 아카이브 제외의 근거」) ⓑ-3 `docs/decisions.md`·`docs/decisions-archive.md` 는 날짜가 붙은 결정 이력이라 뒤에 문서 이름이 바뀌어도 옛 항목을 고쳐 쓰지 않는다 — vault 이력을 옮기자 끊긴 포인터·폐기 식별자 18건이 검사를 막았다(2026-11-11 실측, 회귀 골든 `harness-decision-log-excluded`) ⓒ `plan.md`·`notes.md`는 gitignore 로컬 전용이라 회차마다 통째로 교체된다.
 
-**ⓑ·ⓑ-2·ⓒ 는 술어 `_is_record_doc` 하나다** — 종전에는 같은 조건을 세 사용처(포인터 출처·문서 표기 축·폐기 식별자)가 각자 적어, 한 곳만 고치면 축마다 제외 범위가 갈렸다. 회귀 골든 `harness-record-doc-excluded` 가 세 축 모두 날짜 이름 회차 문서를 빼는지 잰다. **축 전용 셋(`_POINTER_EXEMPT_SRC`·`FIX_FORBIDDEN`)은 술어에 합치지 않고 정의만 그 옆에 둔다** — 대장 2종은 살아 있는 문서라 표기 축이 재야 하고, `FIX_FORBIDDEN` 은 쓰기 금지라 읽기 제외와 뜻이 다르다. 합치면 한 축의 면제가 다른 축까지 끈다.
+**ⓑ·ⓑ-2·ⓑ-3·ⓒ 는 술어 `_is_record_doc` 하나다** — 종전에는 같은 조건을 세 사용처(포인터 출처·문서 표기 축·폐기 식별자)가 각자 적어, 한 곳만 고치면 축마다 제외 범위가 갈렸다. 회귀 골든 `harness-record-doc-excluded` 가 세 축 모두 날짜 이름 회차 문서를 빼는지 잰다. **축 전용 셋(`_POINTER_EXEMPT_SRC`·`FIX_FORBIDDEN`)은 술어에 합치지 않고 정의만 그 옆에 둔다** — 대장 2종은 살아 있는 문서라 표기 축이 재야 하고, `FIX_FORBIDDEN` 은 쓰기 금지라 읽기 제외와 뜻이 다르다. 합치면 한 축의 면제가 다른 축까지 끈다.
 
 ## §8 축 ⑪ — 다음 회차 항목에 근거 필드를 요구하는 이유
 

@@ -25,6 +25,19 @@
     ]
   },
   {
+    "id": "harness-decision-log-excluded",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "docs/decisions.md",
+      "docs/decisions-archive.md"
+    ]
+  },
+  {
     "id": "pointer-dead-section",
     "checker": "harness",
     "fixture": "minimal-repo",
