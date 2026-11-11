@@ -44,20 +44,44 @@ function Get-ScopeFileText([string]$Root, [string]$Rev, [string]$Rel) {
     return , ([string[]]@($r.Text -split '\r?\n'))
 }
 
-function Get-ScopeBoundary([string]$Root, [string]$BaseSha, [string]$Rel, [string[]]$Range) {
+function Get-ScopeBoundary([string]$Root, [string]$BaseSha, [string]$Rel) {
     $flags = @{}
-    $r = Invoke-ScopeGit $Root (@('blame', '--line-porcelain', '-M', '-C') + $Range + @("$BaseSha..HEAD", '--', $Rel))
+    $r = Invoke-ScopeGit $Root @('blame', '--porcelain', '-M', '-C', "$BaseSha..HEAD", '--', $Rel)
     if ($r.Code -ne 0) { return $flags }
+    $shaOf = @{}
+    $edges = [System.Collections.Generic.HashSet[string]]::new()
+    $sha = ''
     $final = 0
-    $boundary = $false
     foreach ($l in $r.Lines) {
-        $m = [regex]::Match($l, '^[0-9a-f]{40} \d+ (\d+)')
-        if ($m.Success) { $final = [int]$m.Groups[1].Value; $boundary = $false; continue }
-        if ($l -eq 'boundary') { $boundary = $true; continue }
-        if ($l.StartsWith("`t")) { $flags[$final] = $boundary }
+        if ($l.StartsWith("`t")) { $shaOf[$final] = $sha; continue }
+        $m = [regex]::Match($l, '^([0-9a-f]{40}) \d+ (\d+)')
+        if ($m.Success) { $sha = $m.Groups[1].Value; $final = [int]$m.Groups[2].Value; continue }
+        if ($l -eq 'boundary') { [void]$edges.Add($sha) }
     }
+    foreach ($k in $shaOf.Keys) { $flags[$k] = $edges.Contains($shaOf[$k]) }
     return $flags
 }
+
+function Get-ScopeAddedLines([string]$Root, [string]$BaseSha) {
+    $byFile = @{}
+    $set = $null
+    $r = Invoke-ScopeGit $Root @('diff', '-U0', '-M', '--no-color', '--no-ext-diff', $BaseSha, 'HEAD')
+    foreach ($l in $r.Lines) {
+        if ($l.StartsWith('+++ ')) {
+            $set = $null
+            if ($l -ne '+++ /dev/null') { $set = [System.Collections.Generic.HashSet[int]]::new(); $byFile[$l.Substring(6)] = $set }
+            continue
+        }
+        if ($null -eq $set) { continue }
+        $m = [regex]::Match($l, '^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@')
+        if (-not $m.Success) { continue }
+        $start = [int]$m.Groups[1].Value
+        $count = if ($m.Groups[2].Success) { [int]$m.Groups[2].Value } else { 1 }
+        for ($i = 0; $i -lt $count; $i++) { [void]$set.Add($start + $i) }
+    }
+    return $byFile
+}
+
 
 function Get-ScopeBaseBodies([string]$Root, [string]$BaseSha, [string]$Rel) {
     $set = [System.Collections.Generic.HashSet[string]]::new()
@@ -107,6 +131,7 @@ function Invoke-ScopeList([string]$Root, [string]$BaseSha, [string]$OutPath) {
     $listed = New-Object System.Collections.Generic.List[string]
     $pre = 0; $audit = 0; $kept = 0
     $status = Invoke-ScopeGit $Root @('diff', '--name-status', '-M', $BaseSha, 'HEAD')
+    $addedByFile = Get-ScopeAddedLines $Root $BaseSha
     foreach ($row in $status.Lines) {
         $cols = $row -split "`t"
         if ($cols.Count -lt 2 -or $cols[0].StartsWith('D')) { continue }
@@ -117,14 +142,24 @@ function Invoke-ScopeList([string]$Root, [string]$BaseSha, [string]$OutPath) {
         if ($null -eq $lines) { continue }
         $comments = Get-CommentBodyLines $rel $lines -KeepDirectives
         if ($comments.Count -eq 0) { continue }
-        $boundary = Get-ScopeBoundary $Root $BaseSha $rel @()
+        $addedLines = $addedByFile[$rel]
+        $cands = New-Object System.Collections.Generic.List[object]
+        foreach ($c in $comments) {
+            if ($null -ne $addedLines -and $addedLines.Contains([int]$c.Line + 1)) { $cands.Add($c) } else { $pre++ }
+        }
+        if ($cands.Count -eq 0) { continue }
         $baseBodies = Get-ScopeBaseBodies $Root $BaseSha $oldRel
+        $fresh = @($cands | Where-Object { -not $baseBodies.Contains($_.Body) })
+        $pre += $cands.Count - $fresh.Count
+        $cands = $fresh
+        if ($cands.Count -eq 0) { continue }
+        $boundary = Get-ScopeBoundary $Root $BaseSha $rel
         $full = [System.IO.Path]::GetFullPath((Join-Path $Root $rel))
         $ctx = Get-CommentRepoContext $full
         $docFlag = Get-CommentDocFlags $lines
-        foreach ($c in $comments) {
+        foreach ($c in $cands) {
             $n = [int]$c.Line
-            if ($boundary[$n + 1] -or $baseBodies.Contains($c.Body)) { $pre++; continue }
+            if ($boundary[$n + 1]) { $pre++; continue }
             if (Test-ScopeKept $ctx $full $c.Body) { $kept++; continue }
             if (Test-ScopeAudited $ctx $full $rel $lines $n $docFlag) { $audit++; continue }
             $listed.Add("${rel}:$($n + 1)`t$($c.Body)")
@@ -202,11 +237,12 @@ function Invoke-ScopeCheck([string]$Root, [string]$BaseSha, [string]$BeforePath,
         if ($files[$rel].Count -eq 0 -or -not (Test-CommentTarget $rel)) { continue }
         if ($before.Contains($rel)) { $skipped++; continue }
         $baseBodies = $null
+        $boundary = $null
         $inserts = New-Object System.Collections.Generic.List[object]
         foreach ($h in $files[$rel]) {
             $comments = Get-CommentBodyLines $rel ([string[]]$h.Lines) -KeepDirectives
             if ($comments.Count -eq 0) { continue }
-            $boundary = Get-ScopeBoundary $Root $BaseSha $rel @('-L', "$($h.Old),+$($h.Lines.Count)")
+            if ($null -eq $boundary) { $boundary = Get-ScopeBoundary $Root $BaseSha $rel }
             if ($null -eq $baseBodies) { $baseBodies = Get-ScopeBaseBodies $Root $BaseSha $(if ($oldPaths.ContainsKey($rel)) { $oldPaths[$rel] } else { $rel }) }
             $isComment = @{}
             foreach ($c in $comments) { $isComment[[int]$c.Line] = $c.Body }
