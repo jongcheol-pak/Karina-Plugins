@@ -310,9 +310,7 @@ if (Test-HookSelected @('session-context')) {
     #   정규화한다**(2026-09-02 실측 — 이 어서션이 첫 실행에서 그것을 FAIL로 잡았다). 그래서 hook은
     #   보간("$skillsDir/llm-wiki/...")으로 뒤쪽 세그먼트를 슬래시로 고정한다 — 그것이 계약이다.
     Assert-Case -Name "session-context: 조회 절차 경로가 정확한가 (SC43b)" -R $r -ExpectExit 0 -ExpectContains 'skills/WIKI.md'
-    # SC43f (**행동 지시**): 경로만 주고 무엇을 하라는지 없으면 세션이 읽지 않는다 — vault 라인에
-    #   행동 지시 축을 건 SC18c·SC18d와 같은 형태다. 그 꼬리가 지워져도 SC43·SC43b는 통과한다.
-    Assert-Case -Name "session-context: 조회 절차 지시에 행동 문구 (SC43f)" -R $r -ExpectExit 0 -ExpectContains 'vault 판정 게이트가 그 안에 있습니다'
+    Assert-Case -Name "session-context: 조회 절차 지시에 행동 문구 (SC43f)" -R $r -ExpectExit 0 -ExpectContains '호출측 스킬이 지목한 절만 읽으세요' -ExpectNotContains 'vault 판정 게이트'
     # SC43g (**절 지목**): 파일째 Read 지시는 계획 세션에 쓰지 않는 절(§3 이하)까지 싣는다 — 호출측 스킬이
     #   지목한 절만 읽으라는 문구가 이 줄의 계약이다(2026-09-29 — 읽을 절을 SKILL 포인터가 지목하게 바꿨다).
     Assert-Case -Name "session-context: 조회 절차 지시가 지목한 절만 읽게 한다 (SC43g)" -R $r -ExpectExit 0 -ExpectContains '지목한 절만'
@@ -370,14 +368,7 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: vault 설정됨 상태 주입 (SC18)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
     Assert-Case -Name "session-context: vault 단정 금지 문구 (SC18b)" -R $r -ExpectExit 0 -ExpectContains '단정하지 마세요'
-
-    # SC18c/SC18d: 라인이 "참조 가능"(권유)이 아니라 **행동 지시**를 담는지 고정한다 (v1.197.0).
-    #   두 요소를 각각 재는 이유: 한쪽만 걸어두면 나머지가 지워져도 전건 통과한다.
-    #   ① 허브 직행 — 스킬을 발동하지 않는 세션(trivial 수정·질문)에는 절차 K를 부르는 주체가
-    #      없어, 이 라인이 프로젝트 맥락을 위키에서 얻게 하는 유일한 신호다.
-    #   ② 글로벌 절 포인터 — 판정 규칙(인덱스 경유·낡음·코드 정본)은 글로벌 지침이 정본이고
-    #      그것은 매 세션 상시 로드되므로 여기 복제하지 않는다(재진술은 예산만 늘린다).
-    Assert-Case -Name "session-context: vault 라인의 허브 직행 지시 (SC18c)" -R $r -ExpectExit 0 -ExpectContains '허브를 먼저 Read'
+    Assert-Case -Name "session-context: vault 라인의 허브 조건부 지시 (SC18c)" -R $r -ExpectExit 0 -ExpectContains '코드를 읽는 것보다 빠르면'
     Assert-Case -Name "session-context: vault 라인의 글로벌 절 포인터 (SC18d)" -R $r -ExpectExit 0 -ExpectContains '「프로젝트 맥락」'
     # SC18e (**조회 정본 포인터**): 회차 46이 이 라인의 「절차 K 참조 가능」을 `skills/WIKI.md`
     #   지목으로 바꿨다 — 계획·구현 세션은 절차 K를 로드하지 않아 그 안내가 손에 없는 규약을

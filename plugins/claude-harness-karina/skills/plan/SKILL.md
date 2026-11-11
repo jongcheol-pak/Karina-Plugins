@@ -24,7 +24,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 ## Step 1. 컨텍스트 수집
 
 1. **`AGENTS.md`** — 빌드·테스트 명령, 디렉터리 구조, 프로젝트 규약. **없으면 여기서 최소 생성한다** — 절차 정본은 `../AGENTS-BOUNDARY.md`「AGENTS.md 최소 생성」 이다.
-2. **함정 문서·결정 이력과 위키** — 레포 `docs/conventions.md`(작업 함정 — 읽는 법은 `../REPO-CONVENTIONS.md` 「읽기」)와 레포 `docs/decisions.md`·`docs/decisions-archive.md`(보류·기각 이력 — 요청 키워드 grep 만, `../REPO-DECISIONS.md` 「읽기」). 위키 절차와 기록 형식은 `../WIKI.md`이고, **`../WIKI.md` 에서 읽는 절은 0·「절 단위 읽기」·1 이다** — 파일째 읽지 않고 그 셋이 놓인 머리만 읽는다: `../WIKI.md` 는 「3.」 절 앞까지 Read 한다(끝 줄은 `grep -n '^## 3.' <WIKI.md 경로>` 로 얻어 Read 의 limit 으로 준다 — WIKI.md 는 위키 페이지가 아니고 펜스 안에 `## ` 줄이 없다). 위키 페이지의 절 추출 명령은 그 「절 단위 읽기」가 정본이다. 조회 결과는 Log 의 `위키 참조` 행이다(`references/plan-template.md`「Investigation Log」).
+2. **함정 문서·결정 이력과 위키** — 레포 `docs/conventions.md`(작업 함정 — 읽는 법은 `../REPO-CONVENTIONS.md` 「읽기」)와 레포 `docs/decisions.md`·`docs/decisions-archive.md`(보류·기각 이력 — 요청 키워드 grep 만, `../REPO-DECISIONS.md` 「읽기」). **위키는 두 경우에만 읽는다 — 프로젝트 성격·기술 스택·아키텍처 개요가 필요하고 코드를 읽는 것보다 빠르다고 판단될 때 `AGENTS.md` `## 위키` 가 지목한 허브 1개(vault 판정은 `../WIKI.md` 0절), 사용자가 위키 검색을 요청할 때 `karina:llm-wiki` 조회다.** 위키와 코드가 다르면 코드가 이기고, 위키가 최신인지는 확인하지 않는다. 읽었으면 Log 에 `위키 참조` 행을 남긴다.
 3. **그 레포의 Deferred 대장** (있으면 — 위치는 그 레포 `AGENTS.md` 의 `## Plan Location`) — 이번 요청과 겹치는 미처리 항목이 있으면 후보 라운드의 대장 겹침 후보로 낸다(`references/interview.md`「후보 라운드」) — 계획자가 혼자 흡수·제외하면 사용자는 승인 화면에서야 그것을 본다. **중계 모드는 라운드를 열지 않으므로 spec 재진술 `결과` 에 드는 겹침만 흡수하고 나머지는 Log 의 대장 행에 `→ 대장 유지` 로 남긴다.** **종결분(`deferred-closed.md`)도 요청 키워드로 grep 한다** — 이미 기각·보류한 것을 모르고 다시 제안하는 것을 막는다. 전건 읽기가 아니라 키워드 조회다. **없는 레포에서는 그 사실을 Log에 1줄 남긴다** — 「없음」과 「확인 안 함」은 다르다.
    - **포함한 항목의 「착수 조건」은 지금 다시 잰다** — 등재 시점 값이라 낡았고, 믿고 task 를 세우면 실행 시점에 조건이 안 맞아 멈춘다. 잰 값을 착수 기준선에 적는다.
 4. **진행 중 `plan.md`** — 있으면 이번 요청이 그것과 중복·모순되는지 먼저 확인한다.
@@ -34,7 +34,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 
 - **시작 시각은 Step 1 에서 한 번 정한다 — 이번 발동 직후 주입된 `[karina 작업 시작]` 줄의 `karina:plan` 시각이고, 줄이 없으면 첫 셸 호출에 `"<skill>/../implement/scripts/work-clock.ps1"`(`<skill>` 은 이 SKILL.md 의 폴더) 무인자를 얹는다 · 압축으로 잃었으면 `(압축 전 기록)` 줄 · 출력이 없으면 `시각 미확인` · Step 5 가 그 값을 `> 시작:` 에 적는다(호출형 `../implement/references/report-format.md`「소요 기록」 · 서식 `references/plan-template.md`「Goal」)** — 완료 보고의 소요는 이 시각부터 잰다. 모델은 현재 시각을 모르고, 뒤에서 다시 고르면 같은 세션 앞 계획의 줄을 집는다.
 
-- **2번에서 읽은 함정은 Log 에 적고 끝내지 말고 그것이 쓰이는 시점의 자리로 보낸다** — 기준은 `../WIKI.md` §1 「기록 의무」, 서식은 `references/plan-template.md` 다.
+- **2번에서 읽은 함정은 Log 에 적고 끝내지 말고 그것이 쓰이는 시점의 자리로 보낸다** — 기준은 `../REPO-CONVENTIONS.md` 「읽기」, 서식은 `references/plan-template.md` 다.
 
 ## Step 2. 요구 인터뷰 (1문1답)
 
