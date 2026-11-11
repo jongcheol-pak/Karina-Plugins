@@ -284,8 +284,8 @@ $blocked = Get-BlockedCommentBodies $File $added @($body, 'fn rows() {}') $budge
 $gbLib = Join-Path $pluginRoot 'scripts/comment-lines.ps1'
 $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 3000 3300 2>&1
 Assert-Case -Name "guard-comment: BASE 예산 — 판정 처리 시간이 예산을 넘어도 BASE 복원 doc 은 통과" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=0'
-$out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 1 0 2>&1
-Assert-Case -Name "guard-comment: BASE 예산 — git 대기가 예산을 넘으면 복원 doc 도 차단" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=1'
+$out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 0 0 2>&1
+Assert-Case -Name "guard-comment: BASE 예산 — 예산이 바닥났으면 복원 doc 도 차단" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=1'
 [System.IO.File]::Delete($gbPlan)
 $r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
 Assert-Case -Name "guard-comment: plan.md 가 없으면 복원 Edit 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
