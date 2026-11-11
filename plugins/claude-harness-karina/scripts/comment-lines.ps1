@@ -5,6 +5,9 @@ $script:CommentHashExts = @('.py', '.ps1', '.psm1', '.psd1', '.sh', '.yaml', '.y
 $script:CommentPsExts = @('.ps1', '.psm1', '.psd1')
 $script:CommentConfExts = @('.yaml', '.yml', '.toml')
 $script:CommentLegalRx = '(?i)^(spdx-license-identifier|copyright|@license|-\*-\s*coding)'
+$script:CommentSlashMarkRx = [regex]::new('(?m)^[^\S\n]*(?://|/\*)')
+$script:CommentHashMarkRx = [regex]::new('(?m)^[^\S\n]*<?#')
+$script:CommentDocMarkRx = [regex]::new('(?m)^[^\S\n]*(?:///|//!|/\*\*)')
 $script:CommentExemptRx = '(?i)^(eslint-|prettier-ignore|@ts-|noqa|type:\s*ignore|pylint:|pyright:|mypy:|nolint|istanbul ignore|c8 ignore|biome-ignore|resharper|fmt:\s*(off|on)\b|isort:|<reference|spdx-license-identifier|copyright|@license|-\*-\s*coding)'
 
 function Test-CommentTarget([string]$Path) {
@@ -25,30 +28,51 @@ function Get-CommentBodyLines([string]$Path, [string[]]$Lines, [switch]$KeepDire
     $isSlash = $script:CommentSlashExts -contains $ext
     $exemptRx = if ($KeepDirectives) { $script:CommentLegalRx } else { $script:CommentExemptRx }
     $rawExempt = if ($KeepDirectives) { '(?!)' } elseif ($isSlash) { '^//(go:|\s*#(end)?region\b)' } elseif ($script:CommentPsExts -contains $ext) { '(?i)^#(requires|(end)?region)\b' } elseif ($script:CommentConfExts -contains $ext) { '^#(cloud-config\b|:schema\b|\s*yamllint (disable|enable)\b|\s*yaml-language-server:)' } else { '(?!)' }
+    $isPs = $script:CommentPsExts -contains $ext
     $inBlock = $false
-    for ($n = 0; $n -lt $Lines.Count; $n++) {
-        $t = ([string]$Lines[$n]).Trim()
-        $body = $null
-        if ($inBlock) {
-            $body = $t -replace '^\*+(?!/)', ''
-            if ($t -match '\*/|#>') { $inBlock = $false }
-        } elseif ($isSlash -and $t.StartsWith('//')) {
-            $body = $t -replace '^/{2,}!?', ''
-        } elseif ($isSlash -and $t.StartsWith('/*')) {
-            $body = $t -replace '^/\*+!?', ''
-            $inBlock = -not ($body -match '\*/')
-        } elseif ((-not $isSlash) -and $script:CommentPsExts -contains $ext -and $t.StartsWith('<#')) {
-            $body = $t.Substring(2)
-            $inBlock = -not ($body -match '#>')
-        } elseif ((-not $isSlash) -and $t.StartsWith('#') -and -not $t.StartsWith('#!')) {
-            $body = $t -replace '^#+', ''
-        }
-        if ($null -eq $body) { continue }
-        $body = ($body -replace '(\*/|#>)\s*$', '').Trim()
-        if ($body -eq '' -or $body -match $exemptRx -or $t -match $rawExempt) { continue }
-        $bodies.Add(@{ Body = $t; Line = $n })
+    $next = 0
+    foreach ($start in (Get-CommentMarkerIndexes $Lines $(if ($isSlash) { $script:CommentSlashMarkRx } else { $script:CommentHashMarkRx }))) {
+        if ($start -lt $next) { continue }
+        $n = $start
+        do {
+            $t = ([string]$Lines[$n]).Trim()
+            $body = $null
+            if ($inBlock) {
+                $body = $t -replace '^\*+(?!/)', ''
+                if ($t -match '\*/|#>') { $inBlock = $false }
+            } elseif ($isSlash -and $t.StartsWith('//')) {
+                $body = $t -replace '^/{2,}!?', ''
+            } elseif ($isSlash -and $t.StartsWith('/*')) {
+                $body = $t -replace '^/\*+!?', ''
+                $inBlock = -not ($body -match '\*/')
+            } elseif ((-not $isSlash) -and $isPs -and $t.StartsWith('<#')) {
+                $body = $t.Substring(2)
+                $inBlock = -not ($body -match '#>')
+            } elseif ((-not $isSlash) -and $t.StartsWith('#') -and -not $t.StartsWith('#!')) {
+                $body = $t -replace '^#+', ''
+            }
+            if ($null -ne $body) {
+                $body = ($body -replace '(\*/|#>)\s*$', '').Trim()
+                if (-not ($body -eq '' -or $body -match $exemptRx -or $t -match $rawExempt)) { $bodies.Add(@{ Body = $t; Line = $n }) }
+            }
+            $n++
+        } while ($inBlock -and $n -lt $Lines.Count)
+        $next = $n
     }
     return , $bodies
+}
+
+function Get-CommentMarkerIndexes([string[]]$Lines, [regex]$Rx) {
+    $hits = New-Object System.Collections.Generic.List[int]
+    if ($Lines.Count -eq 0) { return , $hits }
+    $text = [string]::Join("`n", $Lines)
+    $found = $Rx.Matches($text)
+    if ($found.Count -eq 0) { return , $hits }
+    $breaks = [regex]::Matches($text, "`n")
+    if ($breaks.Count -eq 0) { foreach ($m in $found) { $hits.Add(0) }; return , $hits }
+    [int[]]$at = $breaks.Index
+    foreach ($m in $found) { $hits.Add(-bnot [Array]::BinarySearch($at, $m.Index)) }
+    return , $hits
 }
 
 function Format-CommentGatePreview($Bodies) {
@@ -234,11 +258,18 @@ function Test-CommentPublicItem([string]$Ext, [string]$Code) {
 function Get-CommentDocFlags([string[]]$Lines) {
     $docFlag = New-Object bool[] $Lines.Count
     $inDoc = $false
-    for ($i = 0; $i -lt $Lines.Count; $i++) {
-        $t = ([string]$Lines[$i]).Trim()
-        if ($inDoc) { $docFlag[$i] = $true; if ($t -match '\*/') { $inDoc = $false }; continue }
-        if ($t.StartsWith('///') -or $t.StartsWith('//!')) { $docFlag[$i] = $true }
-        elseif ($t.StartsWith('/**')) { $docFlag[$i] = $true; $inDoc = -not ($t.Substring(3) -match '\*/') }
+    $next = 0
+    foreach ($start in (Get-CommentMarkerIndexes $Lines $script:CommentDocMarkRx)) {
+        if ($start -lt $next) { continue }
+        $i = $start
+        do {
+            $t = ([string]$Lines[$i]).Trim()
+            if ($inDoc) { $docFlag[$i] = $true; if ($t -match '\*/') { $inDoc = $false } }
+            elseif ($t.StartsWith('///') -or $t.StartsWith('//!')) { $docFlag[$i] = $true }
+            elseif ($t.StartsWith('/**')) { $docFlag[$i] = $true; $inDoc = -not ($t.Substring(3) -match '\*/') }
+            $i++
+        } while ($inDoc -and $i -lt $Lines.Count)
+        $next = $i
     }
     return , $docFlag
 }

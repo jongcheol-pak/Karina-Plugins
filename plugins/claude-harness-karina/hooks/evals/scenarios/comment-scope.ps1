@@ -157,6 +157,20 @@ Assert-Case -Name "comment-scope: doc 대상 — 되살림·회차 삭제 수" -
 $drA = [System.IO.File]::ReadAllText((Join-Path $dr 'a.rs'))
 Assert-Case -Name "comment-scope: doc 대상 — 되살린 doc 은 제자리에 있다" -R @{ code = 0; out = ('match=' + ($drA -eq "/// 옛 설명을 고침.`nfn old_doc() {}`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`n")) } -ExpectExit 0 -ExpectContains 'match=True'
 
+$mr = New-CsRepo 'many'
+$mrNames = @(for ($i = 1; $i -le 50; $i++) { '{0}/f{1:D2}.rs' -f $(if ($i -le 25) { 'one' } else { 'two' }), $i })
+foreach ($n in $mrNames) { Set-CsFile $mr $n "fn f() {}`n" }
+git -C $mr add .; git -C $mr commit -qm base
+$mrBase = (git -C $mr rev-parse HEAD).Trim()
+foreach ($n in $mrNames) { Set-CsFile $mr $n "// 회차 주석 $n`nfn f() {}`n" }
+git -C $mr commit -qam round
+$mrOut = Join-Path $csRoot 'many-out.txt'
+$r = Invoke-Cs @('-Base', $mrBase, '-Out', $mrOut, '-Repo', $mr)
+Assert-Case -Name "comment-scope: 창보다 많은 50파일·2폴더 — 끝 줄 수" -R $r -ExpectExit 0 -ExpectContains 'RESULT: 대상 50 · 회차 전 0 · 감사 0 · 보존 0'
+$mrWant = (@($mrNames | ForEach-Object { "${_}:1`t// 회차 주석 $_" }) -join "`n") + "`n"
+$mrGot = if (Test-Path -LiteralPath $mrOut) { [System.IO.File]::ReadAllText($mrOut) } else { '' }
+Assert-Case -Name "comment-scope: 창보다 많은 50파일·2폴더 — 목록이 입력 순서 그대로다" -R @{ code = 0; out = ('match=' + ($mrGot -eq $mrWant)) } -ExpectExit 0 -ExpectContains 'match=True'
+
 $nr = New-CsRepo 'noprefix'
 git -C $nr config diff.noprefix true
 git -C $nr config diff.mnemonicPrefix true
