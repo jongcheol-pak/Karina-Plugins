@@ -3047,7 +3047,7 @@ def main():
             abolished = ABOLISHED_FEATURE_RX.findall(stripped) if typ == "feature" else []
             if abolished:
                 names = "·".join(dict.fromkeys(abolished))
-                warn(f"폐지 절 보유: {r} (## {names} — 함정은 레포 docs/conventions.md, 채택 이유는 decisions.md 몫이고 나머지는 지운다, schema §2.3·§7-38)", r)
+                warn(f"폐지 절 보유: {r} (## {names} — 함정은 레포 docs/conventions.md, 기각한 대안은 레포 docs/decisions.md 몫이고 나머지는 지운다, schema §2.3·§7-38)", r)
             for phrase in dict.fromkeys(m.group(0) for m in RELATIVE_REFS_RX.finditer(stripped)):
                 warn(f"상대 참조: {r} -> '{phrase}' "
                      f"(대상의 이름·경로로 쓴다 — wiki-schema §1 사실 줄 형식, schema §7-39)", r)

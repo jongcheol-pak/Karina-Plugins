@@ -80,9 +80,6 @@ FAIL(그 절차의 범위가 통째로 빈다), 헤딩에만 있는 이름은 �
 런타임 폴더(skills·agents·scripts·hooks·evals·.claude-plugin) 전역이다 — 인용은 대개 다른 파일에 있다. **파일명 없는 `schema §N`·접두 없는 `§N` 은 대상 밖**이다:
 번호가 번들 전역에서 유일하고 코어 목차가 라우팅하므로 틀린 파일을 지목할 수 없다.
 
-⑯ 큐 소비 규칙 포인터 실재 — 큐 태그별 소비 규칙(B-1 0)을 옛 파일에서 정본으로 가리키는 줄이
-없는가. 출력 이름은 「소비 포인터 실재」다(번호는 ⑫ 와 겹쳐 쓰이던 것을 2026-10-08 에 갈랐다).
-
 판정:
   - 전 항목 일치 → 요약 출력 + exit 0
   - 불일치 → 항목별 소스 값 나열 + exit 1
@@ -114,8 +111,6 @@ SCHEMA_TYPES_MD = os.path.join(SKILL_DIR, "references", "schema-types.md")
 SCHEMA_BUDGET_MD = os.path.join(SKILL_DIR, "references", "schema-budget.md")
 SCHEMA_LINT_MD = os.path.join(SKILL_DIR, "references", "schema-lint.md")
 OPS_MD = os.path.join(SKILL_DIR, "references", "procedures-ops.md")
-# 절차 K 5~6(큐 기록 규약)은 v1.218.0에서 SKILL.md에서 이 파일로 이관됐다 — 아래 화이트리스트 3건의 귀속이 함께 옮겨간다.
-QUEUE_RULES_MD = os.path.join(SKILL_DIR, "references", "queue-rules.md")
 # 절차 K 1~5(조회)는 v1.220.0에서 SKILL.md에서 이 파일로 이관됐다 — 아래 화이트리스트 2건의 귀속이 함께 옮겨간다.
 #  축 ⑪ 스캔 대상은 `_trigger_scan_scope()`의 `references/*.md` 글롭이 자동으로 잡으므로 경로를 손으로 더하지 않는다.
 LOOKUP_RULES_MD = os.path.join(SKILL_DIR, "references", "lookup-rules.md")
@@ -125,9 +120,6 @@ OPS_RULES_MD = os.path.join(SKILL_DIR, "references", "wiki-ops-rules.md")
 TEMPLATES_MD = os.path.join(SKILL_DIR, "references", "templates.md")
 LINT_PY = os.path.join(SKILL_DIR, "scripts", "lint.py")
 CONTENT_MD = os.path.join(SKILL_DIR, "references", "procedures-content.md")
-# 회차 65 에서 `procedures-content.md` 의 B-1 0(큐 태그별 소비 규칙)이 갈라져 나온 파일.
-#  그 절차 하나가 절차 B 의 38% 였고 B 를 여는 Read 가 매번 상한에 걸렸다.
-QUEUE_CONSUME_MD = os.path.join(SKILL_DIR, "references", "queue-consume-rules.md")
 LINT_CASES_JSON = os.path.join(EVALS_DIR, "lint-cases.json")
 
 # schema §2.x 헤딩 → 예산 키 (### 2.N 뒤 첫 토큰이 타입명)
@@ -437,19 +429,9 @@ def check_lint_s7_numbers(lint_text, schema_text):
 #   라벨만 있거나 파일만 있는 언급, 범위 서술(`…md`(A~E·I) 처럼 괄호 안 나열)은 skip(오탐 방지).
 #   base 절차 문자 단위로만 대조 — 재분할 시 '절차가 다른 파일로 갔는데 포인터가 옛 파일 지칭'을 잡는 게 목적.
 # 경로는 문서 지배 관례가 백틱 래핑(`…md`)이라 선택적 백틱을 허용한다(안 그러면 L2F 다수를 놓침 — B1).
-# ⚠ `queue-consume-rules.md`(회차 65 신설)는 **의도적으로 넣지 않는다.**
-#  이 축의 모델은 「라벨 → 그 절차의 `### X.` 헤딩이 있는 파일」이다. 그런데 그 파일이
-#  담는 것은 **절차 B 의 하위 단계(B-1 0) 본문**이라 `### B.` 헤딩을 갖지 않는다 —
-#  넣으면 `B-1 0(…queue-consume-rules.md)` 같은 **정당한 포인터가 오귀속으로 잡힌다**
-#  (실측 **5건** — `procedures-ops.md` 4 · `wiki-schema.md` 1. `queue-rules.md` 는
-#  `check_prose_pointers` 의 `docs` 넷에 없어 **이 축의 모집단 밖**이다).
-#  그래서 **새 파일로 가는 포인터는 이 축의 사각지대로 남고**, 그 자리는
-#  **축 ⑯ `check_consume_pointer_freshness`** 가 받는다(옛 파일을 가리키는 줄 0건).
-#  하위 단계 본문의 이동을 일반적으로 재려면 축의 모델 자체를 「라벨 → 본문 파일」로
-#  바꿔야 하고, 그것은 이 회차의 범위가 아니다.
 _PROC_FILE = r"`?references/procedures-(?:content|ops)\.md`?"
 # base 문자는 [A-Z] 동적 캡처 — [A-L] 하드코딩 금지(파일 상단 ROUTING_LETTER_RX 원칙과 일관 — 절차 M+
-#   추가 시에도 매치되게, 미정의 문자는 letter_file.get()이 None이라 자연히 skip). 하위라벨(B-1 0·A-3a·B-2 3-1·K 5-2).
+#   추가 시에도 매치되게, 미정의 문자는 letter_file.get()이 None이라 자연히 skip). 하위라벨(B-1 0·A-3a·B-2 3-1·K 2).
 _LABEL = r"([A-Z])(?:[-\s]\d+[a-z]?)*"
 # 파일→라벨: `…md의 B-1`, `…md "G"`, `…md F-1` (파일 뒤 구분자는 의/따옴표/공백만 — 괄호 불가로 `(A~E·I)` 범위서술 제외)
 POINTER_F2L_RX = re.compile(_PROC_FILE + r'(?:의)?\s*"?\s*' + _LABEL)
@@ -464,9 +446,9 @@ def build_letter_file_map():
     ⑤(check_procedure_placement)의 지역변수 found 대신 절차 문면이 사는 파일 전부를 직접
     스캔한다(독립 재계산 — 지역변수 공유 대신). PROC_HEADING_RX(### X. )를 ⑤와 동일하게 사용.
 
-    **스캔 대상은 절차가 이관된 자리를 따라간다** — 절차 K의 조회(1~5)와 큐 기록(5~6)이
-    `lookup-rules.md`·`queue-rules.md`로 옮겨졌는데(이 파일 위쪽 주석이 그 이관을 적는다)
-    목록은 4파일에 멈춰 있었다. 그러면 그 두 파일의 절차 헤딩이 **어느 축에도 안 잡혀**,
+    **스캔 대상은 절차가 이관된 자리를 따라간다** — 절차 K가
+    `lookup-rules.md`로 옮겨졌는데(이 파일 위쪽 주석이 그 이관을 적는다)
+    목록은 4파일에 멈춰 있었다. 그러면 그 파일의 절차 헤딩이 **어느 축에도 안 잡혀**,
     중복·이동이 조용히 통과한다. 이 함수가 「어디에 있는가」의 유일한 근거이므로 목록이
     좁으면 그 밖은 존재하지 않는 것과 같다."""
     result = {}
@@ -477,8 +459,6 @@ def build_letter_file_map():
             os.path.join(SKILL_DIR, "references", "procedures-content.md")),
         "references/procedures-ops.md": read(OPS_MD),
         "references/lookup-rules.md": read(LOOKUP_RULES_MD),
-        "references/queue-rules.md": read(QUEUE_RULES_MD),
-        "references/queue-consume-rules.md": read(QUEUE_CONSUME_MD),
     }
     for fname, text in sources.items():
         for hm in PROC_HEADING_RX.finditer(text):
@@ -495,9 +475,9 @@ def check_prose_pointers(skill_text, schema_text):
     안 걸려 차기 재분할 시 조용히 재발한다(회귀 가드 공백).
 
     보수적 스코프(오탐 방지): 파일명 AND 라벨이 '인접'(의·따옴표·괄호·대시로 직접 연결)할 때만
-    검사한다. 한 줄에 여러 (라벨→파일)이 있어도 각 인접쌍만 대조하므로, `K 5-2(references/queue-rules.md)·
+    검사한다. 한 줄에 여러 (라벨→파일)이 있어도 각 인접쌍만 대조하므로, `K 2(references/lookup-rules.md)·
     B-1 0(references/procedures-content.md)`처럼 서로 다른 귀속이 한 줄에 있어도 B만 content로
-    대조하고 K는 (procedures-*.md가 아니라 references/queue-rules.md 귀속이라) 건드리지 않는다. base 문자 단위 대조
+    대조하고 K는 (procedures-*.md가 아니라 references/lookup-rules.md 귀속이라) 건드리지 않는다. base 문자 단위 대조
     — 하위라벨(B-1 0의 '1 0')까지 검증하진 않는다(재분할 파일 오귀속 포착이 목적).
     반환: (불일치 목록, 대조 항목 수)."""
     letter_file = build_letter_file_map()
@@ -934,8 +914,6 @@ TRIGGER_ALLOWLIST = [
     (SCHEMA_LINT_MD, ["19. **log 아카이브 인덱스 정합**", "영영 아카이브로 넘어가지 않고"], "§7-19 검사 항목 본문 — 오배치 항목이 아카이브로 「넘어가지 않는다」는 결과 서술이지 예산 조건이 아니다"),
     (CONTENT_MD, ["5. **델타 신뢰도 점검**", "30일 초과면"], "허브 `updated` 30일 초과 = ingest 델타 신뢰도 축"),
     (LOOKUP_RULES_MD, ['**"범용 패턴"(`30_knowledge/patterns/`)을 먼저 보고**', "프로젝트 경계를 넘는 지식이라"], "절차 K 조회 순서 — 「경계를 넘는 지식」"),
-    (QUEUE_RULES_MD, ["- **입도 기준(필수 — 노이즈 방지)**", "사소한 결정으로 넘치면"], "[DECISION] 큐 입도 — 「범위를 넘는」"),
-    (QUEUE_RULES_MD, ["- **잔량 경고**: append 시 `pending.md`", "**20건**을 넘으면"], "pending 큐 잔량 임계"),
     (LINT_PY, "#   기존 `[^\\n]*`는 줄바꿈을 못 넘어", "펜스 정규식 구현 주석 — 예산 무관"),
     (LINT_PY, "#  **수용된 한계**: 접두가 15자를 넘는 위반", "큐 형식 접두 길이 — 예산 무관"),
     (LINT_PY, "「뒷부분」으로 넘어가고 롤오버 대상에서",
@@ -1012,7 +990,7 @@ TRIGGER_ALLOWLIST = [
 #  ⚠ 정당한 추가면 여기를 올리는 것이 정답이다. 숫자를 맞추려고 면제를 지우면 안 된다 —
 #   그 자리는 다시 위반으로 잡혀 결국 조건어 문면을 피해 쓰게 되고, 그것이 T11이 금지한
 #   "회피"다(면제는 기록이 남지만 회피는 아무 흔적도 남기지 않는다).
-TRIGGER_ALLOWLIST_BASELINE = 80   # 작업 규약 타입 폐지로 그 예산 계층·초과 케이스·스택 공통 지식 라우팅 면제 8건이 소멸했다(2026-10-20). 그 전은 88 — B-1a 의 「14일·5파일」 축소 조건을 파일 추가·삭제·이름변경 트리거로 바꾸며 그 개수 조건 면제 1건이
+TRIGGER_ALLOWLIST_BASELINE = 78   # 결정 큐 폐지로 queue-rules.md 의 큐 입도·잔량 임계 면제 2건이 소멸했다(2026-11-11). 그 전은 80 — 작업 규약 타입 폐지로 그 예산 계층·초과 케이스·스택 공통 지식 라우팅 면제 8건이 소멸했다(2026-10-20). 그 전은 88 — B-1a 의 「14일·5파일」 축소 조건을 파일 추가·삭제·이름변경 트리거로 바꾸며 그 개수 조건 면제 1건이
                                   #  소멸했다(2026-10-18 위키 경량화). 그 전은 89 — F-1 번호 목록이 schema-lint §7 로 합쳐지며 F-1 라벨 면제 2건(§7-14·§7-32)이
                                   #  소멸했다(v1.319.0 — 같은 조건어는 §7 본문 쪽 면제가 계속 덮는다).
                                   #  그 전은 91(schema §5 2b 를 절차 B-1 5 포인터로 줄이며 -1, v1.317.0), 그 전은 92(convention을 예산 신호 계층에서 빼며 -4 +6), 그 전은 90(큐 4종 폐기 직후).
@@ -1137,38 +1115,6 @@ def _entry_anchors(entry):
 #  1줄**로 적는다 -- 산문을 정규식으로 파싱하면 문구를 조금만 다듬어도 앵커가 깨진다.
 ROW_SHAPE_LINE_RX = re.compile(
     r"(?m)^>\s*\*\*§7-16 대상 토큰\(기계 대조\)\*\*:\s*(.+?)\s*$")
-
-
-def check_consume_pointer_freshness():
-    """⑯ 큐 소비 규칙 포인터의 실재 — 옛 파일을 정본으로 가리키는 줄이 없는가.
-
-    회차 65 가 `procedures-content.md` 의 B-1 0(큐 태그별 소비 규칙)을
-    `queue-consume-rules.md` 로 갈라내면서, **축 ⑧ 이 그 자리를 못 보게 됐다** —
-    그 축의 모델은 「라벨 → 그 절차의 `### X.` 헤딩이 있는 파일」인데 새 파일은
-    절차 B 의 **하위 단계 본문**이라 `### B.` 헤딩을 갖지 않는다(넣으면 정당한
-    포인터가 오귀속 red 가 된다). 착수 시점에는 같은 7개 포인터가
-    `procedures-content.md` 를 가리켜 축 ⑧ 이 실제로 검사하고 있었으므로,
-    **대체 축이 없으면 커버리지가 순감한다.** 그 자리를 이 축이 받는다.
-
-    판정: `references/*.md` 에서 **한 줄 안에 `B-1 0` 과 `procedures-content.md` 가
-    함께 오면** 불일치다. 소비 규칙 본문이 그 파일을 떠났으므로 그런 줄은
-    옛 위치를 가리키는 스테일 포인터다. 경로가 아니라 **줄 내용**만 본다
-    (`grep -rn | grep` 형태는 경로 매치가 섞여 0 에 도달할 수 없고,
-    `sed` 로 경로를 지우는 형태는 Windows 드라이브 콜론에 어긋난다 — 실측 7↔9).
-    반환: (불일치 목록, 대조 항목 수)."""
-    issues = []
-    checked = 0
-    ref_dir = os.path.join(SKILL_DIR, "references")
-    for name in sorted(os.listdir(ref_dir)):
-        if not name.endswith(".md"):
-            continue
-        checked += 1
-        for no, line in enumerate(read(os.path.join(ref_dir, name)).splitlines(), 1):
-            if "B-1 0" in line and "procedures-content.md" in line:
-                issues.append(
-                    f"{name}:{no}: 소비 규칙을 옛 파일로 가리킨다 — 정본은 "
-                    f"references/queue-consume-rules.md 다")
-    return issues, checked
 
 
 def check_row_shape_sync(schema_text, lint):
@@ -1643,11 +1589,6 @@ def main():
     checked += row_checked
     mismatches.extend(row_issues)
     axes.append(("행 대상 조건", row_checked, "항목"))
-
-    consume_issues, consume_checked = check_consume_pointer_freshness()
-    checked += consume_checked
-    mismatches.extend(consume_issues)
-    axes.append(("소비 포인터 실재", consume_checked, "파일"))
 
     route_issues, route_checked = check_route_table(skill_text, ops_rules_text)
     checked += route_checked

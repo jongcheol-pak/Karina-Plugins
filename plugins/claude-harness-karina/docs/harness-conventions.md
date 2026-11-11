@@ -79,7 +79,7 @@
 
 **Release (배포·릴리즈 발행)** — 버전 정본은 `.claude-plugin/plugin.json` 하나이고 `README.md` 상단 `**버전**:` 줄을 함께 갱신한다(레포 루트 `marketplace.json`(마켓 `karina-plugins`)에는 버전 필드가 없다 — `source: ./plugins/claude-harness-karina`로 참조한다). **버전은 버전만 올린 커밋 하나로 올린다** — 제목 `설정: v{버전} — {회차 요약}` 인, 버전만 올린 커밋 하나를 main 에 둔다. 그 위에 발행한 릴리즈 태그가 아래 「판정 시점」 의 기준점이 된다. 회차는 plan 의 마지막 task 로 버전만 올린 별도 커밋을 두고, 회차 끝 로컬 게이트(`skills/implement/references/local-gate.md`)가 그 커밋까지 검증한 뒤 push 한다. **릴리즈 대상은 버전 커밋이 아니라 그 커밋을 담아 push 한 HEAD 다** — 버전 커밋 뒤에도 완료 리뷰 수정·게이트 FAIL 수정 커밋이 붙을 수 있고, 버전 커밋에 태그를 붙이면 그 뒤 런타임 커밋을 아래 「판정 시점」 과 `warn-version-drift.ps1` 이 미배포로 센다(v1.386.0 이 릴리즈를 버전 커밋 뒤 커밋에 붙인 것과 같은 이유). 디버깅 직접 수정은 plan 이 없어 `skills/implement/references/local-gate.md` 「디버깅 단독」 이 「커밋」 뒤 게이트 앞에 버전 커밋을 한 번 둔다. 계획 체인은 마지막 계획의 첫 워커 회차만 버전 task 를 두고 이어받기는 두지 않는다 — 마지막 계획이 병렬 그룹원이면 그 그룹의 마지막 워커가 병합 뒤 한 번(`skills/chain-plan/references/parallel.md`「버전」)(`skills/chain-plan/references/spec-format.md` — 체인 끝 push 가 하나라 계획마다 올리면 릴리즈 없는 버전이 쌓인다). **main 에 올라가면 곧바로 릴리즈를 발행한다** — 태그는 모노레포에서 플러그인끼리 겹치지 않게 `karina-v{버전}` 이다. `gh release create karina-v{버전} --target <push 한 HEAD 의 full-sha>`(**short sha는 거부된다**). ⚠ **그 태그는 원격에만 생겨** `git tag -l`로는 안 보인다 — 확인은 `gh release list`. **로컬 태그만 보고 「안 만드는 관행」으로 역추론하면 누락된다**: `ef38a8fd`가 실제로 그렇게 판단해 규약에 「태그도 릴리즈도 만들지 않는다」를 적었고, 그 오기를 따라 v1.247.0·v1.248.0 두 배포가 릴리즈 없이 끝났다(회차 35가 소급 발행). 설치본 반영은 사용자가 `/plugin update`를 실행할 때 일어난다. 릴리즈 발행은 어느 경로든 별도 승인 대상이다(버전 커밋 push 는 승인된 plan·스킬 안이면 묻지 않는다 — 글로벌 지침 「Git」).
 
-**판정 시점 — 「이번 push 에 버전이 올랐는가」로 재지 않는다.** 그 기준은 **버전을 올린 회차**만 잡아, 반대 방향(플러그인을 고쳤는데 버전을 안 올린 경우)을 통째로 놓친다. **재는 것은 `git fetch -q origin tag karina-v<마지막 릴리즈 버전>` 뒤 `git log karina-v<마지막 릴리즈 버전>..HEAD -- .claude-plugin agents evals hooks scripts skills`(하니스 루트에서 — 런타임 폴더만 센다) 이고(태그는 원격에만 생겨 받아 와야 한다) 거기 커밋이 있으면 발행 대상이다** — 기준은 버전 커밋이 아니라 **릴리즈 태그 커밋**이다(릴리즈가 버전 커밋 뒤 커밋에 붙으면 버전 커밋 기준은 이미 배포된 변경을 다시 센다 — v1.386.0 이 그 꼴이다). **`warn-version-drift.ps1` 이 세션 시작 때 같은 것을 origin/main 기준으로 알린다(`[karina 미배포]`)** — 태그 커밋은 로컬 태그 → 캐시 → `ls-remote` 순으로 얻고, 못 얻으면 판정을 건너뛴다(근거 `scripts/rules/version-drift-rationale.md` §5). 미push 커밋은 그 hook 이 보지 않으므로 회차 끝 판정은 이 명령으로 한다. **실해(2026-09-19)**: 한 회차의 첫 작업이 `skills/llm-wiki/references/queue-consume-rules.md` 를 고쳤는데 그 뒤 세 회차가 위키 vault·`docs/plans/`·회차 요구 기록(2026-11-06 폐지)만 건드려, 매 회차의 「이번 push 에 `plugin.json` 변경이 있는가」 판정이 연속으로 「없음」을 냈다. **사용자가 묻지 않았으면 그 변경은 미배포로 남았다** — 그 사이 병행 세션이 옛 문면으로 큐를 소비해 `lint §7-33` 위반을 실제로 냈다.
+**판정 시점 — 「이번 push 에 버전이 올랐는가」로 재지 않는다.** 그 기준은 **버전을 올린 회차**만 잡아, 반대 방향(플러그인을 고쳤는데 버전을 안 올린 경우)을 통째로 놓친다. **재는 것은 `git fetch -q origin tag karina-v<마지막 릴리즈 버전>` 뒤 `git log karina-v<마지막 릴리즈 버전>..HEAD -- .claude-plugin agents evals hooks scripts skills`(하니스 루트에서 — 런타임 폴더만 센다) 이고(태그는 원격에만 생겨 받아 와야 한다) 거기 커밋이 있으면 발행 대상이다** — 기준은 버전 커밋이 아니라 **릴리즈 태그 커밋**이다(릴리즈가 버전 커밋 뒤 커밋에 붙으면 버전 커밋 기준은 이미 배포된 변경을 다시 센다 — v1.386.0 이 그 꼴이다). **`warn-version-drift.ps1` 이 세션 시작 때 같은 것을 origin/main 기준으로 알린다(`[karina 미배포]`)** — 태그 커밋은 로컬 태그 → 캐시 → `ls-remote` 순으로 얻고, 못 얻으면 판정을 건너뛴다(근거 `scripts/rules/version-drift-rationale.md` §5). 미push 커밋은 그 hook 이 보지 않으므로 회차 끝 판정은 이 명령으로 한다. **실해(2026-09-19)**: 한 회차의 첫 작업이 skills/llm-wiki/references/queue-consume-rules.md(2026-11-11 폐지) 를 고쳤는데 그 뒤 세 회차가 위키 vault·`docs/plans/`·회차 요구 기록(2026-11-06 폐지)만 건드려, 매 회차의 「이번 push 에 `plugin.json` 변경이 있는가」 판정이 연속으로 「없음」을 냈다. **사용자가 묻지 않았으면 그 변경은 미배포로 남았다** — 그 사이 병행 세션이 옛 문면으로 큐를 소비해 `lint §7-33` 위반을 실제로 냈다.
 
 **차단 경로 커버리지** — `hooks/evals/check-block-coverage.py`. **차단 사유 문구가 골든에 없으면 그 경로는 코드를 지워도 green 이다** — 차단 hook 이나 그 골든 케이스를 고쳤으면 필수다.
 
@@ -111,9 +111,9 @@
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 48,929 | 137,000 |
+| `docs/harness-conventions.md` | 48,942 | 137,000 |
 | `docs/golden-runner.md` | 15,701 | 28,000 |
-| `skills/llm-wiki/references/lookup-rules.md` | 8,865 | 37,000 |
+| `skills/llm-wiki/references/lookup-rules.md` | 7,424 | 37,000 |
 
 > **단위는 문자 수다(v1.273.0)** — 근거는 `skills/BUDGET.md`「예산 표」의 단위 문단이다. **아래 도출 근거의 수치는 전부 바이트 실측이고 그대로 둔다** — *"그때 그렇게 정했다"*는 기록이라 낡지 않으며, **상한 숫자는 바이트 시절 값을 단위만 옮긴 것**이다(그래서 실질 여유가 늘었다 — 이 표의 파일은 B/문자가 1.8~2.0이다).
 
