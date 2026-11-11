@@ -219,41 +219,6 @@
       "rationale": "M-2 — 비 UTF-8(CP949) 파일 1개가 전체 lint를 크래시시키지 않고 그 파일만 ERR로 격리, 나머지 검사 계속"
     },
     {
-      "fixture": "pending-backlog",
-      "expect_keywords": [
-        "pending.md 미처리 잔량",
-        "DECISION 1건",
-        "큐 정리(절차 M)"
-      ],
-      "expect_absent": [
-        "깨진 링크",
-        "경로 없는 wikilink",
-        "형식 위반",
-        "구현 완료 시점"
-      ],
-      "rationale": "§7-25 pending 잔량 집계 INFO — [DECISION] 집계 무회귀. **추가(§7-1 pending 제외, v1.116.0)**: 폐지 태그 [SYMPTOM] 행의 대응 페이지가 부재 대상 wikilink여도 깨진 링크 ERR·경로없음 WARN이 나지 않아야 함 — 루트 pending.md는 소비 대기 큐라 링크 규약 대상이 아니다(제외가 빠지면 큐 항목이 lint를 exit 1로 죽인다)"
-    },
-    {
-      "fixture": "pending-backlog",
-      "expect_keywords": [
-        "폐지 타입·태그 보유: pending.md [SYMPTOM] 항목 1건"
-      ],
-      "rationale": "§7-41 양성(SYMPTOM 태그) — 증상 큐는 2026-11-04 증상별 인덱스와 함께 폐지됐다. 태그를 집계에서 걷으면 남은 줄이 집계·형식 검사 어디에도 안 잡히므로 폐지 태그로 잡아 지우게 한다"
-    },
-    {
-      "fixture": "pending-malformed",
-      "expect_keywords": [
-        "pending.md 형식 위반 3건",
-        "pending.md 미처리 잔량",
-        "DECISION 1건"
-      ],
-      "expect_absent": [
-        "DECISION 2건",
-        "DECISION 3건"
-      ],
-      "rationale": "§7-25 형식 위반 WARN(pending.md) — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두가 아닌 줄이 잔량 집계에서 조용히 누락되던 사각지대를 검출한다(실측: 실 vault 큐 17줄이 0건으로 집계돼 20건 잔량 경고가 통째로 침묵). 픽스처는 위반 3종을 담는다 — ⓐ 날짜가 끝 괄호로 밀린 줄 ⓑ 대시 뒤 공백 없는 줄 ⓒ **날짜 형식 불일치**(`[2026-8-2]` 한 자리 월·일). ⓒ는 Phase F-7 M1이 잡은 미커버 축이다 — 판정을 선두 태그 기준으로 좁히는 과정에서 접두를 날짜 형식으로 제한하면 이런 줄이 **집계에도 위반에도 안 잡혀** 조용히 사라진다(이 WARN이 존재하는 이유의 정중앙)(불릿 판별을 pend_ok_rx보다 엄격하게 두면 정상에도 위반에도 안 잡히는 2차 사각지대가 생겨, 두 정규식의 공백 폭을 맞춘 것을 고정). 정상 줄 1건을 섞어 **위반 WARN과 잔량 INFO가 병존**함을 검증하고, expect_absent로 위반 줄이 태그별 집계에 잘못 포함되지 않음(과다 집계 0)을 못 박는다. 짝: 정상 픽스처 pending-backlog의 expect_absent '형식 위반'이 오탐 0을 고정한다"
-    },
-    {
       "fixture": "guide-kind-missing",
       "expect_keywords": [
         "guide_kind 누락"
@@ -2084,20 +2049,6 @@
       "rationale": "§7-41 양성(타입) — 옛 작업 규약 타입 페이지를 잡는다. 타입을 걷으면 lint 에 알 수 없는 타입 검사가 없어 새로 생긴 페이지가 아무 검사에도 안 걸린다"
     },
     {
-      "fixture": "retired-tag",
-      "expect_keywords": [
-        "폐지 타입·태그 보유: pending.md"
-      ],
-      "rationale": "§7-41 양성(태그) — 큐의 `- [날짜] [PROJECT-FACT]` 항목 줄을 잡는다. 태그를 큐 집계에서 걷으면 그 줄은 집계·형식 검사 어디에도 안 걸린다"
-    },
-    {
-      "fixture": "retired-tag-malformed",
-      "expect_keywords": [
-        "폐지 타입·태그 보유: pending.md [SYMPTOM] 항목 2건"
-      ],
-      "rationale": "§7-41 양성(형식이 틀린 폐지 태그) — 들여쓴 줄·날짜 없는 줄도 잡는다. 폐지 태그는 §7-25 집계·형식 검사의 태그 목록에서 빠졌으므로, 이 검사가 정확한 형식만 보면 그런 줄은 어디에도 안 걸린다"
-    },
-    {
       "fixture": "retired-index-section",
       "expect_keywords": [
         "폐지 타입·태그 보유: index.md '## 증상별 인덱스'"
@@ -2129,16 +2080,6 @@
         "폐지 타입·태그 보유"
       ],
       "rationale": "§7-41 음성 짝(아카이브) — `90_archive/` 아래 옛 페이지는 frozen 이력이라 잡지 않는다"
-    },
-    {
-      "fixture": "retired-ok-note",
-      "expect_keywords": [
-        "[ERR] 오류"
-      ],
-      "expect_absent": [
-        "폐지 타입·태그 보유"
-      ],
-      "rationale": "§7-41 음성 짝(인용 주석) — 큐 머리 인용 주석 속 태그 문자열은 항목 줄이 아니라 잡지 않는다"
     }
   ]
 }

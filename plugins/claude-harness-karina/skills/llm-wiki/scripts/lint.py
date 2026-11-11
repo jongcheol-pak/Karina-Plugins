@@ -2,7 +2,7 @@
 """llm-wiki Lint 보조 스크립트.
 
 사용법: python lint.py "<vault_path>" [--fix [--dry-run]] [--build-index [--dry-run]] [--auto-split [--dry-run]]
-검사: 깨진/경로 없는 wikilink(루트 큐 파일 pending.md는 제외 — §7-1) / 예산 준수(§7-2 발동·guide_kind 부재/오타 —
+검사: 깨진/경로 없는 wikilink(§7-1) / 예산 준수(§7-2 발동·guide_kind 부재/오타 —
       platform-bootstrap·ui-ux guide는 코드 펜스 내부 문자 제외 판정, recipe는 펜스 포함)
       / platform·origin·confidence·category 통제어휘 위반·누락
       / updated 필드 누락(§7-9 — 최종 수정일 추적 전제) / feature 폐지 절 보유(§7-38 — 구현 방법·동작(사용법)·UI·UX·관련 파일·facts 동작·구조·관련 지식·레시피)
@@ -10,9 +10,6 @@
       / tech_stack 휘발성 버전 / index·sub-index 분할 신호(INFO) / deprecated 표기 정합·집계
       / 본문 코드 경로(§7-40 — project·feature·decision-log 본문의 `a/b.ext` 백틱 토큰. 각주 정의 줄·펜스·허브 경로 줄·URL·아카이브 포인터 제외)
       / 시크릿 의심 패턴(§7-22 — password/API key/token/Bearer/DB 연결문자열/개인키/URI 자격증명)
-      / 큐 잔량 집계(INFO — 절차 K 큐 `pending.md`, §7-25)
-        · pending.md: [DECISION]
-        + 형식 위반(WARN — 태그는 있으나 날짜 선두가 아니라 집계에서 누락되는 줄, §7-25)
       / decision-log 정합(§7-24 — '## 아카이브' 포인터 ↔ 실파일 양방향 + 항목 결정 어휘)
       / log 아카이브 인덱스 정합
       / 미해결 질문 인덱스 동기(§7-23 — open 미등록 유실 위험·resolved 잔존 stale)
@@ -23,7 +20,7 @@
       / 본문 릴리즈 마커(§7-28 — vX.Y.Z 3필드 semver, §5 changelog 미러링 금지. decision-log·question 제외)
       / 장식 이모지(§7-29 — 20_/30_/40_ 본문 산문의 Emoji_Presentation 이모지. 코드펜스·lint-* 리포트·decision-log 제외)
       / 이동·분리 도달 경로 정합(§7-30 — ⓐ 허브 '## 아카이브' 포인터 ↔ changes.md 양방향)
-      / 폐지 타입·태그 보유(§7-41 — 옛 작업 규약 타입 페이지·pending.md 의 [PROJECT-FACT]·[SYMPTOM] 항목 줄·index.md 증상별 인덱스 절 WARN)
+      / 폐지 타입·태그 보유(§7-41 — 옛 작업 규약 타입 페이지·index.md 증상별 인덱스 절 WARN)
       / 섹션 구역화 권장(§7-32 — feature의 한 섹션이 SECTION_H3_CHARS를 초과하면서 '### ' 0개면 INFO).
       / decision-log 방향 미기재(§7-33 — 기각·보류 항목의 판정 직후 ': {실제 방향}' 부재).
       / patterns 관측 폭 집계(INFO — '## 프로젝트 사례' 절 미보유 건수 / 전체, §7-35).
@@ -108,9 +105,6 @@ FEAT_ROW_STEM_RESOLVE = True
 PLATFORM_VOCAB = {"windows-desktop", "web", "mobile", "cli", "cross"}
 ORIGIN_VOCAB = {"agent-synthesized", "human-validated"}
 CONFIDENCE_VOCAB = {"high", "medium", "low"}
-# vault 루트 소비 대기 큐 (wiki-schema §6·§9 · schema-lint §7-1 — 지식 페이지가 아니라 검사 대상에서 제외되는 축).
-#  위키 세션이 반영 후 제거한다.
-ROOT_QUEUE_FILES = {"pending.md"}
 # 생성기가 소유하는 폴더 — vault 안에 있으나 **위키 콘텐츠가 아니다**. 모델이 만든 카드·개념·
 #  대화 기록이라 사람이 쓴 페이지의 규약(frontmatter `type`·인덱스 등록·경로 명시 wikilink)을
 #  따르지 않고, 배제하지 않으면 그 산출물이 지식 페이지로 검사돼 실제 결함을 덮는다.
@@ -125,10 +119,6 @@ def is_generated(rel):
     return rel.startswith(GENERATED_DIRS)
 
 
-# 큐 항목의 정상 접두 — `[YYYY-MM-DD] ` 하나뿐이다(§7-25 형식 규약). 형식 위반 판정이
-#  이 정규식과 어긋나는 접두를 위반으로 센다: 날짜 누락(`- [TAG]`)·형식 불일치(`[2026-7-2]`)·
-#  대괄호 없음(`- 2026-07-02 [TAG]`) 셋 다 여기서 걸린다.
-QUEUE_DATE_PREFIX_RX = re.compile(r"^\[\d{4}-\d{2}-\d{2}\]\s*$")
 # decision-log 항목 결정 어휘 (schema-types §2.8 · wiki-schema §3 — 어긋나면 타임라인 합성·번복 추적 누락)
 DECISION_VOCAB = {"채택", "보류", "기각", "번복"}
 # §7-33 방향 풀어쓰기를 요구하는 판정 (schema-types §2.8) — 주제 자리에 행위·부정문이 오면
@@ -150,12 +140,7 @@ PATTERN_CASE_SECTION = "프로젝트 사례"
 PATTERNS_DIR = "30_knowledge/patterns/"
 
 RETIRED_PAGE_TYPES = ("convention",)
-RETIRED_QUEUE_TAG_RX = re.compile(r"^\s*-\s*.{0,15}?\[(PROJECT-FACT|SYMPTOM)\]")
 RETIRED_INDEX_SECTION_RX = re.compile(r"(?m)^##[ \t]+증상별 인덱스[ \t]*$")
-RETIRED_QUEUE_TAG_HINT = {
-    "PROJECT-FACT": "작업 함정은 그 레포 docs/conventions.md 로 옮기고 큐에서 지운다",
-    "SYMPTOM": "증상 큐는 폐지됐다 — 디버깅 사례는 레포 docs/conventions.md 몫이고 큐에서 지운다",
-}
 RELATIVE_REFS_RX = re.compile(r"(위|아래|앞) 절(?!차)|(위|아래) 표(?![기시준현])|(앞|이전) 회차")
 # 본문 릴리즈 마커 (§7-28 — §5 "changelog 미러링 금지"의 기계 신호). v접두 3필드 semver만 —
 RELEASE_MARKER_RX = re.compile(r"(?<![0-9A-Za-z_.])v\d+\.\d+\.\d+(?![0-9.])")
@@ -740,11 +725,11 @@ def _fm_list(fm, key):
 
 def scan_index_pages(vault):
     """인덱스 생성용 최소 스캔 -- 검사는 돌리지 않고 frontmatter와 본문만 모은다.
-    `90_archive/`·루트 큐 파일·인덱스 자신은 생성 대상이 아니라 제외한다."""
+    `90_archive/`·인덱스 자신은 생성 대상이 아니라 제외한다."""
     pages = {}
     for p in glob.glob(os.path.join(glob.escape(vault), "**", "*.md"), recursive=True):
         r = os.path.relpath(p, vault).replace("\\", "/")
-        if (r.startswith("90_archive/") or r in ROOT_QUEUE_FILES
+        if (r.startswith("90_archive/")
                 or r.startswith("index") or is_generated(r)):
             continue
         try:
@@ -1720,7 +1705,7 @@ def _rollover_items(items, fits, keep_min=1):
         moved.add(i)
     # (날짜, 블록) 튜플을 그대로 돌려준다 -- 블록 텍스트만 주면 호출부가 날짜를 되찾으려고
     #  본문으로 역인덱스를 만들게 되는데, **같은 본문이 두 번 적힌 항목이 있으면** 그 dict가
-    #  하나를 덮어써 날짜를 잘못 짚는다(큐 소비 기록처럼 문면이 정형인 항목은 실제로 겹친다).
+    #  하나를 덮어써 날짜를 잘못 짚는다(문면이 정형인 항목은 실제로 겹친다).
     moving = [items[i] for i in order if i in moved]
     kept = [items[i] for i in range(len(items)) if i not in moved]
     return moving, kept
@@ -3080,11 +3065,7 @@ def main():
             #   지우도록 유도하는 오탐이다(예산·인덱스·고아 검사가 이미 아카이브를 제외하는 것과 정합).
             #   link_targets.add는 위에서 무조건 수행 — 고아 검사가 아카이브발 링크도 '링크됨'으로
             #   인정해야 무회귀(가드를 add 위로 올리면 아카이브만 링크한 페이지가 고아로 오탐).
-            # 루트 큐 파일(pending.md, 소비 대기 큐)도 제외 — 큐 항목은 지식
-            #   페이지가 아니라 링크 규약(§3) 대상이 아니다(§6·§7-1). 큐에 적힌 wikilink 대상이
-            #   이후 삭제·이름변경돼도 lint를 exit 1로 죽이지 않는다(시크릿 스캔·§7-25 잔량
-            #   집계·link_targets 수집은 유지).
-            if not in_archive and r not in ROOT_QUEUE_FILES:
+            if not in_archive:
                 if "/" in t:
                     if t_norm not in existing_cf:
                         errors.append(f"깨진 링크: {r} -> [[{t}]]")
@@ -3276,7 +3257,7 @@ def main():
             # 릴리즈 마커 (§7-28) — 본문의 vX.Y.Z는 changelog 미러링 신호(§5 금지 형태 — 이력은
             #   레포 git·notes·릴리즈가 정본, 위키 서술은 현재형·이유 중심 §2.3).
             #   제외 타입(RELEASE_MARKER_EXEMPT_TYPES 정의부에 근거)에는 걸지 않는다.
-            #   90_archive/·루트 인프라·pending.md는 위 prefix 가드가 이미 배제한다.
+            #   90_archive/·루트 인프라는 위 prefix 가드가 이미 배제한다.
             if typ not in RELEASE_MARKER_EXEMPT_TYPES:
                 rm_hits = len(RELEASE_MARKER_RX.findall(body))
                 if rm_hits:
@@ -3475,53 +3456,6 @@ def main():
             warn(f"log 이력 항목 오배치: log.md '## 아카이브 인덱스'에 이력 항목 {len(stray)}건 — "
                  f"롤오버가 훑지 않는 구역이라 아카이브로 넘어가지 않는다('## 최근 변경'으로 이동)",
                  "log.md")
-
-    if "pending.md" in pages:
-        pend_text = pages["pending.md"][2]
-        pend_tags = (("DECISION", "DECISION {n}건(결정 이력 — ingest는 대상 프로젝트분만 즉시 소비, 타 프로젝트분은 lint F-2·큐 정리 M 승인 시 소비)"),)
-        parts = []
-        for tag, label in pend_tags:
-            n = sum(1 for line in pend_text.splitlines()
-                    if re.match(r"^\s*-\s*\[\d{4}-\d{2}-\d{2}\]\s*\[" + tag + r"\]", line))
-            if n:
-                parts.append(label.format(n=n))
-        if parts:
-            infos.append("pending.md 미처리 잔량 — " + " / ".join(parts)
-                         + " — ingest(절차 B-1 0 — 대상 프로젝트분)·lint(F-0 보고 후 F-2 승인 시)·큐 정리(절차 M)에서 소비")
-
-        # 형식 위반 검출 (§7-25): 위 집계는 날짜 선두를 요구하므로, 태그는 있으나 그 형식이
-        #  아닌 줄은 **어느 태그에도 안 잡히고 버려진다** — 큐가 쌓여 있어도 잔량 0으로 보고돼
-        #  "0건"과 "형식이 틀려 못 셈"이 구분되지 않는다(실측: 17줄이 0건으로 집계된 사례).
-        #  집계 숫자의 신뢰성 문제라 INFO가 아니라 WARN이다.
-        # **선두 태그만 본다 (본문 언급 오탐 차단)**: 종전엔 줄 어디에든 태그가 있으면(search)
-        #  위반 후보로 삼았는데, 그러면 **선두 태그가 이 파일 소관이 아닌 줄**이 본문에 소관 태그를
-        #  언급했을 때 오탐한다 — 실제로 선두가 집합 밖이고 본문이 집합 안인 1줄이
-        #  pending.md에서 형식 위반으로 잡힌 적이 있다. 아래처럼
-        #  **불릿 직후의 태그**를 잡고 그 앞의 날짜 유무로 판정하면 본문 언급은 애초에 매치되지 않는다.
-        #  **접두를 15자로 제한하는 것이 본문 언급과 선두 위치를 가르는 축이다.** 정상 접두
-        #  `[YYYY-MM-DD] `가 13자이고 위반 형태(날짜 누락·형식 불일치·대괄호 없음)도 그보다 짧은데,
-        #  본문에 태그를 언급하는 줄은 접두가 수십 자라 이 제한에 걸려 애초에 매치되지 않는다.
-        #  **접두를 날짜 형식으로 좁히면 안 된다** — `[2026-7-2]`·대괄호 없는 날짜처럼 **집계
-        #  정규식에도 안 잡히는 줄**(이 WARN이 존재하는 이유의 정중앙)이 미검출로 새어 나간다.
-        #  **수용된 한계**: 접두가 15자를 넘는 위반(`- [2026-07-02 재확] [TAG]`·`- (보류) 2026-07-02 [TAG]`)은
-        #  미검출로 남는다. 본문 언급과 접두 길이가 같은 축이라 **이 방식으로는 원리상 분리되지 않는다** —
-        #  대안("불릿 직후 첫 대괄호 토큰")은 그 형태를 회복하는 대신 `- 2026-07-02 [TAG]`(대괄호 없는 날짜)를
-        #  잃어 우월하지 않다(F-7 2R 실측). 둘 다 덮으려면 두 축의 OR가 필요하다.
-        pend_lead_rx = re.compile(r"^\s*-\s*(.{0,15}?)\[("
-                                  + "|".join(t for t, _ in pend_tags) + r")\]")
-        #  공백 폭을 `\s*`로 둔 이유는 종전과 같다 — `-[TAG]`처럼 대시 뒤 공백이 없는 줄도
-        #  위반으로 잡아야 이 검사가 없애려던 사각지대가 남지 않는다.
-        malformed = sum(1 for line in pend_text.splitlines()
-                        if (m := pend_lead_rx.match(line)) and not QUEUE_DATE_PREFIX_RX.match(m.group(1)))
-        if malformed:
-            warn(f"pending.md 형식 위반 {malformed}건 — 태그는 있으나 '- [YYYY-MM-DD] [TAG]' 선두 형식이 "
-                 f"아니라 위 잔량 집계에서 누락됨(K 5 큐 형식 규약, 정규화 필요)", "pending.md")
-        # §7-41 폐지 태그 — 항목 줄만 센다(머리 인용 주석 속 문자열은 항목이 아니다).
-        retired = collections.Counter(m.group(1) for line in pend_text.splitlines()
-                                      if (m := RETIRED_QUEUE_TAG_RX.match(line)))
-        for tag, n in sorted(retired.items()):
-            warn(f"폐지 타입·태그 보유: pending.md [{tag}] 항목 {n}건 — {RETIRED_QUEUE_TAG_HINT[tag]}"
-                 f"(schema §7-41)", "pending.md")
 
     # decision-log 정합 (§7-24): ⓐ '## 아카이브' 포인터 ↔ 실파일 양방향 ⓑ 항목 결정 어휘.
     #  포인터는 wikilink가 아닌 평문 경로라 §7-1 깨진 링크 검사에 안 잡힘 — 누락·오기 시
