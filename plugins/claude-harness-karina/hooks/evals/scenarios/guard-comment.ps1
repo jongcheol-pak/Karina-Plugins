@@ -267,6 +267,25 @@ Assert-Case -Name "guard-comment: BASE 가 자리표시인 plan 이면 복원 Ed
 Set-GbPlan '> BASE: 0123456789abcdef0123'
 $r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
 Assert-Case -Name "guard-comment: 레포에 없는 BASE 면 복원 Edit 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+Set-GbPlan "> BASE: $gbBase`n> 승인: 2026-11-05 · 화면 Y"
+$gbBudgetScript = Join-Path $gc 'base-budget.ps1'
+[System.IO.File]::WriteAllText($gbBudgetScript, @'
+param([string]$Lib, [string]$File, [int]$Ms, [int]$SleepMs)
+. $Lib
+$script:CommentBaseBudgetMs = $Ms
+$budget = New-CommentBaseBudget
+Start-Sleep -Milliseconds $SleepMs
+$body = '/// 화면에 보이는 줄 범위를 센다.'
+$added = New-Object System.Collections.Generic.List[object]
+$added.Add(@{ Body = $body; Pair = 0; Line = 0; Indexes = @(0) })
+$blocked = Get-BlockedCommentBodies $File $added @($body, 'fn rows() {}') $budget
+"blocked=$($blocked.Count)"
+'@, [System.Text.UTF8Encoding]::new($true))
+$gbLib = Join-Path $pluginRoot 'scripts/comment-lines.ps1'
+$out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 3000 3300 2>&1
+Assert-Case -Name "guard-comment: BASE 예산 — 판정 처리 시간이 예산을 넘어도 BASE 복원 doc 은 통과" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=0'
+$out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 1 0 2>&1
+Assert-Case -Name "guard-comment: BASE 예산 — git 대기가 예산을 넘으면 복원 doc 도 차단" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=1'
 [System.IO.File]::Delete($gbPlan)
 $r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
 Assert-Case -Name "guard-comment: plan.md 가 없으면 복원 Edit 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock

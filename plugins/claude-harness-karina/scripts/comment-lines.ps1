@@ -229,8 +229,7 @@ function Test-CommentPublicItem([string]$Ext, [string]$Code) {
     }
 }
 
-function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index) {
-    $ext = [System.IO.Path]::GetExtension($Path).ToLower()
+function Get-CommentDocFlags([string[]]$Lines) {
     $docFlag = New-Object bool[] $Lines.Count
     $inDoc = $false
     for ($i = 0; $i -lt $Lines.Count; $i++) {
@@ -239,7 +238,13 @@ function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index) {
         if ($t.StartsWith('///') -or $t.StartsWith('//!')) { $docFlag[$i] = $true }
         elseif ($t.StartsWith('/**')) { $docFlag[$i] = $true; $inDoc = -not ($t.Substring(3) -match '\*/') }
     }
-    if ($Index -lt 0 -or -not $docFlag[$Index]) { return $null }
+    return , $docFlag
+}
+
+function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index, [bool[]]$DocFlag) {
+    $ext = [System.IO.Path]::GetExtension($Path).ToLower()
+    $docFlag = $DocFlag
+    if ($Index -lt 0 -or $Index -ge $docFlag.Count -or -not $docFlag[$Index]) { return $null }
     $attrRx = switch ($ext) { '.rs' { '^#!?\[' } '.cs' { '^\[' } default { '^@' } }
     for ($j = $Index + 1; $j -lt $Lines.Count; $j++) {
         $t = ([string]$Lines[$j]).Trim()
@@ -260,7 +265,7 @@ function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index) {
     return $null
 }
 
-function New-CommentBaseBudget { return @{ Deadline = [DateTime]::UtcNow.AddMilliseconds($script:CommentBaseBudgetMs) } }
+function New-CommentBaseBudget { return @{ LeftMs = [int]$script:CommentBaseBudgetMs } }
 
 function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budget) {
     try {
@@ -273,7 +278,7 @@ function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budge
         if (-not $plan) { return @() }
         $m = [regex]::Match([System.IO.File]::ReadAllText($plan), '(?m)^> BASE: ([0-9a-f]{7,40})\b')
         if (-not $m.Success) { return @() }
-        $left = [int]($Budget.Deadline - [DateTime]::UtcNow).TotalMilliseconds
+        $left = [int]$Budget.LeftMs
         if ($left -le 0) { return @() }
         $rel = $File.Substring($Root.Length).TrimStart('\', '/') -replace '\\', '/'
         $psi = New-Object System.Diagnostics.ProcessStartInfo 'git'
@@ -283,11 +288,14 @@ function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budge
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
         $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding($false)
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()
         $p = [System.Diagnostics.Process]::Start($psi)
         $p.StandardInput.Close()
         $out = $p.StandardOutput.ReadToEndAsync()
         $null = $p.StandardError.ReadToEndAsync()
-        if (-not $p.WaitForExit($left)) { try { $p.Kill() } catch {}; return @() }
+        $done = $p.WaitForExit($left)
+        $Budget.LeftMs = $left - [int]$sw.ElapsedMilliseconds
+        if (-not $done) { try { $p.Kill() } catch {}; return @() }
         if ($p.ExitCode -ne 0) { return @() }
         return @($out.Result -split '\r?\n')
     } catch { return @() }
@@ -299,6 +307,7 @@ function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines, $
     $ctx = Get-CommentRepoContext $Path
     $ext = [System.IO.Path]::GetExtension($Path).ToLower()
     $base = if ($ctx.Agents) { Split-Path -Parent $ctx.Agents } else { $ctx.Dir }
+    $docFlag = $null
     foreach ($a in $Added) {
         $c = [string]$a.Body
         if (Test-CommentLineExempt $c $Path $ctx.Dir $ctx.Root) { continue }
@@ -310,8 +319,9 @@ function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines, $
         if ($kept) { continue }
         if ($c -notmatch $script:CommentTodoRx -and @('.rs', '.cs', '.ts', '.tsx', '.js', '.jsx') -contains $ext -and @($a.Indexes).Count -gt 0) {
             $allOk = $true
+            if ($null -eq $docFlag) { $docFlag = Get-CommentDocFlags $PostLines }
             foreach ($ix in @($a.Indexes)) {
-                $code = Get-CommentDocTarget $Path $PostLines $ix
+                $code = Get-CommentDocTarget $Path $PostLines $ix $docFlag
                 $ok = $false
                 if ($code) {
                     $audited = @($ctx.AuditRules | Where-Object { $_.Pattern.IsMatch($code) -and (Test-CommentPathLike $ctx.File $base $_.Pathspec) }).Count -gt 0
