@@ -123,9 +123,11 @@ function Get-ScopeAddedLines([string]$Root, [string]$BaseSha) {
     return $byFile
 }
 
-function Get-ScopeBaseBodies([string[]]$Lines) {
-    if ($null -eq $Lines) { return , [System.Collections.Generic.HashSet[string]]::new() }
-    return , [System.Collections.Generic.HashSet[string]]::new([string[]]$Lines.Trim())
+function Get-ScopeBaseBodies([string]$Rel, [string[]]$Lines) {
+    $bodies = [System.Collections.Generic.HashSet[string]]::new()
+    if (-not $Rel -or $null -eq $Lines) { return , $bodies }
+    foreach ($c in (Get-CommentBodyLines $Rel $Lines -KeepDirectives)) { [void]$bodies.Add($c.Body) }
+    return , $bodies
 }
 
 function Get-ScopeBaseDocs([string]$Rel, [string[]]$Lines) {
@@ -140,10 +142,8 @@ function Get-ScopeBaseDocs([string]$Rel, [string[]]$Lines) {
     return , $docs
 }
 
-function Test-ScopeDocCandidate([string]$Rel, $Comments) {
-    if (-not (@('.cs', '.ts', '.tsx', '.js', '.jsx', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift') -contains [System.IO.Path]::GetExtension($Rel).ToLower())) { return $false }
-    foreach ($c in $Comments) { if ($c.Body -match '^(///|//!|/\*\*|\*)') { return $true } }
-    return $false
+function Test-ScopeDocCandidate([string[]]$Lines) {
+    return $script:CommentDocMarkRx.IsMatch(($Lines -join "`n"))
 }
 
 function Test-ScopeDocBefore([string]$Rel, [string[]]$Lines, [int]$Index, [bool[]]$DocFlag, $Targets) {
@@ -236,10 +236,10 @@ function Invoke-ScopeList([string]$Root, [string]$BaseSha, [string]$OutPath) {
         for ($i = 0; $i -lt $records.Count; $i++) {
             $r = $records[$i]
             $baseLines = if ($r.OldRel) { ConvertTo-ScopeFileLines $bases[$i] } else { $null }
-            $bodies = Get-ScopeBaseBodies $baseLines
+            $bodies = Get-ScopeBaseBodies $r.OldRel $baseLines
             $fresh = @($r.Cands | Where-Object { -not $bodies.Contains($_.Body) })
             $r.DocFlag = $null
-            if (Test-ScopeDocCandidate $r.Rel $fresh) {
+            if ($fresh.Count -gt 0 -and (Test-ScopeDocCandidate $r.Lines)) {
                 $r.DocFlag = Get-CommentDocFlags $r.Lines
                 $docs = Get-ScopeBaseDocs $r.OldRel $baseLines
                 $fresh = @($fresh | Where-Object { -not (Test-ScopeDocBefore $r.Rel $r.Lines ([int]$_.Line) $r.DocFlag $docs) })
@@ -347,7 +347,7 @@ function Invoke-ScopeCheck([string]$Root, [string]$BaseSha, [string]$BeforePath,
             if ($null -eq $baseBodies) {
                 $baseRel = if ($oldPaths.ContainsKey($rel)) { $oldPaths[$rel] } else { $rel }
                 $baseLines = Get-ScopeFileText $Root $BaseSha $baseRel
-                $baseBodies = Get-ScopeBaseBodies $baseLines
+                $baseBodies = Get-ScopeBaseBodies $baseRel $baseLines
                 $baseDocs = Get-ScopeBaseDocs $baseRel $baseLines
                 [string[]]$headLines = @()
                 $shown = Get-ScopeFileText $Root 'HEAD' $rel

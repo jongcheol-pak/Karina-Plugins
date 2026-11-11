@@ -160,16 +160,37 @@ Assert-Case -Name "comment-scope: doc 대상 — 되살린 doc 은 제자리에 
 $mr = New-CsRepo 'many'
 $mrNames = @(for ($i = 1; $i -le 50; $i++) { '{0}/f{1:D2}.rs' -f $(if ($i -le 25) { 'one' } else { 'two' }), $i })
 foreach ($n in $mrNames) { Set-CsFile $mr $n "fn f() {}`n" }
+Set-CsFile $mr 'two/AGENTS.md' "# AGENTS`n`n- **Comment (보존)**: ``f50`` · 경로: ``*.rs```n"
 git -C $mr add .; git -C $mr commit -qm base
 $mrBase = (git -C $mr rev-parse HEAD).Trim()
 foreach ($n in $mrNames) { Set-CsFile $mr $n "// 회차 주석 $n`nfn f() {}`n" }
 git -C $mr commit -qam round
 $mrOut = Join-Path $csRoot 'many-out.txt'
 $r = Invoke-Cs @('-Base', $mrBase, '-Out', $mrOut, '-Repo', $mr)
-Assert-Case -Name "comment-scope: 창보다 많은 50파일·2폴더 — 끝 줄 수" -R $r -ExpectExit 0 -ExpectContains 'RESULT: 대상 50 · 회차 전 0 · 감사 0 · 보존 0'
-$mrWant = (@($mrNames | ForEach-Object { "${_}:1`t// 회차 주석 $_" }) -join "`n") + "`n"
+Assert-Case -Name "comment-scope: 창보다 많은 50파일·2폴더 — 끝 줄 수(폴더마다 다른 보존 규칙)" -R $r -ExpectExit 0 -ExpectContains 'RESULT: 대상 49 · 회차 전 0 · 감사 0 · 보존 1'
+$mrWant = (@($mrNames | Where-Object { $_ -notmatch 'f50' } | ForEach-Object { "${_}:1`t// 회차 주석 $_" }) -join "`n") + "`n"
 $mrGot = if (Test-Path -LiteralPath $mrOut) { [System.IO.File]::ReadAllText($mrOut) } else { '' }
 Assert-Case -Name "comment-scope: 창보다 많은 50파일·2폴더 — 목록이 입력 순서 그대로다" -R @{ code = 0; out = ('match=' + ($mrGot -eq $mrWant)) } -ExpectExit 0 -ExpectContains 'match=True'
+
+$br = New-CsRepo 'blockbody'
+Set-CsFile $br 'a.rs' "fn a() -> i32 {`n    let x = 1;`n    x`n}`n"
+Set-CsFile $br 'b.rs' "/**`n * old text here`n */`npub fn f() {}`n"
+git -C $br add .; git -C $br commit -qm base
+$brBase = (git -C $br rev-parse HEAD).Trim()
+Set-CsFile $br 'a.rs' "fn a() -> i32 {`n    let x = 1;`n    x`n}`n/*`nlet x = 1;`n*/`n"
+Set-CsFile $br 'b.rs' "/**`n * old text here`nmore words`n */`npub fn f() {}`n"
+git -C $br commit -qam round
+$brOut = Join-Path $csRoot 'blockbody-out.txt'
+$r = Invoke-Cs @('-Base', $brBase, '-Out', $brOut, '-Repo', $br)
+$brList = if (Test-Path -LiteralPath $brOut) { [System.IO.File]::ReadAllText($brOut) } else { '' }
+Assert-Case -Name "comment-scope: 회차가 주석 블록으로 막은 BASE 코드 줄은 목록에 든다" -R @{ code = $r.code; out = $brList } -ExpectExit 0 -ExpectContains "a.rs:6`tlet x = 1;"
+Assert-Case -Name "comment-scope: 회차 전 doc 블록 안에 * 없이 더한 줄은 doc 대상 대조로 뺀다" -R @{ code = $r.code; out = $brList } -ExpectExit 0 -ExpectNotContains 'more words'
+Assert-Case -Name "comment-scope: 블록 본문 케이스 — 끝 줄 수" -R $r -ExpectExit 0 -ExpectContains 'RESULT: 대상 1 · 회차 전 2 · 감사 0 · 보존 0'
+$brSnap = Join-Path $csRoot 'blockbody-snap.txt'
+$null = Invoke-Cs @('-Snapshot', $brSnap, '-Repo', $br)
+Set-CsFile $br 'a.rs' "fn a() -> i32 {`n    let x = 1;`n    x`n}`n"
+$r = Invoke-Cs @('-CheckDeletions', '-Base', $brBase, '-Before', $brSnap, '-Repo', $br)
+Assert-Case -Name "comment-scope: 회차가 막은 코드 줄 블록을 지운 것은 되살리지 않는다" -R $r -ExpectExit 0 -ExpectContains 'RESULT: 되살림 0 · 회차 삭제 1 · 건너뜀 0'
 
 $nr = New-CsRepo 'noprefix'
 git -C $nr config diff.noprefix true
