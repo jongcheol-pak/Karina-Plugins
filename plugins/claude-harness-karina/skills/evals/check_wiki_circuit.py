@@ -19,6 +19,17 @@
   6. 디버깅 조회(llm-wiki lookup-rules.md)가 docs/conventions.md 를 본다
   7. 완료 리뷰(agents/completion-reviewer.md)가 2회 기록을 docs/conventions.md 와 대조한다
 
+결정 이력의 기록처는 레포 docs/decisions.md 이고 규약 정본은 skills/REPO-DECISIONS.md 다
+(2026-11-11 — 그 전에는 모든 프로젝트가 함께 쓰는 vault pending.md 큐를 거쳤다).
+
+결정 회로:
+  8. implement/SKILL.md 가 완료 시 REPO-DECISIONS.md 를 따르라고 지시한다
+ 9. REPO-DECISIONS.md 「쓰기」 절이 docs/decisions.md 에 쓰라고 지시한다
+ 10. REPO-DECISIONS.md 「읽기」 절이 karina:plan 에 docs/decisions.md 를 읽으라고 지시한다
+ 11. plan/SKILL.md 가 REPO-DECISIONS.md 와 docs/decisions.md 를 가리킨다
+ 12. chain-plan/SKILL.md 가 후보 라운드 전에 docs/decisions.md 를 grep 한다
+ 13. 완료 흐름(implement/SKILL.md·final-review.md)이 vault 큐(pending.md·queue-rules)를 가리키지 않는다
+
 판정은 「한 줄에 두 키워드」 또는 「한 절 안에」로 한다 — 파일 전체 `in` 판정은 서로 다른
 맥락에 따로 있는 두 문자열로 참이 되는 거짓 통과를 낸 전력이 있다(옛 회로 4 — 소비 규칙이
 그 파일을 떠난 뒤에도 다른 절이 두 문자열을 함께 담아 통과했다).
@@ -53,6 +64,8 @@ AGENTS = SKILLS.parent / "agents"
 # 회로를 잇는 두 이름. 이 값이 문서와 갈리면 기록이 도착하지 않는다.
 SINK = "docs/conventions.md"
 RULES = "REPO-CONVENTIONS.md"
+DSINK = "docs/decisions.md"
+DRULES = "REPO-DECISIONS.md"
 
 
 def read(path: Path) -> str:
@@ -86,6 +99,11 @@ def main() -> int:
     reviewer = read(AGENTS / "completion-reviewer.md")
     write_sec = section(rules, "쓰기")
     read_sec = section(rules, "읽기")
+    drules = read(SKILLS / DRULES)
+    dwrite = section(drules, "쓰기")
+    dread = section(drules, "읽기")
+    chain = read(SKILLS / "chain-plan/SKILL.md")
+    final = read(SKILLS / "implement/references/final-review.md")
 
     checks = [
         ("1. implement 가 완료 시 REPO-CONVENTIONS.md 를 따르라고 지시",
@@ -104,6 +122,18 @@ def main() -> int:
          any_line(lookup, SINK, RULES)),
         (f"7. 완료 리뷰가 2회 기록을 {SINK} 와 대조",
          any_line(reviewer, SINK, "2회")),
+        (f"8. implement 가 완료 시 {DRULES} 를 따르라고 지시",
+         any_line(impl, DRULES, "완료")),
+        (f"9. {DRULES} 「쓰기」 절이 {DSINK} 에 쓰라고 지시",
+         any_line(dwrite, DSINK, "쓴다")),
+        (f"10. {DRULES} 「읽기」 절이 계획 단계에 {DSINK} 를 읽으라고 지시",
+         "karina:plan" in dread and DSINK in dread),
+        (f"11. plan 이 {DRULES} 와 {DSINK} 를 가리킨다",
+         any_line(plan, DRULES, DSINK)),
+        (f"12. chain-plan 이 후보 라운드 전에 {DSINK} 를 grep",
+         any_line(chain, DSINK, "grep", "후보 라운드")),
+        ("13. 완료 흐름(implement·final-review)이 vault 큐(pending.md·queue-rules)를 가리키지 않는다",
+         not any(k in t for t in (impl, final) for k in ("pending.md", "queue-rules"))),
     ]
 
     failed = 0
@@ -116,7 +146,7 @@ def main() -> int:
     if failed:
         print(f"회로 단절 {failed}곳 — 기록이 다음 작업에 도달하지 않는다.")
         return 1
-    print(f"회로 {len(checks)}단계 연결 확인 — 기록({SINK}) → 조회 경로가 닫혀 있다.")
+    print(f"회로 {len(checks)}단계 연결 확인 — 기록({SINK}·{DSINK}) → 조회 경로가 닫혀 있다.")
     return 0
 
 
