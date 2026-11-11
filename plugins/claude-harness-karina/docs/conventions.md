@@ -117,6 +117,7 @@
 
 ### 도구·환경 함정
 
+- [2026-11-11] **PowerShell 에서 `$x = if (…) { @() } else { @(…) }` 처럼 `if` 식의 출력을 받으면 원소 하나짜리 배열이 풀려 문자열 하나가 된다 — 그 뒤 `$x[0]` 은 첫 글자다.** 배열이 필요하면 `[string[]]$x = @()` 로 선언한 뒤 분기 안에서 대입한다. `comment-scope.ps1` 이 `git rev-parse --show-toplevel` 한 줄 출력을 이렇게 받아 레포 루트가 `D` 가 됐고, 오류는 「BASE 를 찾을 수 없습니다」 로만 보였다 (실측)
 - [2026-11-07] **함수 반환형을 배열에서 객체로 바꾸는 task 의 새 케이스가 옛 코드에서 `$r.Prop` 을 읽으면 PowerShell 멤버 열거가 원소마다 `$null` 을 모은 배열을 내고, 원소가 하나 이상이면 `[bool]` 이 참이 된다** — `Get-GroupCostDrift` 회차에서 `overall=1` 만 단언한 케이스가 옛 함수(배열 반환)에서 우연히 PASS 해 RED 를 보지 못했다. 처방: 새 반환형 케이스는 RED 출력의 값까지 확인하고, 단언은 그 값이 옛 코드에서 나올 수 없는 완전한 리터럴로 건다 (실측)
 - [2026-10-21] **레포를 다른 레포의 하위 폴더로 옮길 때 `git filter-repo` 는 쓸 수 없다 — `block-destructive` 가 `--version` 까지 「히스토리 재작성」 으로 막는다.** 대신 `git merge --allow-unrelated-histories` 로 옛 main 을 합친 뒤, 내용 변경 없이 rename 만 담은 `git mv` 커밋을 따로 둔다 — 원래 SHA 가 그대로 남아 문서의 SHA 참조가 열리고 `git log --follow` 가 이동 전 이력을 잇는다. 새 clone 에는 `core.longpaths=true` 를 먼저 둔다(픽스처 경로가 260자를 넘는다) (실측 — Karina-Plugins #1)
 - [2026-10-20] **`AGENTS.md` 의 Build 명령(`pwsh -NoProfile -Command "$f=0; … $e …"`)을 Claude Code 의 Bash 도구로 돌리면 bash 가 `$f`·`$e`·`$_` 를 빈 문자열로 치환해 PowerShell 이 ParserError 를 낸다 — PowerShell 도구로 돌리거나, Bash 에서는 명령 전체를 작은따옴표로 감싼다.** 실패 출력이 깨진 한글 ParserError 라 원인이 치환이라는 것이 보이지 않는다. (실측) 2026-10-28 재발 뒤 `AGENTS.md` 의 Build·Test 명령을 바깥 작은따옴표·안쪽 겹따옴표 형태로 바꿔 두 도구에서 원문 그대로 돈다 — 바깥 겹따옴표로 되돌리지 않는다.
