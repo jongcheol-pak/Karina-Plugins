@@ -246,14 +246,6 @@
       "why": "lint(절차 F) 요청 — \"위키 점검/lint\""
     },
     {
-      "id": "wiki-pos-3",
-      "skill": "karina:llm-wiki",
-      "expect": "trigger",
-      "workspace": "no_plan",
-      "query": "pending 큐에 쌓인 항목들 정리해줘",
-      "why": "경량 큐 소비(절차 M) — \"위키 큐 정리/pending 큐 정리\"(저빈도어 pending 이 남아 이 질의가 맞는다)"
-    },
-    {
       "id": "wiki-neg-1",
       "skill": "karina:llm-wiki",
       "expect": "no-trigger",
@@ -339,7 +331,7 @@
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "이 기능 예전에 왜 안 만들기로 했지? 위키에서 찾아줘",
-      "why": "결정 이력 조회(절차 G 2b) — decisions.md 타임라인 질의 (구 llm-wiki 전용 케이스 #12 복원)"
+      "why": "사용자가 위키를 명시한 조회(절차 G) — 결정 이력은 위키에 없고 G 2b 가 레포 docs/decisions.md 로 안내한다. 발동 판정은 「위키에서 찾아줘」 명시가 가른다 (구 llm-wiki 전용 케이스 #12 복원)"
     },
     {
       "id": "wiki-vaultpath-1",
@@ -388,7 +380,7 @@
       "expect": "no-trigger",
       "workspace": "no_plan",
       "query": "메시지 큐 정리하는 워커에서 중복 메시지를 걸러내도록 고쳐줘",
-      "why": "고빈도 단독어 near-miss(W9) — 「큐 정리」 가 있으나 대상은 메시지 큐 코드다. description 은 「위키 큐 정리/pending 큐 정리」 로 결합해야 발동한다"
+      "why": "고빈도 단독어 near-miss(W9) — 「큐 정리」 가 있으나 대상은 메시지 큐 코드다. 위키 결정 큐가 폐지돼(2026-11-11) description 에 큐 트리거가 없다"
     },
     {
       "id": "dbg-pos-1",
