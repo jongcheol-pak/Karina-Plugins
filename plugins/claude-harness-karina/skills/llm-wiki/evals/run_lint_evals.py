@@ -451,16 +451,6 @@ def check_case(case):
             and not case.get("index_shape") and not case.get("unit")):
         return False, "case에 expect_clean·expect_keywords 둘 다 없음(lint-cases.json 오타 의심)"
 
-    # fix_mode 케이스: fixture를 임시 복사본에서 --fix 실행 → 재lint로 위반 해소를 대조한다.
-    #  원본 fixture는 절대 수정하지 않는다(placeholder copytree 패턴 재사용). 대조 3단 —
-    #  ① --fix 실행 출력에 expect_keywords([FIXED] 요약) 전부 존재
-    #  ② 수정 후 재lint 출력에 after_expect_absent(원 위반 문구) 전부 부재
-    #  ③ 수정 후 재lint 출력에 after_expect_keywords 전부 존재 — "--fix가 건드리지 않아야 하는
-    #     위반이 그대로 남았는가"(보수 동작)를 실증하는 보조 필드
-    # backup_cleanup 케이스: §8 백업 정리(cleanup_backups)를 폴더 집합으로 대조한다.
-    #  stdout 키워드만으로는 "지워지지 않아야 할 것이 남았는가"를 증명할 수 없어(출력이 없는 것은
-    #  보존의 증거가 아니다) 실제 디렉터리 목록을 본다. 무플래그 실행도 함께 돌려 read-only 계약
-    #  (정리는 --fix에서만 일어난다)을 같은 케이스에서 실증한다.
     # build_index 케이스: `--build-index`(생성)를 임시 복사본에서 돌린다.
     #  ① dry-run은 파일을 한 바이트도 바꾸지 않아야 하고(계약), ② 마커 밖 텍스트가 생성 출력에
     #  그대로 살아 있어야 하며, ③ 마커가 없는 vault는 덮어쓰지 않고 안내만 내야 한다.

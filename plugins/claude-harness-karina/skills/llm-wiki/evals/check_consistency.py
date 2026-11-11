@@ -111,7 +111,7 @@ SCHEMA_TYPES_MD = os.path.join(SKILL_DIR, "references", "schema-types.md")
 SCHEMA_BUDGET_MD = os.path.join(SKILL_DIR, "references", "schema-budget.md")
 SCHEMA_LINT_MD = os.path.join(SKILL_DIR, "references", "schema-lint.md")
 OPS_MD = os.path.join(SKILL_DIR, "references", "procedures-ops.md")
-# 절차 K 1~5(조회)는 v1.220.0에서 SKILL.md에서 이 파일로 이관됐다 — 아래 화이트리스트 2건의 귀속이 함께 옮겨간다.
+# 절차 K 1~5(조회)는 v1.220.0에서 SKILL.md에서 이 파일로 이관됐다 — 아래 화이트리스트 1건의 귀속이 함께 옮겨간다.
 #  축 ⑪ 스캔 대상은 `_trigger_scan_scope()`의 `references/*.md` 글롭이 자동으로 잡으므로 경로를 손으로 더하지 않는다.
 LOOKUP_RULES_MD = os.path.join(SKILL_DIR, "references", "lookup-rules.md")
 # 쓰기 세션 전용 규칙(파일 예산·예산 단계 신호·네이밍·J 부트스트랩)이 SKILL.md에서 분리된 자리(v1.180.0 T8).
@@ -430,7 +430,7 @@ def check_lint_s7_numbers(lint_text, schema_text):
 # 경로는 문서 지배 관례가 백틱 래핑(`…md`)이라 선택적 백틱을 허용한다(안 그러면 L2F 다수를 놓침 — B1).
 _PROC_FILE = r"`?references/procedures-(?:content|ops)\.md`?"
 # base 문자는 [A-Z] 동적 캡처 — [A-L] 하드코딩 금지(파일 상단 ROUTING_LETTER_RX 원칙과 일관 — 절차 M+
-#   추가 시에도 매치되게, 미정의 문자는 letter_file.get()이 None이라 자연히 skip). 하위라벨(B-1 0·A-3a·B-2 3-1·K 2).
+#   추가 시에도 매치되게, 미정의 문자는 letter_file.get()이 None이라 자연히 skip). 하위라벨(B-1 1·A-3a·B-2 3-1·K 2).
 _LABEL = r"([A-Z])(?:[-\s]\d+[a-z]?)*"
 # 파일→라벨: `…md의 B-1`, `…md "G"`, `…md F-1` (파일 뒤 구분자는 의/따옴표/공백만 — 괄호 불가로 `(A~E·I)` 범위서술 제외)
 POINTER_F2L_RX = re.compile(_PROC_FILE + r'(?:의)?\s*"?\s*' + _LABEL)
@@ -475,9 +475,9 @@ def check_prose_pointers(skill_text, schema_text):
 
     보수적 스코프(오탐 방지): 파일명 AND 라벨이 '인접'(의·따옴표·괄호·대시로 직접 연결)할 때만
     검사한다. 한 줄에 여러 (라벨→파일)이 있어도 각 인접쌍만 대조하므로, `K 2(references/lookup-rules.md)·
-    B-1 0(references/procedures-content.md)`처럼 서로 다른 귀속이 한 줄에 있어도 B만 content로
+    B-1 1(references/procedures-content.md)`처럼 서로 다른 귀속이 한 줄에 있어도 B만 content로
     대조하고 K는 (procedures-*.md가 아니라 references/lookup-rules.md 귀속이라) 건드리지 않는다. base 문자 단위 대조
-    — 하위라벨(B-1 0의 '1 0')까지 검증하진 않는다(재분할 파일 오귀속 포착이 목적).
+    — 하위라벨(B-1 1의 '1 1')까지 검증하진 않는다(재분할 파일 오귀속 포착이 목적).
     반환: (불일치 목록, 대조 항목 수)."""
     letter_file = build_letter_file_map()
     docs = {
@@ -549,8 +549,7 @@ PROSE_SET_ALIASES = {"origin 필수 타입": "ORIGIN_REQUIRED_TYPES"}
 #  앵커의 group(1)이 타입 토큰을 담은 구간이며, 매치가 없으면 die(앵커 파싱 실패 = exit 2).
 #  구간을 넓게 잡으면 안 된다 — 이물 토큰이 섞이면 문서를 고쳐도 영원히 불일치가 된다(A4 주석 참조).
 TYPE_ENUM_SITES_LINT = {
-    # §3 origin/confidence 두 줄: '—' 뒤 ~ '공통 필수 필드' 앞. 그 뒤 괄호 부기
-    #  는 리터럴 뒤라 자동 배제된다.
+    # §3 origin/confidence 두 줄: '—' 뒤 ~ '공통 필수 필드' 앞.
     "A1-origin": (r"^- \*\*`origin` 통제 어휘\(고정\)\*\*:[^\n]*?—(.+?)공통 필수 필드",
                   lambda lint: lint.ORIGIN_REQUIRED_TYPES),
     "A1-confidence": (r"^- \*\*`confidence` 통제 어휘\(고정\)\*\*:[^\n]*?—(.+?)공통 필수 필드",
@@ -601,7 +600,7 @@ def extract_type_tokens(text, vocab):
     길이 내림차순 alternation이 필수다 — 'source-stub'이 'source'로 잘리면 B2가 항상 불일치한다.
     앞뒤 경계로 [a-z-]를 배제해 하이픈 복합 타입명이 앞부분으로 잘리는 것과 '20_projects'의
     'project' 오탐을 함께 막는다(뒤에 's'가 오면 매치되지 않는다). 백틱·볼드 마크업은 무시된다.
-    숫자·언더스코어는 배제 클래스에 넣지 않았다 — 현재 10개 자리의 문면에 'project_'류 인접
+    숫자·언더스코어는 배제 클래스에 넣지 않았다 — 현재 8개 자리의 문면에 'project_'류 인접
     표기가 없어서이며, 그런 표기가 들어오는 자리가 생기면 [a-z0-9_-]로 넓힌다(\b를 쓰지 않는
     이유는 하이픈 복합 타입명 보존이다)."""
     if not vocab:
