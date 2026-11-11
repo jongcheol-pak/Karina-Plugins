@@ -83,13 +83,28 @@ function Get-ScopeAddedLines([string]$Root, [string]$BaseSha) {
 }
 
 
-function Get-ScopeBaseBodies([string]$Root, [string]$BaseSha, [string]$Rel) {
-    $set = [System.Collections.Generic.HashSet[string]]::new()
-    if (-not $Rel) { return , $set }
+function Get-ScopeBaseInfo([string]$Root, [string]$BaseSha, [string]$Rel) {
+    $info = @{
+        Bodies = [System.Collections.Generic.HashSet[string]]::new()
+        Docs   = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    }
+    if (-not $Rel) { return $info }
     $lines = Get-ScopeFileText $Root $BaseSha $Rel
-    if ($null -eq $lines) { return , $set }
-    foreach ($c in (Get-CommentBodyLines $Rel $lines -KeepDirectives)) { [void]$set.Add($c.Body) }
-    return , $set
+    if ($null -eq $lines) { return $info }
+    foreach ($c in (Get-CommentBodyLines $Rel $lines -KeepDirectives)) { [void]$info.Bodies.Add($c.Body) }
+    $flags = Get-CommentDocFlags $lines
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if (-not $flags[$i] -or ($i -gt 0 -and $flags[$i - 1])) { continue }
+        $code = Get-CommentDocTarget $Rel $lines $i $flags
+        if ($code) { [void]$info.Docs.Add($code) }
+    }
+    return $info
+}
+
+function Test-ScopeDocBefore([string]$Rel, [string[]]$Lines, [int]$Index, [bool[]]$DocFlag, $Targets) {
+    if ($Targets.Count -eq 0 -or $Index -lt 0 -or $Index -ge $DocFlag.Count -or -not $DocFlag[$Index]) { return $false }
+    $code = Get-CommentDocTarget $Rel $Lines $Index $DocFlag
+    return [bool]($code -and $Targets.Contains($code))
 }
 
 function Resolve-ScopeRepo([string]$Dir) {
@@ -148,15 +163,17 @@ function Invoke-ScopeList([string]$Root, [string]$BaseSha, [string]$OutPath) {
             if ($null -ne $addedLines -and $addedLines.Contains([int]$c.Line + 1)) { $cands.Add($c) } else { $pre++ }
         }
         if ($cands.Count -eq 0) { continue }
-        $baseBodies = Get-ScopeBaseBodies $Root $BaseSha $oldRel
-        $fresh = @($cands | Where-Object { -not $baseBodies.Contains($_.Body) })
+        $baseInfo = Get-ScopeBaseInfo $Root $BaseSha $oldRel
+        $baseBodies = $baseInfo.Bodies
+        $baseDocs = $baseInfo.Docs
+        $docFlag = Get-CommentDocFlags $lines
+        $fresh = @($cands | Where-Object { -not $baseBodies.Contains($_.Body) -and -not (Test-ScopeDocBefore $rel $lines ([int]$_.Line) $docFlag $baseDocs) })
         $pre += $cands.Count - $fresh.Count
         $cands = $fresh
         if ($cands.Count -eq 0) { continue }
         $boundary = Get-ScopeBoundary $Root $BaseSha $rel
         $full = [System.IO.Path]::GetFullPath((Join-Path $Root $rel))
         $ctx = Get-CommentRepoContext $full
-        $docFlag = Get-CommentDocFlags $lines
         foreach ($c in $cands) {
             $n = [int]$c.Line
             if ($boundary[$n + 1]) { $pre++; continue }
@@ -243,13 +260,22 @@ function Invoke-ScopeCheck([string]$Root, [string]$BaseSha, [string]$BeforePath,
             $comments = Get-CommentBodyLines $rel ([string[]]$h.Lines) -KeepDirectives
             if ($comments.Count -eq 0) { continue }
             if ($null -eq $boundary) { $boundary = Get-ScopeBoundary $Root $BaseSha $rel }
-            if ($null -eq $baseBodies) { $baseBodies = Get-ScopeBaseBodies $Root $BaseSha $(if ($oldPaths.ContainsKey($rel)) { $oldPaths[$rel] } else { $rel }) }
+            if ($null -eq $baseBodies) {
+                $baseRel = if ($oldPaths.ContainsKey($rel)) { $oldPaths[$rel] } else { $rel }
+                $baseInfo = Get-ScopeBaseInfo $Root $BaseSha $baseRel
+                $baseBodies = $baseInfo.Bodies
+                $baseDocs = $baseInfo.Docs
+                [string[]]$headLines = @()
+                $shown = Get-ScopeFileText $Root 'HEAD' $rel
+                if ($null -ne $shown) { $headLines = $shown }
+                $headFlags = Get-CommentDocFlags $headLines
+            }
             $isComment = @{}
             foreach ($c in $comments) { $isComment[[int]$c.Line] = $c.Body }
             $keep = New-Object System.Collections.Generic.List[string]
             for ($i = 0; $i -lt $h.Lines.Count; $i++) {
                 if (-not $isComment.ContainsKey($i)) { continue }
-                if ($boundary[$h.Old + $i] -or $baseBodies.Contains($isComment[$i])) {
+                if ($boundary[$h.Old + $i] -or $baseBodies.Contains($isComment[$i]) -or (Test-ScopeDocBefore $rel $headLines ($h.Old + $i - 1) $headFlags $baseDocs)) {
                     $keep.Add($h.Lines[$i])
                     "RESTORE ${rel}:$($h.Old + $i)`t$($isComment[$i])"
                 } else { $roundDel++ }

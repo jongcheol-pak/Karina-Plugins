@@ -48,7 +48,7 @@ Assert-Case -Name "comment-scope: 회차 커밋이 더한 주석은 목록에 �
 Assert-Case -Name "comment-scope: 같은 hunk 문맥의 회차 전 주석은 뺀다" -R $sl -ExpectExit 0 -ExpectNotContains '// 회차 전 설명.'
 Assert-Case -Name "comment-scope: 파일 안에서 옮기기만 한 짧은 한글 회차 전 주석은 뺀다" -R $sl -ExpectExit 0 -ExpectNotContains '// 짧은 주석.'
 Assert-Case -Name "comment-scope: 이름을 바꾼 파일의 회차 전 주석은 뺀다" -R $sl -ExpectExit 0 -ExpectNotContains '// 옮긴 파일 주석.'
-Assert-Case -Name "comment-scope: 회차가 문구만 고친 회차 전 주석은 목록에 든다" -R $sl -ExpectExit 0 -ExpectContains "src/a.rs:7`t/// 고친 문구."
+Assert-Case -Name "comment-scope: 회차가 문구만 고친 회차 전 doc 은 doc 대상이 BASE 에 doc 을 가졌으면 뺀다" -R $sl -ExpectExit 0 -ExpectNotContains '/// 고친 문구.'
 Assert-Case -Name "comment-scope: Test (감사) 가 요구하는 doc 은 뺀다" -R $sl -ExpectExit 0 -ExpectNotContains '/// 감사 대상 doc.'
 Assert-Case -Name "comment-scope: 감사 밖 doc 은 목록에 든다" -R $sl -ExpectExit 0 -ExpectContains "src/a.rs:11`t/// 감사 밖 doc."
 Assert-Case -Name "comment-scope: Comment (보존) 선언에 맞는 주석은 뺀다" -R $sl -ExpectExit 0 -ExpectNotContains '// 보존 표식 줄'
@@ -56,7 +56,7 @@ Assert-Case -Name "comment-scope: 회차의 린트 억제 주석은 목록에 �
 Assert-Case -Name "comment-scope: 주석 대상이 아닌 문서 파일은 보지 않는다" -R $sl -ExpectExit 0 -ExpectNotContains 'doc.md'
 Assert-Case -Name "comment-scope: 미커밋·미추적 변경의 주석은 보지 않는다" -R $sl -ExpectExit 0 -ExpectNotContains '미커밋 주석'
 Assert-Case -Name "comment-scope: 미추적 파일의 주석도 보지 않는다" -R $sl -ExpectExit 0 -ExpectNotContains '미추적 주석'
-Assert-Case -Name "comment-scope: 끝 줄에 대상·회차 전·감사·보존 수를 낸다" -R $sl -ExpectExit 0 -ExpectContains 'RESULT: 대상 4 · 회차 전 3 · 감사 1 · 보존 1'
+Assert-Case -Name "comment-scope: 끝 줄에 대상·회차 전·감사·보존 수를 낸다" -R $sl -ExpectExit 0 -ExpectContains 'RESULT: 대상 3 · 회차 전 4 · 감사 1 · 보존 1'
 
 $srEmpty = Join-Path $csRoot 'scope-empty.txt'
 $r = Invoke-Cs @('-Base', 'HEAD', '-Out', $srEmpty, '-Repo', $sr)
@@ -133,6 +133,27 @@ $null = Invoke-Cs @('-Snapshot', $rrSnap, '-Repo', $rr)
 Set-CsFile $rr 'new.rs' "fn a() {}`nfn b() {}`nfn c() {}`n"
 $r = Invoke-Cs @('-CheckDeletions', '-Base', $rrBase, '-Before', $rrSnap, '-Repo', $rr, '-Restore')
 Assert-Case -Name "comment-scope: 이름을 바꾼 파일에서 지운 회차 전 짧은 주석도 옛 경로 BASE 본문으로 되살린다" -R $r -ExpectExit 1 -ExpectContains 'RESULT: 되살림 1 · 회차 삭제 0 · 건너뜀 0'
+
+$dr = New-CsRepo 'docscope'
+Set-CsFile $dr 'a.rs' "/// 옛 설명.`nfn old_doc() {}`nfn no_doc() {}`n/// 이름 바꿀 함수 설명.`nfn renamed_before() {}`n/// 시험 설명.`n#[test]`nfn t_case() {}`n"
+git -C $dr add .; git -C $dr commit -qm base
+$drBase = (git -C $dr rev-parse HEAD).Trim()
+Set-CsFile $dr 'a.rs' "/// 옛 설명을 고침.`nfn old_doc() {}`n/// 새로 단 설명.`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`n"
+git -C $dr commit -qam round
+$drOut = Join-Path $csRoot 'docscope-out.txt'
+$r = Invoke-Cs @('-Base', $drBase, '-Out', $drOut, '-Repo', $dr)
+$dl = @{ code = $r.code; out = ($r.out + "`n" + $(if (Test-Path -LiteralPath $drOut) { [System.IO.File]::ReadAllText($drOut) } else { '' })) }
+Assert-Case -Name "comment-scope: doc 대상 — 기존 항목에 새로 단 doc 은 목록에 남는다" -R $dl -ExpectExit 0 -ExpectContains "a.rs:3`t/// 새로 단 설명."
+Assert-Case -Name "comment-scope: doc 대상 — 이름을 바꾼 항목의 doc 은 목록에 남는다" -R $dl -ExpectExit 0 -ExpectContains "a.rs:5`t/// 이름 바꿀 함수 설명을 고침."
+Assert-Case -Name "comment-scope: doc 대상 — doc 과 fn 사이에 #[test] 가 있어도 문구만 고친 시험 doc 은 뺀다" -R $dl -ExpectExit 0 -ExpectNotContains '시험 설명을 고침'
+Assert-Case -Name "comment-scope: doc 대상 — 끝 줄 수" -R $dl -ExpectExit 0 -ExpectContains 'RESULT: 대상 2 · 회차 전 2 · 감사 0 · 보존 0'
+$drSnap = Join-Path $csRoot 'docscope-snap.txt'
+$null = Invoke-Cs @('-Snapshot', $drSnap, '-Repo', $dr)
+Set-CsFile $dr 'a.rs' "fn old_doc() {}`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`n"
+$r = Invoke-Cs @('-CheckDeletions', '-Base', $drBase, '-Before', $drSnap, '-Repo', $dr, '-Restore')
+Assert-Case -Name "comment-scope: doc 대상 — 문구만 고친 회차 전 doc 의 삭제는 되살리고 새로 단 doc 의 삭제는 둔다" -R $r -ExpectExit 1 -ExpectContains 'RESULT: 되살림 1 · 회차 삭제 1 · 건너뜀 0'
+$drA = [System.IO.File]::ReadAllText((Join-Path $dr 'a.rs'))
+Assert-Case -Name "comment-scope: doc 대상 — 되살린 doc 은 제자리에 있다" -R @{ code = 0; out = ('match=' + ($drA -eq "/// 옛 설명을 고침.`nfn old_doc() {}`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`n")) } -ExpectExit 0 -ExpectContains 'match=True'
 
 }
 
