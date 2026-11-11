@@ -121,6 +121,19 @@ Assert-Case -Name "comment-scope: 되살린 뒤 diff 에 회차 전 주석 삭�
 $r = Invoke-Cs @('-CheckDeletions', '-Base', $crBase, '-Before', $crSnap, '-Repo', $cr)
 Assert-Case -Name "comment-scope: 회차 주석 삭제만 남으면 exit 0" -R $r -ExpectExit 0 -ExpectContains 'RESULT: 되살림 0 · 회차 삭제 2 · 건너뜀 1'
 
+$rr = New-CsRepo 'check-rename'
+Set-CsFile $rr 'old.rs' "// 짧은.`nfn a() {}`nfn b() {}`nfn c() {}`n"
+git -C $rr add .; git -C $rr commit -qm base
+$rrBase = (git -C $rr rev-parse HEAD).Trim()
+git -C $rr mv old.rs new.rs
+Set-CsFile $rr 'new.rs' "fn a() {}`nfn b() {}`n// 짧은.`nfn c() {}`n"
+git -C $rr add .; git -C $rr commit -qm round
+$rrSnap = Join-Path $csRoot 'check-rename-snap.txt'
+$null = Invoke-Cs @('-Snapshot', $rrSnap, '-Repo', $rr)
+Set-CsFile $rr 'new.rs' "fn a() {}`nfn b() {}`nfn c() {}`n"
+$r = Invoke-Cs @('-CheckDeletions', '-Base', $rrBase, '-Before', $rrSnap, '-Repo', $rr, '-Restore')
+Assert-Case -Name "comment-scope: 이름을 바꾼 파일에서 지운 회차 전 짧은 주석도 옛 경로 BASE 본문으로 되살린다" -R $r -ExpectExit 1 -ExpectContains 'RESULT: 되살림 1 · 회차 삭제 0 · 건너뜀 0'
+
 }
 
 }

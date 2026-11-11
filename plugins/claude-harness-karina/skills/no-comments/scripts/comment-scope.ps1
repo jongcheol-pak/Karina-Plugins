@@ -192,6 +192,11 @@ function Invoke-ScopeCheck([string]$Root, [string]$BaseSha, [string]$BeforePath,
     $before = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     foreach ($l in [System.IO.File]::ReadAllLines([System.IO.Path]::GetFullPath($BeforePath))) { if ($l) { [void]$before.Add($l.Trim()) } }
     $restored = 0; $roundDel = 0; $skipped = 0
+    $oldPaths = @{}
+    foreach ($row in (Invoke-ScopeGit $Root @('diff', '--name-status', '-M', $BaseSha, 'HEAD')).Lines) {
+        $cols = $row -split "`t"
+        if ($cols.Count -ge 3 -and $cols[0].StartsWith('R')) { $oldPaths[$cols[2]] = $cols[1] }
+    }
     $files = Get-ScopeDeletionHunks $Root
     foreach ($rel in $files.Keys) {
         if ($files[$rel].Count -eq 0 -or -not (Test-CommentTarget $rel)) { continue }
@@ -202,7 +207,7 @@ function Invoke-ScopeCheck([string]$Root, [string]$BaseSha, [string]$BeforePath,
             $comments = Get-CommentBodyLines $rel ([string[]]$h.Lines) -KeepDirectives
             if ($comments.Count -eq 0) { continue }
             $boundary = Get-ScopeBoundary $Root $BaseSha $rel @('-L', "$($h.Old),+$($h.Lines.Count)")
-            if ($null -eq $baseBodies) { $baseBodies = Get-ScopeBaseBodies $Root $BaseSha $rel }
+            if ($null -eq $baseBodies) { $baseBodies = Get-ScopeBaseBodies $Root $BaseSha $(if ($oldPaths.ContainsKey($rel)) { $oldPaths[$rel] } else { $rel }) }
             $isComment = @{}
             foreach ($c in $comments) { $isComment[[int]$c.Line] = $c.Body }
             $keep = New-Object System.Collections.Generic.List[string]
