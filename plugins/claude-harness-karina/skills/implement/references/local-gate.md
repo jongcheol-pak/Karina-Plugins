@@ -39,6 +39,7 @@
 - **`gate-verifier` 를 부른다 — 입력은 head full SHA · 기본 브랜치와 base SHA · worktree 둘의 경로 · `AGENTS.md` 경로 · 빌드 캐시(없으면 「없음」) · 본문 파일 경로다** — 정의는 `../../../agents/gate-verifier.md`「입력」.
 - **호출 전후 작업 트리 확인은 `../../READONLY-SUBAGENTS.md`「호출 전후 확인」 대로이고, 호출 전에 화면 가리기를 걷고 돌아온 뒤(판정 없이 끝난 경우 포함) 다시 덮는다(`../../SCREEN-COVER.md`「언제 끄고 켜는가」 · 보유자 `local-gate:<head worktree 경로>`)** — 검증자가 head·base 에서 앱을 조작한다.
 - **판정 줄 없이 끝나면(오류·중단) worktree 를 지우고 push 를 보류한 채 「판정 없음」 으로 보고한다** — 판정이 없으면 push 근거가 없다.
+- **판정이 나면(PASS·PASS+NOTES·FAIL 모두) `gate-verifier` 출력 전문을 스크래치 파일(`local-gate-<head sha7>.txt`)로 Write 한다 — 판정 기록의 `출력 <파일>` 칸이 이 파일이다(체인 끝도 같다)** — 재사용으로 push 하는 회차의 화면 확인 블록이 `스크린샷:` 칸 경로를 거기서 읽는다.
 
 ### FAIL 처리
 
@@ -50,7 +51,7 @@
 ### 판정 재사용
 
 - **판정 뒤 HEAD 가 움직였으면 두 경우에만 다시 돌지 않는다 — ⓐ 판정 SHA..HEAD 의 바뀐 파일(`git diff --name-only --no-renames`)이 전부 문서(`.md`·`.txt`)이고 그중에 `AGENTS.md`·검증 매핑 문서가 없고 그 레포 검증 매핑(`AGENTS.md` 또는 그것이 지목한 문서)이 그 경로에 명령을 걸지 않고, 바뀐 각 파일의 이름이 `.md`·`.txt` 밖 추적 파일에 따옴표 바로 앞 문자열로 나오지 않는다(`git grep -l -F -e '<이름>"' -e "<이름>'" -- . ':!*.md' ':!*.txt'` 이 비었다 — 레포 최상위에서) ⓑ `git diff <base SHA>..<판정 SHA> | git patch-id --stable` 과 `git diff <새 base>..HEAD | git patch-id --stable` 이 같다(같은 패치가 다른 base 위로 옮겨졌다)** — 문구만 바뀐 변경을 다시 검증하면 같은 판정을 두 번 산다(*"a wording-only change gets none"*). 매핑 문서를 고친 변경은 문구가 아니라 어느 검사가 도는지를 바꿔 재사용하지 않는다(원문 autopilot-full *"a change to which checks run"* — `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/poteto-mode/playbooks/autopilot-full.md`). 검증 매핑이 `*.md` 에 명령을 거는 레포(이 하니스)는 ⓐ 가 늘 거짓이다. 이름 대조는 빌드가 읽는 문서를 거른다 — Karina 는 `include_str!` 로 `SKILL.md`·`fixtures/*.txt` 를 빌드에 넣어(2026-11-11 실측), 확장자만 보면 그 파일만 고친 수정 커밋이 재검증 없이 push 된다.
-- **판정 기록은 `plan.md` 의 Progress Log 한 줄이다 — `로컬 게이트: <판정> · head <full SHA> · base <full SHA> · patch-id <값> · 출력 <파일>`** — 재사용 판정이 이 줄을 대조한다. 체인 끝은 아래 「체인 끝」 의 결정 파일이다. `<파일>` 은 `gate-verifier` 출력 전문을 Write 한 스크래치 파일이고 `%TEMP%\…` 표기로 적는다 — 재사용으로 push 하는 회차의 화면 확인 블록이 `스크린샷:` 칸 경로를 거기서 읽는다(`screen-scenarios.md`「화면 확인 블록」).
+- **판정 기록은 `plan.md` 의 Progress Log 한 줄이다 — `로컬 게이트: <판정> · head <full SHA> · base <full SHA> · patch-id <값> · 출력 <파일>`** — 재사용 판정이 이 줄을 대조한다. 체인 끝은 아래 「체인 끝」 의 결정 파일이다. `<파일>` 은 위 「호출」 이 Write 한 출력 파일이고 `%TEMP%\…` 표기로 적는다 — 재사용으로 push 하는 회차의 화면 확인 블록이 `스크린샷:` 칸 경로를 거기서 읽는다(`screen-scenarios.md`「화면 확인 블록」).
 
 ### 게이트 완화 서명
 
