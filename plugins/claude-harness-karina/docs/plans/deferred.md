@@ -10,7 +10,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 14 / 종결 120
+**▶ 현행 잔량(기계 대조 대상)**: 대기 15 / 종결 120
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -60,6 +60,7 @@
 
 ### llm-wiki · vault
 
+- [2026-11-11] **vault 하니스 페이지가 폐지된 위키 결정 큐를 현행으로 서술한다** — `20_projects/personal/claude-harness-karina/feat-llm-wiki-queues.md` 와 허브의 큐·pending 서술을 다음 하니스 위키 ingest 가 걷는다(일반 기능 서술이라 plan 2 범위 밖 — 사용자 범위 답). (출처: 계획 체인 plan 2) (실해: 2026-11-11 feat-llm-wiki-queues.md 의 큐 서술 6줄이 폐지 뒤에도 남음)
 
 ### eval · 측정
 
