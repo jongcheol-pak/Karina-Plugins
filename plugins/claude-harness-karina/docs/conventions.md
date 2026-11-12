@@ -248,6 +248,8 @@
 
 ### 골든 러너 운용
 
+- [2026-11-13] **hook 스크립트를 골든 러너 밖에서 직접 실행해 재면(성능 측정 등) 실제 `~/.claude/.state/hook-events/` 에 차단 이벤트가 쌓인다 — 측정 스크립트는 `USERPROFILE` 을 스크래치 폴더로 바꿔 돌린다.** 이벤트 로그는 `USERPROFILE` 아래에 쓰고(`scripts/hook-event-log.ps1`), 골든 러너만 격리 `USERPROFILE` 로 돈다. v3.13.0 성능 측정이 198줄(guard-doc-owner 95 · block-python-newcode 89 · block-plan-write 14)을 남겨 오탐 집계를 오염시켰고, v3.13.1 이 백업 뒤 지웠다. (실측)
+
 - [2026-11-07] **골든·러너 속도를 BASE 와 견줄 때는 두 쪽을 같은 위치(둘 다 임시 폴더 worktree)에 두고 교대로 잰다 — 다른 세션이 도는 PC 에서는 같은 코드의 전체 골든이 99~293초로 흔들렸다** — BASE 를 `%TEMP%` worktree, HEAD 를 레포 작업 트리(D:)에 두고 잰 guard-bash 1회 호출이 BASE 3초·HEAD 1.3초로 갈렸다가, 같은 위치에서는 1.27·1.29초였다. 골든 동시 상한을 12 로 올리면 BASE·HEAD 모두 느려진다(CPU 포화 — 기본 8 유지). 모노레포 worktree 에서는 하니스 하위 폴더로 cd 해 돌린다 (실측)
 - [2026-11-07] **evals 러너가 픽스처 트리를 템플릿 인덱스에서 이어 쓰면(복사 뒤 `add -A` 만) `.gitignore` 를 바꾸는 변이 뒤에도 옛 추적 파일이 남아 새로 `git init`·`add -A` 한 트리와 인덱스가 갈린다** — `stale-prose-untracked` 가 FAIL 했다. 변이 뒤 `git read-tree --empty` 로 비우고 `add -A` 해야 같아진다. 템플릿 재사용은 벽시계를 줄이지 못해 되돌렸다(케이스 비용은 검사기 subprocess 가 지배) (실측)
 - [2026-10-22] **evals 골든의 `mutate` 로 줄을 더할 때 `replace` 문자열의 줄바꿈은 `\r\n` 으로 쓴다 — `\n` 이면 CRLF 픽스처에 LF 줄이 섞여 「줄바꿈 혼재」 MISMATCH 가 함께 걸린다.** 재려던 판정과 무관하게 rc 가 1 이 되어, 음성 케이스는 FAIL 하고 양성 케이스는 그 MISMATCH 때문에 RED 가 엉뚱한 이유로 선다. frontmatter YAML 골든 12건 중 줄을 더한 4건이 첫 시도에서 그렇게 났다 — 정본은 `docs/harness-conventions.md` 「검증 명령 상세」 의 evals 골든 러너 항목이다 (실측)
