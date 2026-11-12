@@ -121,6 +121,17 @@ $leafSafe = ($projLeaf -replace '[^A-Za-z0-9._-]', '_') + '-' + $projHash
 # 1회 표지의 성공 판정 — 근거는 `rules/suggest-record-rationale.md` §8
 $toolUseId = [string]$data.tool_use_id
 $transcriptPath = [string]$data.transcript_path
+$agentId = [string]$data.agent_id
+if ($agentId -notmatch '^[A-Za-z0-9_-]+$') { $agentId = '' }
+function Get-ResultTranscript([string]$AgentId) {
+    if (-not $AgentId) { return $transcriptPath }
+    $sessionDir = Join-Path (Split-Path -Parent $transcriptPath) ([System.IO.Path]::GetFileNameWithoutExtension($transcriptPath))
+    $subRoot = Join-Path $sessionDir 'subagents'
+    if (-not (Test-Path -LiteralPath $subRoot -PathType Container)) { return $null }
+    $hit = Get-ChildItem -LiteralPath $subRoot -Recurse -File -Filter ('agent-' + $AgentId + '.jsonl') | Select-Object -First 1
+    if ($hit) { return $hit.FullName }
+    return $null
+}
 function Get-ToolResultFailed([string]$Path, [string]$Id) {
     $key = '"tool_use_id":"' + $Id + '"'
     foreach ($window in @(65536, 4194304)) {
@@ -155,9 +166,11 @@ function Get-ToolResultFailed([string]$Path, [string]$Id) {
 function Test-SuggestMarkerReopen([string]$MarkerPath) {
     $mark = ''
     try { $mark = [System.IO.File]::ReadAllText($MarkerPath) } catch {}
-    $m = [regex]::Match($mark, '^pending (\S+)')
+    $m = [regex]::Match($mark, '^pending (\S+)(?: ([A-Za-z0-9_-]+))?')
     if (-not $m.Success -or -not $transcriptPath) { return $false }
-    $failed = Get-ToolResultFailed $transcriptPath $m.Groups[1].Value
+    $resultPath = Get-ResultTranscript $m.Groups[2].Value
+    if (-not $resultPath) { return $false }
+    $failed = Get-ToolResultFailed $resultPath $m.Groups[1].Value
     if ($failed -eq $false) { try { [System.IO.File]::WriteAllText($MarkerPath, '') } catch {} }
     return ($failed -eq $true)
 }
@@ -170,7 +183,7 @@ foreach ($h in $hits) {
     $markerPath = Join-Path $stateDir $markerName
     if ((Test-Path -LiteralPath $markerPath) -and -not (Test-SuggestMarkerReopen $markerPath)) { continue }   # (2) 세션·프로젝트·카테고리당 1회
     $toSuggest.Add($h)
-    $markerText = if ($toolUseId -and $transcriptPath) { 'pending ' + $toolUseId } else { '' }
+    $markerText = if ($toolUseId -and $transcriptPath) { ('pending ' + $toolUseId + ' ' + $agentId).TrimEnd() } else { '' }
     try { [System.IO.File]::WriteAllText($markerPath, $markerText) } catch {}   # 생성 실패는 무시(비치명)
 }
 if ($toSuggest.Count -eq 0) { exit 0 }

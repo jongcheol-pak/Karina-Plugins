@@ -48,6 +48,47 @@ $null = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx4' 'toolu_A4')
 Set-TxLines @((& $txUse 'toolu_A4'), (& $txLine @((& $txOk 'toolu_Y4'), (& $txFail 'toolu_A4'))))
 $r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx4' 'toolu_B4')
 Assert-Case -Name "suggest 성공 판정: 한 줄에 결과가 여럿이고 그 id 의 결과가 실패(is_error 가 id 앞)면 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+$saRoot = Join-Path $work 'sa-projects'; New-Item -ItemType Directory $saRoot -Force | Out-Null
+function New-SaJson([string]$Sid, [string]$Id, [string]$AgentId) {
+    $o = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $txProj; session_id = $Sid; tool_use_id = $Id; transcript_path = (Join-Path $saRoot ($Sid + '.jsonl')); tool_input = @{ command = 'dotnet build App.sln' } }
+    if ($AgentId) { $o.agent_id = $AgentId }
+    return ($o | ConvertTo-Json -Compress)
+}
+function Set-SaLines([string]$Sid, [string]$Rel, [string[]]$Lines) {
+    $p = Join-Path (Join-Path $saRoot $Sid) $Rel
+    New-Item -ItemType Directory (Split-Path -Parent $p) -Force | Out-Null
+    [System.IO.File]::WriteAllText($p, (($Lines -join "`n") + "`n"))
+}
+function Set-SaMain([string]$Sid, [string[]]$Lines) { [System.IO.File]::WriteAllText((Join-Path $saRoot ($Sid + '.jsonl')), (($Lines -join "`n") + "`n")) }
+Set-SaMain 'sa1' @('{"type":"user"}')
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa1' 'toolu_SA1' 'a1b2c3')
+Set-SaLines 'sa1' 'subagents/agent-a1b2c3.jsonl' @((& $txUse 'toolu_SA1'), (& $txLine @((& $txFail 'toolu_SA1'))))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa1' 'toolu_SB1' 'a1b2c3')
+Assert-Case -Name "suggest 서브에이전트: 서브에이전트 명령이 실패면 그 서브에이전트의 다음 같은 종류 명령에 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+Set-SaMain 'sa2' @('{"type":"user"}')
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa2' 'toolu_SA2' 'a2b2c3')
+Set-SaLines 'sa2' 'subagents/agent-a2b2c3.jsonl' @((& $txUse 'toolu_SA2'), (& $txLine @((& $txFail 'toolu_SA2'))))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa2' 'toolu_SB2' '')
+Assert-Case -Name "suggest 서브에이전트: 서브에이전트 명령이 실패면 메인의 다음 같은 종류 명령에 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+Set-SaMain 'sa3' @('{"type":"user"}')
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa3' 'toolu_SA3' 'a3b2c3')
+Set-SaLines 'sa3' 'subagents/wf/agent-a3b2c3.jsonl' @((& $txUse 'toolu_SA3'), (& $txLine @((& $txFail 'toolu_SA3'))))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa3' 'toolu_SB3' 'a3b2c3')
+Assert-Case -Name "suggest 서브에이전트: subagents 하위 폴더의 transcript 에서도 실패를 찾아 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+Set-SaMain 'sa4' @('{"type":"user"}')
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa4' 'toolu_SA4' 'a4b2c3')
+Set-SaLines 'sa4' 'subagents/agent-a4b2c3.jsonl' @((& $txUse 'toolu_SA4'), (& $txLine @((& $txOk 'toolu_SA4'))))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa4' 'toolu_SB4' 'a4b2c3')
+Assert-Case -Name "suggest 서브에이전트: 서브에이전트 명령이 성공이면 침묵한다 (음성 짝)" -R $r -ExpectExit 0 -ExpectSilent $true
+Set-SaMain 'sa5' @('{"type":"user"}')
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa5' 'toolu_SA5' 'a5b2c3')
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa5' 'toolu_SB5' 'a5b2c3')
+Assert-Case -Name "suggest 서브에이전트: 서브에이전트 transcript 가 아직 없으면 침묵한다 (음성 짝)" -R $r -ExpectExit 0 -ExpectSilent $true
+Set-SaMain 'sa6' @((& $txLine @((& $txFail 'toolu_SA6'))))
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa6' 'toolu_SA6' 'a6b2c3')
+Set-SaLines 'sa6' 'subagents/agent-a6b2c3.jsonl' @((& $txUse 'toolu_SA6'), (& $txLine @((& $txOk 'toolu_SA6'))))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa6' 'toolu_SB6' '')
+Assert-Case -Name "suggest 서브에이전트: 판정은 표지에 적힌 서브에이전트의 transcript 를 본다 — 메인 transcript 의 같은 id 실패를 쓰지 않고 침묵한다" -R $r -ExpectExit 0 -ExpectSilent $true
 
 "# AGENTS`n## Build & Test`n- dotnet build" | Set-Content (Join-Path $aproj 'AGENTS.md')
 $sj2 = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 's2'; tool_input = @{ command = 'dotnet build MyApp.sln' } } | ConvertTo-Json -Compress
