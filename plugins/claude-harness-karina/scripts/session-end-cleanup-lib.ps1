@@ -11,26 +11,17 @@ $script:OrphanCleanupSuppressVar = 'CLAUDE_HARNESS_NO_PROC_CLEANUP'
 
 try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
 
-function Get-OrphanMarkerDir {
-    # 죽지 않는 프로세스의 PID를 적어 다음 회수에서 건너뛰는 마커 디렉터리.
+function Get-OrphanStateDir([string]$Leaf) {
     $homeBase = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
     if ([string]::IsNullOrEmpty($homeBase)) { return $null }
-    return (Join-Path $homeBase '.claude/.state/orphan-unkillable')
-}
-
-function Get-SystemBootStamp {
-    # 마커 무효화 기준. 재부팅하면 그 PID들은 더 이상 존재하지 않으므로 마커도 함께 무의미해진다.
-    try {
-        $os = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
-        return $os.LastBootUpTime.ToString('yyyyMMddHHmmss')
-    } catch { return $null }
+    return (Join-Path $homeBase ('.claude/.state/' + $Leaf))
 }
 
 function Get-UnkillableMarkers {
     # 반환: 현재 부팅 세션에서 '죽지 않는다'고 확인된 PID 집합. — 근거는 `rules/orphan-cleanup-rationale.md` §5
     param([string]$BootStamp)
     $set = @{}
-    $dir = Get-OrphanMarkerDir
+    $dir = Get-OrphanStateDir 'orphan-unkillable'
     if (-not $dir -or -not (Test-Path -LiteralPath $dir -ErrorAction SilentlyContinue)) { return $set }
     try {
         $cutoff = (Get-Date).AddDays(-30)
@@ -52,7 +43,7 @@ function Get-UnkillableMarkers {
 function Add-UnkillableMarker {
     param([int]$ProcessId, [string]$BootStamp)
     if (-not $BootStamp) { return }   # 부팅 시각을 못 얻으면 마커 기능만 생략(회수 자체는 정상 진행)
-    $dir = Get-OrphanMarkerDir
+    $dir = Get-OrphanStateDir 'orphan-unkillable'
     if (-not $dir) { return }
     try {
         if (-not (Test-Path -LiteralPath $dir -ErrorAction SilentlyContinue)) {
@@ -94,42 +85,104 @@ function Select-OrphanProcesses {
     return $out.ToArray()
 }
 
-function Get-OrphanProcessCandidates {
-    <#
-      수집 전담. 반환: @{ Records; CimQueried }
-      선검사(Get-Process, 실측 평균 76ms)로 대상 이름이 하나도 없으면 CIM(평균 272ms)을 부르지 않는다 —
-      평상시(고아 0)에 CIM 비용을 물지 않기 위한 조기 반환이다.
-    #>
-    $empty = @{ Records = @(); CimQueried = $false }
-    try {
-        $pre = @(Get-Process -Name $script:OrphanPreScanNames -ErrorAction SilentlyContinue)
-        if ($pre.Count -eq 0) { return $empty }
-    } catch { return $empty }
-
-    $records = New-Object System.Collections.Generic.List[object]
-    try {
-        $filter = ($script:OrphanTargetNames | ForEach-Object { "Name='$_'" }) -join ' OR '
-        $procs = @(Get-CimInstance Win32_Process -Filter $filter -ErrorAction Stop)
-        foreach ($p in $procs) {
-            $parentStart = $null
-            try {
-                $par = Get-CimInstance Win32_Process -Filter ("ProcessId=" + $p.ParentProcessId) -ErrorAction Stop
-                if ($par) { $parentStart = $par.CreationDate }
-            } catch {}
-            $records.Add(@{
-                Id              = [int]$p.ProcessId
-                Name            = ([string]$p.Name).ToLowerInvariant()
-                SessionId       = [int]$p.SessionId
-                StartTime       = $p.CreationDate
-                ParentId        = [int]$p.ParentProcessId
-                ParentStartTime = $parentStart
-                CpuSec          = [math]::Round(($p.KernelModeTime + $p.UserModeTime) / 10000000, 0)
-            })
-        }
-    } catch {
-        return @{ Records = $records.ToArray(); CimQueried = $true }
+function ConvertTo-OrphanSnapshot {
+    param([object[]]$Processes)
+    $created = @{}
+    $boot = $null
+    foreach ($p in @($Processes)) {
+        if ($null -eq $p -or $null -eq $p.CreationDate) { continue }
+        $at = [datetime]$p.CreationDate
+        $created[[string]$p.ProcessId] = $at
+        if ([int]$p.ProcessId -eq 4) { $boot = $at.ToString('yyyyMMddHHmmss') }
     }
-    return @{ Records = $records.ToArray(); CimQueried = $true }
+    $records = New-Object System.Collections.Generic.List[object]
+    foreach ($p in @($Processes)) {
+        if ($null -eq $p -or $null -eq $p.CreationDate) { continue }
+        $name = ([string]$p.Name).ToLowerInvariant()
+        if (-not ($script:OrphanTargetNames -contains $name)) { continue }
+        $parentKey = [string]$p.ParentProcessId
+        $records.Add(@{
+            Id              = [int]$p.ProcessId
+            Name            = $name
+            SessionId       = [int]$p.SessionId
+            StartTime       = [datetime]$p.CreationDate
+            ParentId        = [int]$p.ParentProcessId
+            ParentStartTime = $(if ($created.ContainsKey($parentKey)) { $created[$parentKey] } else { $null })
+            CpuSec          = [math]::Round(([double]$p.KernelModeTime + [double]$p.UserModeTime) / 10000000, 0)
+        })
+    }
+    return @{ Records = $records.ToArray(); Created = $created; BootStamp = $boot }
+}
+
+function Test-OrphanScanNeeded {
+    param([int]$PendingCount, [int]$PreScanCount)
+    return ($PendingCount -gt 0 -or $PreScanCount -gt 0)
+}
+
+function Get-OrphanProcessCandidates {
+    $none = @{ Snapshot = $null; CimCalls = 0; Ok = $false }
+    $pendingCount = 0
+    $pendingDir = Get-OrphanStateDir 'orphan-pending'
+    if ($pendingDir -and (Test-Path -LiteralPath $pendingDir)) {
+        $pendingCount = @(Get-ChildItem -LiteralPath $pendingDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notlike '*.claim' }).Count
+    }
+    $preCount = 0
+    if ($pendingCount -eq 0) {
+        try { $preCount = @(Get-Process -Name $script:OrphanPreScanNames -ErrorAction SilentlyContinue).Count } catch {}
+    }
+    if (-not (Test-OrphanScanNeeded -PendingCount $pendingCount -PreScanCount $preCount)) { return $none }
+
+    try {
+        $procs = @(Get-CimInstance Win32_Process -Property ProcessId, ParentProcessId, CreationDate, Name, SessionId, KernelModeTime, UserModeTime -ErrorAction Stop)
+        return @{ Snapshot = (ConvertTo-OrphanSnapshot -Processes $procs); CimCalls = 1; Ok = $true }
+    } catch {
+        return @{ Snapshot = $null; CimCalls = 1; Ok = $false }
+    }
+}
+
+function Add-OrphanPending {
+    param([hashtable]$Target, [string]$BootStamp)
+    if (-not $BootStamp) { return }
+    $dir = Get-OrphanStateDir 'orphan-pending'
+    if (-not $dir) { return }
+    try {
+        if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force -ErrorAction Stop | Out-Null }
+        $name = '{0}_{1}_{2}' -f $Target.Id, ([datetime]$Target.StartTime).Ticks, $BootStamp
+        Set-Content -LiteralPath (Join-Path $dir $name) -Value ('name=' + $Target.Name + ' cpuSec=' + $Target.CpuSec) -NoNewline -Encoding UTF8 -ErrorAction Stop
+    } catch {}
+}
+
+function Resolve-OrphanPending {
+    param([hashtable]$Snapshot, [string]$Hook, [hashtable]$Result)
+    $dir = Get-OrphanStateDir 'orphan-pending'
+    if (-not $dir -or -not (Test-Path -LiteralPath $dir)) { return }
+    $cutoff = (Get-Date).AddDays(-30)
+    foreach ($f in @(Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue)) {
+        $isClaim = $f.Name.EndsWith('.claim')
+        $parts = ($f.Name -replace '\.claim$', '') -split '_'
+        $stale = ($f.LastWriteTime -lt $cutoff) -or ($parts.Count -ne 3) -or ($parts[2] -ne $Snapshot.BootStamp)
+        if ($stale) {
+            Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+            continue
+        }
+        if ($isClaim) { continue }
+        $claim = $f.FullName + '.claim'
+        try { Move-Item -LiteralPath $f.FullName -Destination $claim -ErrorAction Stop } catch { continue }
+        $info = [string](Get-Content -LiteralPath $claim -Raw -ErrorAction SilentlyContinue)
+        $pidKey = $parts[0]
+        $alive = $Snapshot.Created.ContainsKey($pidKey) -and ([string]$Snapshot.Created[$pidKey].Ticks -eq $parts[1])
+        if ($alive) {
+            $Result.Unkillable++
+            Add-UnkillableMarker -ProcessId ([int]$pidKey) -BootStamp $Snapshot.BootStamp
+        } else {
+            $Result.Killed++
+            if ($info -match 'cpuSec=(\d+)') { $Result.CpuSec += [int]$Matches[1] }
+            if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
+                try { Write-HookEvent -Hook $Hook -Decision 'cleanup' -Rule 'orphan-process' -CommandText ('pid=' + $pidKey + ' ' + $info) } catch {}
+            }
+        }
+        Remove-Item -LiteralPath $claim -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Invoke-OrphanProcessCleanup {
@@ -137,21 +190,22 @@ function Invoke-OrphanProcessCleanup {
       회수 본체. 화면 출력 없음(안전 계약 ②) — 회수 사실은 hook-event-log에만 적재한다.
         -Hook     적재할 hook 이름. 비면 이벤트 로그의 hook 필드가 비어 어느 hook의 회수였는지
                   사후에 가릴 수 없으므로 호출측이 반드시 준다(골든이 이 필드를 고정한다).
-        -Records  주면 수집을 건너뛰고 그 배열로 판정한다(골든 검증용 주입 seam).
+        -Processes 주면 CIM 수집을 건너뛰고 그 프로세스 목록으로 판정한다(골든 검증용 주입 seam).
         -DryRun   Stop-Process를 생략한다. 목 PID가 실재 프로세스와 겹칠 때 무관한 프로세스를
                   죽이는 것을 막는다. 이때 적재 rule을 분리해 실로그 오염도 막는다.
-      반환: @{ Suppressed; Scanned; CimQueried; Killed; Unkillable; CpuSec }
+      반환: @{ Suppressed; Scanned; CimQueried; CimCalls; Requested; Killed; Unkillable; CpuSec }
     #>
     param(
         [string]$Hook = 'session-end-cleanup-lib',
-        [object[]]$Records = $null,
+        [object[]]$Processes = $null,
+        [switch]$SnapshotFailed,
         [switch]$DryRun
     )
-    $result = @{ Suppressed = $false; Scanned = 0; CimQueried = $false; Killed = 0; Unkillable = 0; CpuSec = 0 }
+    $result = @{ Suppressed = $false; Scanned = 0; CimQueried = $false; CimCalls = 0; Requested = 0; Killed = 0; Unkillable = 0; CpuSec = 0 }
     try {
         # 안전 계약 ②를 이 파일만으로 자기완결시킨다 — 근거는 `rules/orphan-cleanup-rationale.md` §6
         $ErrorActionPreference = 'SilentlyContinue'
-        $injected = $PSBoundParameters.ContainsKey('Records')
+        $injected = $PSBoundParameters.ContainsKey('Processes')
 
         # 억제는 부작용이 있는 실기계 수집 경로에만 건다. 주입은 명시적 테스트 호출이라 대상이 아니다.
         if (-not $injected) {
@@ -166,48 +220,38 @@ function Invoke-OrphanProcessCleanup {
         try { $sessionId = (Get-Process -Id $PID -ErrorAction Stop).SessionId } catch {}
 
         if ($injected) {
-            $cand = @{ Records = $Records; CimQueried = $false }
+            $cand = @{ Snapshot = (ConvertTo-OrphanSnapshot -Processes $Processes); CimCalls = 0; Ok = (-not $SnapshotFailed) }
         } else {
             $cand = Get-OrphanProcessCandidates
         }
-        $result.CimQueried = [bool]$cand.CimQueried
-        $result.Scanned = @($cand.Records).Count
+        $result.CimCalls = [int]$cand.CimCalls
+        $result.CimQueried = ($result.CimCalls -gt 0)
+        if (-not $cand.Ok -or $null -eq $cand.Snapshot) { return $result }
+        $snap = $cand.Snapshot
+
+        # Stop-Process의 성공 반환을 소멸의 근거로 쓰지 않는다 — 근거는 `rules/orphan-cleanup-rationale.md` §7
+        if ($snap.BootStamp) { Resolve-OrphanPending -Snapshot $snap -Hook $Hook -Result $result }
+
+        $result.Scanned = @($snap.Records).Count
         if ($result.Scanned -eq 0) { return $result }
 
-        $bootStamp = Get-SystemBootStamp
-        $skip = Get-UnkillableMarkers -BootStamp $bootStamp
-        $targets = @(Select-OrphanProcesses -Records $cand.Records -SessionId $sessionId -SkipPids $skip)
-        if ($targets.Count -eq 0) { return $result }
-
-        $rule = if ($DryRun) { 'orphan-process-dryrun' } else { 'orphan-process' }
+        $skip = Get-UnkillableMarkers -BootStamp $snap.BootStamp
+        $targets = @(Select-OrphanProcesses -Records $snap.Records -SessionId $sessionId -SkipPids $skip)
         foreach ($t in $targets) {
-            $gone = $false
             if ($DryRun) {
-                $gone = $true
-            } else {
-                try { Stop-Process -Id $t.Id -Force -ErrorAction Stop } catch {}
-                # Stop-Process의 성공 반환을 소멸의 근거로 쓰지 않는다 — 근거는 `rules/orphan-cleanup-rationale.md` §7
-                try {
-                    $still = @(Get-CimInstance Win32_Process -Filter ("ProcessId=" + $t.Id) -ErrorAction Stop)
-                    $gone = ($still.Count -eq 0) -or ($still[0].CreationDate -ne $t.StartTime)
-                } catch { $gone = $true }
-            }
-
-            if ($gone) {
                 $result.Killed++
                 $result.CpuSec += [int]$t.CpuSec
-            } else {
-                $result.Unkillable++
-                Add-UnkillableMarker -ProcessId $t.Id -BootStamp $bootStamp
+                if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
+                    try {
+                        Write-HookEvent -Hook $Hook -Decision 'cleanup' -Rule 'orphan-process-dryrun' `
+                            -CommandText ("pid=" + $t.Id + " name=" + $t.Name + " cpuSec=" + $t.CpuSec)
+                    } catch {}
+                }
                 continue
             }
-
-            if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
-                try {
-                    Write-HookEvent -Hook $Hook -Decision 'cleanup' -Rule $rule `
-                        -CommandText ("pid=" + $t.Id + " name=" + $t.Name + " cpuSec=" + $t.CpuSec)
-                } catch {}
-            }
+            try { Stop-Process -Id $t.Id -Force -ErrorAction Stop } catch {}
+            $result.Requested++
+            Add-OrphanPending -Target $t -BootStamp $snap.BootStamp
         }
     } catch {}
     return $result

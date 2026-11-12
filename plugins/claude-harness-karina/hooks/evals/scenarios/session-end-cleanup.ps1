@@ -47,7 +47,47 @@ Assert-Case -Name "orphan-cleanup: 억제 시 수집 경로 즉시 반환" `
     -ExpectExit 0 -ExpectContains 'suppressed=True scanned=0'
 
 # ---- 주입 + DryRun (D15) — 회수 카운트와 이벤트 적재 ----
-$opcDry = Invoke-OrphanProcessCleanup -Hook 'golden-dry' -Records $opcMock -DryRun
+$opcBoot = Get-Date -Year 2026 -Month 11 -Day 8 -Hour 21 -Minute 19 -Second 7 -Millisecond 0
+function New-OpcProc([int]$Id, [string]$Name, [int]$Sid, $Created, [int]$ParentId) {
+    [pscustomobject]@{ ProcessId = $Id; Name = $Name; SessionId = $Sid; CreationDate = $Created; ParentProcessId = $ParentId; KernelModeTime = 0; UserModeTime = 0 }
+}
+$opcSysProc = New-OpcProc 4 'System' 0 $opcBoot 0
+$opcProcs = @($opcSysProc)
+foreach ($r in $opcMock) {
+    $opcProcs += New-OpcProc $r.Id $r.Name $r.SessionId $r.StartTime $r.ParentId
+    if ($null -ne $r.ParentStartTime) { $opcProcs += New-OpcProc $r.ParentId 'parent.exe' $r.SessionId $r.ParentStartTime 0 }
+}
+$opcStateDir = Join-Path $iso '.claude/.state'
+function Clear-OpcState {
+    foreach ($d in @('orphan-unkillable', 'orphan-pending')) {
+        $p = Join-Path $opcStateDir $d
+        if (Test-Path -LiteralPath $p) { Get-ChildItem -LiteralPath $p -Force | Remove-Item -Force -ErrorAction SilentlyContinue }
+    }
+}
+function Get-OpcCount([string]$Dir, [string]$Filter = '*') {
+    $p = Join-Path $opcStateDir $Dir
+    if (-not (Test-Path -LiteralPath $p)) { return 0 }
+    return @(Get-ChildItem -LiteralPath $p -File -Filter $Filter -ErrorAction SilentlyContinue).Count
+}
+
+$opcSnap = ConvertTo-OrphanSnapshot -Processes $opcProcs
+$opcSnapSel = (@(Select-OrphanProcesses -Records $opcSnap.Records -SessionId $opcSid) | ForEach-Object { $_.Id } | Sort-Object) -join ','
+Assert-Case -Name "orphan-cleanup: 목록 변환 — 부모가 목록에 없으면 고아" `
+    -R @{ code = 0; out = "sel=$opcSnapSel" } -ExpectExit 0 -ExpectContains '201,202'
+Assert-Case -Name "orphan-cleanup: 목록 변환 — 먼저 생긴 부모가 목록에 있으면 제외" `
+    -R @{ code = 0; out = "sel=$opcSnapSel" } -ExpectExit 0 -ExpectNotContains '203'
+Assert-Case -Name "orphan-cleanup: 목록 변환 — 자식보다 늦게 생긴 부모는 PID 재사용(고아)" `
+    -R @{ code = 0; out = "sel=$opcSnapSel" } -ExpectExit 0 -ExpectContains '204'
+Assert-Case -Name "orphan-cleanup: 목록 변환 — PID 4 생성시각이 부팅 표지" `
+    -R @{ code = 0; out = "boot=$($opcSnap.BootStamp)" } -ExpectExit 0 -ExpectContains 'boot=20261108211907'
+
+Assert-Case -Name "orphan-cleanup: 대기 기록이 있으면 선검사 결과와 무관하게 목록 조회" `
+    -R @{ code = 0; out = "need=$(Test-OrphanScanNeeded -PendingCount 1 -PreScanCount 0)" } -ExpectExit 0 -ExpectContains 'need=True'
+Assert-Case -Name "orphan-cleanup: 대기 기록도 선검사 대상도 없으면 목록 조회 안 함" `
+    -R @{ code = 0; out = "need=$(Test-OrphanScanNeeded -PendingCount 0 -PreScanCount 0)" } -ExpectExit 0 -ExpectContains 'need=False'
+
+Clear-OpcState
+$opcDry = Invoke-OrphanProcessCleanup -Hook 'golden-dry' -Processes $opcProcs -DryRun
 Assert-Case -Name "orphan-cleanup: 억제 중에도 주입 경로는 동작(회수 3건)" `
     -R @{ code = 0; out = "suppressed=$($opcDry.Suppressed) killed=$($opcDry.Killed)" } `
     -ExpectExit 0 -ExpectContains 'suppressed=False killed=3'
@@ -67,28 +107,55 @@ Assert-Case -Name "orphan-cleanup: hook 필드가 비지 않음(리포트에서 
     -R @{ code = 0; out = "hook=$opcHookOk" } -ExpectExit 0 -ExpectContains 'hook=3'
 
 # ---- Unkillable 계상 + 마커 (D18) ----
-# System(PID 4)은 종료되지 않는다 — Stop-Process가 실패하고 CIM 재조회에서는 계속 존재하므로
-# "성공 반환을 소멸의 근거로 쓰지 않는다"는 경로가 그대로 발화한다. 실제로 죽는 프로세스를 쓰면
-# 스위트가 실기계 상태를 바꾸게 되므로 죽지 않는 것을 고른다.
-$opcSys = Get-CimInstance Win32_Process -Filter "ProcessId=4" -ErrorAction SilentlyContinue
-if ($opcSys) {
-    $opcDead = @(@{ Id=4; Name='find.exe'; SessionId=$opcSid; StartTime=$opcSys.CreationDate; ParentId=9999; ParentStartTime=$null; CpuSec=0 })
-    $opcUn = Invoke-OrphanProcessCleanup -Hook 'golden-unkill' -Records $opcDead
-    Assert-Case -Name "orphan-cleanup: 소멸 실패는 Killed가 아니라 Unkillable" `
-        -R @{ code = 0; out = "killed=$($opcUn.Killed) unkillable=$($opcUn.Unkillable)" } `
-        -ExpectExit 0 -ExpectContains 'killed=0 unkillable=1'
+Clear-OpcState
+$opcDead = @((New-OpcProc 4 'find.exe' $opcSid $opcBoot 9999))
+$opcUn1 = Invoke-OrphanProcessCleanup -Hook 'golden-unkill' -Processes $opcDead
+Assert-Case -Name "orphan-cleanup: kill 요청은 같은 회수에서 판정하지 않고 대기로 남긴다" `
+    -R @{ code = 0; out = "requested=$($opcUn1.Requested) killed=$($opcUn1.Killed) unkillable=$($opcUn1.Unkillable) pending=$(Get-OpcCount 'orphan-pending')" } `
+    -ExpectExit 0 -ExpectContains 'requested=1 killed=0 unkillable=0 pending=1'
 
-    $opcMarkerDir = Join-Path $iso '.claude/.state/orphan-unkillable'
-    $opcMk = if (Test-Path -LiteralPath $opcMarkerDir) { @(Get-ChildItem -LiteralPath $opcMarkerDir -File -ErrorAction SilentlyContinue).Count } else { 0 }
-    Assert-Case -Name "orphan-cleanup: 마커 생성" `
-        -R @{ code = 0; out = "marker=$opcMk" } -ExpectExit 0 -ExpectContains 'marker=1'
+$opcUn2 = Invoke-OrphanProcessCleanup -Hook 'golden-unkill' -Processes $opcDead
+Assert-Case -Name "orphan-cleanup: 다음 회수 목록에 같은 생성시각으로 남으면 Unkillable·마커" `
+    -R @{ code = 0; out = "requested=$($opcUn2.Requested) killed=$($opcUn2.Killed) unkillable=$($opcUn2.Unkillable) marker=$(Get-OpcCount 'orphan-unkillable') pending=$(Get-OpcCount 'orphan-pending')" } `
+    -ExpectExit 0 -ExpectContains 'requested=0 killed=0 unkillable=1 marker=1 pending=0'
 
-    # 마커가 있으면 다음 회수에서 그 PID를 건너뛴다 — 죽지 않는 프로세스에 kill을 반복하지 않기 위함.
-    $opcUn2 = Invoke-OrphanProcessCleanup -Hook 'golden-unkill' -Records $opcDead
-    Assert-Case -Name "orphan-cleanup: 마커 이후 재시도 억제" `
-        -R @{ code = 0; out = "killed=$($opcUn2.Killed) unkillable=$($opcUn2.Unkillable)" } `
-        -ExpectExit 0 -ExpectContains 'killed=0 unkillable=0'
-}
+$opcUn3 = Invoke-OrphanProcessCleanup -Hook 'golden-unkill' -Processes $opcDead
+Assert-Case -Name "orphan-cleanup: 마커 이후 재시도 억제" `
+    -R @{ code = 0; out = "requested=$($opcUn3.Requested) unkillable=$($opcUn3.Unkillable) pending=$(Get-OpcCount 'orphan-pending')" } `
+    -ExpectExit 0 -ExpectContains 'requested=0 unkillable=0 pending=0'
+
+Clear-OpcState
+$opcGhost = New-OpcProc 2147483000 'more.com' $opcSid $opcBoot.AddDays(1) 999999
+$opcG1 = Invoke-OrphanProcessCleanup -Hook 'golden-pending' -Processes @($opcSysProc, $opcGhost)
+$opcG2 = Invoke-OrphanProcessCleanup -Hook 'golden-pending' -Processes @($opcSysProc)
+$opcLogDir2 = Join-Path $iso '.claude/.state/hook-events'
+$opcPendEv = @(Get-ChildItem -LiteralPath $opcLogDir2 -Filter '*.jsonl' -ErrorAction SilentlyContinue |
+    ForEach-Object { Get-Content -LiteralPath $_.FullName -Encoding UTF8 } |
+    Where-Object { $_ -match '"hook"\s*:\s*"golden-pending"' -and $_ -match '"rule"\s*:\s*"orphan-process"' -and $_ -match 'pid=2147483000' }).Count
+Assert-Case -Name "orphan-cleanup: 다음 회수 목록에서 사라졌으면 Killed·이벤트" `
+    -R @{ code = 0; out = "req1=$($opcG1.Requested) killed=$($opcG2.Killed) ev=$opcPendEv pending=$(Get-OpcCount 'orphan-pending')" } `
+    -ExpectExit 0 -ExpectContains 'req1=1 killed=1 ev=1 pending=0'
+Assert-Case -Name "orphan-cleanup: 대상 이름이 없는 목록에서도 대기 판정이 먼저 돈다" `
+    -R @{ code = 0; out = "scanned=$($opcG2.Scanned) killed=$($opcG2.Killed)" } `
+    -ExpectExit 0 -ExpectContains 'scanned=0 killed=1'
+
+Clear-OpcState
+$opcClaimGhost = New-OpcProc 2147483002 'more.com' $opcSid $opcBoot.AddDays(1) 999999
+$null = Invoke-OrphanProcessCleanup -Hook 'golden-claim' -Processes @($opcSysProc, $opcClaimGhost)
+Get-ChildItem -LiteralPath (Join-Path $opcStateDir 'orphan-pending') -File | ForEach-Object { Rename-Item -LiteralPath $_.FullName -NewName ($_.Name + '.claim') }
+$opcC2 = Invoke-OrphanProcessCleanup -Hook 'golden-claim' -Processes @($opcSysProc)
+Assert-Case -Name "orphan-cleanup: 다른 회수가 선점(.claim)한 대기 기록은 판정하지 않는다" `
+    -R @{ code = 0; out = "killed=$($opcC2.Killed) claim=$(Get-OpcCount 'orphan-pending' '*.claim')" } `
+    -ExpectExit 0 -ExpectContains 'killed=0 claim=1'
+
+Clear-OpcState
+$opcFailGhost = New-OpcProc 2147483003 'more.com' $opcSid $opcBoot.AddDays(1) 999999
+$null = Invoke-OrphanProcessCleanup -Hook 'golden-fail' -Processes @($opcSysProc, $opcFailGhost)
+$opcF2 = Invoke-OrphanProcessCleanup -Hook 'golden-fail' -Processes @($opcSysProc) -SnapshotFailed
+Assert-Case -Name "orphan-cleanup: 목록 조회가 실패하면 대기 기록을 판정하지 않고 남긴다" `
+    -R @{ code = 0; out = "killed=$($opcF2.Killed) pending=$(Get-OpcCount 'orphan-pending')" } `
+    -ExpectExit 0 -ExpectContains 'killed=0 pending=1'
+Clear-OpcState
 
 # ---- SessionEnd hook 계약 (stdin 주입) ----
 # 회수 사실은 이벤트 로그에만 남으므로 이 hook은 어떤 사유로 불려도 무출력·exit 0이어야 한다.
