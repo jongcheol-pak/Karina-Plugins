@@ -2,6 +2,8 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-12] hook 기동 횟수 줄이기(v3.12.0)의 범위 밖 둘 — 기각: ① pwsh 런타임 교체(상주 프로세스·컴파일 실행 파일) — 도구 호출당 pwsh 를 셸·쓰기 모두 1개로 줄인 것(Bash 1,891 → 1,208 · Edit 2,032 → 1,042 ms)이 이번 요청이었고 런타임 교체는 hook 전체 구조 변경이다. ② Stop hook(`loop-continue`) 매 턴 약 0.7초 — 턴 단위라 도구 호출 병목이 아니고, Stop 은 `if` 필터·async 로 계속 주입 판정을 유지할 수 없다.
+
 - [2026-11-12] 고아 회수의 소멸 확인 — 기각 둘: ① 확인을 `Get-Process` 로 바꾸는 안(요청 원문) — 커널에 갇힌 프로세스는 `Get-Process` 에 안 잡혀 살아 있는 것을 회수로 센다(`scripts/rules/orphan-cleanup-rationale.md` §7, 사용자 답 「CIM 1회 일괄 확인」). ② 같은 회수에서 CIM 으로 다시 확인하는 안 — 이 기기 CIM 1회 5~7초라 수집·확인 2회(약 13초)가 예산 8초에 들지 않는다(plan 리뷰 BLOCKER, 사용자 답 「확인을 다음 회수로」). 확인은 다음 회수의 수집 목록이 맡는다(§9 · v3.11.3).
 
 - [2026-11-12] `git ls-remote` 시간 상한 — 번복: 2026-08-26 「`git ls-remote`에 타임아웃을 거는 완화책은 넣지 않는다」를 뒤집어 `warn-version-drift.ps1` 이 상한(기본 5초, `KARINA_VD_REMOTE_TIMEOUT_MS`)을 넘긴 조회를 프로세스 트리째 죽이고 침묵한다(사용자 답 「트리 kill 로 번복」).
