@@ -154,7 +154,6 @@ function Test-SuggestMarkerReopen([string]$MarkerPath) {
     return ($failed -eq $true)
 }
 
-# ---- 제안 대상 추림: AGENTS.md에 토큰 없음 + 마커 없음(또는 앞 제안 명령이 실패) ----
 $toSuggest = New-Object System.Collections.Generic.List[object]
 foreach ($h in $hits) {
     $tok = ($h.token -replace '\s+', ' ').ToLower()
