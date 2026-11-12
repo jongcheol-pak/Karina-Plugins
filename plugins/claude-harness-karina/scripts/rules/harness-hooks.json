@@ -26,6 +26,7 @@
     "session-ledger-signal",
     "session-wiki-signals",
     "suggest-agents-record",
+    "timed-git",
     "warn-version-drift",
     "write-gate-exempt",
     "write-gate-trivial"

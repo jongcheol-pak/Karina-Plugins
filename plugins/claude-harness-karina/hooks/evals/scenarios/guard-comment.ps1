@@ -273,18 +273,15 @@ $gbBudgetScript = Join-Path $gc 'base-budget.ps1'
 param([string]$Lib, [string]$File, [int]$Ms, [int]$SleepMs, [int]$FakeDelayMs = 0)
 . $Lib
 $pidFile = "$File.fake-pid"
+$ranFile = "$File.fake-ran"
 if ($FakeDelayMs -gt 0) {
     [System.IO.File]::Delete($pidFile)
-    function New-CommentBaseShowInfo([string]$Root, [string]$Spec) {
-        $psi = New-Object System.Diagnostics.ProcessStartInfo (Get-Process -Id $PID).Path
-        foreach ($a in @('-NoProfile', '-Command', "Set-Content -LiteralPath '$pidFile' `$PID; Start-Sleep -Milliseconds $FakeDelayMs; git -C '$Root' -c core.quotepath=off show '$Spec'")) { $psi.ArgumentList.Add($a) }
-        $psi.UseShellExecute = $false
-        $psi.RedirectStandardInput = $true
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError = $true
-        $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding($false)
-        return $psi
-    }
+    [System.IO.File]::Delete($ranFile)
+    $fakeDir = Join-Path ([System.IO.Path]::GetDirectoryName($File)) 'fake-git-bin'
+    New-Item -ItemType Directory $fakeDir -Force | Out-Null
+    $pwExe = (Get-Process -Id $PID).Path
+    [System.IO.File]::WriteAllText((Join-Path $fakeDir 'git.cmd'), "@echo.>`"$ranFile`"`r`n@`"$pwExe`" -NoProfile -Command `"Set-Content -LiteralPath '$pidFile' `$PID; Start-Sleep -Milliseconds $FakeDelayMs`"`r`n")
+    $env:PATH = $fakeDir + [System.IO.Path]::PathSeparator + $env:PATH
 }
 $script:CommentBaseBudgetMs = $Ms
 $budget = New-CommentBaseBudget
@@ -307,7 +304,7 @@ if ($FakeDelayMs -gt 0) {
     }
     if ($alive) { Stop-Process -Id $fake -Force -ErrorAction SilentlyContinue }
 }
-"blocked=$($blocked.Count) alive=$alive fast=$($ms -lt 8000)"
+"ran=$(Test-Path -LiteralPath $ranFile) blocked=$($blocked.Count) alive=$alive fast=$($ms -lt 8000)"
 '@, [System.Text.UTF8Encoding]::new($true))
 $gbLib = Join-Path $pluginRoot 'scripts/comment-lines.ps1'
 $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 3000 3300 2>&1
@@ -316,7 +313,7 @@ $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $g
 Assert-Case -Name "guard-comment: BASE 예산 — 예산이 바닥났으면 복원 doc 도 차단" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=1'
 $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 1500 0 15000 2>&1
 $gbSlow = @{ code = $LASTEXITCODE; out = ($out -join "`n") }
-Assert-Case -Name "guard-comment: BASE 예산 — git 대기가 예산을 넘으면 Kill 하고 복원 doc 도 차단" -R $gbSlow -ExpectExit 0 -ExpectContains 'blocked=1 alive=0'
+Assert-Case -Name "guard-comment: BASE 예산 — PATH 앞 git.cmd 를 & git 과 같이 집고, 대기가 예산을 넘으면 손자까지 끝내고 복원 doc 도 차단" -R $gbSlow -ExpectExit 0 -ExpectContains 'ran=True blocked=1 alive=0'
 Assert-Case -Name "guard-comment: BASE 예산 — 시간 초과 때 예산만큼만 기다린다" -R $gbSlow -ExpectExit 0 -ExpectContains 'fast=True'
 [System.IO.File]::Delete($gbPlan)
 $r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore

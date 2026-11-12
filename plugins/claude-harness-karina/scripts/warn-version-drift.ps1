@@ -53,30 +53,10 @@ try {
                         $remoteTag = @()
                         $remoteExit = 1
                         try {
-                            $remotePsi = New-Object System.Diagnostics.ProcessStartInfo
-                            $remotePsi.FileName = 'git'
-                            $remotePsi.Arguments = "ls-remote --tags origin karina-v$pushedVer karina-v$pushedVer^{}"
-                            $remotePsi.WorkingDirectory = $harnessRoot
-                            $remotePsi.UseShellExecute = $false
-                            $remotePsi.RedirectStandardOutput = $true
-                            $remotePsi.RedirectStandardError = $true
-                            $remoteClock = [System.Diagnostics.Stopwatch]::StartNew()
-                            $remoteProc = [System.Diagnostics.Process]::Start($remotePsi)
-                            $remoteOut = $remoteProc.StandardOutput.ReadToEndAsync()
-                            $null = $remoteProc.StandardError.ReadToEndAsync()
-                            if ($remoteProc.WaitForExit($remoteLimitMs)) {
-                                $remoteLeft = [Math]::Max(0, $remoteLimitMs - [int]$remoteClock.ElapsedMilliseconds)
-                                if ($remoteOut.Wait($remoteLeft)) {
-                                    $remoteTag = @($remoteOut.Result -split "\r?\n" | Where-Object { $_ })
-                                    $remoteExit = $remoteProc.ExitCode
-                                }
-                            } else {
-                                try {
-                                    if ($PSVersionTable.PSVersion.Major -ge 7) { $remoteProc.Kill($true) }
-                                    elseif ($env:OS -eq 'Windows_NT') { $null = & taskkill /T /F /PID $remoteProc.Id 2>$null }
-                                    else { $remoteProc.Kill() }
-                                } catch {}
-                            }
+                            . (Join-Path $PSScriptRoot 'timed-git.ps1')
+                            $remoteRun = Invoke-TimedGit -GitArgs @('ls-remote', '--tags', 'origin', "karina-v$pushedVer", "karina-v$pushedVer^{}") -WorkDir $harnessRoot -TimeoutMs $remoteLimitMs
+                            $remoteTag = @($remoteRun.Lines | Where-Object { $_ })
+                            $remoteExit = $remoteRun.Code
                         } catch {}
                         if ($remoteExit -eq 0) {
                             $peel = $remoteTag | Where-Object { $_ -match "\srefs/tags/karina-v$([regex]::Escape($pushedVer))\^\{\}$" } | Select-Object -First 1

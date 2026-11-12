@@ -230,7 +230,7 @@
 
 ## §22 git 호출의 시간 예산
 
-**git 호출 9곳을 `Invoke-PwGit` 하나로 모아 스크립트 시작부터 `-BudgetMs`(기본 15000) 안에서만 돌린다** (2026-11-12). 이 hook 은 `async: true` 라 Claude Code 가 timeout 을 걸지 않는다 — 큰 레포의 `git grep` 이나 멈춘 git 이 pwsh·git 프로세스를 끝없이 남길 수 있었다(종전 동기 timeout 20초가 하던 일). 예산은 종전 timeout 보다 짧게 잡았고, 골든은 `-BudgetMs 0`(git 미호출)과 PATH 앞 가짜 `git.cmd`(7초 대기) + 2초 예산(5초 안에 끝남)으로 잰다.
+**git 호출 9곳을 `Invoke-PwGit` 하나로 모아 스크립트 시작부터 `-BudgetMs`(기본 15000) 안에서만 돌린다** (2026-11-12). **실행 자체는 `scripts/timed-git.ps1` 의 `Invoke-TimedGit` 이 맡고 아래 불릿은 그 함수의 근거다** — `comment-lines`(BASE 복원 `git show`)·`warn-version-drift`(`ls-remote`)도 같은 함수를 부른다. 세 곳이 따로 들고 있을 때 자식 종료가 `Kill()`·`Kill($true)`·`taskkill /T` 로 갈렸고 `Process.Start("git")` 쪽은 PATH 앞 `git.cmd` 를 건너뛰었다(2026-11-12 리뷰). `Invoke-PwGit` 은 남은 예산을 넘기는 얇은 함수다. 이 hook 은 `async: true` 라 Claude Code 가 timeout 을 걸지 않는다 — 큰 레포의 `git grep` 이나 멈춘 git 이 pwsh·git 프로세스를 끝없이 남길 수 있었다(종전 동기 timeout 20초가 하던 일). 예산은 종전 timeout 보다 짧게 잡았고, 골든은 `-BudgetMs 0`(git 미호출)과 PATH 앞 가짜 `git.cmd`(7초 대기) + 2초 예산(5초 안에 끝남)으로 잰다.
 
 - **실행 파일은 `Get-Command git -CommandType Application` 으로 고르고 `.cmd`·`.bat` 면 `cmd.exe /d /s /c` 로 띄운다** — `Process.Start("git")` 은 PATHEXT 를 보지 않아 `& git` 과 다른 git 을 집는다(2026-11-12 실측: PATH 앞 `git.cmd` 를 `& git` 은 집고 `Process.Start` 는 건너뛴다). 인자는 모두 따옴표로 감싼다 — `cmd` 경로에서 grep 정규식의 `|` 가 파이프로 읽히지 않게.
 - **`-C` 없는 호출은 `WorkingDirectory` 를 지금 위치(`Get-Location`)로 준다** — `System.Diagnostics.Process` 의 기본 작업 폴더는 `Set-Location` 을 따르지 않는다(레포 `docs/conventions.md` 2026-09-10 함정).

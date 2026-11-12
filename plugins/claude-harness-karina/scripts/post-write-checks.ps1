@@ -56,56 +56,13 @@ function Test-WarnOnce {
 }
 
 # git 호출의 시간 예산 — 근거는 `rules/post-write-rationale.md` §22
-$pwGitExe = $null
-function ConvertTo-PwArgument([string]$Arg) {
-    return '"' + ([regex]::Replace($Arg, '(\\*)("|$)', { param($m) $m.Groups[1].Value + $m.Groups[1].Value + $(if ($m.Groups[2].Value) { '\"' } else { '' }) })) + '"'
-}
+try { . (Join-Path $PSScriptRoot 'timed-git.ps1') } catch {}
 function Invoke-PwGit {
     param([string[]]$GitArgs, [string]$WorkDir = (Get-Location).ProviderPath)
-    $none = [pscustomobject]@{ Code = -1; Lines = @() }
-    if ($BudgetMs - $pwClock.ElapsedMilliseconds -le 0) { return $none }
-    if (-not $script:pwGitExe) { $script:pwGitExe = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | ForEach-Object { $_.Source })[0] }
-    if (-not $script:pwGitExe) { return $none }
-    $argText = (@($GitArgs) | ForEach-Object { ConvertTo-PwArgument $_ }) -join ' '
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    if ($script:pwGitExe -match '(?i)\.(cmd|bat)$') {
-        if (@($GitArgs | Where-Object { $_ -match '[%"]' }).Count -or $argText.Length -gt 7000) { return $none }
-        $psi.FileName = $env:ComSpec
-        $psi.Arguments = '/d /s /c "' + (ConvertTo-PwArgument $script:pwGitExe) + ' ' + $argText + '"'
-    } else {
-        $psi.FileName = $script:pwGitExe
-        $psi.Arguments = $argText
-    }
-    $psi.WorkingDirectory = $WorkDir
-    $psi.UseShellExecute = $false
-    $psi.CreateNoWindow = $true
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $psi.StandardOutputEncoding = [System.Text.UTF8Encoding]::new($false)
-    $psi.StandardErrorEncoding = [System.Text.UTF8Encoding]::new($false)
-    $p = $null
     try {
-        $p = [System.Diagnostics.Process]::Start($psi)
-        $outTask = $p.StandardOutput.ReadToEndAsync()
-        $null = $p.StandardError.ReadToEndAsync()
-        $left = [int][Math]::Max(0, $BudgetMs - $pwClock.ElapsedMilliseconds)
-        if (-not $p.WaitForExit($left)) {
-            try {
-                if ($PSVersionTable.PSVersion.Major -ge 7) { $p.Kill($true) }
-                elseif ($env:OS -eq 'Windows_NT') { $null = & taskkill /T /F /PID $p.Id 2>$null }
-                else { $p.Kill() }
-            } catch {}
-            return $none
-        }
-        $left = [int][Math]::Max(0, $BudgetMs - $pwClock.ElapsedMilliseconds)
-        if (-not $outTask.Wait($left)) { return $none }
-        $lines = @($outTask.Result -split "`r?`n")
-        if ($lines.Count -and $lines[-1] -eq '') { $lines = @($lines | Select-Object -First ($lines.Count - 1)) }
-        return [pscustomobject]@{ Code = $p.ExitCode; Lines = $lines }
+        return Invoke-TimedGit -GitArgs $GitArgs -WorkDir $WorkDir -TimeoutMs ([int]($BudgetMs - $pwClock.ElapsedMilliseconds))
     } catch {
-        return $none
-    } finally {
-        if ($p) { $p.Dispose() }
+        return [pscustomobject]@{ Code = -1; Lines = @() }
     }
 }
 

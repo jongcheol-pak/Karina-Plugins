@@ -1,5 +1,7 @@
 ﻿# comment-lines.ps1 — 새 주석 줄 판별 (dot-source 전용) — 근거는 `rules/comment-gate-rationale.md` §2
 
+try { . (Join-Path $PSScriptRoot 'timed-git.ps1') } catch {}
+
 $script:CommentSlashExts = @('.cs', '.ts', '.tsx', '.js', '.jsx', '.java', '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.fs', '.kt', '.swift')
 $script:CommentHashExts = @('.py', '.ps1', '.psm1', '.psd1', '.sh', '.yaml', '.yml', '.toml')
 $script:CommentPsExts = @('.ps1', '.psm1', '.psd1')
@@ -300,20 +302,9 @@ function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index, [boo
 
 function New-CommentBaseBudget { return @{ LeftMs = [int]$script:CommentBaseBudgetMs } }
 
-function New-CommentBaseShowInfo([string]$Root, [string]$Spec) {
-    $psi = New-Object System.Diagnostics.ProcessStartInfo 'git'
-    $psi.Arguments = "-C `"$Root`" -c core.quotepath=off show `"$Spec`""
-    $psi.UseShellExecute = $false
-    $psi.RedirectStandardInput = $true
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding($false)
-    return $psi
-}
-
 function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budget) {
     try {
-        if (-not $Root -or $File.Contains('"') -or -not $File.StartsWith($Root, [System.StringComparison]::OrdinalIgnoreCase)) { return @() }
+        if (-not $Root -or -not $File.StartsWith($Root, [System.StringComparison]::OrdinalIgnoreCase)) { return @() }
         $plan = $null
         foreach ($d in (Get-CommentSearchDirs $Dir $Root)) {
             $cand = Join-Path $d 'plan.md'
@@ -325,17 +316,11 @@ function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budge
         $left = [int]$Budget.LeftMs
         if ($left -le 0) { return @() }
         $rel = $File.Substring($Root.Length).TrimStart('\', '/') -replace '\\', '/'
-        $psi = New-CommentBaseShowInfo $Root "$($m.Groups[1].Value):$rel"
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
-        $p = [System.Diagnostics.Process]::Start($psi)
-        $p.StandardInput.Close()
-        $out = $p.StandardOutput.ReadToEndAsync()
-        $null = $p.StandardError.ReadToEndAsync()
-        $done = $p.WaitForExit($left)
+        $run = Invoke-TimedGit -GitArgs @('-C', $Root, '-c', 'core.quotepath=off', 'show', "$($m.Groups[1].Value):$rel") -WorkDir $Root -TimeoutMs $left
         $Budget.LeftMs = $left - [int]$sw.ElapsedMilliseconds
-        if (-not $done) { try { $p.Kill() } catch {}; return @() }
-        if ($p.ExitCode -ne 0) { return @() }
-        return @($out.Result -split '\r?\n')
+        if ($run.Code -ne 0) { return @() }
+        return @($run.Lines)
     } catch { return @() }
 }
 

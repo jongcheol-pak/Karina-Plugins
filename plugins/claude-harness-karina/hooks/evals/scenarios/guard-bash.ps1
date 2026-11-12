@@ -56,7 +56,7 @@ function Get-CommitLibRedefinitions([string]$Dir) {
     $owned = @(foreach ($f in @('guard-bash.ps1', 'git-commit-match.ps1')) {
         [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $Dir $f), [ref]$null, [ref]$null).FindAll($isFn, $true) | ForEach-Object Name
     })
-    $dups = @(foreach ($lib in @('guard-commit-secrets.ps1', 'guard-stale-docs.ps1', 'guard-task-audit.ps1', 'guard-commit-comments.ps1', 'comment-lines.ps1')) {
+    $dups = @(foreach ($lib in @('guard-commit-secrets.ps1', 'guard-stale-docs.ps1', 'guard-task-audit.ps1', 'guard-commit-comments.ps1', 'comment-lines.ps1', 'timed-git.ps1')) {
         [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $Dir $lib), [ref]$null, [ref]$null).FindAll($isFn, $true) |
             Where-Object { $owned -contains $_.Name } | ForEach-Object { $lib + ':' + $_.Name }
     })
@@ -66,7 +66,7 @@ function Get-CommitLibRedefinitions([string]$Dir) {
 $r = @{ code = 0; out = (Get-CommitLibRedefinitions $scriptsDir) }
 Assert-Case -Name "guard-bash: 커밋 시점 라이브러리는 디스패처·커밋 판정 함수를 다시 정의하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'dup=none'
 $redefLib = Join-Path $work 'dispatch-redef'; New-Item -ItemType Directory $redefLib -Force | Out-Null
-foreach ($f in @('guard-bash.ps1', 'git-commit-match.ps1', 'guard-commit-secrets.ps1', 'guard-stale-docs.ps1', 'guard-commit-comments.ps1', 'comment-lines.ps1')) { Copy-Item (Join-Path $scriptsDir $f) $redefLib -Force }
+foreach ($f in @('guard-bash.ps1', 'git-commit-match.ps1', 'guard-commit-secrets.ps1', 'guard-stale-docs.ps1', 'guard-commit-comments.ps1', 'comment-lines.ps1', 'timed-git.ps1')) { Copy-Item (Join-Path $scriptsDir $f) $redefLib -Force }
 ('function New-HookResult { param() }' + [Environment]::NewLine + (Get-Content -LiteralPath (Join-Path $scriptsDir 'guard-task-audit.ps1') -Raw)) | Set-Content (Join-Path $redefLib 'guard-task-audit.ps1')
 $r = @{ code = 0; out = (Get-CommitLibRedefinitions $redefLib) }
 Assert-Case -Name "guard-bash: 라이브러리가 디스패처 함수를 다시 정의하면 그 이름을 짚는다" -R $r -ExpectExit 0 -ExpectContains 'guard-task-audit.ps1:New-HookResult'

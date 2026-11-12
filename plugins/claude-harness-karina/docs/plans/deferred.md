@@ -10,7 +10,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 16 / 종결 120
+**▶ 현행 잔량(기계 대조 대상)**: 대기 15 / 종결 120
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -57,7 +57,6 @@
 - [2026-10-19] **체인 실행 시점 승인·기존 것을 깨는 변경 대기의 재알림** — 사용자 몫 ①·④ 로 넘긴 질문은 상한 없이 기다리고 처음 한 번만 `PushNotification` 으로 알린다. 일정 시간(예: 30분)마다 다시 알리는 장치를 둔다(`chain-plan/references/user-relay.md`「사용자에게 넘기기」) (출처: 계획 체인 run_60c0ebe3 plan 6 후보 라운드 — 사용자 「보류」) (실해: 2026-10-19 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 첫 알림을 놓치면 ①·④ 질문이 열린 채 체인이 선다)
 - [2026-10-19] **record-project-fact 의 커밋·PR 단계** — `karina:record-project-fact` 가 AGENTS.md 를 고친 뒤 커밋·PR 단계가 없다(`record-project-fact/SKILL.md` 의 커밋 언급은 사본 폴더 주의 2줄뿐). 디버깅 직접 수정 경로처럼 `implement/references/push-flow.md`「디버깅 단독 경로」 의 커밋을 쓸지, 작업 중간 기록이라 커밋을 미룰지 정한다 (출처: 디버깅 커밋·PR 회차 후보 라운드 — 사용자 「보류」) (실해: 2026-10-19 사용자 보류 결정(deferred-rules 사용자 결정 예외) — AGENTS.md 기록이 커밋 없이 작업 트리에만 남는다)
 - [2026-11-11] **병렬 그룹 조건 완화** — `chain-plan/references/parallel.md`「병렬 그룹」 의 넷(의존 없음·바뀌는 파일 겹침 없음·검증이 새 체크아웃에서 돈다·동시 상한 2) 중 무엇이 실제 체인에서 그룹을 막는지 먼저 재고, 막는 조건만 완화한다(상한 상향 · ignored 파일 복사 — 시크릿 이동 검토 필요) · 넘기는 셋 ②(규칙 문턱 변경) (출처: 2026-11-11 체인 병목 감사 — 사용자 「대장 등재」) (실해: 2026-11-11 미관측 — 사용자 지시 등재(deferred-rules 사용자 결정 예외) · 전사에서 실제 병렬 그룹 형성 사례 0건이라 체인이 계획 합만큼 직렬로 돈다)
-- [2026-11-12] **시한 걸린 git 자식 실행 3벌 공통화** — `post-write-checks.ps1` `Invoke-PwGit` · `comment-lines.ps1` `Get-CommentBaseLines` · `warn-version-drift.ps1` ls-remote 가 같은 패턴(ProcessStartInfo·ReadToEndAsync·WaitForExit·Kill)을 따로 들고 자식 종료(Kill()·Kill($true)·taskkill /T)와 실행 파일 해석(PATHEXT)이 갈린다 · 넘기는 셋 ③(헬퍼 위치·예산 표현이 갈리고 `comment-lines` 는 차단 hook `guard-commit-comments` 가 dot-source — 골든 실증 필요) (출처: 2026-11-12 /code-review v3.12.0) (실해: 2026-11-12 `comment-lines.ps1:336` 은 시한 초과에 `Kill()` 만 해 손자 git 이 남는다)
 
 ### llm-wiki · vault
 

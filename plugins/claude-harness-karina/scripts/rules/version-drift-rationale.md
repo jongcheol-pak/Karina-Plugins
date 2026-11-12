@@ -66,7 +66,7 @@
                         #   저장된 자격증명은 그대로 쓰이므로 private 레포도 조회된다(credential.helper를 비우면 그쪽이 막힌다).
 ```
 
-**`ls-remote` 에는 시간 상한을 건다(v3.11.1)** — `System.Diagnostics.Process` 로 띄워 `WaitForExit(<상한>)` 을 기다리고, 넘기면 **프로세스 트리째** 죽인 뒤 조회 실패(판정 불가 → 침묵)와 같게 처리한다. 상한은 환경변수 `KARINA_VD_REMOTE_TIMEOUT_MS`(양의 정수) 아니면 5000ms 다 — 정상 조회는 540~646ms 다.
+**`ls-remote` 에는 시간 상한을 건다(v3.11.1)** — `scripts/timed-git.ps1` 의 `Invoke-TimedGit` 으로 띄워(2026-11-12 공통화 — 근거 `post-write-rationale.md` §22) `WaitForExit(<상한>)` 을 기다리고, 넘기면 **프로세스 트리째** 죽인 뒤 조회 실패(판정 불가 → 침묵)와 같게 처리한다. 상한은 환경변수 `KARINA_VD_REMOTE_TIMEOUT_MS`(양의 정수) 아니면 5000ms 다 — 정상 조회는 540~646ms 다.
 
 - **2026-08-26 기각을 번복했다** — 그때는 `WaitForExit` + Kill 이 고아 프로세스를 새로 만든다는 비용이 「무응답 원격이면 세션 시작이 최대 10초 늦다」보다 크다고 봤다. v3.11.0 에서 SessionStart 스크립트를 한 묶음(`hook-dispatch.ps1`)으로 돌리면서, 묶음 timeout 에 걸리면 `session-context` 의 컨텍스트 주입까지 버려지게 됐다(상한 없는 무응답 원격 재현 16초). 고아는 트리 kill 로 남기지 않는다 — pwsh 7 은 `Kill($true)`, Windows PowerShell 5.1 은 `taskkill /T /F`.
 - **정상 경로는 stdout 을 끝까지 받는다** — 프로세스가 상한 안에 끝나도 비동기 읽기가 아직 끝나지 않았을 수 있다. 끝까지 받지 않으면 태그 줄을 놓쳐 「원격에 태그 없음」으로 읽고 릴리즈 누락을 잘못 낸다. 상한을 넘긴 경로만 EOF 를 기다리지 않는다 — 죽인 프로세스의 손자가 파이프를 쥐고 있을 수 있다.
