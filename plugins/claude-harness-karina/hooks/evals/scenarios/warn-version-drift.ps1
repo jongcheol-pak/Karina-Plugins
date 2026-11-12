@@ -143,6 +143,45 @@ try {
 
         $vdRemoteJson = @{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $vdWork } | ConvertTo-Json -Compress
 
+        $vdOnWindows = ($IsWindows -or $env:OS -eq 'Windows_NT')
+        function Get-VdStallSleeps {
+            if ($vdOnWindows) {
+                return @(Get-CimInstance Win32_Process -Filter "Name='PING.EXE' or Name='cmd.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match '127\.0\.0\.87|vd-stall-ssh' })
+            }
+            return @(Get-Process -Name sleep, sh -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match '(^|\s|;)8\.7(\s|;|$)' })
+        }
+        $vdSshPrev = $env:GIT_SSH_COMMAND
+        $vdSshExePrev = $env:GIT_SSH
+        $vdLimitPrev = $env:KARINA_VD_REMOTE_TIMEOUT_MS
+        $vdStallMs = -1
+        $vdStallLeft = -1
+        $vdSshMark = Join-Path $work 'vd-ssh-started'
+        try {
+            & git -C $vdWork remote set-url origin 'ssh://stall.invalid/x' 2>$null
+            if ($vdOnWindows) {
+                $vdStallCmd = Join-Path $work 'vd-stall-ssh.cmd'
+                Set-Content -LiteralPath $vdStallCmd -Value "@echo.>""$vdSshMark""`r`n@ping -n 9 127.0.0.87 >nul" -Encoding ascii
+                $env:GIT_SSH_COMMAND = $null
+                $env:GIT_SSH = $vdStallCmd
+            } else {
+                $env:GIT_SSH_COMMAND = "touch '$vdSshMark'; sleep 8.7; :"
+            }
+            $env:KARINA_VD_REMOTE_TIMEOUT_MS = '3000'
+            $vdSw = [System.Diagnostics.Stopwatch]::StartNew()
+            $r = Invoke-Hook 'warn-version-drift.ps1' $vdRemoteJson
+            $vdStallMs = $vdSw.ElapsedMilliseconds
+            Start-Sleep -Milliseconds 300
+            $vdStallLeft = @(Get-VdStallSleeps).Count
+        } finally {
+            & git -C $vdWork remote set-url origin $vdBare 2>$null
+            $env:GIT_SSH_COMMAND = $vdSshPrev
+            $env:GIT_SSH = $vdSshExePrev
+            $env:KARINA_VD_REMOTE_TIMEOUT_MS = $vdLimitPrev
+            Get-VdStallSleeps | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        }
+        Assert-Case -Name "version-drift: 원격 조회 상한 — 멈춘 원격이어도 상한 안에 무출력으로 끝난다" -R @{ code = $r.code; out = "$($r.out)|fast=$($vdStallMs -ge 0 -and $vdStallMs -lt 6000)" } -ExpectExit 0 -ExpectContains '|fast=True' -ExpectNotContains '릴리즈 누락'
+        Assert-Case -Name "version-drift: 상한 kill 뒤 원격 조회의 자식 프로세스가 남지 않는다" -R @{ code = 0; out = "started=$(Test-Path -LiteralPath $vdSshMark) left=$vdStallLeft" } -ExpectContains 'started=True left=0'
+
         # 8) ① 로컬 태그 없음 + 원격에도 없음 → 릴리즈 누락 발화 (구 케이스 5의 축을 이어받는다)
         #    버전 문자열이 문구에 실려야 한다 — 한글 조사가 붙은 `v$var가`는 PowerShell이 변수명으로 삼켜
         #    빈 값이 된다(v1.158.0 구현 중 실제로 밟았다).

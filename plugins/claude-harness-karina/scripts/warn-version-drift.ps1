@@ -47,8 +47,37 @@ try {
                     if (-not $tagSha) {
                         # 로컬에 없다 → 원격 확인. — 근거는 `rules/version-drift-rationale.md` §4
                         $env:GIT_TERMINAL_PROMPT = '0'
-                        $remoteTag = @(& git ls-remote --tags origin "karina-v$pushedVer" "karina-v$pushedVer^{}" 2>$null)
-                        $remoteExit = $LASTEXITCODE   # 즉시 캡처 — 아래 문자열 연산이 값을 덮어쓰기 전에
+                        $remoteLimitMs = 5000
+                        $remoteLimitRaw = 0
+                        if ([int]::TryParse([string]$env:KARINA_VD_REMOTE_TIMEOUT_MS, [ref]$remoteLimitRaw) -and $remoteLimitRaw -gt 0) { $remoteLimitMs = $remoteLimitRaw }
+                        $remoteTag = @()
+                        $remoteExit = 1
+                        try {
+                            $remotePsi = New-Object System.Diagnostics.ProcessStartInfo
+                            $remotePsi.FileName = 'git'
+                            $remotePsi.Arguments = "ls-remote --tags origin karina-v$pushedVer karina-v$pushedVer^{}"
+                            $remotePsi.WorkingDirectory = $harnessRoot
+                            $remotePsi.UseShellExecute = $false
+                            $remotePsi.RedirectStandardOutput = $true
+                            $remotePsi.RedirectStandardError = $true
+                            $remoteClock = [System.Diagnostics.Stopwatch]::StartNew()
+                            $remoteProc = [System.Diagnostics.Process]::Start($remotePsi)
+                            $remoteOut = $remoteProc.StandardOutput.ReadToEndAsync()
+                            $null = $remoteProc.StandardError.ReadToEndAsync()
+                            if ($remoteProc.WaitForExit($remoteLimitMs)) {
+                                $remoteLeft = [Math]::Max(0, $remoteLimitMs - [int]$remoteClock.ElapsedMilliseconds)
+                                if ($remoteOut.Wait($remoteLeft)) {
+                                    $remoteTag = @($remoteOut.Result -split "\r?\n" | Where-Object { $_ })
+                                    $remoteExit = $remoteProc.ExitCode
+                                }
+                            } else {
+                                try {
+                                    if ($PSVersionTable.PSVersion.Major -ge 7) { $remoteProc.Kill($true) }
+                                    elseif ($env:OS -eq 'Windows_NT') { $null = & taskkill /T /F /PID $remoteProc.Id 2>$null }
+                                    else { $remoteProc.Kill() }
+                                } catch {}
+                            }
+                        } catch {}
                         if ($remoteExit -eq 0) {
                             $peel = $remoteTag | Where-Object { $_ -match "\srefs/tags/karina-v$([regex]::Escape($pushedVer))\^\{\}$" } | Select-Object -First 1
                             $plain = $remoteTag | Where-Object { $_ -match "\srefs/tags/karina-v$([regex]::Escape($pushedVer))$" } | Select-Object -First 1
