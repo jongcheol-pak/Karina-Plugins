@@ -157,6 +157,10 @@ Assert-Case -Name "orphan-cleanup: 목록 조회가 실패하면 대기 기록�
     -ExpectExit 0 -ExpectContains 'killed=0 pending=1'
 Clear-OpcState
 
+$opcEndHooks = @((Get-Content -LiteralPath (Join-Path $pluginRoot 'hooks/hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json).hooks.SessionEnd | ForEach-Object { @($_.hooks) } | Where-Object { [string]$_.command -match 'session-end-cleanup\.ps1' })
+Assert-Case -Name "orphan-cleanup: 배선 — SessionEnd timeout 15초가 예산 8초와 pwsh 기동을 담는다" `
+    -R @{ code = 0; out = "timeout=$(($opcEndHooks | ForEach-Object { $_.timeout }) -join ',')" } -ExpectExit 0 -ExpectContains 'timeout=15'
+
 $opcBudgetCand = Get-OrphanProcessCandidates -BudgetMs 500
 Assert-Case -Name "orphan-cleanup: 남은 예산이 1초 미만이면 목록 조회를 부르지 않는다" `
     -R @{ code = 0; out = "exhausted=$($opcBudgetCand.BudgetExhausted) cim=$($opcBudgetCand.CimCalls)" } `
