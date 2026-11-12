@@ -3,13 +3,13 @@
 > `guard-bash.ps1`의 주석에서 옮긴 판정 근거다. 스크립트에는 각 자리에 이 문서의 절을 가리키는 1줄만 남겼다.
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 
-## §1 검사 10종을 한 프로세스에서 수행하는 이유
+## §1 검사 11종을 한 프로세스에서 수행하는 이유
 
 ```
-# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 10종 검사를 한 프로세스에서 수행
+# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 11종 검사를 한 프로세스에서 수행
 #
 # 담당 조항(정본: `skills/DESIGN.md`의 hook 담당 조항 표):
-#   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신 · E18 Windows Bash 도구 역슬래시 축소 경고 · E19 task 완료 커밋의 소스 감사 누락 경고.
+#   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신 · E18 Windows Bash 도구 역슬래시 축소 경고 · E19 task 완료 커밋의 소스 감사 누락 경고 · E21 python 으로 소스에 새 코드·주석 쓰기 차단.
 #   부수 경고 둘(전역 탐색·위험값 대입)은 대응하는 독립 hook이 없고 이 파일이 유일한 실행 경로다.
 #
 # block-destructive는 여기 합치지 않는다 — 끌 수 없는 마지막 방어선이라 이 파일의 로드 실패가
@@ -26,17 +26,17 @@
 
 **코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 아래 검사 함수 8종(2026-11-02 에 더한 `Invoke-WarnTaskAudit` 은 `task-audit-rationale.md`, `Invoke-WarnBashBackslash` 는 이 문서 §21)의 판정 근거는 이 문서가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
-## §2 검사 10종을 한 프로세스에 담는 구조
+## §2 검사 11종을 한 프로세스에 담는 구조
 
 v1.225.0이 Bash 계열 hook 을 `guard-bash.ps1` 하나로 통폐합하며 공유 모듈 `bash-hook-lib.ps1` 을 삭제했다.
 종전에는 검사 로직을 그 모듈에 두고 ① 검사마다 standalone 래퍼 ② 단일 디스패처
 두 경로가 그것을 dot-source 했는데, **지금은 실행 경로가 하나뿐이라 그 이중화가 필요 없다.**
-dot-source 는 넷 남아 있다 — 커밋 시점 검사인 `guard-commit-secrets.ps1`·`guard-stale-docs.ps1`·`guard-task-audit.ps1`·`guard-commit-comments.ps1`(아래).
+dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-secrets.ps1`·`guard-stale-docs.ps1`·`guard-task-audit.ps1`·`guard-commit-comments.ps1`(아래)과, python 호출이 든 명령에서만 읽는 `python-newcode.ps1`(§22).
 
 현행 구조:
 
-- **검사 10종 중 6종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
-  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-WarnGlobalFind` · `Invoke-WarnBashBackslash` · `Invoke-WarnDangerousAssignment`.
+- **검사 11종 중 7종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
+  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-WarnGlobalFind` · `Invoke-WarnBashBackslash` · `Invoke-WarnDangerousAssignment` · `Invoke-BlockPythonNewCode`(I/O — 인자 `.py` 파일 읽기 — 만 여기 있고 판정은 `python-newcode.ps1` 의 순수 함수다, §22).
   **나머지 넷 — `Invoke-WarnCommitSecrets`(`guard-commit-secrets.ps1`) · `Invoke-WarnStaleDocs`
   (`guard-stale-docs.ps1`) · `Invoke-WarnTaskAudit`(`guard-task-audit.ps1`) · `Invoke-BlockCommitComments`(`guard-commit-comments.ps1` — 근거는 `comment-gate-rationale.md` §4) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
   우회 변수·시크릿 패턴 연동을 담아 크기가 따로 놀고, 분리해 두어야 골든이 그 파일만 단독
@@ -311,3 +311,15 @@ dot-source 는 넷 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 **Windows(`$env:OS -eq 'Windows_NT'`)에서만 낸다** — macOS·Linux 는 실측하지 않았고, 축소가 도구 자체인지 Windows 의 인자 전달층인지 갈리지 않았다. `$IsWindows` 를 쓰지 않는 이유는 PowerShell 5.1 에 그 자동 변수가 없어(폴백 경로) 경고가 조용히 꺼지기 때문이다.
 
 **경고(비차단)이고 차단하지 않는다** — 하니스 규약이 새 차단을 금지하고(AGENTS.md DO NOT), 처방(Write 로 스크립트 파일을 만들어 실행하거나 PowerShell 도구로 보낸다)이 정해져 있어 그 호출에 원인과 처방을 붙이면 된다. 문면 규칙이 3개 파일 6자리에 있었는데도 재발해(사용자 보고 — 워커 4회) 문면을 경고 hook 으로 올렸다(`skills/DESIGN.md` §5 E18).
+
+## §22 block-python-newcode: python 으로 소스 파일에 새 코드·주석을 쓰는 명령 차단
+
+**왜 막는가.** 새 주석 편집 게이트(`comment-gate-rationale.md`)는 Edit·Write 에만 닿는다 — python 스크립트가 소스 파일을 직접 쓰면 그 게이트를 거치지 않는다. 2026-11-11~12 Karina 체인(plan 4~11) 워커는 `src/*.rs` 에 쓰는 python 명령을 476회 냈고, 그중 새 항목(그 시각 직전 커밋에 없던 `fn`·`struct`·`const` 이름)을 넣은 것이 174회, 본문에 `///` 가 든 것이 92회였다. 커밋 게이트 차단 24회 중 16회가 이 경로로 들어온 주석이었다. 규칙(`skills/implement/references/code-style.md`「codemod 줄바꿈」 — 새 코드·주석은 Edit·Write)이 문면으로 있었는데도 났다. 사용자 지시(2026-11-13 「차단으로 올림」)로 비안전 차단을 들였다(`docs/harness-conventions.md` 「안전 임계 hook 의 차단 동작 변경」 ⑤).
+
+**판정 (`python-newcode.ps1` 의 `Test-PythonNewCodeScript` — 입력 문자열만 본다).** 셋을 모두 채우면 막는다. ⓐ 쓰기 연산(`write_text`·`write_bytes`·`.write(`·`open(…,'w'/'a'/'r+'…)`) ⓑ 주석 게이트 대상 확장자(`comment-lines.ps1` 의 `$script:CommentSlashExts`·`$script:CommentHashExts` — 그 두 줄만 텍스트로 읽는다, 파일 전체를 dot-source 하면 138ms 가 든다)로 끝나는 한 줄 문자열 리터럴이 있고 그 경로가 시스템 임시 폴더가 아니다 ⓒ 여러 줄 리터럴(삼중따옴표 또는 `\n` 이스케이프가 든 리터럴) 안에 선언 줄이나 대상 계열의 주석 줄이 있는데, 그 줄이 스크립트의 다른 리터럴에 (앞뒤 공백 뺀 같은 줄로) 없고, 선언 줄이면 그 이름의 선언이 다른 리터럴에도 없다. 뒤 두 조건이 기계적 치환을 통과시킨다 — 검색 리터럴에 있는 줄을 그대로 옮기거나, 같은 이름의 시그니처를 다른 줄 모양으로 다시 쓰는 것이다. 이름 조건을 「이름이 다른 리터럴 어디에든 있다」로 넓히면 새 함수의 호출부를 넣는 리터럴이 그 함수를 기존 항목으로 만들어 감지율이 90% 에서 84% 로 떨어졌다.
+
+**입력 수집 (`guard-bash.ps1` 의 `Invoke-BlockPythonNewCode`).** 명령에 `python`·`python3`·`py` 토큰이 있을 때만 `python-newcode.ps1` 을 읽는다. heredoc 은 그 줄에 python 토큰이 있거나 `> *.py` 로 쓰는 것의 본문, `-c` 는 따옴표 인자 전체(세그먼트를 `;` 로 자르기 전에 읽는다 — 인자 안의 `;` 에서 잘리던 첫 판이 있었다), 그 밖은 python 뒤 첫 `.py` 인자 파일을 `cwd` 기준으로 읽는다(1MB 초과는 건너뜀). PowerShell 도구도 같은 판정이다.
+
+**전사 재생(2026-11-13 · 판정 함수 직접 호출).** 전사 분류(`newcode`·`comments`)로 새 코드 166건 중 150(90.4%) · 그중 주석 든 123건 중 111(90.2%) · 새 코드도 주석도 없는 226건 중 13(5.8%)을 막았다. 그 13건 중 11건은 그 시각 직전 커밋에 없던 필드·함수(전사 분류가 필드를 새 코드로 세지 않았다)라 막는 것이 맞고, 기존 항목에 걸린 오차단 후보는 2건이다.
+
+**한계.** 경로를 `glob`·문자열 연결로 만들면 ⓑ 가 안 보여 통과한다(fail-open). 한 줄 리터럴만으로 새 코드를 넣는 스크립트, PowerShell here-string 을 python stdin 으로 넘기는 꼴, 다른 인터프리터(node 등)는 보지 않는다. 같은 명령을 다시 내도 통과하지 않는다 — 판정이 틀렸으면 우회 변수 없이 멈추고 사용자에게 보고한다.

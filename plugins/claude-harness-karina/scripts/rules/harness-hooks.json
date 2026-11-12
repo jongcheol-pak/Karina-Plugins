@@ -18,6 +18,7 @@
     "inject-reply-language",
     "loop-continue",
     "post-write-checks",
+    "python-newcode",
     "record-work-start",
     "secret-patterns",
     "session-context",

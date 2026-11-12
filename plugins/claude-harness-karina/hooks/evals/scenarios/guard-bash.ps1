@@ -389,6 +389,16 @@ $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'Copy-Item notes.md plan.md')
 Assert-Case -Name "bpw: Copy-Item 의 대상이 plan.md 면 차단 (ST8)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "pwsh -c ""[System.IO.File]::WriteAllText('plan.md','x')""")
 Assert-Case -Name "bpw: [System.IO.File]::WriteAllText 의 첫 인자가 plan.md 면 차단 (ST9)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+
+$pyDir = Join-Path $work 'py-newcode'; New-Item -ItemType Directory $pyDir -Force | Out-Null
+"from pathlib import Path`np = Path('src/view.rs')`np.write_text(p.read_text() + '''`n/// 새 설명`nfn added() {}`n''')`n" | Set-Content -LiteralPath (Join-Path $pyDir 'gen.py') -Encoding utf8
+"from pathlib import Path`np = Path('src/view.rs')`np.write_text(p.read_text().replace('old_name', 'new_name'))`n" | Set-Content -LiteralPath (Join-Path $pyDir 'ren.py') -Encoding utf8
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $pyDir; tool_input = @{ command = 'python -I gen.py' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "python 새 코드: Write 로 만든 .py 를 python 으로 돌려 새 /// 를 쓰면 차단 (PN-file)" -R $r -ExpectExit 2 -ExpectContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'PowerShell'; cwd = $work; tool_input = @{ command = "python `"$(Join-Path $pyDir 'gen.py')`"" } } | ConvertTo-Json -Compress)
+Assert-Case -Name "python 새 코드: PowerShell 도구의 python <파일.py> 도 같은 판정 (PN-ps)" -R $r -ExpectExit 2 -ExpectContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $pyDir; tool_input = @{ command = 'python ren.py' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "python 새 코드 (음성): .py 파일의 한 줄 치환은 통과 (PN-file-neg)" -R $r -ExpectExit 0 -ExpectNotContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
 }
 
 if (Test-ScenarioUnit 1) {

@@ -1,4 +1,4 @@
-﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 10종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
+﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 11종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
 
 # 공용 헬퍼 New-HookResult·Remove-HeredocBodyForJudge 는 여기 둔다 — 근거는 `rules/bash-guard-rationale.md` §2
 function New-HookResult {
@@ -497,6 +497,37 @@ foreach ($lib in @(@('guard-commit-secrets.ps1', 'Invoke-WarnCommitSecrets'),
     [Console]::Error.WriteLine("[guard-bash] $($lib[0]) 로드 실패 — 그 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.")
 }
 
+if ($cmdText -match '(?i)\bpy(?:thon3?)?\b') {
+    try { . (Join-Path $PSScriptRoot 'python-newcode.ps1') } catch {}
+    if (-not (Get-Command Test-PythonNewCodeScript -ErrorAction SilentlyContinue)) {
+        [Console]::Error.WriteLine('[guard-bash] python-newcode.ps1 로드 실패 — 그 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.')
+    }
+}
+
+# block-python-newcode: python 으로 소스 파일에 새 코드·주석을 쓰는 명령 차단 — 근거는 `rules/bash-guard-rationale.md` §22
+function Invoke-BlockPythonNewCode {
+    param($data)
+    if (-not (Get-Command Test-PythonNewCodeScript -ErrorAction SilentlyContinue)) { return New-HookResult }
+    $cwd = [string]$data.cwd
+    foreach ($inv in (Get-PythonInvocations ([string]$data.tool_input.command) $script:HeredocBlockRx)) {
+        $text = $inv.Text
+        if ($inv.Kind -eq 'file') {
+            $p = $inv.Path
+            if (-not [System.IO.Path]::IsPathRooted($p) -and $cwd) { $p = Join-Path $cwd $p }
+            if (-not (Test-Path -LiteralPath $p -PathType Leaf) -or (Get-Item -LiteralPath $p).Length -gt 1MB) { continue }
+            $text = [System.IO.File]::ReadAllText($p)
+        }
+        $v = Test-PythonNewCodeScript $text
+        if (-not $v.Block) { continue }
+        return New-HookResult -Block $true -Stderr @(
+            "[HARNESS] BLOCKED: python 스크립트로 소스 파일에 새 코드·주석을 씁니다 — $($v.Target) : $($v.Line)",
+            '  - 새 코드·주석은 Edit·Write 도구로 쓰세요. 쓰는 순간의 주석 게이트는 python 쓰기에 닿지 않습니다.',
+            '  - 기계적 치환은 바꿀 줄과 같은 꼴의 검색 리터럴을 두거나 한 줄 리터럴로 하세요.',
+            '  - 같은 명령을 다시 내도 통과하지 않습니다. 이 판정이 틀렸으면 멈추고 사용자에게 보고하세요.')
+    }
+    return New-HookResult
+}
+
 # [이벤트 로깅] 차단/경고 이벤트를 오탐 리뷰 데이터로 적재 — 근거는 `rules/bash-guard-rationale.md` §8
 try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
 function Write-DispatchEvent {
@@ -514,7 +545,7 @@ function Write-GbSlowEvent {
     } catch {}
 }
 
-# 검사 10종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
+# 검사 11종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
 # 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md` §8
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },
@@ -526,7 +557,8 @@ $checks = @(
     @{ fn = 'Invoke-WarnDangerousAssignment'; name = 'warn-dangerous-assignment' },
     @{ fn = 'Invoke-WarnStaleDocs';       name = 'warn-stale-docs' },
     @{ fn = 'Invoke-WarnTaskAudit';       name = 'warn-task-audit' },
-    @{ fn = 'Invoke-BlockCommitComments'; name = 'block-commit-comments' }
+    @{ fn = 'Invoke-BlockCommitComments'; name = 'block-commit-comments' },
+    @{ fn = 'Invoke-BlockPythonNewCode';  name = 'block-python-newcode' }
 )
 $results = New-Object System.Collections.Generic.List[object]
 foreach ($c in $checks) {

@@ -1409,6 +1409,83 @@
     },
     {
       "hook": "guard-bash.ps1",
+      "name": "python 새 코드: heredoc 이 .rs 에 새 /// doc 과 fn 을 넣는 치환 차단",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('src/view.rs')\ns = p.read_text(encoding='utf-8')\ns = s.replace('fn a() {}', '''fn a() {}\n\n/// b 설명\nfn b() {}\n''')\np.write_text(s, encoding='utf-8')\nPY",
+      "expect_exit": 2,
+      "expect_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드: python -c 가 줄바꿈 이스케이프 리터럴로 pub fn 을 덧붙이면 차단",
+      "command": "python -c \"from pathlib import Path; p = Path('src/a.rs'); p.write_text(p.read_text() + '\\npub fn b() {}\\n')\"",
+      "expect_exit": 2,
+      "expect_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드: .py 대상에 # 주석과 def 를 쓰는 여러 줄 리터럴 차단",
+      "command": "python - <<'PY'\nopen('tools/gen.py', 'w').write('''import sys\n# 새 설명\ndef main():\n    pass\n''')\nPY",
+      "expect_exit": 2,
+      "expect_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (음성): 한 줄 re.sub 이름 치환은 통과",
+      "command": "python - <<'PY'\nimport re\nfrom pathlib import Path\np = Path('src/a.rs')\np.write_text(re.sub(r'old_name', 'new_name', p.read_text()))\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (델타 음성): 선언 줄이 검색 리터럴에도 있는 여러 줄 시그니처 치환은 통과",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('src/a.rs')\ns = p.read_text()\ns = s.replace('''fn a(\n    x: u32,\n) {''', '''fn a(\n    x: u32,\n    y: u32,\n) {''')\np.write_text(s)\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (델타 음성): 검색 리터럴에 같은 이름의 선언이 있는 시그니처 줄바꿈 재작성은 통과",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('src/a.rs')\ns = p.read_text()\ns = s.replace('pub fn remove(&self, a: u32) {', '''pub fn remove(\n    &self,\n    a: u32,\n) {''')\np.write_text(s)\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드: 새 fn 이름이 호출부 리터럴에만 있으면 여전히 차단",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('src/a.rs')\ns = p.read_text()\ns = s.replace('    run();', '    run();\\n    helper();')\ns = s.replace('fn run() {}', '''fn run() {}\n\nfn helper() {}\n''')\np.write_text(s)\nPY",
+      "expect_exit": 2,
+      "expect_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (음성): 대상이 .md 면 여러 줄 리터럴이어도 통과",
+      "command": "python - <<'PY'\nopen('docs/notes.md', 'a').write('''\n// 예시\nfn x() {}\n''')\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (델타 음성): 대상이 시스템 임시 폴더 절대 경로의 .rs 면 통과",
+      "command": "python - <<'PY'\nopen('C:/Users/u/AppData/Local/Temp/probe/a.rs', 'w').write('''/// d\nfn x() {}\n''')\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (음성): 쓰기 연산 없는 읽기 스크립트는 통과",
+      "command": "python - <<'PY'\nprint(open('src/a.rs').read().count('''\n/// '''))\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (음성): 대상 경로를 glob 으로만 만들면 통과 (fail-open 경계)",
+      "command": "python - <<'PY'\nimport glob\nfor f in glob.glob('src/**/*' + EXT, recursive=True):\n    open(f, 'a').write('''\n/// x\n''')\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
       "name": "전역 탐색: && 뒤 세그먼트 경고",
       "command": "cd /tmp && find / -name x",
       "expect_exit": 0,
