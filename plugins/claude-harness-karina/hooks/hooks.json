@@ -1,5 +1,5 @@
 {
-  "description": "karina harness hooks — 이벤트·matcher 마다 PowerShell 하나: 스크립트가 둘 이상이면 scripts/hook-dispatch.ps1 이 한 프로세스에서 차례로 부르고, 하나면 직접 실행한다(자식 셸 재기동 없음 — v1.108.0. 실행 셸은 Claude Code의 powershell 해석을 따름: 실측 pwsh 우선·NoProfile, 스크립트는 5.1 호환 유지); cross-platform; Windows verified, macOS/Linux experimental",
+  "description": "karina harness hooks — 이벤트·matcher 마다 PowerShell 하나: 스크립트가 둘 이상이면 scripts/hook-dispatch.ps1 이 한 프로세스에서 차례로 부르고(셸·쓰기 PreToolUse 는 advisory: 뒤에 권고 스크립트를 붙여 PostToolUse 셸 블록을 없앴다), 하나면 직접 실행한다(자식 셸 재기동 없음 — v1.108.0. 실행 셸은 Claude Code의 powershell 해석을 따름: 실측 pwsh 우선·NoProfile, 스크립트는 5.1 호환 유지); cross-platform; Windows verified, macOS/Linux experimental",
   "hooks": {
     "PreToolUse": [
       {
@@ -8,7 +8,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" -Blocking block-destructive.ps1 guard-bash.ps1; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" -Blocking block-destructive.ps1 guard-bash.ps1 advisory: suggest-agents-record.ps1 inject-reply-language.ps1; exit $LASTEXITCODE",
             "timeout": 60,
             "onFailure": "block"
           }
@@ -20,7 +20,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" -Blocking guard-write.ps1 guard-harness.ps1; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" -Blocking guard-write.ps1 guard-harness.ps1 advisory: inject-reply-language.ps1; exit $LASTEXITCODE",
             "timeout": 60,
             "onFailure": "block"
           }
@@ -40,23 +40,12 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" suggest-agents-record.ps1 inject-reply-language.ps1; exit $LASTEXITCODE",
-            "timeout": 15
-          }
-        ]
-      },
-      {
         "matcher": "Write|Edit|MultiEdit|NotebookEdit",
         "hooks": [
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" post-write-checks.ps1 inject-reply-language.ps1; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/post-write-checks.ps1\"; exit $LASTEXITCODE",
             "timeout": 20
           }
         ]

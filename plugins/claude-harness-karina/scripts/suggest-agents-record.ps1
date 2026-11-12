@@ -1,4 +1,4 @@
-﻿# PostToolUse hook - PowerShell 버전 — 근거는 `rules/suggest-record-rationale.md` §1
+﻿# PreToolUse 권고 hook(셸 차단 묶음의 advisory:) — 근거는 `rules/suggest-record-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -132,12 +132,12 @@ foreach ($h in $hits) {
 if ($toSuggest.Count -eq 0) { exit 0 }
 
 # ---- 제안 출력 ----
-$lines = @("[AGENTS 기록 제안] 이번에 실행한 명령이 AGENTS.md에 기록돼 있지 않습니다:")
+$lines = @("[AGENTS 기록 제안] 지금 실행하려는 명령이 AGENTS.md에 기록돼 있지 않습니다:")
 foreach ($s in $toSuggest) {
     $lines += ("  - " + $s.label + ": `"" + $s.token + "`"  -> AGENTS.md '" + $s.section + "' 섹션")
 }
 $lines += ""
-$lines += "다음 작업부터 이 정보를 재확인하지 않도록, record-project-fact 스킬로 AGENTS.md에 추가할지 사용자에게 물어보세요."
+$lines += "이 명령이 성공했으면, 다음 작업부터 재확인하지 않도록 record-project-fact 스킬로 AGENTS.md에 추가할지 사용자에게 물어보세요. 실패했거나 실행되지 않았으면 무시하세요."
 $lines += "자동 기록이 아닙니다 — 사용자가 승인하면 그때만 기록합니다. (DB는 실제 연결문자열 금지, 환경변수 이름만)"
 $lines += "이 제안은 차단이 아닙니다."
 $msg = $lines -join "`n"
@@ -145,8 +145,8 @@ $msg = $lines -join "`n"
 # stderr: 사용자 가시성용
 [Console]::Error.WriteLine($msg)
 
-# stdout JSON: PostToolUse additionalContext로 모델에 전달 (exit 0 비차단)
-$payload = @{ hookSpecificOutput = @{ hookEventName = 'PostToolUse'; additionalContext = $msg } } | ConvertTo-Json -Compress -Depth 5
+$hookEvent = if ([string]::IsNullOrWhiteSpace([string]$data.hook_event_name)) { 'PreToolUse' } else { [string]$data.hook_event_name }
+$payload = @{ hookSpecificOutput = @{ hookEventName = $hookEvent; additionalContext = $msg } } | ConvertTo-Json -Compress -Depth 5
 [Console]::Out.WriteLine($payload)
 
 exit 0

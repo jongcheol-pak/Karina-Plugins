@@ -10,11 +10,11 @@ $Line = '[karina 응답 언어] 사용자에게 하는 답·진행 안내·질�
 try { $data = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin } else { [Console]::In.ReadToEnd() }) | ConvertFrom-Json -ErrorAction Stop } catch { exit 0 }
 if (-not $data) { exit 0 }
 
-# Skill 발동 주입과 PostToolUse 20회 주기 주입 — 근거는 `rules/reply-language-rationale.md` §2
+# Skill 발동 주입과 PreToolUse 셸·쓰기 20회 주기 주입 — 근거는 `rules/reply-language-rationale.md` §2
 $Every = 20
 $hookEvent = [string]$data.hook_event_name
-$isSkill = $hookEvent -eq 'PreToolUse' -and [string]$data.tool_name -eq 'Skill'
-if (-not $isSkill -and $hookEvent -ne 'PostToolUse') { exit 0 }
+if ($hookEvent -ne 'PreToolUse') { exit 0 }
+$isSkill = [string]$data.tool_name -eq 'Skill'
 $sid = [string]$data.session_id
 $isSub = -not [string]::IsNullOrEmpty([string]$data.agent_id)
 if (-not $isSkill -and ($isSub -or [string]::IsNullOrWhiteSpace($sid))) { exit 0 }

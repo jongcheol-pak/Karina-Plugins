@@ -13,6 +13,9 @@ $r = Invoke-Hook 'suggest-agents-record.ps1' $sj
 Assert-Case -Name "suggest: dotnet build 첫 실행 제안" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sj
 Assert-Case -Name "suggest: 같은 세션 2회째 억제" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'suggest-agents-record.ps1' (@{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $aproj; session_id = 's-pre'; tool_input = @{ command = 'dotnet build MyApp.sln' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "suggest: PreToolUse 입력이면 이벤트 이름을 PreToolUse 로 낸다" -R $r -ExpectExit 0 -ExpectContains '"hookEventName":"PreToolUse"'
+Assert-Case -Name "suggest: 실행 전에 나오므로 성공했을 때만 기록하라고 쓴다" -R $r -ExpectExit 0 -ExpectContains '성공했으면'
 "# AGENTS`n## Build & Test`n- dotnet build" | Set-Content (Join-Path $aproj 'AGENTS.md')
 $sj2 = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 's2'; tool_input = @{ command = 'dotnet build MyApp.sln' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sj2

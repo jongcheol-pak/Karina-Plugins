@@ -177,8 +177,8 @@ function Get-HdWiring([string]$ev, [string]$v) {
     return @{ Count = $cmds.Count; Names = ($names -join ',') }
 }
 $hdExpect = [ordered]@{}
-foreach ($t in 'Bash', 'PowerShell') { $hdExpect["PreToolUse|$t"] = 'block-destructive,guard-bash'; $hdExpect["PostToolUse|$t"] = 'inject-reply-language,suggest-agents-record' }
-foreach ($t in 'Write', 'Edit', 'MultiEdit', 'NotebookEdit') { $hdExpect["PreToolUse|$t"] = 'guard-harness,guard-write'; $hdExpect["PostToolUse|$t"] = 'inject-reply-language,post-write-checks' }
+foreach ($t in 'Bash', 'PowerShell') { $hdExpect["PreToolUse|$t"] = 'block-destructive,guard-bash,inject-reply-language,suggest-agents-record'; $hdExpect["PostToolUse|$t"] = '' }
+foreach ($t in 'Write', 'Edit', 'MultiEdit', 'NotebookEdit') { $hdExpect["PreToolUse|$t"] = 'guard-harness,guard-write,inject-reply-language'; $hdExpect["PostToolUse|$t"] = 'post-write-checks' }
 $hdExpect['PreToolUse|Skill'] = 'inject-reply-language,loop-continue,record-work-start'
 $hdExpect['PostToolUse|Skill'] = ''
 foreach ($s in 'startup', 'resume', 'clear') { $hdExpect["SessionStart|$s"] = 'session-context,warn-version-drift' }
@@ -197,10 +197,12 @@ Assert-Case -Name "hook-dispatch: 배선 — 이벤트·도구·원인·명령�
 Assert-Case -Name "hook-dispatch: 배선 — 묶음이 부르는 스크립트 집합이 종전 배선과 같다" -R @{ code = 0; out = 'diff=' + $(if ($hdSetDiff) { $hdSetDiff -join ' ' } else { 'none' }) } -ExpectContains 'diff=none'
 $hdBundled = @($hdHooks.PSObject.Properties | ForEach-Object { @($_.Value) } | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command } | Where-Object { $_ -match 'hook-dispatch\.ps1' } | ForEach-Object { [regex]::Matches($_, '[a-z0-9-]+\.ps1') | ForEach-Object { $_.Value } } | Where-Object { $_ -ne 'hook-dispatch.ps1' } | Sort-Object -Unique)
 $hdNoShared = @($hdBundled | Where-Object { -not (Select-String -LiteralPath (Join-Path $scriptsDir $_) -SimpleMatch -Pattern 'KarinaHookStdin' -Quiet) })
-Assert-Case -Name "hook-dispatch: 배선 — 묶음에 든 스크립트는 모두 공유 입력을 먼저 읽는다" -R @{ code = 0; out = "bundled=$($hdBundled.Count) missing=$(if ($hdNoShared) { $hdNoShared -join ',' } else { 'none' })" } -ExpectContains 'bundled=11 missing=none'
+Assert-Case -Name "hook-dispatch: 배선 — 묶음에 든 스크립트는 모두 공유 입력을 먼저 읽는다" -R @{ code = 0; out = "bundled=$($hdBundled.Count) missing=$(if ($hdNoShared) { $hdNoShared -join ',' } else { 'none' })" } -ExpectContains 'bundled=10 missing=none'
+$hdAdvWire = @(@($hdHooks.PreToolUse) | Where-Object { (Test-HdMatcher ([string]$_.matcher) 'Bash') -or (Test-HdMatcher ([string]$_.matcher) 'Write') } | ForEach-Object { @($_.hooks) } | ForEach-Object { $c = [string]$_.command; $i = $c.IndexOf(' advisory: '); if ($i -lt 0) { 'none' } else { (([regex]::Matches($c.Substring($i), '[a-z0-9-]+\.ps1') | ForEach-Object { $_.Value }) -join '+') } })
+Assert-Case -Name "hook-dispatch: 배선 — 셸·쓰기 차단 묶음의 권고 구간에는 권고 스크립트만 있다" -R @{ code = 0; out = "adv=$($hdAdvWire -join ',')" } -ExpectContains 'adv=suggest-agents-record.ps1+inject-reply-language.ps1,inject-reply-language.ps1'
 $hdBlk = @(@($hdHooks.PreToolUse) | Where-Object { (Test-HdMatcher ([string]$_.matcher) 'Bash') -or (Test-HdMatcher ([string]$_.matcher) 'Write') } | ForEach-Object { @($_.hooks) } | ForEach-Object { "$($_.command -match ' -Blocking ')/$($_.onFailure)/$($_.timeout)" })
 Assert-Case -Name "hook-dispatch: 배선 — 차단 묶음 둘은 -Blocking · onFailure block · timeout 60 이다" -R @{ code = 0; out = "blk=$($hdBlk -join ',')" } -ExpectContains 'blk=True/block/60,True/block/60'
-$hdTimeoutExpect = [ordered]@{ 'PreToolUse|Skill' = 30; 'PostToolUse|Bash' = 15; 'PostToolUse|Edit' = 20; 'SessionStart|startup' = 20; 'UserPromptExpansion|plan' = 20 }
+$hdTimeoutExpect = [ordered]@{ 'PreToolUse|Skill' = 30; 'SessionStart|startup' = 20; 'UserPromptExpansion|plan' = 20 }
 $hdTimeoutDiff = @()
 foreach ($k in $hdTimeoutExpect.Keys) {
     $ev, $v = $k -split '\|', 2
