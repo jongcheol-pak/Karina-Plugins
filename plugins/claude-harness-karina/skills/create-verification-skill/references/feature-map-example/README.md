@@ -1,13 +1,13 @@
 # Notes 검증 지도
 
-> 생성할 기능 지도의 형태 예시다 — `../../SKILL.md` 3단계가 가리킨다. 원문은 pstack `create-verification-skill/references/feature-map-example/README.md`(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/create-verification-skill/references/feature-map-example/README.md`) · Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮겼고, 절 이름과 명령은 원문 그대로다 — 단 `NOTES_DATA_DIR` 은 원문 `/tmp/notes-verify-$RUN_ID` 를 하니스 임시 폴더 규약(`../../../TEMP-FILES.md`)에 맞춰 바꿨다.
+> 생성할 기능 지도의 형태 예시다 — `../../SKILL.md` 3단계가 가리킨다. 원문은 pstack `create-verification-skill/references/feature-map-example/README.md`(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/create-verification-skill/references/feature-map-example/README.md`) · Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮겼고, 기능 파일의 절 이름과 명령은 원문 그대로다(이 색인의 절 이름은 옮겼다) — 단 `NOTES_DATA_DIR` 과 증거 경로는 원문 `/tmp/notes-verify-$RUN_ID` 를 하니스 임시 폴더 규약(`../../../TEMP-FILES.md`)의 찾는 순서에 맞춰 바꿨다.
 
 이 폴더는 Notes 의 사용자 기능을 검증하는 유지 대상 정본이다. 앱을 조작하기 전에 이 색인을 읽고, 맞는 기능 파일을 조작법으로 쓴다.
 
 ## 기본 전제
 
 - Notes 를 일회용 데이터 폴더로 `http://127.0.0.1:4173` 에 띄운다.
-- 동시 실행이 상태를 나눠 쓰지 않게 `NOTES_DATA_DIR=/tmp/karina-plugin/verify/notes/$RUN_ID/data` 를 둔다.
+- 동시 실행이 상태를 나눠 쓰지 않게 `NOTES_DATA_DIR="${TMPDIR:-${TEMP:-/tmp}}/karina-plugin/verify/notes/$RUN_ID/data"` 를 둔다.
 - `Quarterly plan`·`Grocery list` 제목의 노트를 시드한다.
 - `control-notes` 와 `notes` CLI 를 `PATH` 에 둔다.
 - `control-notes doctor` 를 돌려 기대 URL·데이터 폴더·빌드 리비전을 확인한다.
