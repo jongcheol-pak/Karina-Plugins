@@ -588,6 +588,15 @@ $d = New-CcRepo
 Set-CcFile $d 'new.py' "# 새 파일 설명`nx = 1`n"
 $r = Invoke-CcCommit $d 'git add new.py && git commit -m x' 'cc-new'
 Assert-Case -Name "commit-comments: 같은 명령 앞선 git add <untracked 새 파일> 의 주석도 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+$d = New-CcRepo
+$ccSub = Join-Path $d 'sub'; New-Item -ItemType Directory (Join-Path $ccSub 'rules') -Force | Out-Null
+Set-CcFile (Join-Path $ccSub 'rules') 'r.md' "# 근거`n"
+Set-CcFile $ccSub 'ptr.py' "# 근거는 ``rules/r.md```nx = 1`n"
+$r = Invoke-CcCommit $ccSub 'git add ptr.py && git commit -m x' 'cc-sub-ptr'
+Assert-Case -Name "commit-comments: 하위 폴더에서 git add <새 파일> && commit — 파일 폴더 기준 실재 .md 경로 주석은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Set-CcFile $ccSub 'plain.py' "# 새 파일 설명`nx = 1`n"
+$r = Invoke-CcCommit $ccSub 'git add plain.py && git commit -m x' 'cc-sub-plain'
+Assert-Case -Name "commit-comments: 하위 폴더에서 git add <새 파일> && commit — 예외 없는 주석은 차단 (음성 짝)" -R $r -ExpectExit 2 -ExpectContains $ccBlock
 
 $d = New-CcRepo
 $ccEditJson = @{ session_id = 'cc-approved'; tool_name = 'Edit'; cwd = $d; tool_input = @{ file_path = (Join-Path $d 'b.cs'); old_string = 'int b;'; new_string = "// 편집 때 남긴 설명`nint b;" } } | ConvertTo-Json -Compress -Depth 5

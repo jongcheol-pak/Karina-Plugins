@@ -1,4 +1,6 @@
-﻿$script:TimedGitExe = $null
+﻿# timed-git.ps1 — 시간 상한을 건 git 자식 실행 (dot-source 전용) — 근거는 `rules/post-write-rationale.md` §22
+
+$script:TimedGitExe = $null
 
 function ConvertTo-TimedGitArgument([string]$Arg) {
     return '"' + ([regex]::Replace($Arg, '(\\*)("|$)', { param($m) $m.Groups[1].Value + $m.Groups[1].Value + $(if ($m.Groups[2].Value) { '\"' } else { '' }) })) + '"'

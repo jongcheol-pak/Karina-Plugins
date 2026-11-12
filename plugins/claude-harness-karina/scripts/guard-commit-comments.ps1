@@ -91,25 +91,27 @@ function Add-CommitCommentPreAdd($Files, [string]$PreText) {
         $argsText = $m.Groups['args'].Value.Trim()
         if ($argsText -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
             $d = Get-CommitCommentDiff @('HEAD'); if ($null -ne $d) { Add-CommitCommentDiff $Files $d 'worktree' }
-            foreach ($u in @(& git -c core.quotepath=off ls-files --others --exclude-standard 2>$null)) { Add-CommitCommentNewFile $Files $u }
+            foreach ($u in @(& git -c core.quotepath=off ls-files --others --exclude-standard --full-name 2>$null)) { Add-CommitCommentNewFile $Files $u }
             continue
         }
         foreach ($t in @($argsText -split '\s+' | Where-Object { $_ -and -not $_.StartsWith('-') } | ForEach-Object { $_.Trim('"', "'") })) {
             if (@(& git ls-files -- $t 2>$null).Count -gt 0) {
                 $d = Get-CommitCommentDiff @('HEAD', '--', $t); if ($null -ne $d) { Add-CommitCommentDiff $Files $d 'worktree' }
             } else {
-                foreach ($u in @(& git -c core.quotepath=off ls-files --others --exclude-standard -- $t 2>$null)) { Add-CommitCommentNewFile $Files $u }
+                foreach ($u in @(& git -c core.quotepath=off ls-files --others --exclude-standard --full-name -- $t 2>$null)) { Add-CommitCommentNewFile $Files $u }
             }
         }
     }
 }
 
 function Add-CommitCommentNewFile($Files, [string]$Path) {
-    if (-not (Test-CommentTarget $Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
+    $top = [string](& git rev-parse --show-toplevel 2>$null)
+    $abs = if ($top) { Join-Path $top $Path } else { $Path }
+    if (-not (Test-CommentTarget $Path) -or -not (Test-Path -LiteralPath $abs -PathType Leaf)) { return }
     $Files[$Path] = New-CommitCommentEntry 'worktree'
     $hunk = Add-CommitCommentHunk $Files[$Path]
     $n = 1
-    foreach ($l in @(Get-Content -LiteralPath $Path -Encoding UTF8 -TotalCount ($script:CommitCommentLineMax + 1))) { $Files[$Path].Plus.Add([string]$l); $Files[$Path].PlusLine.Add($n); $n++; $hunk.PlusCount++ }
+    foreach ($l in @(Get-Content -LiteralPath $abs -Encoding UTF8 -TotalCount ($script:CommitCommentLineMax + 1))) { $Files[$Path].Plus.Add([string]$l); $Files[$Path].PlusLine.Add($n); $n++; $hunk.PlusCount++ }
 }
 
 function Invoke-BlockCommitComments {
