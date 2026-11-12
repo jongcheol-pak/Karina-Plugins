@@ -2,6 +2,8 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-12] 고아 회수의 소멸 확인 — 기각 둘: ① 확인을 `Get-Process` 로 바꾸는 안(요청 원문) — 커널에 갇힌 프로세스는 `Get-Process` 에 안 잡혀 살아 있는 것을 회수로 센다(`scripts/rules/orphan-cleanup-rationale.md` §7, 사용자 답 「CIM 1회 일괄 확인」). ② 같은 회수에서 CIM 으로 다시 확인하는 안 — 이 기기 CIM 1회 5~7초라 수집·확인 2회(약 13초)가 예산 8초에 들지 않는다(plan 리뷰 BLOCKER, 사용자 답 「확인을 다음 회수로」). 확인은 다음 회수의 수집 목록이 맡는다(§9 · v3.11.3).
+
 - [2026-11-12] `git ls-remote` 시간 상한 — 번복: 2026-08-26 「`git ls-remote`에 타임아웃을 거는 완화책은 넣지 않는다」를 뒤집어 `warn-version-drift.ps1` 이 상한(기본 5초, `KARINA_VD_REMOTE_TIMEOUT_MS`)을 넘긴 조회를 프로세스 트리째 죽이고 침묵한다(사용자 답 「트리 kill 로 번복」).
   - 기각 사유였던 고아 프로세스는 트리 kill(pwsh 7 `Kill($true)` · 5.1 `taskkill /T /F`)로 남기지 않는다. 기각 때 감수한 비용은 「세션 시작 최대 10초 지연」이었는데, v3.11.0 의 SessionStart 묶음 뒤로는 묶음 timeout 에 걸리면 `session-context` 컨텍스트 주입까지 버려졌다(무응답 원격 재현 16초).
 - [2026-11-12] hook 스크립트 독립 실행 두 건 — 번복: 2026-07-08 「`block-destructive` 는 hooks.json 독립 엔트리로 유지」와 2026-07-10 「SessionStart 스크립트 +1 수용」을 뒤집어, 같은 이벤트·matcher 의 스크립트를 `hook-dispatch.ps1` 이 한 pwsh 에서 차례로 부르게 했다(사용자 답 「block-destructive 포함」). 여러 세션을 띄우면 도구 호출마다 pwsh 가 2~3개씩 떠 CPU 를 먹었다. 디스패처 실패는 `onFailure: block` 으로 막히고 `block-destructive` 는 여전히 아무것도 dot-source 하지 않는다. 교대 5쌍 CPU 중앙값 Bash 6,797→4,016ms · Edit 6,250→3,453 · Skill 5,219→1,781.
