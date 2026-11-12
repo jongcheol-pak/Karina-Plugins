@@ -41,9 +41,9 @@
 
 - [2026-10-23] **chain-plan 코디네이터 검증 명령을 `run-verify.py` 밖에서 띄우면 guard-bash 가 경고** — `continuation.md`「코디네이터 검증」 은 명령마다 래퍼로 띄우라고 하지만 코디네이터가 어기면 감시가 빠진다. 명령줄로 잴 수 있는 것은 「래퍼를 거쳤는가」뿐이다(규칙대로면 `cargo` 는 스크립트 파일 안에 있다). 체인 실행 중 판정·`run_in_background` 판정과 골든 실증이 필요하다 (출처: 2026-10-23 karina-ea 요청 ④ — 사용자 「4는 대장」) (실해: 2026-10-23 run_34c092d3 plan 6 검증이 정리 명령과 검증 셋을 시한 없이 한 백그라운드에 묶어 80분 넘게 섰다)
 
-- [2026-11-12] **post-write-checks `git grep --untracked` 에 시간 상한이 없다** — `scripts/post-write-checks.ps1:325` 가 공개 심볼을 바꾼 코드 파일 편집마다 레포 전체 grep 을 상한 없이 돈다. 큰 레포에서 PostToolUse 묶음 timeout(20초)을 넘기면 묶음 출력이 사라지고 git 자식이 남을 수 있다(추정 — 큰 레포 실측 필요) (출처: 2026-11-12 병목·고아 검토 3번, 후보 라운드 보류) (실해: 2026-11-12 검토에서 상한 없음만 코드로 확인 · 지연은 재지 않았다)
+- [2026-11-12] **post-write-checks `git grep --untracked` 에 시간 상한이 없다** — `scripts/post-write-checks.ps1:325` 가 공개 심볼을 바꾼 코드 파일 편집마다 레포 전체 grep 을 상한 없이 돈다. 큰 레포에서 PostToolUse 묶음 timeout(20초)을 넘기면 묶음 출력이 사라지고 git 자식이 남을 수 있다(추정 — 큰 레포 실측 필요) (출처: 2026-11-12 병목·고아 검토 3번 — 넘김 사유 ① 사용자 결정 대기: 후보 라운드 답 보류) (실해: 2026-11-12 검토에서 상한 없음만 코드로 확인 · 지연은 재지 않았다)
 
-- [2026-11-12] **warn-version-drift 의 stdout 대기 초과 경로가 프로세스를 정리하지 않는다** — `scripts/warn-version-drift.ps1:67-72` 에서 `WaitForExit` 은 성공했는데 `$remoteOut.Wait` 가 시간 초과하면 손자(git-remote-https·ssh)를 kill 하지 않고 Process 를 Dispose 하지 않는다(추정 — 손자가 파이프를 쥔 드문 경로) (출처: 같은 검토 4번, 후보 라운드 보류) (실해: 2026-11-12 검토에서 코드 경로만 확인 · 재현은 하지 않았다)
+- [2026-11-12] **warn-version-drift 의 stdout 대기 초과 경로가 프로세스를 정리하지 않는다** — `scripts/warn-version-drift.ps1:67-72` 에서 `WaitForExit` 은 성공했는데 `$remoteOut.Wait` 가 시간 초과하면 손자(git-remote-https·ssh)를 kill 하지 않고 Process 를 Dispose 하지 않는다(추정 — 손자가 파이프를 쥔 드문 경로) (출처: 같은 검토 4번 — 넘김 사유 ① 사용자 결정 대기: 후보 라운드 답 보류) (실해: 2026-11-12 검토에서 코드 경로만 확인 · 재현은 하지 않았다)
 
 
 
