@@ -119,6 +119,9 @@ foreach ($k in $hdExpect.Keys) {
 }
 Assert-Case -Name "hook-dispatch: 배선 — 이벤트·도구·원인·명령마다 pwsh 명령이 하나 이하다" -R @{ code = 0; out = 'over=' + $(if ($hdOver) { $hdOver -join ' ' } else { 'none' }) } -ExpectContains 'over=none'
 Assert-Case -Name "hook-dispatch: 배선 — 묶음이 부르는 스크립트 집합이 종전 배선과 같다" -R @{ code = 0; out = 'diff=' + $(if ($hdSetDiff) { $hdSetDiff -join ' ' } else { 'none' }) } -ExpectContains 'diff=none'
+$hdBundled = @($hdHooks.PSObject.Properties | ForEach-Object { @($_.Value) } | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command } | Where-Object { $_ -match 'hook-dispatch\.ps1' } | ForEach-Object { [regex]::Matches($_, '[a-z0-9-]+\.ps1') | ForEach-Object { $_.Value } } | Where-Object { $_ -ne 'hook-dispatch.ps1' } | Sort-Object -Unique)
+$hdNoShared = @($hdBundled | Where-Object { -not (Select-String -LiteralPath (Join-Path $scriptsDir $_) -SimpleMatch -Pattern 'KarinaHookStdin' -Quiet) })
+Assert-Case -Name "hook-dispatch: 배선 — 묶음에 든 스크립트는 모두 공유 입력을 먼저 읽는다" -R @{ code = 0; out = "bundled=$($hdBundled.Count) missing=$(if ($hdNoShared) { $hdNoShared -join ',' } else { 'none' })" } -ExpectContains 'bundled=11 missing=none'
 $hdBlk = @(@($hdHooks.PreToolUse) | Where-Object { (Test-HdMatcher ([string]$_.matcher) 'Bash') -or (Test-HdMatcher ([string]$_.matcher) 'Write') } | ForEach-Object { @($_.hooks) } | ForEach-Object { "$($_.command -match ' -Blocking ')/$($_.onFailure)/$($_.timeout)" })
 Assert-Case -Name "hook-dispatch: 배선 — 차단 묶음 둘은 -Blocking · onFailure block · timeout 60 이다" -R @{ code = 0; out = "blk=$($hdBlk -join ',')" } -ExpectContains 'blk=True/block/60,True/block/60'
 
