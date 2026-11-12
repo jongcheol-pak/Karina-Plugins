@@ -76,16 +76,13 @@ Assert-Case -Name "record-work-start: 깨진 stdin 은 exit 0 무출력" -R $r -
 $r = Invoke-Hook 'record-work-start.ps1' (@{ hook_event_name = 'PreToolUse'; tool_name = 'Skill'; tool_input = @{ skill = 'karina:plan' } } | ConvertTo-Json -Compress)
 Assert-Case -Name "record-work-start: session_id 가 없으면 exit 0 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
 
-# ---- 배선 — 위 케이스는 스크립트에 JSON 을 직접 넣어 hooks.json matcher 를 거치지 않는다 ----
-#   글자·|만으로 된 matcher 는 「정확 일치 목록」이라 정확 일치로 흉내 낸다(loop-continue 시나리오의 배선 케이스와 같은 방식).
 $rwHooks = Get-Content -LiteralPath (Join-Path $pluginRoot 'hooks/hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-$rwUpe = $rwHooks.hooks.UserPromptExpansion | Where-Object { ($_.hooks.command -join ' ') -match 'record-work-start' } | Select-Object -First 1
-$rwUpeMatcher = [string]$rwUpe.matcher
-$rwExactOnly = $rwUpeMatcher -match '^[A-Za-z0-9_ ,|-]*$'
+$rwUpeMatchers = @($rwHooks.hooks.UserPromptExpansion | Where-Object { ($_.hooks.command -join ' ') -match 'record-work-start' } | ForEach-Object { [string]$_.matcher })
 $rwHit = @('karina:plan', 'plan', 'karina:chain-plan', 'chain-plan', 'karina:implement', 'implement' | Where-Object {
-    if (-not $rwUpe) { $false }
-    elseif ($rwExactOnly) { ($rwUpeMatcher -split '[|,]' | ForEach-Object { $_.Trim() }) -contains $_ }
-    else { $_ -match $rwUpeMatcher }
+    $cmd = $_
+    @($rwUpeMatchers | Where-Object {
+        if ($_ -match '^[A-Za-z0-9_ ,|-]*$') { ($_ -split '[|,]' | ForEach-Object { $_.Trim() }) -contains $cmd } else { $cmd -match $_ }
+    }).Count -gt 0
 })
 Assert-Case -Name "record-work-start: UserPromptExpansion matcher 가 plan·chain-plan 두 형태씩 받고 implement 는 받지 않는다" -R @{ code = 0; out = "hits=$($rwHit -join ',')" } -ExpectContains 'hits=karina:plan,plan,karina:chain-plan,chain-plan' -ExpectNotContains 'implement'
 $rwPre = @($rwHooks.hooks.PreToolUse | Where-Object { $_.matcher -eq 'Skill' -and (($_.hooks.command -join ' ') -match 'record-work-start') })

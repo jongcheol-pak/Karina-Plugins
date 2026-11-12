@@ -81,6 +81,6 @@ $rlPostHit = @('Bash', 'PowerShell', 'Write', 'Edit', 'MultiEdit', 'NotebookEdit
         if ($m -match '^[A-Za-z0-9_ ,|-]*$') { ($m -split '[|,]' | ForEach-Object { $_.Trim() }) -contains $tool } else { $tool -match $m }
     }).Count -gt 0
 })
-Assert-Case -Name "inject-reply-language: PostToolUse 블록이 셸·쓰기 도구만 받는다" -R @{ code = 0; out = "blocks=$($rlPost.Count) hits=[$($rlPostHit -join ',')]" } -ExpectContains 'blocks=1 hits=[Bash,PowerShell,Write,Edit,MultiEdit,NotebookEdit]'
+Assert-Case -Name "inject-reply-language: PostToolUse 블록이 셸·쓰기 도구만 받는다" -R @{ code = 0; out = "blocks=$($rlPost.Count) hits=[$($rlPostHit -join ',')]" } -ExpectContains 'blocks=2 hits=[Bash,PowerShell,Write,Edit,MultiEdit,NotebookEdit]'
 
 }

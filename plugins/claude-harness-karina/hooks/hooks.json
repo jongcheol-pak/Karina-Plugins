@@ -1,5 +1,5 @@
 {
-  "description": "karina harness hooks — 스크립트를 hook 셸에서 직접 실행(자식 셸 재기동 없음 — v1.108.0. 실행 셸은 Claude Code의 powershell 해석을 따름: 실측 pwsh 우선·NoProfile, 스크립트는 5.1 호환 유지); cross-platform; Windows verified, macOS/Linux experimental",
+  "description": "karina harness hooks — 이벤트·matcher 마다 PowerShell 하나: 스크립트가 둘 이상이면 scripts/hook-dispatch.ps1 이 한 프로세스에서 차례로 부르고, 하나면 직접 실행한다(자식 셸 재기동 없음 — v1.108.0. 실행 셸은 Claude Code의 powershell 해석을 따름: 실측 pwsh 우선·NoProfile, 스크립트는 5.1 호환 유지); cross-platform; Windows verified, macOS/Linux experimental",
   "hooks": {
     "PreToolUse": [
       {
@@ -8,19 +8,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/block-destructive.ps1\"; exit $LASTEXITCODE",
-            "timeout": 60,
-            "onFailure": "block"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-bash.ps1\"; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" -Blocking block-destructive.ps1 guard-bash.ps1; exit $LASTEXITCODE",
             "timeout": 60,
             "onFailure": "block"
           }
@@ -32,19 +20,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-write.ps1\"; exit $LASTEXITCODE",
-            "timeout": 60,
-            "onFailure": "block"
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-harness.ps1\"; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" -Blocking guard-write.ps1 guard-harness.ps1; exit $LASTEXITCODE",
             "timeout": 60,
             "onFailure": "block"
           }
@@ -56,30 +32,8 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/loop-continue.ps1\"; exit $LASTEXITCODE",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Skill",
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/record-work-start.ps1\"; exit $LASTEXITCODE",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Skill",
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/inject-reply-language.ps1\"; exit $LASTEXITCODE",
-            "timeout": 10
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" loop-continue.ps1 record-work-start.ps1 inject-reply-language.ps1; exit $LASTEXITCODE",
+            "timeout": 15
           }
         ]
       }
@@ -91,8 +45,8 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/suggest-agents-record.ps1\"; exit $LASTEXITCODE",
-            "timeout": 10
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" suggest-agents-record.ps1 inject-reply-language.ps1; exit $LASTEXITCODE",
+            "timeout": 15
           }
         ]
       },
@@ -102,19 +56,8 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/post-write-checks.ps1\"; exit $LASTEXITCODE",
-            "timeout": 15
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/inject-reply-language.ps1\"; exit $LASTEXITCODE",
-            "timeout": 5
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" post-write-checks.ps1 inject-reply-language.ps1; exit $LASTEXITCODE",
+            "timeout": 20
           }
         ]
       }
@@ -126,13 +69,13 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/warn-version-drift.ps1\"; exit $LASTEXITCODE",
-            "timeout": 10
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" warn-version-drift.ps1 session-context.ps1; exit $LASTEXITCODE",
+            "timeout": 15
           }
         ]
       },
       {
-        "matcher": "startup|resume|clear|compact|fork",
+        "matcher": "compact|fork",
         "hooks": [
           {
             "type": "command",
@@ -158,7 +101,18 @@
     ],
     "UserPromptExpansion": [
       {
-        "matcher": "^(karina:)?(implement|plan)$",
+        "matcher": "^(karina:)?plan$",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" loop-continue.ps1 record-work-start.ps1; exit $LASTEXITCODE",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "^(karina:)?implement$",
         "hooks": [
           {
             "type": "command",
@@ -169,7 +123,7 @@
         ]
       },
       {
-        "matcher": "^(karina:)?(plan|chain-plan)$",
+        "matcher": "^(karina:)?chain-plan$",
         "hooks": [
           {
             "type": "command",

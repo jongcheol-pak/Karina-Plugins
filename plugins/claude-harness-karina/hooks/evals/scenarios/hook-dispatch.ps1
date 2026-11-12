@@ -89,4 +89,37 @@ $rPair = Invoke-Hook 'hook-dispatch.ps1' $hdKoJson -Arguments @('-Blocking', 'gu
 Assert-Case -Name "hook-dispatch: 한글 입력 — 단독 guard-write 가 막는다 (기준)" -R @{ code = $rSolo.code; out = $rSolo.err } -ExpectExit 2 -ExpectContains '소스파일.cs'
 Assert-Case -Name "hook-dispatch: 한글 입력 — 묶음도 같은 exit 와 한글 경로로 막는다" -R @{ code = $rPair.code; out = $rPair.err } -ExpectExit 2 -ExpectContains '소스파일.cs'
 
+$hdHooks = (Get-Content -LiteralPath (Join-Path $pluginRoot 'hooks/hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json).hooks
+function Test-HdMatcher([string]$m, [string]$v) {
+    if ([string]::IsNullOrEmpty($m)) { return $true }
+    if ($m -match '^[A-Za-z0-9_ ,|-]*$') { return (($m -split '[|,]' | ForEach-Object { $_.Trim() }) -contains $v) }
+    return ($v -match $m)
+}
+function Get-HdWiring([string]$ev, [string]$v) {
+    $cmds = @(@($hdHooks.$ev) | Where-Object { Test-HdMatcher ([string]$_.matcher) $v } | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command })
+    $names = @($cmds | ForEach-Object { [regex]::Matches($_, '[a-z0-9-]+\.ps1') | ForEach-Object { $_.Value } } | Where-Object { $_ -ne 'hook-dispatch.ps1' } | ForEach-Object { $_ -replace '\.ps1$', '' } | Sort-Object -Unique)
+    return @{ Count = $cmds.Count; Names = ($names -join ',') }
+}
+$hdExpect = [ordered]@{}
+foreach ($t in 'Bash', 'PowerShell') { $hdExpect["PreToolUse|$t"] = 'block-destructive,guard-bash'; $hdExpect["PostToolUse|$t"] = 'inject-reply-language,suggest-agents-record' }
+foreach ($t in 'Write', 'Edit', 'MultiEdit', 'NotebookEdit') { $hdExpect["PreToolUse|$t"] = 'guard-harness,guard-write'; $hdExpect["PostToolUse|$t"] = 'inject-reply-language,post-write-checks' }
+$hdExpect['PreToolUse|Skill'] = 'inject-reply-language,loop-continue,record-work-start'
+$hdExpect['PostToolUse|Skill'] = ''
+foreach ($s in 'startup', 'resume', 'clear') { $hdExpect["SessionStart|$s"] = 'session-context,warn-version-drift' }
+foreach ($s in 'compact', 'fork') { $hdExpect["SessionStart|$s"] = 'session-context' }
+foreach ($c in 'plan', 'karina:plan') { $hdExpect["UserPromptExpansion|$c"] = 'loop-continue,record-work-start' }
+foreach ($c in 'implement', 'karina:implement') { $hdExpect["UserPromptExpansion|$c"] = 'loop-continue' }
+foreach ($c in 'chain-plan', 'karina:chain-plan') { $hdExpect["UserPromptExpansion|$c"] = 'record-work-start' }
+$hdOver = @(); $hdSetDiff = @()
+foreach ($k in $hdExpect.Keys) {
+    $ev, $v = $k -split '\|', 2
+    $w = Get-HdWiring $ev $v
+    if ($w.Count -gt 1) { $hdOver += "$k=$($w.Count)" }
+    if ($w.Names -ne $hdExpect[$k]) { $hdSetDiff += "$k=[$($w.Names)]" }
+}
+Assert-Case -Name "hook-dispatch: 배선 — 이벤트·도구·원인·명령마다 pwsh 명령이 하나 이하다" -R @{ code = 0; out = 'over=' + $(if ($hdOver) { $hdOver -join ' ' } else { 'none' }) } -ExpectContains 'over=none'
+Assert-Case -Name "hook-dispatch: 배선 — 묶음이 부르는 스크립트 집합이 종전 배선과 같다" -R @{ code = 0; out = 'diff=' + $(if ($hdSetDiff) { $hdSetDiff -join ' ' } else { 'none' }) } -ExpectContains 'diff=none'
+$hdBlk = @(@($hdHooks.PreToolUse) | Where-Object { (Test-HdMatcher ([string]$_.matcher) 'Bash') -or (Test-HdMatcher ([string]$_.matcher) 'Write') } | ForEach-Object { @($_.hooks) } | ForEach-Object { "$($_.command -match ' -Blocking ')/$($_.onFailure)/$($_.timeout)" })
+Assert-Case -Name "hook-dispatch: 배선 — 차단 묶음 둘은 -Blocking · onFailure block · timeout 60 이다" -R @{ code = 0; out = "blk=$($hdBlk -join ',')" } -ExpectContains 'blk=True/block/60,True/block/60'
+
 }

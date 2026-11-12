@@ -149,10 +149,12 @@ Assert-Case -Name "loop-continue: [x]·[X] 뿐이면 침묵" -R $r -ExpectExit 0
 Remove-Item -Recurse -Force $lcMk -ErrorAction SilentlyContinue
 
 $lcHooks = Get-Content -LiteralPath (Join-Path $pluginRoot 'hooks/hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-$lcUpeMatcher = [string]($lcHooks.hooks.UserPromptExpansion | Where-Object { ($_.hooks.command -join ' ') -match 'loop-continue' } | Select-Object -First 1).matcher
-$lcExactOnly = $lcUpeMatcher -match '^[A-Za-z0-9_ ,|-]*$'
+$lcUpeMatchers = @($lcHooks.hooks.UserPromptExpansion | Where-Object { ($_.hooks.command -join ' ') -match 'loop-continue' } | ForEach-Object { [string]$_.matcher })
 $lcHit = @('karina:implement', 'implement', 'karina:plan', 'plan' | Where-Object {
-    if ($lcExactOnly) { ($lcUpeMatcher -split '[|,]' | ForEach-Object { $_.Trim() }) -contains $_ } else { $_ -match $lcUpeMatcher }
+    $cmd = $_
+    @($lcUpeMatchers | Where-Object {
+        if ($_ -match '^[A-Za-z0-9_ ,|-]*$') { ($_ -split '[|,]' | ForEach-Object { $_.Trim() }) -contains $cmd } else { $cmd -match $_ }
+    }).Count -gt 0
 })
 Assert-Case -Name "loop-continue: UserPromptExpansion matcher 가 karina: 접두·무접두 두 형태를 모두 받는다" -R @{ code = 0; out = "hits=$($lcHit.Count)" } -ExpectContains 'hits=4'
 
