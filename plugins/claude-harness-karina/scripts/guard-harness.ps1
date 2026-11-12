@@ -101,6 +101,20 @@ if (Get-Command Invoke-GuardComment -ErrorAction SilentlyContinue) {
     [Console]::Error.WriteLine('guard-harness: guard-comment.ps1 로드 실패 — 새 주석 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.')
 }
 
+# ---- doc 블록 주인 이동 차단 (비안전 · 판정 실패는 통과) — 근거는 `rules/doc-owner-rationale.md` §1
+try { . (Join-Path $PSScriptRoot 'guard-doc-owner.ps1') } catch {}
+if (Get-Command Invoke-GuardDocOwner -ErrorAction SilentlyContinue) {
+    $doResult = $null
+    try { $doResult = Invoke-GuardDocOwner $script:data ([string]$targetPath) } catch {}
+    if ($doResult -and $doResult.Block) {
+        [Console]::Error.WriteLine("[HARNESS] BLOCKED: doc 블록과 그 주인 항목 사이에 새 항목을 끼웁니다 — " + $doResult.Lines[0])
+        foreach ($l in @($doResult.Lines | Select-Object -Skip 1)) { [Console]::Error.WriteLine($l) }
+        exit 2
+    }
+} else {
+    [Console]::Error.WriteLine('guard-harness: guard-doc-owner.ps1 로드 실패 — doc 주인 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.')
+}
+
 if ($env:CLAUDE_HARNESS_QUICK -eq '1') { exit 0 }
 
 # 대상 판정 — 파일명이 정확히 AGENTS.md 일 때만

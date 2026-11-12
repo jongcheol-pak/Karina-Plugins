@@ -7,6 +7,7 @@
     "guard-comment",
     "guard-commit-comments",
     "guard-commit-secrets",
+    "guard-doc-owner",
     "guard-harness",
     "guard-stale-docs",
     "guard-task-audit",

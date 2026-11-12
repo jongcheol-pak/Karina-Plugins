@@ -320,4 +320,31 @@ $r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
 Assert-Case -Name "guard-comment: plan.md 가 없으면 복원 Edit 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 }
 
+$doDir = Join-Path $work 'doc-owner'; New-Item -ItemType Directory $doDir -Force | Out-Null
+$doRs = Join-Path $doDir 'view.rs'
+$doBody = "fn prev() {`n    run();`n}`n`n/// a 설명 첫 줄`n/// a 설명 둘째 줄`npub fn a() {}`n`n#[cfg(test)]`nmod tests {`n    /// 시험 설명`n    #[test]`n    fn t_one() {}`n}`n`n/// 상한`nconst LIMIT: u32 = 3;`n"
+[System.IO.File]::WriteAllText($doRs, $doBody)
+$doBlock = '[HARNESS] BLOCKED: doc 블록과 그 주인 항목 사이에 새 항목을 끼웁니다'
+$r = Invoke-GcEditAt $doRs 'pub fn a() {}' "fn b() {}`n`npub fn a() {}"
+Assert-Case -Name "doc-owner: pub fn 줄을 앵커로 그 앞에 새 fn 을 끼우면 차단" -R $r -ExpectExit 2 -ExpectContains $doBlock
+Assert-Case -Name "doc-owner: 차단 사유가 doc 을 잃는 항목과 처방을 낸다" -R $r -ExpectExit 2 -ExpectContains '앵커를 doc 블록의 첫 줄'
+$r = Invoke-GcEditAt $doRs "    #[test]`n    fn t_one() {}" "    #[test]`n    fn t_zero() {}`n`n    #[test]`n    fn t_one() {}"
+Assert-Case -Name "doc-owner: #[test] 앵커 앞에 새 시험을 끼우면 차단" -R $r -ExpectExit 2 -ExpectContains $doBlock
+$r = Invoke-GcEditAt $doRs 'const LIMIT: u32 = 3;' "const FLOOR: u32 = 1;`nconst LIMIT: u32 = 3;"
+Assert-Case -Name "doc-owner: const 앵커 앞에 새 const 를 끼우면 차단" -R $r -ExpectExit 2 -ExpectContains $doBlock
+$doMulti = @(@{ old_string = 'run();'; new_string = 'run2();' }, @{ old_string = 'pub fn a() {}'; new_string = "fn c() {}`npub fn a() {}" })
+$r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'do-multi'; tool_name = 'MultiEdit'; cwd = $doDir; tool_input = @{ file_path = $doRs; edits = $doMulti } } | ConvertTo-Json -Compress -Depth 5)
+Assert-Case -Name "doc-owner: MultiEdit 두 쌍 중 하나만 끼워도 차단" -R $r -ExpectExit 2 -ExpectContains $doBlock
+$r = Invoke-GcEditAt $doRs "/// a 설명 첫 줄`n/// a 설명 둘째 줄`npub fn a() {}" "fn b() {}`n`n/// a 설명 첫 줄`n/// a 설명 둘째 줄`npub fn a() {}"
+Assert-Case -Name "doc-owner (음성): doc 블록 첫 줄부터 앵커로 잡아 그 위에 넣으면 통과" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+$r = Invoke-GcEditAt $doRs "    run();`n}" "    run();`n}`n`nfn b() {}"
+Assert-Case -Name "doc-owner (음성): 앞 항목 닫는 } 뒤에 넣으면 통과" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+$r = Invoke-GcEditAt $doRs "/// 상한`nconst LIMIT: u32 = 3;" 'const LIMIT: u32 = 3;'
+Assert-Case -Name "doc-owner (음성): doc 블록 자체를 지우는 Edit 는 통과" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+$doMd = Join-Path $doDir 'notes.md'; [System.IO.File]::WriteAllText($doMd, "/// 설명`nfn a() {}`n")
+$r = Invoke-GcEditAt $doMd 'fn a() {}' "fn b() {}`nfn a() {}"
+Assert-Case -Name "doc-owner (음성): 대상이 .md 면 보지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+$r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'do-write'; tool_name = 'Write'; cwd = $doDir; tool_input = @{ file_path = $doRs; content = $doBody.Replace('pub fn a() {}', "fn b() {}`npub fn a() {}") } } | ConvertTo-Json -Compress -Depth 5)
+Assert-Case -Name "doc-owner (음성): Write 는 대상 밖" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+
 }
