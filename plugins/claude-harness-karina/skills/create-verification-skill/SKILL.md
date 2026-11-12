@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Create a verification skill
 
-> 출처는 Cursor pstack 의 create-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/create-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮기며 생성 위치를 Claude Code 프로젝트 스킬로 바꾸고, Windows 데스크톱 조작·「변경 검증」 절·karina 등록 절차를 더했다.
+> 출처는 Cursor pstack 의 create-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/create-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮기며 생성 위치를 Claude Code 프로젝트 스킬로 바꾸고, Windows 데스크톱 조작·「변경 검증」 절·karina 등록 절차를 더했으며, 체크아웃이 빌드·실행되지 않으면 원문처럼 고치지 않고 보고하고 멈춘다.
 
 실제 앱을 띄우고, 사용자가 쓰는 방식으로 기능을 조작하고, 증거를 남기는 절차를 대상 레포 전용 스킬 `.claude/skills/verify-<app>/` 로 만든다. **생성물의 독자는 사람이 아니라 다음 에이전트다** — 앱을 한 번도 본 적 없는 에이전트가 작업 도중에 처음 읽고 그대로 따라 한다. 그 에이전트는 `karina:implement` 의 화면 확인 전 조작과 `gate-verifier` 의 push 전 검증이다(`AGENTS.md` 의 `Verify (앱 조작)` 줄로 찾는다).
 

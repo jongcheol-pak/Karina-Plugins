@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Maintain a verification skill
 
-> 출처는 Cursor pstack 의 maintain-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/maintain-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮기며 대상 위치를 Claude Code 프로젝트 스킬로, 원문의 PR 하나를 karina 의 기본 브랜치 커밋·push(`implement/references/push-flow.md`)로 바꿨다.
+> 출처는 Cursor pstack 의 maintain-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/maintain-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮기며 대상 위치를 Claude Code 프로젝트 스킬로, 원문의 PR 하나를 karina 의 기본 브랜치 커밋·push(`implement/references/push-flow.md`)로 바꿨고, 기능 파일마다 하나씩 띄우던 서브에이전트를 기능이 적으면 하나로 묶는다.
 
 기능 지도는 앱이 바뀌는 순간 낡는다(*"A feature map rots the moment the app changes."*). 이 스킬은 `/karina:create-verification-skill` 이 만든 스킬(또는 기능 지도를 가진 다른 프로젝트 검증 스킬)의 유지 루프다. 엄밀함의 단위는 문장이 아니라 **기능**이다 — 모든 기능 파일을 소스로 덮고 모든 기능을 실제로 조작하되, 불릿 하나하나를 터미널로 재지는 않는다.
 
@@ -38,7 +38,7 @@ disable-model-invocation: true
 5. **분류한다** — 사용자 관점 설명이 틀렸거나 빠졌으면 **지도 드리프트** → 고친다. 동작은 하는데 하네스가 조작하지 못하면 **하네스 공백** → 고친다(생성 때와 같은 헬퍼 규칙 — 실행 가능 · 호출 방법을 본문에 · `helpers/` 아래 · 되풀이된 일회용 조작 스크립트는 제어 CLI 로 승격). 앱 동작이 실제로 깨졌으면 **제품 공백** → 사용자에게 기록하고 이 커밋에는 넣지 않는다. 「변경 검증」 절이 `../create-verification-skill/SKILL.md` 2단계의 형식(화면 시나리오 입력 · 레포 루트를 인자로 받는 Launch)을 따르지 않으면 **형식 드리프트** → 그 형식으로 고치고, 고친 Launch 는 4 의 실제 조작에서 다른 worktree 경로로 한 번 돌려 증명한다 — 옛 형식이면 `karina:implement`·`gate-verifier` 가 계획의 시나리오와 BASE 실행을 그 스킬로 돌리지 못한다. Evidence 위치가 `../TEMP-FILES.md` 의 `verify\<app>\<실행 id>\` 가 아니면(예: `%TEMP%/verify-<app>/`) 이것도 **형식 드리프트** → 그 위치로 고친다 — 옛 위치는 세션 시작 정리가 보지 않아 증거가 쌓인다.
 6. **내거나 멈춘다** — changed 면 고친 파일을 모두 다시 읽은 뒤:
    - 브랜치를 바꾸지 않고 `git add -- .claude/skills/verify-<app>` 뒤 경로 한정 로컬 커밋 `git commit -m "문서: 검증 스킬 verify-<app> 지도 보정" -- .claude/skills/verify-<app>` 를 한다(`add` 가 없으면 색인 정리·하네스 공백 수정이 새로 만든 파일이 커밋에서 빠진다 · `git check-ignore -q --no-index .claude/skills/verify-<app>/SKILL.md` 가 0 이면 그 폴더가 무시 경로인데 `add -f` 로 추적된 것이라 `git add -f --` 를 쓴다 — `--no-index` 가 없으면 추적된 파일은 늘 1 이 나온다(2026-10-18 실측)). 커밋 본문에 덮은 기능 수와 실제로 조작한 기능을 적는다.
-   - 그 뒤 `../implement/references/push-flow.md`「기본 브랜치 push」 의 push 만 하고 보고한다 — 진행 중 `plan.md` 가 있으면 push 하지 않고 그 회차 끝에 함께 간다.
+   - 그 뒤 `../implement/references/push-flow.md`「기본 브랜치 push」 의 push 만 하고 보고한다 — 진행 중 `plan.md` 가 있으면 push 하지 않고 그 회차 끝에 함께 간다. **`git rev-list --count origin/<기본>..HEAD` 가 1 일 때만 push 하고, 아니면 push 하지 않고 `건너뜀 — 미push 커밋 <N>개` 로 보고한다** — 이 push 는 로컬 게이트를 거치지 않아, 게이트가 보류한 커밋(화면 확인 대기·FAIL)이 남아 있으면 함께 공개된다.
    - clean·blocked 는 커밋이 없다 — 결과와 덮은 범위를 정직하게 보고한다.
 
 실행 메모(덮은 기능 · 닿지 못한 기능의 전제 · 확인된 드리프트 · 결과)는 레포 밖 임시 위치에 짧게 남기고 커밋하지 않는다.
