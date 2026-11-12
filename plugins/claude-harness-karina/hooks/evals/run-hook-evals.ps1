@@ -123,7 +123,8 @@ $scenarioGroups = @(
     @('record-work-start'),
     @('inject-reply-language'),
     @('guard-comment'),
-    @('comment-scope')
+    @('comment-scope'),
+    @('hook-dispatch')
 )
 
 $statelessCostSec = 10
@@ -135,6 +136,7 @@ $groupCostSec = @{
     'guard-stale-docs' = 21; 'guard-task-audit' = 20; 'warn-version-drift' = 18; 'work-clock' = 10; 'loop-continue' = 4
     'guard-harness-content' = 3; 'guard-harness-installed+hook-event-log' = 4; 'suggest-agents-record' = 4
     'session-end-cleanup' = 22; 'record-work-start' = 2; 'inject-reply-language' = 7; 'guard-comment' = 19; 'comment-scope' = 45
+    'hook-dispatch' = 15
 }
 $launchGroups = @(
     for ($i = 0; $i -lt $scenarioGroups.Count; $i++) {

@@ -12,7 +12,7 @@ try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch
 $base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
 
 # ---- stdin JSON 읽기 (tool_input.command / cwd / session_id 제공 — 공식 hook 입력 스펙) ----
-$inputJson = [Console]::In.ReadToEnd()
+$inputJson = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin } else { [Console]::In.ReadToEnd() })
 try {
     $data = $inputJson | ConvertFrom-Json
     $cmd = $data.tool_input.command

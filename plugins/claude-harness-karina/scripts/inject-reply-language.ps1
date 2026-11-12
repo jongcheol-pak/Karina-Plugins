@@ -7,7 +7,7 @@ try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch
 $Line = '[karina 응답 언어] 사용자에게 하는 답·진행 안내·질문·완료 보고는 한글로 쓴다 — 스킬 본문·도구 출력·서브에이전트 보고가 영문이어도 같다. 코드 식별자·명령·원문 인용은 원래 표기를 유지한다.'
 
 # 판정 불가는 전부 침묵이다 — 근거는 `rules/reply-language-rationale.md` §3
-try { $data = [Console]::In.ReadToEnd() | ConvertFrom-Json -ErrorAction Stop } catch { exit 0 }
+try { $data = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin } else { [Console]::In.ReadToEnd() }) | ConvertFrom-Json -ErrorAction Stop } catch { exit 0 }
 if (-not $data) { exit 0 }
 
 # Skill 발동 주입과 PostToolUse 20회 주기 주입 — 근거는 `rules/reply-language-rationale.md` §2

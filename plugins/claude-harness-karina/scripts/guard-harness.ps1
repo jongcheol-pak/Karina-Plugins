@@ -5,7 +5,7 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
 
-$inputJson = [Console]::In.ReadToEnd()
+$inputJson = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin } else { [Console]::In.ReadToEnd() })
 try {
     $script:data = $inputJson | ConvertFrom-Json
     $script:targetPath = $script:data.tool_input.path

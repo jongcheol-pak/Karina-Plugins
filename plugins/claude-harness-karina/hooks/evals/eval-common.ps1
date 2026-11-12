@@ -148,29 +148,43 @@ function Assert-EvalParentAlive {
 }
 
 function Invoke-Hook {
-    param([string]$ScriptName, [string]$InputJson, [switch]$Process)
+    param([string]$ScriptName, [string]$InputJson, [switch]$Process, [string[]]$Arguments = @(), [switch]$SplitStreams)
     Assert-EvalParentAlive
-    $path = Join-Path $scriptsDir $ScriptName
-    if ($Process -or -not $IsWindows) { return Invoke-HookProcess $path $InputJson }
-    return Invoke-HookInProcess $path $InputJson
+    $path = if ([System.IO.Path]::IsPathRooted($ScriptName)) { $ScriptName } else { Join-Path $scriptsDir $ScriptName }
+    if ($Process -or -not $IsWindows) { return Invoke-HookProcess $path $InputJson $Arguments $SplitStreams }
+    return Invoke-HookInProcess $path $InputJson $Arguments $SplitStreams
 }
 
-function Invoke-HookProcess([string]$Path, [string]$InputJson) {
+function Invoke-HookProcess([string]$Path, [string]$InputJson, [string[]]$Arguments = @(), [bool]$SplitStreams = $false) {
     if (-not $script:hookOutEncFixed) {
         try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
         $script:hookOutEncFixed = $true
     }
-    $out = $InputJson | pwsh -NoProfile -ExecutionPolicy Bypass -File $Path 2>&1
-    return @{ code = $LASTEXITCODE; out = (($out | Out-String)).Trim() }
+    if (-not $SplitStreams) {
+        $out = $InputJson | pwsh -NoProfile -ExecutionPolicy Bypass -File $Path @Arguments 2>&1
+        return @{ code = $LASTEXITCODE; out = (($out | Out-String)).Trim() }
+    }
+    $errFile = [System.IO.Path]::GetTempFileName()
+    try {
+        $out = $InputJson | pwsh -NoProfile -ExecutionPolicy Bypass -File $Path @Arguments 2> $errFile
+        $code = $LASTEXITCODE
+        $err = [System.IO.File]::ReadAllText($errFile, [System.Text.Encoding]::UTF8)
+    } finally {
+        [System.IO.File]::Delete($errFile)
+    }
+    return @{ code = $code; out = (($out | Out-String)).Trim(); err = $err.Trim() }
 }
 
 $script:HookRunspace = $null
 $script:HookRunspaceHome = $null
 $script:HookInvokeScript = @'
-param($HookPath, $Location)
+param($HookPath, $Location, $HookArgs)
 Set-Location -LiteralPath $Location
 $global:LASTEXITCODE = 0
-try { & $HookPath *>&1 | Out-String } catch { $_ | Out-String; $global:LASTEXITCODE = 1 }
+$hookNamed = @{}
+$hookPositional = @()
+foreach ($a in @($HookArgs)) { if ($a -match '^-(\w+)$') { $hookNamed[$Matches[1]] = $true } else { $hookPositional += $a } }
+try { & $HookPath @hookNamed @hookPositional *>&1 | Out-String } catch { $_ | Out-String; $global:LASTEXITCODE = 1 }
 [int]$global:LASTEXITCODE
 '@
 
@@ -200,7 +214,7 @@ function Restore-EvalEnvironment([System.Collections.IDictionary]$Snapshot) {
     }
 }
 
-function Invoke-HookInProcess([string]$Path, [string]$InputJson) {
+function Invoke-HookInProcess([string]$Path, [string]$InputJson, [string[]]$Arguments = @(), [bool]$SplitStreams = $false) {
     # hook 의 `[Console]::InputEncoding` setter 는 `Console.In` 을 OS 표준입력 핸들에서 다시 만들어
     #   `[Console]::SetIn` 으로 넣은 입력을 버린다(.NET 동작). 그래서 표준입력 핸들 자체를 바꾼다.
     if (-not ('KarinaEval.StdHandle' -as [type])) {
@@ -228,15 +242,17 @@ function Invoke-HookInProcess([string]$Path, [string]$InputJson) {
 
     $captured = [System.Text.StringBuilder]::new()
     $writer = [System.IO.StringWriter]::new($captured)
+    $errCaptured = [System.Text.StringBuilder]::new()
+    $errWriter = if ($SplitStreams) { [System.IO.StringWriter]::new($errCaptured) } else { $writer }
     $ps = [powershell]::Create()
     $ps.Runspace = $rs
     $res = @()
     try {
         [Console]::SetOut($writer)
-        [Console]::SetError($writer)
+        [Console]::SetError($errWriter)
         $null = [KarinaEval.StdHandle]::SetStdHandle($stdInput, $client.SafePipeHandle.DangerousGetHandle())
         [Environment]::CurrentDirectory = $location
-        $null = $ps.AddScript($script:HookInvokeScript).AddArgument($Path).AddArgument($location)
+        $null = $ps.AddScript($script:HookInvokeScript).AddArgument($Path).AddArgument($location).AddArgument([string[]]$Arguments)
         $res = @($ps.Invoke())
     } finally {
         $null = [KarinaEval.StdHandle]::SetStdHandle($stdInput, $stdinSnapshot)
@@ -249,6 +265,7 @@ function Invoke-HookInProcess([string]$Path, [string]$InputJson) {
         $ps.Dispose()
         $client.Dispose()
         $writer.Dispose()
+        $errWriter.Dispose()
     }
     $code = 1
     $pipelineText = ''
@@ -256,6 +273,7 @@ function Invoke-HookInProcess([string]$Path, [string]$InputJson) {
         $code = $res[-1]
         $pipelineText = ($res | Select-Object -SkipLast 1 | ForEach-Object { [string]$_ }) -join ''
     }
+    if ($SplitStreams) { return @{ code = $code; out = ($captured.ToString() + $pipelineText).Trim(); err = $errCaptured.ToString().Trim() } }
     return @{ code = $code; out = ($captured.ToString() + $pipelineText).Trim() }
 }
 

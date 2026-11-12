@@ -134,7 +134,7 @@ foreach ($a in $actualAgents) {
 }
 Write-Host ""
 
-$hooks = @('block-destructive.ps1', 'guard-bash.ps1', 'guard-write.ps1', 'guard-harness.ps1', 'post-write-checks.ps1', 'suggest-agents-record.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1', 'loop-continue.ps1', 'record-work-start.ps1', 'inject-reply-language.ps1')
+$hooks = @('block-destructive.ps1', 'guard-bash.ps1', 'guard-write.ps1', 'guard-harness.ps1', 'post-write-checks.ps1', 'suggest-agents-record.ps1', 'warn-version-drift.ps1', 'session-context.ps1', 'session-end-cleanup.ps1', 'loop-continue.ps1', 'record-work-start.ps1', 'inject-reply-language.ps1', 'hook-dispatch.ps1')
 $scriptNamesPath = Join-Path $pluginRoot 'scripts/rules/harness-hooks.json'
 $scriptNames = @()
 try {

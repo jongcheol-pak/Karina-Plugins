@@ -8,7 +8,7 @@ try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch
 
 try {
     # ---- 입력 파싱 (cwd) ----
-    $raw = [Console]::In.ReadToEnd()
+    $raw = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin } else { [Console]::In.ReadToEnd() })
     if ([string]::IsNullOrWhiteSpace($raw)) { exit 0 }
     $inp = $null
     try { $inp = $raw | ConvertFrom-Json } catch { exit 0 }

@@ -8,7 +8,7 @@ try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch
 $SkillRx = '^(karina:)?(plan|chain-plan)$'
 
 # 판정 불가는 전부 침묵이다 — 근거는 `rules/work-start-rationale.md` §3
-try { $data = [Console]::In.ReadToEnd() | ConvertFrom-Json -ErrorAction Stop } catch { exit 0 }
+try { $data = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin } else { [Console]::In.ReadToEnd() }) | ConvertFrom-Json -ErrorAction Stop } catch { exit 0 }
 if (-not $data) { exit 0 }
 $sid = [string]$data.session_id
 if ([string]::IsNullOrWhiteSpace($sid)) { exit 0 }

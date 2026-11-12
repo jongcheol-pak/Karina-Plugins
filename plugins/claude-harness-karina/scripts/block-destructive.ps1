@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
-$inputJson = [Console]::In.ReadToEnd()
+$inputJson = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin } else { [Console]::In.ReadToEnd() })
 try {
     $data = $inputJson | ConvertFrom-Json
     $cmd = $data.tool_input.command

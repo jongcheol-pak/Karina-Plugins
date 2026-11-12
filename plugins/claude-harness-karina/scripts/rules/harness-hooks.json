@@ -13,6 +13,7 @@
     "guard-write",
     "git-commit-match",
     "harness-root",
+    "hook-dispatch",
     "hook-event-log",
     "inject-reply-language",
     "loop-continue",

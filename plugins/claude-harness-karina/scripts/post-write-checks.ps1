@@ -9,7 +9,7 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 # ---- stdin JSON 1회 읽기 (두 검사 공유 — 같은 입력을 두 번 읽지 않음) ----
-$inputJson = [Console]::In.ReadToEnd()
+$inputJson = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin } else { [Console]::In.ReadToEnd() })
 try {
     $data = $inputJson | ConvertFrom-Json
     $file = $data.tool_input.path
