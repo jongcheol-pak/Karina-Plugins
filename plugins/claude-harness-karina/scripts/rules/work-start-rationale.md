@@ -6,14 +6,14 @@
 
 완료 보고의 소요는 계획을 세우기 시작한 시각부터 잰다. 모델은 현재 시각을 모르고, 종전에는 plan Step 1 의 셸 호출에 `date` 를 얹어 그 값을 Step 5 까지 기억했다. 그 사이에 압축되거나 회차 경계로 `karina:chain-plan` 에 넘기면 값이 사라졌고, 빠뜨려도 잡는 장치가 없었다(v1.375.0 완료 리뷰 5·7번). 발동 시각은 스킬이 불리는 순간 기계적으로 정해지므로 hook 이 그 자리에서 남긴다.
 
-- **루프 계속 주입(`loop-continue.ps1`)에 얹지 않는다** — 같은 이벤트를 받지만 변경 이유가 다르다. 같은 이벤트의 hook 은 병렬로 돌아 파일을 나눠도 대기 시간이 늘지 않는다(공식 hooks 문서 「runs all matching hooks in parallel」).
+- **루프 계속 주입(`loop-continue.ps1`)에 얹지 않는다** — 같은 이벤트를 받지만 변경 이유가 다르다. 같은 이벤트·matcher 의 스크립트는 `hook-dispatch.ps1` 이 한 프로세스에서 차례로 부르므로 파일을 나눠도 pwsh 기동이 늘지 않는다(`hook-dispatch-rationale.md` §1).
 
 ## §2 대상 스킬과 두 이벤트
 
 `karina:plan`(계획 시작)과 `karina:chain-plan`(체인 시작) 둘이다. `karina:implement` 는 대상이 아니다 — 소요의 시작은 계획 시작이고, 새 세션 구현은 `plan.md` 의 `> 시작:` 이 시각을 넘긴다.
 
 - **`PreToolUse` · `tool_name` = `Skill`** — 모델이 Skill 도구로 부를 때다. 이름은 `tool_input.skill` 이다.
-- **`UserPromptExpansion`** — 사용자가 `/karina:plan` 을 직접 쳐서 Skill 도구를 거치지 않는 경로다. 이름은 `command_name` 이고 플러그인 접두가 붙는지 문서에 없어 두 형태를 다 받는다. **hooks.json matcher 도 같은 정규식 `^(karina:)?(plan|chain-plan)$` 이다** — 글자·`|` 만으로 쓰면 「정확 일치 목록」으로 판정돼 `karina:plan` 을 놓친다.
+- **`UserPromptExpansion`** — 사용자가 `/karina:plan` 을 직접 쳐서 Skill 도구를 거치지 않는 경로다. 이름은 `command_name` 이고 플러그인 접두가 붙는지 문서에 없어 두 형태를 다 받는다. **hooks.json matcher 도 정규식 — `^(karina:)?plan$` 블록(디스패처로 `loop-continue` 와 함께)과 `^(karina:)?chain-plan$` 블록(직접)이다** — 글자·`|` 만으로 쓰면 「정확 일치 목록」으로 판정돼 `karina:plan` 을 놓친다.
 
 ## §3 판정 불가는 침묵
 

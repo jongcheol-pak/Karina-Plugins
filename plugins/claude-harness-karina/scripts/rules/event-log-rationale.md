@@ -29,6 +29,7 @@
 #   timeout 값을 정할 실측이 없었다. 기준을 넘긴 실행을 남겨 다음 처방(timeout 값·pwsh 기동 통합)의 근거로 쓴다.
 # 무엇을 재나: 지금 − 현재 프로세스 시작 시각. hook 은 도구 호출마다 새 pwsh 프로세스라 이 값이 pwsh 기동을
 #   포함한 hook 소요다(빈 pwsh 기동 379ms 가 guard-bash 평시 884ms 의 43% — hook 안 스톱워치는 그만큼 놓친다).
+#   hook-dispatch 묶음 안에서는 앞 스크립트가 쓴 시간도 들어간다 — timeout 이 묶음 단위라 그 값이 맞다.
 # 기준: KARINA_HOOK_SLOW_MS(0 이상 정수), 없거나 정수가 아니면 5000ms — 평시 최대 1.7초의 약 3배.
 #   검사를 끄지 않으므로 우회 변수가 아니다(우회 변수는 둘 — docs/harness-conventions.md).
 # 어디서 부르나: guard-bash·block-destructive 의 정상 종료(차단 exit 2 · 통과 exit 0) 직전. 파싱 실패·빈 명령·

@@ -16,11 +16,11 @@
 - **`PreToolUse` · `tool_name` = `Skill`** — 스킬 본문이 들어오는 자리다. `karina:implement` 루프처럼 사용자 입력 없이 도구 호출이 이어지는 동안에도 스킬 발동 때마다 본문 옆에 실린다.
 - **모든 스킬에 주입한다** — 영문으로 쓰인 다른 플러그인 스킬도 쏠림의 원인이다.
 - **PostToolUse 를 세어 20회째마다 같은 줄을 다시 싣는다(2026-11-07)** — 스킬 발동 주입만으로는 `karina:implement` 루프 안에서 도구 호출이 수백 번 쌓인 뒤 진행 안내가 영어로 샜다(전사 실측 — 마지막 주입 뒤 약 850·2100줄에서 영문 상태 메모 2줄). 주기는 사용자가 골랐다(20 · 10 · 40 중).
-  - **matcher 는 `Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit`** — 기존 PostToolUse 블록 둘(`suggest-agents-record`·`post-write-checks`)의 합집합이다. 같은 이벤트의 hook 은 병렬로 돌아(공식 hooks 문서 「its matching hooks run in parallel」) 벽시계 증가가 작을 것으로 본다(추정 — 실측 안 함). hook 이 없는 Read·Grep·Glob 까지 세면 호출마다 pwsh 기동(단독 실측 0.46초)이 더해진다.
+  - **받는 도구는 `Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit`** — 기존 PostToolUse 블록 둘(`suggest-agents-record`·`post-write-checks`)의 묶음에 각각 들어간다(`hook-dispatch.ps1` 이 같은 프로세스에서 차례로 부른다 — pwsh 기동이 늘지 않는다). hook 이 없는 Read·Grep·Glob 까지 세면 호출마다 pwsh 기동(단독 실측 0.46초)이 더해진다.
   - **카운터는 `~/.claude/.state/reply-language/<sid>.txt` 정수 하나** — Skill 주입이 0으로 되돌리고, 20에 닿으면 주입하고 0으로 쓴다. 읽지 못하거나 정수가 아니면 0으로 보고, 쓰기 실패는 침묵한다(병렬 도구 호출의 동시 쓰기로 한 번 덜 세는 것은 허용). 30일 지난 파일은 `session-context` 가 걷는다.
   - **`agent_id` 가 실린 입력(서브에이전트 안)은 세지 않는다** — 서브에이전트의 도구 호출도 같은 hook 을 거치고 입력에 `agent_id` 가 실린다(공식 hooks 문서). 세면 주입이 서브에이전트 컨텍스트로 새고 메인 간격이 늘 수 있다. 서브에이전트 안 Skill 은 주입만 하고 메인 카운터를 쓰지 않는다. `agent_type` 은 `--agent` 메인 세션에도 실려 거름 필드로 쓰지 않는다.
   - **`session_id` 가 없으면** Skill 은 주입만 하고 PostToolUse 는 무출력이다.
-- **`record-work-start` 와 파일을 나눈다** — 같은 이벤트를 받지만 변경 이유가 다르다. 같은 이벤트의 hook 은 병렬로 돌고, 여러 hook 이 낸 `additionalContext` 는 모두 전달된다(공식 hooks 문서 「When several hooks return `additionalContext` for the same event, Claude receives all of the values.」).
+- **`record-work-start` 와 파일을 나눈다** — 같은 이벤트를 받지만 변경 이유가 다르다. 같은 묶음의 스크립트는 `hook-dispatch.ps1` 이 차례로 부르고, 각자 낸 `additionalContext` 를 하나로 합쳐 넘긴다(`hook-dispatch-rationale.md` §3).
 
 ## §3 판정 불가는 침묵
 

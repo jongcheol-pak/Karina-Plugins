@@ -13,7 +13,7 @@
 #   부수 경고 둘(전역 탐색·위험값 대입)은 대응하는 독립 hook이 없고 이 파일이 유일한 실행 경로다.
 #
 # block-destructive는 여기 합치지 않는다 — 끌 수 없는 마지막 방어선이라 이 파일의 로드 실패가
-#   그쪽에 영향을 주면 안 된다(hooks.json 독립 엔트리 유지).
+#   그쪽에 영향을 주면 안 된다(별도 스크립트 유지 — hooks.json 에서는 hook-dispatch 묶음의 첫 스크립트다).
 #
 # 출력 계약:
 #   - 차단(task 체크박스·시크릿) 발생 → 그 사유만 stderr + exit 2. warn 경고는 출력하지 않는다
@@ -61,7 +61,9 @@ dot-source 는 넷 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
   불러오므로 거기 두면 나머지 여섯 검사가 돌 수 없다. 라이브러리를 단독 dot-source 하는 골든
   프로브는 같은 정의를 직접 둔다.
 - **`block-destructive.ps1` 은 여기 합치지 않는다** — 「끌 수 없는 마지막 방어선」이라
-  공유 로드 실패에 결합시키지 않고 `hooks.json` 독립 엔트리로 직접 실행한다(결정 B).
+  공유 로드 실패에 결합시키지 않고 아무 파일도 dot-source 하지 않는 별도 스크립트로 둔다(결정 B). `hooks.json` 에서는
+  `hook-dispatch.ps1 -Blocking` 묶음의 첫 스크립트로 같은 프로세스에서 돈다 — 디스패처가 실패하면 `onFailure: block`
+  으로 막힌다(`hook-dispatch-rationale.md` §1).
 
 **코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 공용 헬퍼 `New-HookResult`·`Remove-HeredocBodyForJudge` 를 `guard-bash.ps1` 에 두는 이유 — 커밋 판정 라이브러리 둘은 커밋 명령에서만 dot-source 되므로(로드 루프) 거기 두면 나머지 검사가 돌 수 없다. · `Remove-HeredocBodyForJudge` 를 쓰는 쪽은 `guard-commit-secrets.ps1`·`guard-stale-docs.ps1` 둘이다 — 여기 두면 한쪽 파일이 없어도 다른 쪽의 스트립이 유지된다. · `Remove-HeredocBodyForJudge` 는 `$script:HeredocBlockRx` 가 없으면(단독 dot-source) 스트립 없이 그대로 돌려준다 — fail-open 이되 보수측(본문까지 판정)이다. · heredoc 블록 정규식 `$script:HeredocBlockRx` 를 커밋 판정 라이브러리가 함께 쓸 수 있는 것은 dot-source 라 같은 스코프이기 때문이다.
 
@@ -130,7 +132,7 @@ dot-source 는 넷 남아 있다 — 커밋 시점 검사인 `guard-commit-secre
 ## §8 순서: 원 hooks.json 순서에서 block-destructive
 
 ```
-# 순서: 원 hooks.json 순서에서 block-destructive(독립)만 앞으로 뺀 나머지 3종 + warn-global-find(v1.183.0 신설)
+# 순서: 원 hooks.json 순서에서 block-destructive(별도 스크립트)만 앞으로 뺀 나머지 3종 + warn-global-find(v1.183.0 신설)
 #   + warn-bash-backslash(v2.72.0 신설 — warn-global-find 바로 뒤) + warn-dangerous-assignment(v1.199.0 신설). 뒤 셋은 대응하는 독립 hook 스크립트가 없고 이 디스패처가
 #   유일한 실행 경로다. **새 검사는 경고 출력 순서를 지키는 자리에 넣는다** — 경고를 내는 검사 사이에 끼우면 기존 출력 순서가 바뀐다. `block-plan-write` 는 차단 전용(경고를 내지 않는다)이라 `require-task-checkbox` 뒤에 두어도 순서가 움직이지 않는다.
 ```
