@@ -77,7 +77,7 @@ try {
     $env:OS = 'Linux'
     $r = Invoke-Hook 'guard-bash.ps1' $bsJson
 } finally { $env:OS = $bsOs }
-Assert-Case -Name "guard-bash: Windows 가 아니면 역슬래시 축소 경고를 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'BASH BACKSLASH WARNING'
+Assert-Case -Name "guard-bash: Windows 가 아니면 역슬래시 축소 검사(차단·경고)를 하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '역슬래시'
 
 $noMatch = Join-Path $work 'dispatch-nomatch'; New-Item -ItemType Directory $noMatch -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noMatch -Force

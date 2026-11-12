@@ -1345,24 +1345,59 @@
     },
     {
       "hook": "guard-bash.ps1",
-      "name": "역슬래시 축소: 따옴표 heredoc 본문의 역슬래시 둘 경고",
+      "name": "역슬래시 축소: 따옴표 heredoc 본문의 역슬래시 둘 차단",
       "command": "python - <<'PY'\nx = 'C:\\\\'\nprint(len(x))\nPY",
-      "expect_exit": 0,
-      "expect_contains": "BASH BACKSLASH WARNING"
+      "expect_exit": 2,
+      "expect_contains": "역슬래시 둘이 bash 에 하나로 넘어갑니다"
     },
     {
       "hook": "guard-bash.ps1",
-      "name": "역슬래시 축소: 작은따옴표 안 역슬래시 둘 경고",
+      "name": "역슬래시 축소: python -c 의 작은따옴표 인자 안 역슬래시 둘 차단",
       "command": "python -c 'print(\"a\\\\b\")'",
+      "expect_exit": 2,
+      "expect_contains": "역슬래시 둘이 bash 에 하나로 넘어갑니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: 따옴표 없는 heredoc 본문의 역슬래시 둘 차단",
+      "command": "cat <<EOF\na\\\\b\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "역슬래시 둘이 bash 에 하나로 넘어갑니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: cat > 파일 heredoc 본문의 역슬래시 둘 차단",
+      "command": "cat > x.txt <<'EOF'\na\\\\b\nEOF",
+      "expect_exit": 2,
+      "expect_contains": "역슬래시 둘이 bash 에 하나로 넘어갑니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: python -c 의 큰따옴표 인자 안 역슬래시 넷 차단",
+      "command": "python -c \"print(len('C:\\\\\\\\'))\"",
+      "expect_exit": 2,
+      "expect_contains": "역슬래시 둘이 bash 에 하나로 넘어갑니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소 (음성 짝): grep 의 작은따옴표 패턴은 경고만",
+      "command": "grep 'a\\\\.b' f",
       "expect_exit": 0,
       "expect_contains": "BASH BACKSLASH WARNING"
     },
     {
       "hook": "guard-bash.ps1",
-      "name": "역슬래시 축소: 따옴표 없는 heredoc 본문의 역슬래시 둘 경고",
-      "command": "cat <<EOF\na\\\\b\nEOF",
+      "name": "역슬래시 축소 (음성 짝): printf 의 작은따옴표 인자는 경고만",
+      "command": "printf '%s' 'a\\\\b'",
       "expect_exit": 0,
       "expect_contains": "BASH BACKSLASH WARNING"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소 (델타 음성): python -c 의 역슬래시 하나는 경고도 차단도 없다",
+      "command": "python -c 'print(\"a\\nb\")'",
+      "expect_exit": 0,
+      "expect_not_contains": "BASH BACKSLASH"
     },
     {
       "hook": "guard-bash.ps1",

@@ -124,18 +124,31 @@ function Invoke-WarnGlobalFind {
     return New-HookResult -Stderr @($msg) -Context $ctx
 }
 
-# warn-bash-backslash: Windows Bash 도구가 명령의 역슬래시 둘을 하나로 줄이는 자리 경고 — 근거는 `rules/bash-guard-rationale.md` §21
-function Invoke-WarnBashBackslash {
+# bash-backslash: Windows Bash 도구가 명령의 역슬래시 둘을 하나로 줄이는 자리 — heredoc 본문·python -c 인자는 차단, 그 밖은 경고 — 근거는 `rules/bash-guard-rationale.md` §21
+function Invoke-BashBackslash {
     param($data)
     if ($script:IsPsTool -or $env:OS -ne 'Windows_NT') { return New-HookResult }
     $cmd = [string]$data.tool_input.command
     if ($cmd.IndexOf('\\') -lt 0) { return New-HookResult }
 
+    $blockAt = New-Object System.Collections.Generic.List[string]
     $where = New-Object System.Collections.Generic.List[string]
     foreach ($hm in [regex]::Matches($cmd, $script:HeredocBlockRx)) {
-        if ($hm.Groups['body'].Value.Contains('\\')) { $where.Add('heredoc 본문'); break }
+        if ($hm.Groups['body'].Value.Contains('\\')) { $blockAt.Add('heredoc 본문'); break }
     }
     $rest = Remove-HeredocBodyForJudge $cmd
+    foreach ($pc in [regex]::Matches($rest, '(?i)(?:^|[\s;&|(])(?:python3?|py)(?:\.exe)?(?:\s+-[A-Za-z]+)*?\s+-c\s+(''[^'']*''|"(?:[^"\\]|\\.)*")')) {
+        $arg = $pc.Groups[1].Value
+        if (($arg.StartsWith("'") -and $arg.Contains('\\')) -or ($arg.StartsWith('"') -and $arg.Contains('\\\\'))) { $blockAt.Add('python -c 인자'); break }
+    }
+    if ($blockAt.Count -gt 0) {
+        $at = $blockAt -join ' · '
+        return New-HookResult -Block $true -Stderr @(
+            "[HARNESS] BLOCKED: 역슬래시 둘이 bash 에 하나로 넘어갑니다 — $at",
+            "  - Windows 의 Bash 도구는 명령을 bash 에 넘기기 전에 역슬래시 둘을 하나로 줄입니다 — 따옴표 heredoc 안에서도 줄어, Python 의 'C:\\' 같은 문자열은 닫는 따옴표를 잃고 \\n 은 실제 줄바꿈이 됩니다.",
+            '  - 역슬래시가 든 스크립트는 Write 도구로 파일을 만들어 python <파일> 로 실행하거나, PowerShell 도구로 보내세요(PowerShell 도구는 그대로 넘깁니다).',
+            '  - 같은 명령을 다시 내도 통과하지 않습니다.')
+    }
     foreach ($sq in [regex]::Matches($rest, '''[^'']*''')) {
         if ($sq.Value.Contains('\\')) { $where.Add('작은따옴표 문자열'); break }
     }
@@ -553,7 +566,7 @@ $checks = @(
     @{ fn = 'Invoke-BlockPlanWrite';      name = 'block-plan-write' },
     @{ fn = 'Invoke-WarnCommitSecrets';   name = 'warn-commit-secrets' },
     @{ fn = 'Invoke-WarnGlobalFind';      name = 'warn-global-find' },
-    @{ fn = 'Invoke-WarnBashBackslash';   name = 'warn-bash-backslash' },
+    @{ fn = 'Invoke-BashBackslash';       name = 'bash-backslash' },
     @{ fn = 'Invoke-WarnDangerousAssignment'; name = 'warn-dangerous-assignment' },
     @{ fn = 'Invoke-WarnStaleDocs';       name = 'warn-stale-docs' },
     @{ fn = 'Invoke-WarnTaskAudit';       name = 'warn-task-audit' },

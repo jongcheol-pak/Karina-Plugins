@@ -9,7 +9,7 @@
 # guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 11종 검사를 한 프로세스에서 수행
 #
 # 담당 조항(정본: `skills/DESIGN.md`의 hook 담당 조항 표):
-#   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신 · E18 Windows Bash 도구 역슬래시 축소 경고 · E19 task 완료 커밋의 소스 감사 누락 경고 · E21 python 으로 소스에 새 코드·주석 쓰기 차단.
+#   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신 · E18 Windows Bash 도구 역슬래시 축소(heredoc·python -c 차단 · 그 밖 경고) · E19 task 완료 커밋의 소스 감사 누락 경고 · E21 python 으로 소스에 새 코드·주석 쓰기 차단.
 #   부수 경고 둘(전역 탐색·위험값 대입)은 대응하는 독립 hook이 없고 이 파일이 유일한 실행 경로다.
 #
 # block-destructive는 여기 합치지 않는다 — 끌 수 없는 마지막 방어선이라 이 파일의 로드 실패가
@@ -24,7 +24,7 @@
 #   미수행된다(fail-open). 커밋 판정 라이브러리 둘의 부재는 그 검사만 빼고 stderr 로 가시화한다.
 ```
 
-**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 아래 검사 함수 8종(2026-11-02 에 더한 `Invoke-WarnTaskAudit` 은 `task-audit-rationale.md`, `Invoke-WarnBashBackslash` 는 이 문서 §21)의 판정 근거는 이 문서가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
+**코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 아래 검사 함수 8종(2026-11-02 에 더한 `Invoke-WarnTaskAudit` 은 `task-audit-rationale.md`, `Invoke-BashBackslash` 는 이 문서 §21)의 판정 근거는 이 문서가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
 ## §2 검사 11종을 한 프로세스에 담는 구조
 
@@ -36,7 +36,7 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 현행 구조:
 
 - **검사 11종 중 7종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
-  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-WarnGlobalFind` · `Invoke-WarnBashBackslash` · `Invoke-WarnDangerousAssignment` · `Invoke-BlockPythonNewCode`(I/O — 인자 `.py` 파일 읽기 — 만 여기 있고 판정은 `python-newcode.ps1` 의 순수 함수다, §22).
+  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-WarnGlobalFind` · `Invoke-BashBackslash` · `Invoke-WarnDangerousAssignment` · `Invoke-BlockPythonNewCode`(I/O — 인자 `.py` 파일 읽기 — 만 여기 있고 판정은 `python-newcode.ps1` 의 순수 함수다, §22).
   **나머지 넷 — `Invoke-WarnCommitSecrets`(`guard-commit-secrets.ps1`) · `Invoke-WarnStaleDocs`
   (`guard-stale-docs.ps1`) · `Invoke-WarnTaskAudit`(`guard-task-audit.ps1`) · `Invoke-BlockCommitComments`(`guard-commit-comments.ps1` — 근거는 `comment-gate-rationale.md` §4) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
   우회 변수·시크릿 패턴 연동을 담아 크기가 따로 놀고, 분리해 두어야 골든이 그 파일만 단독
@@ -133,7 +133,7 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 
 ```
 # 순서: 원 hooks.json 순서에서 block-destructive(별도 스크립트)만 앞으로 뺀 나머지 3종 + warn-global-find(v1.183.0 신설)
-#   + warn-bash-backslash(v2.72.0 신설 — warn-global-find 바로 뒤) + warn-dangerous-assignment(v1.199.0 신설). 뒤 셋은 대응하는 독립 hook 스크립트가 없고 이 디스패처가
+#   + bash-backslash(v2.72.0 신설 — warn-global-find 바로 뒤 · v3.13.0 에 차단을 더하며 `warn-` 접두를 뗐다) + warn-dangerous-assignment(v1.199.0 신설). 뒤 셋은 대응하는 독립 hook 스크립트가 없고 이 디스패처가
 #   유일한 실행 경로다. **새 검사는 경고 출력 순서를 지키는 자리에 넣는다** — 경고를 내는 검사 사이에 끼우면 기존 출력 순서가 바뀐다. `block-plan-write` 는 차단 전용(경고를 내지 않는다)이라 `require-task-checkbox` 뒤에 두어도 순서가 움직이지 않는다.
 ```
 
@@ -310,7 +310,7 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 
 **Windows(`$env:OS -eq 'Windows_NT'`)에서만 낸다** — macOS·Linux 는 실측하지 않았고, 축소가 도구 자체인지 Windows 의 인자 전달층인지 갈리지 않았다. `$IsWindows` 를 쓰지 않는 이유는 PowerShell 5.1 에 그 자동 변수가 없어(폴백 경로) 경고가 조용히 꺼지기 때문이다.
 
-**경고(비차단)이고 차단하지 않는다** — 하니스 규약이 새 차단을 금지하고(AGENTS.md DO NOT), 처방(Write 로 스크립트 파일을 만들어 실행하거나 PowerShell 도구로 보낸다)이 정해져 있어 그 호출에 원인과 처방을 붙이면 된다. 문면 규칙이 3개 파일 6자리에 있었는데도 재발해(사용자 보고 — 워커 4회) 문면을 경고 hook 으로 올렸다(`skills/DESIGN.md` §5 E18).
+**트리거 ① 과, ②·③ 중 `python`·`python3`·`py` 의 `-c` 인자인 것은 차단(`exit 2`)이고, 나머지 ②·③ 은 경고다(이벤트 이름 `bash-backslash`).** 처음(v2.72.0)에는 전부 경고였다 — 문면 규칙이 3개 파일 6자리에 있었는데도 재발해(사용자 보고 — 워커 4회) 문면을 경고 hook 으로 올렸다(`skills/DESIGN.md` §5 E18). 경고로도 막지 못했다: 2026-11-11~12 Karina 체인(plan 4~11) 워커 전사에서 `\\` 가 든 Bash 명령 73회 중 65회에 경고가 붙었고, 그중 40회는 같은 세션에서 이미 경고를 받은 뒤였으며, 실제로 깨진 13회는 모두 python heredoc 이나 `python -c` 였다. 경고는 결과와 함께 와 첫 호출을 막지 못한다. 그래서 사용자 지시(2026-11-13 「차단으로 올림」)로 실해가 난 두 꼴만 차단으로 올렸다(`docs/harness-conventions.md` 「안전 임계 hook 의 차단 동작 변경」 ⑤). **그 밖(grep·sed·printf 의 따옴표 패턴)은 경고로 남긴다** — 같은 달 이벤트 로그에서 경고 273회 중 144회가 그 꼴이었는데 실해는 없었고, 따옴표 파싱이 차단 경로에 들어가면 오탐이 곧 막힘이 된다. 같은 명령을 다시 내도 통과하지 않는다.
 
 ## §22 block-python-newcode: python 으로 소스 파일에 새 코드·주석을 쓰는 명령 차단
 
