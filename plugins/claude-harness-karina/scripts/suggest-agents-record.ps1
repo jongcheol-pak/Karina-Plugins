@@ -132,15 +132,23 @@ function Get-ToolResultFailed([string]$Path, [string]$Id) {
             $buf = New-Object byte[] $take
             $read = $fs.Read($buf, 0, $take)
             $text = [System.Text.Encoding]::UTF8.GetString($buf, 0, $read)
+            $whole = ($take -eq $fs.Length)
         } catch { return $null } finally { if ($fs) { $fs.Dispose() } }
         $at = $text.LastIndexOf($key, [System.StringComparison]::Ordinal)
-        if ($at -ge 0) {
-            $from = $at + $key.Length
-            $end = $text.Length
-            foreach ($stop in @($text.IndexOf('"tool_use_id":"', $from, [System.StringComparison]::Ordinal), $text.IndexOf("`n", $from))) { if ($stop -ge 0 -and $stop -lt $end) { $end = $stop } }
-            return $text.Substring($from, $end - $from).Contains('"is_error":true')
+        while ($at -ge 0) {
+            $ls = $text.LastIndexOf("`n", $at) + 1
+            if ($ls -eq 0 -and -not $whole) { break }
+            $le = $text.IndexOf("`n", $at)
+            if ($le -lt 0) { $le = $text.Length }
+            $row = $null
+            try { $row = $text.Substring($ls, $le - $ls) | ConvertFrom-Json -ErrorAction Stop } catch {}
+            foreach ($b in @($row.message.content)) {
+                if ($b.type -eq 'tool_result' -and $b.tool_use_id -eq $Id) { return ($b.is_error -eq $true) }
+            }
+            if ($ls -eq 0) { break }
+            $at = $text.LastIndexOf($key, $ls - 1, [System.StringComparison]::Ordinal)
         }
-        if ($take -lt $window) { return $null }
+        if ($whole) { return $null }
     }
     return $null
 }
