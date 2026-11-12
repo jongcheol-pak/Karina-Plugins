@@ -10,7 +10,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 16 / 종결 120
+**▶ 현행 잔량(기계 대조 대상)**: 대기 15 / 종결 120
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -40,8 +40,6 @@
 - [2026-11-07] **session-context 골든의 `$env:USERPROFILE` 누수** — `hooks/evals/scenarios/session-context.ps1` 의 앞 케이스(376·658·770행)가 USERPROFILE 을 vault 홈으로 바꾸고 되돌리지 않아, 뒤 블록들(876–880·926·957·978행)이 저마다 저장·복원하고 859–864행 주석이 그 사정을 해명한다. 앞 케이스를 try/finally 로 복원하고 뒤 블록의 보정과 주석을 지운다 (출처: 응답 언어 주기 재주입 회차 주석 정리 MUST KILL) (실해: 2026-10-08 01c09996 — 첫 RED 시도가 이 누수로 무효)
 
 - [2026-10-23] **chain-plan 코디네이터 검증 명령을 `run-verify.py` 밖에서 띄우면 guard-bash 가 경고** — `continuation.md`「코디네이터 검증」 은 명령마다 래퍼로 띄우라고 하지만 코디네이터가 어기면 감시가 빠진다. 명령줄로 잴 수 있는 것은 「래퍼를 거쳤는가」뿐이다(규칙대로면 `cargo` 는 스크립트 파일 안에 있다). 체인 실행 중 판정·`run_in_background` 판정과 골든 실증이 필요하다 (출처: 2026-10-23 karina-ea 요청 ④ — 사용자 「4는 대장」) (실해: 2026-10-23 run_34c092d3 plan 6 검증이 정리 명령과 검증 셋을 시한 없이 한 백그라운드에 묶어 80분 넘게 섰다)
-
-- [2026-11-12] **post-write-checks `git grep --untracked` 에 시간 상한이 없다** — `scripts/post-write-checks.ps1:325` 가 공개 심볼을 바꾼 코드 파일 편집마다 레포 전체 grep 을 상한 없이 돈다. 큰 레포에서 PostToolUse 묶음 timeout(20초)을 넘기면 묶음 출력이 사라지고 git 자식이 남을 수 있다(추정 — 큰 레포 실측 필요) (출처: 2026-11-12 병목·고아 검토 3번 — 넘김 사유 ① 사용자 결정 대기: 후보 라운드 답 보류) (실해: 2026-11-12 검토에서 상한 없음만 코드로 확인 · 지연은 재지 않았다)
 
 - [2026-11-12] **warn-version-drift 의 stdout 대기 초과 경로가 프로세스를 정리하지 않는다** — `scripts/warn-version-drift.ps1:67-72` 에서 `WaitForExit` 은 성공했는데 `$remoteOut.Wait` 가 시간 초과하면 손자(git-remote-https·ssh)를 kill 하지 않고 Process 를 Dispose 하지 않는다(추정 — 손자가 파이프를 쥔 드문 경로) (출처: 같은 검토 4번 — 넘김 사유 ① 사용자 결정 대기: 후보 라운드 답 보류) (실해: 2026-11-12 검토에서 코드 경로만 확인 · 재현은 하지 않았다)
 

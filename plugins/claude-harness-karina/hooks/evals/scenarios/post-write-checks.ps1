@@ -276,6 +276,9 @@ if ($gitOk) {
     Assert-Case -Name "impact: RefreshCache 1회차 경고 (P1T4 디듑 전제)" -R $r -ExpectExit 0 -ExpectContains 'RefreshCache'
     $r = Invoke-Hook 'post-write-checks.ps1' $ijd
     Assert-Case -Name "impact: RefreshCache 2회차 무경고 (P1T4 세션 디듑)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $imp; session_id = 'budget-0'; tool_input = @{ file_path = (Join-Path $imp 'Widget.cs') } } | ConvertTo-Json -Compress) -Arguments @('-BudgetMs', '0') -Process
+    Assert-Case -Name "budget: 예산 0 이면 git 을 부르지 않아 caller 경고도 없다 (양성 짝: impact caller 경고)" -R $r -ExpectExit 0 -ExpectNotContains 'IMPACT WARNING'
 } else {
     Write-Host "[SKIP] impact-warn 시나리오 (git 없음)"
 }
@@ -321,6 +324,20 @@ Assert-Case -Name "post-write: 혼합 파일 계수 (LF 2 / CRLF 3) (EOL1d)" -R 
 # EOL2 (델타 음성 — CRLF): 규약대로 저장된 파일은 조용하다. 없으면 「항상 경고」로 바꿔도 green 이다.
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-b'; tool_input = @{ file_path = $eolCrlf } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: CRLF 파일은 무경고 (EOL2)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+
+if ($IsWindows) {
+    $pwFakeGit = Join-Path $work 'pw-fakegit'; New-Item -ItemType Directory $pwFakeGit -Force | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $pwFakeGit 'git.cmd'), "@ping -n 8 127.0.0.1 >nul`r`n@exit /b 0`r`n")
+    $pwOldPath = $env:PATH
+    $pwClock = [System.Diagnostics.Stopwatch]::StartNew()
+    try {
+        $env:PATH = $pwFakeGit + [System.IO.Path]::PathSeparator + $env:PATH
+        $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-fakegit'; tool_input = @{ file_path = $eolLf } } | ConvertTo-Json -Compress) -Arguments @('-BudgetMs', '2000') -Process
+    } finally { $env:PATH = $pwOldPath }
+    $pwClock.Stop()
+    Assert-Case -Name "budget: 멈춘 git 은 예산에서 끊는다 — 가짜 git(7초) + 예산 2초 → 5초 안에 exit 0" -R @{ code = $r.code; out = "fast=$($pwClock.ElapsedMilliseconds -lt 5000) ms=$($pwClock.ElapsedMilliseconds)" } -ExpectExit 0 -ExpectContains 'fast=True'
+    Assert-Case -Name "budget: 끊긴 check-ignore 를 「ignore 아님」으로 읽지 않는다 — LF 파일이어도 EOL 경고 없음 (양성 짝: EOL1)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+}
 
 # EOL1b (양성 — 신규 미추적 파일): **이번 사고 형태가 이것이다.** 회차 50 이 Write 로 만든
 #   intent/*.md 가 LF 였다. 추적 여부로 거르면 새로 만든 파일이 통째로 빠져 그 형태에 발화하지

@@ -17,6 +17,8 @@
 # exit 2 차단 없음(비차단) — 경고만 stderr + additionalContext로 출력.
 ```
 
+**2026-11-12 부터 `async: true` 로 돈다(`hooks/hooks.json`)** — 쓰기 도구 호출이 이 검사를 기다리지 않는다(평시 0.8~2초 · 동시 세션 부하에서 더). 경고는 공식 문서상 다음 대화 턴에 실리고, 세션이 쉬고 있으면 다음 사용자 입력 때 실린다. 한 턴 늦는 것을 경고 넷 모두 허용한다 — 민감 정보(§7)는 커밋 때 `guard-commit-secrets`(차단)가 다시 막고, 하니스 hook 개조(§4)는 예방이 `guard-harness`(Pre 차단)이고 여기는 가시화뿐이며, IMPACT·줄바꿈은 권고다. 같은 파일을 연달아 고쳐 async 둘이 같은 디듑 표지(§2)를 다투면 `Test-Path` 뒤 `New-Item` 이라 경고가 중복될 뿐 빠지지 않는다. async 에는 Claude Code 가 timeout 을 걸지 않으므로 git 호출 전부를 스크립트 시간 예산 안에서 돌린다(§22). 응답 언어 카운트(`inject-reply-language`)는 이 블록에서 빼 쓰기 PreToolUse 권고로 옮겼다 — 여기서 세면 백그라운드라 주입이 한 턴 밀린다.
+
 ## §2-1 섹션 1·2가 나눠 쓰는 `git diff` 결과
 
 ```
@@ -218,8 +220,20 @@
 
 **caller 목록은 `List[string]` 에 모은다.** 배열 `+=` 는 추가마다 배열 전체를 새로 만든다.
 
+**검색도 §22 의 시간 예산 안에서 돈다** — 큰 레포에서 grep 이 예산을 넘기면 git 을 끝내고 IMPACT 섹션은 침묵한다. 상한 30 은 출력을 다 모은 뒤 적용되므로 grep 자체의 시간을 막지 못한다.
+
 ## §21 settings.json 감지
 
 홈·프로젝트 `.claude/settings.json` 의 `enabledPlugins` 는 **하니스 전체를 끌 수 있다** — hook 보다 상위의 무력화 면이다.
 
 `settings.local.json` 은 `$` 앵커 정확 매칭이라 여기 걸리지 않는다.
+
+## §22 git 호출의 시간 예산
+
+**git 호출 9곳을 `Invoke-PwGit` 하나로 모아 스크립트 시작부터 `-BudgetMs`(기본 15000) 안에서만 돌린다** (2026-11-12). 이 hook 은 `async: true` 라 Claude Code 가 timeout 을 걸지 않는다 — 큰 레포의 `git grep` 이나 멈춘 git 이 pwsh·git 프로세스를 끝없이 남길 수 있었다(종전 동기 timeout 20초가 하던 일). 예산은 종전 timeout 보다 짧게 잡았고, 골든은 `-BudgetMs 0`(git 미호출)과 PATH 앞 가짜 `git.cmd`(7초 대기) + 2초 예산(5초 안에 끝남)으로 잰다.
+
+- **실행 파일은 `Get-Command git -CommandType Application` 으로 고르고 `.cmd`·`.bat` 면 `cmd.exe /d /s /c` 로 띄운다** — `Process.Start("git")` 은 PATHEXT 를 보지 않아 `& git` 과 다른 git 을 집는다(2026-11-12 실측: PATH 앞 `git.cmd` 를 `& git` 은 집고 `Process.Start` 는 건너뛴다). 인자는 모두 따옴표로 감싼다 — `cmd` 경로에서 grep 정규식의 `|` 가 파이프로 읽히지 않게.
+- **`-C` 없는 호출은 `WorkingDirectory` 를 지금 위치(`Get-Location`)로 준다** — `System.Diagnostics.Process` 의 기본 작업 폴더는 `Set-Location` 을 따르지 않는다(레포 `docs/conventions.md` 2026-09-10 함정).
+- **stdout·stderr 를 `ReadToEndAsync` 로 읽고, 남은 예산으로 `WaitForExit` 한다** — `ReadToEnd()` 를 먼저 부르면 상한이 걸리지 않고, stderr 를 비우지 않으면 파이프가 차서 git 이 멈춘다(같은 문서 2026-10-08·2026-10-14 함정).
+- **시간이 다 되면 `Kill($true)`(pwsh 7 — 자식까지) 또는 `Kill()`(5.1)하고 읽기 작업을 기다리지 않는다** — `cmd` 를 끝내도 손자 프로세스가 stdout 파이프를 쥐고 남아, 읽기를 기다리면 그 손자가 끝날 때까지 선다.
+- **결과는 `Code`·`Lines` 이고 시간 초과·기동 실패는 `Code = -1`** — `check-ignore` 는 `1` 이 「ignore 아님」이라는 양성 신호라, 실패를 `1` 로 돌리면 예산이 바닥날 때마다 줄바꿈 오탐이 난다. 각 섹션은 `-1` 을 종전 git 실패와 같게(fail-open 침묵) 다룬다.

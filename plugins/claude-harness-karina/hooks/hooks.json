@@ -46,7 +46,8 @@
             "type": "command",
             "shell": "powershell",
             "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/post-write-checks.ps1\"; exit $LASTEXITCODE",
-            "timeout": 20
+            "timeout": 20,
+            "async": true
           }
         ]
       }

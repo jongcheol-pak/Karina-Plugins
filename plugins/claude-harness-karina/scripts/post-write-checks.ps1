@@ -1,6 +1,8 @@
 ﻿# PostToolUse hook — 근거는 `rules/post-write-rationale.md` §1
+param([int]$BudgetMs = 15000)
 
 $ErrorActionPreference = 'SilentlyContinue'
+$pwClock = [System.Diagnostics.Stopwatch]::StartNew()
 
 # 한글 경고가 cp949 콘솔에서 깨지지 않도록 UTF-8 출력
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -53,10 +55,59 @@ function Test-WarnOnce {
     } catch { return $true }
 }
 
+# git 호출의 시간 예산 — 근거는 `rules/post-write-rationale.md` §22
+$pwGitExe = $null
+function ConvertTo-PwArgument([string]$Arg) {
+    return '"' + ([regex]::Replace($Arg, '(\\*)("|$)', { param($m) $m.Groups[1].Value + $m.Groups[1].Value + $(if ($m.Groups[2].Value) { '\"' } else { '' }) })) + '"'
+}
+function Invoke-PwGit {
+    param([string[]]$GitArgs, [string]$WorkDir = (Get-Location).ProviderPath)
+    $none = [pscustomobject]@{ Code = -1; Lines = @() }
+    if ($BudgetMs - $pwClock.ElapsedMilliseconds -le 0) { return $none }
+    if (-not $script:pwGitExe) { $script:pwGitExe = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | ForEach-Object { $_.Source })[0] }
+    if (-not $script:pwGitExe) { return $none }
+    $argText = (@($GitArgs) | ForEach-Object { ConvertTo-PwArgument $_ }) -join ' '
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    if ($script:pwGitExe -match '(?i)\.(cmd|bat)$') {
+        $psi.FileName = $env:ComSpec
+        $psi.Arguments = '/d /s /c "' + (ConvertTo-PwArgument $script:pwGitExe) + ' ' + $argText + '"'
+    } else {
+        $psi.FileName = $script:pwGitExe
+        $psi.Arguments = $argText
+    }
+    $psi.WorkingDirectory = $WorkDir
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = [System.Text.UTF8Encoding]::new($false)
+    $psi.StandardErrorEncoding = [System.Text.UTF8Encoding]::new($false)
+    $p = $null
+    try {
+        $p = [System.Diagnostics.Process]::Start($psi)
+        $outTask = $p.StandardOutput.ReadToEndAsync()
+        $null = $p.StandardError.ReadToEndAsync()
+        $left = [int][Math]::Max(0, $BudgetMs - $pwClock.ElapsedMilliseconds)
+        if (-not $p.WaitForExit($left)) {
+            try { $p.Kill($true) } catch { try { $p.Kill() } catch {} }
+            return $none
+        }
+        $left = [int][Math]::Max(0, $BudgetMs - $pwClock.ElapsedMilliseconds)
+        if (-not $outTask.Wait($left)) { return $none }
+        $lines = @($outTask.Result -split "`r?`n")
+        if ($lines.Count -and $lines[-1] -eq '') { $lines = @($lines | Select-Object -First ($lines.Count - 1)) }
+        return [pscustomobject]@{ Code = $p.ExitCode; Lines = $lines }
+    } catch {
+        return $none
+    } finally {
+        if ($p) { $p.Dispose() }
+    }
+}
+
 # H3 표본 캐시 — 근거는 `rules/post-write-rationale.md` §15
 function Get-EolSampleRows {
     param([string]$Dir, [string]$Top, [string]$IndexPath, [string[]]$Specs)
-    $fresh = { param([string[]]$Paths) @(& git -C $Dir -c core.quotepath=off ls-files --full-name --eol -- $Paths 2>$null) }
+    $fresh = { param([string[]]$Paths) @((Invoke-PwGit -GitArgs (@('-C', $Dir, '-c', 'core.quotepath=off', 'ls-files', '--full-name', '--eol', '--') + @($Paths))).Lines) }
     if (-not $Top -or -not $IndexPath -or -not (Test-Path -LiteralPath $IndexPath)) { return (& $fresh $Specs) }
     try {
         $indexTicks = [string][System.IO.File]::GetLastWriteTimeUtc($IndexPath).Ticks
@@ -197,11 +248,12 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             try {
                 $fileDir = Split-Path -Parent $file
                 if ($fileDir -and (Test-Path -LiteralPath $fileDir -PathType Container)) {
-                    $null = & git -C $fileDir ls-files --error-unmatch -- $file 2>$null
-                    if ($LASTEXITCODE -eq 0) {
-                        $diffOut = @(& git -C $fileDir diff HEAD --unified=0 -- $file 2>$null)
+                    $tracked = Invoke-PwGit -GitArgs @('-C', $fileDir, 'ls-files', '--error-unmatch', '--', $file)
+                    if ($tracked.Code -eq 0) {
+                        $diffRun = Invoke-PwGit -GitArgs @('-C', $fileDir, 'diff', 'HEAD', '--unified=0', '--', $file)
+                        $diffOut = @($diffRun.Lines)
                         # diff 성공 여부를 반드시 확인한다 — 근거는 `rules/post-write-rationale.md` §9
-                        if ($LASTEXITCODE -eq 0) {
+                        if ($diffRun.Code -eq 0) {
                             # 섹션 2의 심볼 추출이 같은 diff를 다시 부르지 않도록 원본 줄을 넘긴다 —
                             #   `+` 를 벗기기 전 형태여야 한다(저쪽 정규식이 `^\+` 로 시작한다).
                             $sharedDiffLines = $diffOut
@@ -253,8 +305,8 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
             $useSharedDiff = $sharedDiffOk -and ($file -replace '\\', '/').StartsWith($cwdPrefix, [System.StringComparison]::OrdinalIgnoreCase)
             $inRepo = $useSharedDiff
             if (-not $inRepo) {
-                $gitDir = & git rev-parse --git-dir 2>$null
-                $inRepo = [bool]$gitDir -and $LASTEXITCODE -eq 0
+                $gitDirRun = Invoke-PwGit -GitArgs @('rev-parse', '--git-dir')
+                $inRepo = $gitDirRun.Code -eq 0 -and [bool]($gitDirRun.Lines -join '')
             }
             if ($inRepo) {
                 # ---- 변경된 public/internal 심볼 추출 (git diff의 + 라인) ----
@@ -272,8 +324,9 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                     $diffLines = $sharedDiffLines
                 }
                 if (-not $diffOk) {
-                    $diffLines = & git diff HEAD --unified=0 -- $file 2>$null
-                    $diffOk = ($LASTEXITCODE -eq 0)
+                    $diffRun = Invoke-PwGit -GitArgs @('diff', 'HEAD', '--unified=0', '--', $file)
+                    $diffLines = $diffRun.Lines
+                    $diffOk = ($diffRun.Code -eq 0)
                 }
                 if ($diffLines -and $diffOk) {
                     $symbols = New-Object System.Collections.Generic.HashSet[string]
@@ -322,7 +375,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                         #   검색 범위를 코드 확장자 pathspec 으로 좁힌다 — 아래 확장자 필터가 어차피 버릴 파일을
                         #   git 이 읽지 않게 한다. `icase` 인 이유는 아래 대조가 확장자를 소문자로 바꿔 보기 때문이다.
                         $extSpecs = @($codeExtsImpact | ForEach-Object { ':(icase)*' + $_ })
-                        $grepOut = & git grep -n --untracked -E "\b($symAlt)\b" -- $extSpecs 2>$null
+                        $grepOut = (Invoke-PwGit -GitArgs (@('grep', '-n', '--untracked', '-E', "\b($symAlt)\b", '--') + $extSpecs)).Lines
 
                         foreach ($sym in $symbols) {
                             $callers = New-Object System.Collections.Generic.List[string]
@@ -393,8 +446,7 @@ try {
         $file -notmatch '(?i)[\\/]llm-wiki[\\/]evals[\\/]fixtures[\\/]') {
         # gitignore 가 아니면 대상 — exit 1 만 「repo 안이고 ignore 아님」이다(§15)
         $eolDir = Split-Path -Parent $file
-        $null = & git -C $eolDir check-ignore -q -- $file 2>$null
-        $notIgnored = ($LASTEXITCODE -eq 1)
+        $notIgnored = ((Invoke-PwGit -GitArgs @('-C', $eolDir, 'check-ignore', '-q', '--', $file)).Code -eq 1)
         # 이 hook 은 플러그인이 붙은 **모든 프로젝트**에서 돈다 — 레포 규약을 증거 없이 CRLF 로 단정하면
         #   LF·혼합 레포에서 저장마다 틀린 지시가 붙는다. 판정 순서와 그 이유(기계 설정을 버린 이유 포함)는
         #   근거 §15 가 정본이다: ① 파일 단위 `check-attr eol` ② 속성이 없으면 추적 파일의 실제 워킹트리 eol 비율.
@@ -406,12 +458,12 @@ try {
             $lf = ($eolText.Length - $eolText.Replace("`n", '').Length) - $crlf
             $crlfRepo = $false; $repoCrlf = 0; $repoTotal = 0
             if ($lf -gt 0 -and -not (Test-WarnedAlready "eol|$file")) {
-                $eolAttr = ((& git -C $eolDir check-attr eol -- $file 2>$null) -join '')
+                $eolAttr = ((Invoke-PwGit -GitArgs @('-C', $eolDir, 'check-attr', 'eol', '--', $file)).Lines -join '')
                 if ($eolAttr -match 'eol:\s*(lf|crlf)\s*$') {
                     $crlfRepo = ($Matches[1] -eq 'crlf')
                 } else {
                     $eolSampleMin = 5; $eolCrlfRatioMin = 0.9
-                    $revOut = @(& git -C $eolDir rev-parse --path-format=absolute --show-toplevel --git-path index 2>$null)
+                    $revOut = @((Invoke-PwGit -GitArgs @('-C', $eolDir, 'rev-parse', '--path-format=absolute', '--show-toplevel', '--git-path', 'index')).Lines)
                     $top = if ($revOut.Count -ge 1) { ([string]$revOut[0]).Trim() } else { '' }
                     $indexPath = if ($revOut.Count -ge 2 -and $top) { ([string]$revOut[1]).Trim() } else { $null }
                     $self = ($file -replace '\\', '/')

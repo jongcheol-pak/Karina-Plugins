@@ -202,6 +202,8 @@ $hdAdvWire = @(@($hdHooks.PreToolUse) | Where-Object { (Test-HdMatcher ([string]
 Assert-Case -Name "hook-dispatch: 배선 — 셸·쓰기 차단 묶음의 권고 구간에는 권고 스크립트만 있다" -R @{ code = 0; out = "adv=$($hdAdvWire -join ',')" } -ExpectContains 'adv=suggest-agents-record.ps1+inject-reply-language.ps1,inject-reply-language.ps1'
 $hdBlk = @(@($hdHooks.PreToolUse) | Where-Object { (Test-HdMatcher ([string]$_.matcher) 'Bash') -or (Test-HdMatcher ([string]$_.matcher) 'Write') } | ForEach-Object { @($_.hooks) } | ForEach-Object { "$($_.command -match ' -Blocking ')/$($_.onFailure)/$($_.timeout)" })
 Assert-Case -Name "hook-dispatch: 배선 — 차단 묶음 둘은 -Blocking · onFailure block · timeout 60 이다" -R @{ code = 0; out = "blk=$($hdBlk -join ',')" } -ExpectContains 'blk=True/block/60,True/block/60'
+$hdPwAsync = @(@($hdHooks.PostToolUse) | Where-Object { Test-HdMatcher ([string]$_.matcher) 'Write' } | ForEach-Object { @($_.hooks) } | ForEach-Object { "direct=$([string]$_.command -notmatch 'hook-dispatch') async=$([bool]$_.async)" })
+Assert-Case -Name "hook-dispatch: 배선 — 쓰기 PostToolUse 는 post-write-checks 직접 호출이고 async 다" -R @{ code = 0; out = $hdPwAsync -join ',' } -ExpectContains 'direct=True async=True'
 $hdTimeoutExpect = [ordered]@{ 'PreToolUse|Skill' = 30; 'SessionStart|startup' = 20; 'UserPromptExpansion|plan' = 20 }
 $hdTimeoutDiff = @()
 foreach ($k in $hdTimeoutExpect.Keys) {
