@@ -109,7 +109,7 @@
 
 ## §8 1회 표지의 성공 판정
 
-**이 hook 은 PreToolUse 라 명령이 실행되기 전에 표지를 만든다(2026-11-12 v3.12.0 이전부터).** 그대로면 실패·거부·hook 차단된 명령이 그 세션의 1회 기회를 먼저 써, 고친 뒤 성공한 같은 종류 명령에 제안이 나가지 않는다(v3.12.0 리뷰). 그래서 표지에 그 호출의 `tool_use_id` 를 `pending <id>` 로 적고, 같은 종류 명령이 다시 오면 `transcript_path` 에서 그 id 의 `tool_result` 를 찾는다.
+**이 hook 은 PreToolUse 라 명령이 실행되기 전에 표지를 만든다(v3.12.0 부터).** 그대로면 실패·거부·hook 차단된 명령이 그 세션의 1회 기회를 먼저 써, 고친 뒤 성공한 같은 종류 명령에 제안이 나가지 않는다(v3.12.0 리뷰). 그래서 표지에 그 호출의 `tool_use_id` 를 `pending <id>` 로 적고, 같은 종류 명령이 다시 오면 `transcript_path` 에서 그 id 의 `tool_result` 를 찾는다.
 
 - **`"is_error":true` 면 다시 제안하고 새 id 로 보류를 갱신한다 · 결과가 있고 `true` 가 아니면 표지를 비워 소모한다 · 결과를 아직 못 찾으면 침묵한다** — 실측(최근 transcript 200개): 실패(`Exit code`) 397 · 거부(「The user doesn't want to proceed」) 13 · hook 차단 548 이 모두 `is_error:true` 였고, 성공은 `false` 31148 이거나 필드가 없었다(33044). transcript 는 비동기로 쓰여 최근 결과가 빠질 수 있다(공식 hooks 문서) — 못 찾았을 때 다시 제안하면 성공한 명령에도 중복 제안이 나간다.
 - **판정 구간은 `"tool_use_id":"<id>"` 다음부터 다음 `"tool_use_id":"` 또는 줄 끝까지다** — 한 줄에 tool_result 가 여럿 실린 줄이 4583건이었다. 줄 전체에서 `is_error` 를 찾으면 다른 호출의 결과를 집는다. id 는 `tool_use` 쪽에도 `"id":"<id>"` 로 나오므로 키는 `tool_use_id` 다.

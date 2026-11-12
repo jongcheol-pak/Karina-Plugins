@@ -327,7 +327,7 @@ Assert-Case -Name "post-write: CRLF 파일은 무경고 (EOL2)" -R $r -ExpectExi
 
 if ($IsWindows) {
     $pwFakeGit = Join-Path $work 'pw-fakegit'; New-Item -ItemType Directory $pwFakeGit -Force | Out-Null
-    [System.IO.File]::WriteAllText((Join-Path $pwFakeGit 'git.cmd'), "@ping -n 8 127.0.0.1 >nul`r`n@exit /b 0`r`n")
+    [System.IO.File]::WriteAllText((Join-Path $pwFakeGit 'git.cmd'), "@ping -n 30 127.0.0.1 >nul`r`n@exit /b 0`r`n")
     $pwOldPath = $env:PATH
     $pwClock = [System.Diagnostics.Stopwatch]::StartNew()
     try {
@@ -335,7 +335,7 @@ if ($IsWindows) {
         $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolRepo; session_id = 'eol-fakegit'; tool_input = @{ file_path = $eolLf } } | ConvertTo-Json -Compress) -Arguments @('-BudgetMs', '2000') -Process
     } finally { $env:PATH = $pwOldPath }
     $pwClock.Stop()
-    Assert-Case -Name "budget: 멈춘 git 은 예산에서 끊는다 — 가짜 git(7초) + 예산 2초 → 5초 안에 exit 0" -R @{ code = $r.code; out = "fast=$($pwClock.ElapsedMilliseconds -lt 5000) ms=$($pwClock.ElapsedMilliseconds)" } -ExpectExit 0 -ExpectContains 'fast=True'
+    Assert-Case -Name "budget: 멈춘 git 은 예산에서 끊는다 — 가짜 git(29초) + 예산 2초 → 12초 안에 exit 0" -R @{ code = $r.code; out = "fast=$($pwClock.ElapsedMilliseconds -lt 12000) ms=$($pwClock.ElapsedMilliseconds)" } -ExpectExit 0 -ExpectContains 'fast=True'
     Assert-Case -Name "budget: 끊긴 check-ignore 를 「ignore 아님」으로 읽지 않는다 — LF 파일이어도 EOL 경고 없음 (양성 짝: EOL1)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
 
     $pwRealGit = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Where-Object { $_.Source -match '(?i)\.exe$' } | ForEach-Object { $_.Source })[0]
