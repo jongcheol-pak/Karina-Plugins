@@ -132,19 +132,49 @@ function Get-ResultTranscript([string]$AgentId) {
     if ($hit) { return $hit.FullName }
     return $null
 }
+$transcriptWindows = @(65536, 4194304)
+function Read-TranscriptTail([string]$Path, [int]$Window) {
+    $fs = $null
+    try {
+        $fs = [System.IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
+        $take = [int][Math]::Min($fs.Length, $Window)
+        $null = $fs.Seek(-$take, 'End')
+        $buf = New-Object byte[] $take
+        $read = $fs.Read($buf, 0, $take)
+        return @{ Text = [System.Text.Encoding]::UTF8.GetString($buf, 0, $read); Whole = ($take -eq $fs.Length) }
+    } catch { return $null } finally { if ($fs) { $fs.Dispose() } }
+}
+function Test-BackgroundResult($Block) {
+    $body = if ($Block.content -is [string]) { $Block.content } else { (@($Block.content) | ForEach-Object { [string]$_.text }) -join "`n" }
+    return ($body -match '^\s*(Command running in background with ID:|Command did not complete within its \d+s timeout and was moved to the background)')
+}
+function Get-BackgroundFailed([string]$Path, [string]$Id) {
+    $key = '<tool-use-id>' + $Id + '</tool-use-id>'
+    foreach ($window in $transcriptWindows) {
+        $tail = Read-TranscriptTail $Path $window
+        if (-not $tail) { return $null }
+        $at = $tail.Text.LastIndexOf($key, [System.StringComparison]::Ordinal)
+        if ($at -ge 0) {
+            $after = $tail.Text.Substring($at, [Math]::Min(1000, $tail.Text.Length - $at))
+            $st = [regex]::Match($after, '<status>(\w+)</status>')
+            if (-not $st.Success) { return $null }
+            switch ($st.Groups[1].Value) {
+                'completed' { return $false }
+                { $_ -in 'failed', 'killed', 'stopped' } { return $true }
+                default { return $null }
+            }
+        }
+        if ($tail.Whole) { return $null }
+    }
+    return $null
+}
 function Get-ToolResultFailed([string]$Path, [string]$Id) {
     $key = '"tool_use_id":"' + $Id + '"'
-    foreach ($window in @(65536, 4194304)) {
-        $fs = $null
-        try {
-            $fs = [System.IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
-            $take = [int][Math]::Min($fs.Length, $window)
-            $null = $fs.Seek(-$take, 'End')
-            $buf = New-Object byte[] $take
-            $read = $fs.Read($buf, 0, $take)
-            $text = [System.Text.Encoding]::UTF8.GetString($buf, 0, $read)
-            $whole = ($take -eq $fs.Length)
-        } catch { return $null } finally { if ($fs) { $fs.Dispose() } }
+    foreach ($window in $transcriptWindows) {
+        $tail = Read-TranscriptTail $Path $window
+        if (-not $tail) { return $null }
+        $text = $tail.Text
+        $whole = $tail.Whole
         $at = $text.LastIndexOf($key, [System.StringComparison]::Ordinal)
         while ($at -ge 0) {
             $ls = $text.LastIndexOf("`n", $at) + 1
@@ -154,7 +184,10 @@ function Get-ToolResultFailed([string]$Path, [string]$Id) {
             $row = $null
             try { $row = $text.Substring($ls, $le - $ls) | ConvertFrom-Json -ErrorAction Stop } catch {}
             foreach ($b in @($row.message.content)) {
-                if ($b.type -eq 'tool_result' -and $b.tool_use_id -eq $Id) { return ($b.is_error -eq $true) }
+                if ($b.type -ne 'tool_result' -or $b.tool_use_id -ne $Id) { continue }
+                if ($b.is_error -eq $true) { return $true }
+                if (Test-BackgroundResult $b) { return (Get-BackgroundFailed $Path $Id) }
+                return $false
             }
             if ($ls -eq 0) { break }
             $at = $text.LastIndexOf($key, $ls - 1, [System.StringComparison]::Ordinal)

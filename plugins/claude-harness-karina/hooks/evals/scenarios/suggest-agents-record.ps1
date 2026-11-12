@@ -60,6 +60,37 @@ $txBigFail = '{"type":"user","message":{"content":[{"type":"tool_result","conten
 Set-TxLines @((& $txUse 'toolu_A6'), $txBigFail)
 $r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx6' 'toolu_B6')
 Assert-Case -Name "suggest 성공 판정: 실패 결과 줄이 64KB 보다 길어 작은 창 첫 줄에서 잘려도 큰 창에서 읽어 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+$txBgRun = { param($id) '{"type":"user","message":{"role":"user","content":[{"tool_use_id":"' + $id + '","type":"tool_result","content":"Command running in background with ID: bx' + $id + '. Output is being written to: C:\\tmp\\bx.output","is_error":false}]}}' }
+$txBgMoved = { param($id) '{"type":"user","message":{"role":"user","content":[{"tool_use_id":"' + $id + '","type":"tool_result","content":"Command did not complete within its 120s timeout and was moved to the background (ID: by' + $id + '). Output is being written to: C:\\tmp\\by.output","is_error":false}]}}' }
+$txNotif = { param($id, $status, $summary) '{"type":"user","message":{"role":"user","content":"<task-notification>\n<task-id>bz' + $id + '</task-id>\n<tool-use-id>' + $id + '</tool-use-id>\n<output-file>C:\\tmp\\bz.output</output-file>\n<status>' + $status + '</status>\n<summary>Background command \"build\" ' + $summary + '</summary>\n</task-notification>"}}' }
+Set-TxLines @((& $txUse 'toolu_BG1'))
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'bg1' 'toolu_BG1')
+Set-TxLines @((& $txUse 'toolu_BG1'), (& $txBgRun 'toolu_BG1'), (& $txNotif 'toolu_BG1' 'failed' 'failed with exit code 1'))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'bg1' 'toolu_BH1')
+Assert-Case -Name "suggest 백그라운드: 백그라운드 명령의 알림이 failed 면 다음 같은 종류 명령에 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+Set-TxLines @((& $txUse 'toolu_BG2'))
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'bg2' 'toolu_BG2')
+Set-TxLines @((& $txUse 'toolu_BG2'), (& $txBgMoved 'toolu_BG2'), (& $txNotif 'toolu_BG2' 'killed' 'was stopped'))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'bg2' 'toolu_BH2')
+Assert-Case -Name "suggest 백그라운드: 시한 초과로 백그라운드로 넘어간 명령의 알림이 killed 면 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+Set-TxLines @((& $txUse 'toolu_BG4'))
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'bg4' 'toolu_BG4')
+Set-TxLines @((& $txUse 'toolu_BG4'), (& $txBgRun 'toolu_BG4'))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'bg4' 'toolu_BH4')
+Assert-Case -Name "suggest 백그라운드: 백그라운드 명령의 알림이 아직 없으면 침묵한다 (음성 짝)" -R $r -ExpectExit 0 -ExpectSilent $true
+Set-TxLines @((& $txUse 'toolu_BG4'), (& $txBgRun 'toolu_BG4'), (& $txNotif 'toolu_BG4' 'failed' 'failed with exit code 2'))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'bg4' 'toolu_BI4')
+Assert-Case -Name "suggest 백그라운드: 알림이 없어 침묵한 뒤 failed 알림이 오면 다음 호출에 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+Set-TxLines @((& $txUse 'toolu_BG5'))
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'bg5' 'toolu_BG5')
+Set-TxLines @((& $txUse 'toolu_BG5'), (& $txBgRun 'toolu_BG5'), (& $txNotif 'toolu_BG5' 'completed' 'completed (exit code 0)'))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'bg5' 'toolu_BH5')
+Assert-Case -Name "suggest 백그라운드: 백그라운드 명령의 알림이 completed 면 침묵한다 (음성 짝)" -R $r -ExpectExit 0 -ExpectSilent $true
+Set-TxLines @((& $txUse 'toolu_BG6'))
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'bg6' 'toolu_BG6')
+Set-TxLines @((& $txUse 'toolu_BG6'), (& $txBgRun 'toolu_BG6'), (& $txNotif 'toolu_BG6' 'completed' 'completed (exit code 1: No matches found)'))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'bg6' 'toolu_BH6')
+Assert-Case -Name "suggest 백그라운드: 종료 코드가 0 이 아니어도 상태가 completed 면 침묵한다 (음성 짝)" -R $r -ExpectExit 0 -ExpectSilent $true
 $saRoot = Join-Path $work 'sa-projects'; New-Item -ItemType Directory $saRoot -Force | Out-Null
 function New-SaJson([string]$Sid, [string]$Id, [string]$AgentId) {
     $o = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $txProj; session_id = $Sid; tool_use_id = $Id; transcript_path = (Join-Path $saRoot ($Sid + '.jsonl')); tool_input = @{ command = 'dotnet build App.sln' } }
@@ -101,6 +132,11 @@ $null = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa6' 'toolu_SA6' 'a
 Set-SaLines 'sa6' 'subagents/agent-a6b2c3.jsonl' @((& $txUse 'toolu_SA6'), (& $txLine @((& $txOk 'toolu_SA6'))))
 $r = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa6' 'toolu_SB6' '')
 Assert-Case -Name "suggest 서브에이전트: 판정은 표지에 적힌 서브에이전트의 transcript 를 본다 — 메인 transcript 의 같은 id 실패를 쓰지 않고 침묵한다" -R $r -ExpectExit 0 -ExpectSilent $true
+Set-SaMain 'sa7' @('{"type":"user"}')
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa7' 'toolu_SA7' 'a7b2c3')
+Set-SaLines 'sa7' 'subagents/agent-a7b2c3.jsonl' @((& $txUse 'toolu_SA7'), (& $txBgRun 'toolu_SA7'), (& $txNotif 'toolu_SA7' 'failed' 'failed with exit code 1'))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-SaJson 'sa7' 'toolu_SB7' 'a7b2c3')
+Assert-Case -Name "suggest 서브에이전트: 서브에이전트의 백그라운드 명령 알림이 그 서브에이전트 transcript 에서 failed 면 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
 
 "# AGENTS`n## Build & Test`n- dotnet build" | Set-Content (Join-Path $aproj 'AGENTS.md')
 $sj2 = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 's2'; tool_input = @{ command = 'dotnet build MyApp.sln' } } | ConvertTo-Json -Compress
