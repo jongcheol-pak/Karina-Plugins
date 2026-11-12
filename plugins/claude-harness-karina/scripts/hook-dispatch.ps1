@@ -3,6 +3,7 @@
 param(
     [switch]$Blocking,
     [int]$AdvisoryBudgetMs = 20000,
+    [int]$AdvisoryDeadlineMs = 45000,
     [Parameter(Position = 0, ValueFromRemainingArguments = $true)][string[]]$Scripts
 )
 
@@ -60,6 +61,9 @@ $hdErrs = New-Object System.Collections.Generic.List[object]
 $hdFirstEvent = $null
 $hdCodes = @()
 $hdRuns = @($hdPaths | ForEach-Object { [pscustomobject]@{ Path = $_; Advisory = $false } }) + @($hdAdvPaths | ForEach-Object { [pscustomobject]@{ Path = $_; Advisory = $true } })
+$hdRs = $null
+$hdTimedOut = $false
+$hdAdvScript = 'param($p, $loc) Set-Location -LiteralPath $loc; $global:LASTEXITCODE = 0; try { $o = & $p | Out-String; [pscustomobject]@{ Pipe = $o; Code = [int]$global:LASTEXITCODE; Fault = $null } } catch { [pscustomobject]@{ Pipe = ''''; Code = 1; Fault = $_.Exception.Message } }'
 try {
     foreach ($hdRun in $hdRuns) {
         $hdPath = $hdRun.Path
@@ -74,9 +78,30 @@ try {
         try {
             [Console]::SetOut($hdBuf)
             [Console]::SetError($hdErrBuf)
-            $global:LASTEXITCODE = 0
-            $hdPipe = & $hdPath | Out-String
-            $hdCode = [int]$global:LASTEXITCODE
+            if ($hdAdv) {
+                if (-not $hdRs) {
+                    $hdRs = [runspacefactory]::CreateRunspace()
+                    $hdRs.Open()
+                    $hdRs.SessionStateProxy.SetVariable('KarinaHookStdin', $global:KarinaHookStdin)
+                }
+                $hdPs = [powershell]::Create()
+                $hdPs.Runspace = $hdRs
+                $null = $hdPs.AddScript($hdAdvScript).AddArgument($hdPath).AddArgument($hdStart)
+                $hdHandle = $hdPs.BeginInvoke()
+                if (-not $hdHandle.AsyncWaitHandle.WaitOne([int][Math]::Max(0, $AdvisoryDeadlineMs - $hdClock.ElapsedMilliseconds))) {
+                    $hdTimedOut = $true
+                } else {
+                    $hdRes = @($hdPs.EndInvoke($hdHandle))[-1]
+                    $hdPipe = [string]$hdRes.Pipe
+                    $hdCode = [int]$hdRes.Code
+                    if ($hdRes.Fault) { $hdFault = "hook-dispatch: $hdLeaf 예외 — $($hdRes.Fault)" }
+                    $hdPs.Dispose()
+                }
+            } else {
+                $global:LASTEXITCODE = 0
+                $hdPipe = & $hdPath | Out-String
+                $hdCode = [int]$global:LASTEXITCODE
+            }
         } catch {
             $hdFault = "hook-dispatch: $hdLeaf 예외 — $($_.Exception.Message)"
             $hdCode = 1
@@ -84,6 +109,10 @@ try {
             [Console]::SetOut($hdOut)
             [Console]::SetError($hdErr)
             Set-Location -LiteralPath $hdStart
+        }
+        if ($hdTimedOut) {
+            $hdErrs.Add([pscustomobject]@{ Code = $null; Text = "hook-dispatch: $hdLeaf 마감 초과 — 권고를 버리고 묶음을 끝냅니다`n" })
+            break
         }
         $hdErrs.Add([pscustomobject]@{ Code = $(if ($hdAdv) { $null } else { $hdCode }); Text = $hdErrBuf.ToString() })
         if ($hdFault) { $hdErrs.Add([pscustomobject]@{ Code = $null; Text = $hdFault + "`n" }) }
@@ -128,4 +157,10 @@ elseif ($Blocking -and @($hdCodes | Where-Object { $_ -ne 0 }).Count -gt 0) { $h
 foreach ($hdE in $hdErrs) {
     if ($hdE.Text -and ($hdFinal -ne 2 -or $hdE.Code -eq $hdFinal)) { [Console]::Error.Write($hdE.Text) }
 }
+if ($hdTimedOut) {
+    [Console]::Out.Flush()
+    [Console]::Error.Flush()
+    [Environment]::Exit($hdFinal)
+}
+if ($hdRs) { $hdRs.Dispose() }
 exit $hdFinal
