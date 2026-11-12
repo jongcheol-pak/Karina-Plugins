@@ -378,6 +378,8 @@
 
 ### 실행 환경 함정
 
+- [2026-11-12] **hook 시간 예산을 정할 때 CIM 비용과 pwsh 기동을 주석·문서 수치로 믿지 말고 그 자리에서 잰다** — 문서에 「CIM 평균 272ms」로 적혀 있었는데 같은 기기에서 `Get-CimInstance` 1회가 5.3~7.5초였다. 기동 비용도 예산 밖에서 붙는다(`pwsh -NoProfile` 빈 실행 1561ms · 회수 억제한 `session-end-cleanup.ps1` 2628ms). hook timeout 에서 이 둘을 빼고 예산을 잡는다 (실측)
+
 - [2026-10-28] **모델의 스킬 목록에 스킬 이름만 실리고 description 이 빠질 수 있다 — 그 스킬은 자동 발동하지 못한다.** 다른 플러그인(unity 등)이 함께 켜진 세션에서 `karina:prototype`·`unity:ui-uitk` 등이 이름만 실렸다(관측은 여기까지 — 원인이 목록 예산 초과라는 것은 추정). 발동이 안 되면 그 세션의 스킬 목록에 설명이 실렸는지부터 본다 (실측)
 - [2026-10-28] **`settings.json` 의 `language` 는 메인 세션 시스템 프롬프트의 Language 절로만 실리고 서브에이전트에는 실리지 않는다** — 서브에이전트에서 응답 언어를 기대려면 글로벌 지침이나 hook 주입이 필요하다 (실측)
 - [2026-10-21] **새 레포(Karina-Plugins)의 첫 PR 에서 `checks` 워크플로가 돌지 않았다 — Copilot 리뷰만 돌고 `gh pr checks` 는 「no checks reported」.** PR 을 닫았다 다시 열자(head 불변) `pull_request` 이벤트가 다시 나 돌았다. 원인은 확인하지 못했다(추정: 기본 브랜치에 워크플로가 없던 레포의 첫 실행). 「no checks」 를 통과로 읽지 말고 `gh run list` 로 워크플로 실행 자체를 확인한다
