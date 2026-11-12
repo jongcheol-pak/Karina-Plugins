@@ -491,10 +491,10 @@ if (-not $Filter -and -not $Resume -and -not $deadGroups.Count) {
     for ($i = 1; $i -le $script:GoldenShardCounts['stateless']; $i++) { $costTable["stateless-$i"] = $statelessCostSec }
     $drift = Get-GroupCostDrift -CostSec $costTable -Measured @($groupSecs)
     if ($drift.Groups.Count) {
-        Write-Host ('[WARN] 비용표 어긋남 {0}건 — $groupCostSec 을 실측으로 다시 맞추세요: {1}' -f $drift.Groups.Count, (@($drift.Groups | ForEach-Object { '{0} 비용 {1} · 실측 {2}' -f $_.Group, $_.Cost, $_.Sec }) -join ' · '))
+        Write-Host ('[NOTICE] 비용표 어긋남 {0}건 — $groupCostSec 을 실측으로 다시 맞추세요: {1}' -f $drift.Groups.Count, (@($drift.Groups | ForEach-Object { '{0} 비용 {1} · 실측 {2}' -f $_.Group, $_.Cost, $_.Sec }) -join ' · '))
     }
     if ($drift.Overall) {
-        Write-Host ('[WARN] 비용표 전체 비율 {0:N2}배 — 다른 세션 부하가 없었다면 $groupCostSec 전체를 실측으로 다시 맞추세요' -f $drift.Load)
+        Write-Host ('[NOTICE] 비용표 전체 비율 {0:N2}배 — 다른 세션 부하가 없었다면 $groupCostSec 전체를 실측으로 다시 맞추세요' -f $drift.Load)
     }
 }
 $deadSuffix = ''
