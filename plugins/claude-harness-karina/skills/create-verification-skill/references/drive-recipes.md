@@ -1,6 +1,6 @@
 # 조작 방식 (생성할 검증 스킬의 Launch·Drive·Evidence·Cleanup)
 
-> `../SKILL.md` 1·2단계가 레포에 쓸 하네스가 없을 때 읽는다. **레포에 이미 있는 하네스가 언제나 먼저다** — 여기는 그것이 없을 때의 일반 방식이다. 출처는 pstack create-verification-skill 의 Drive 항목(브라우저/CDP · tmux/PTY · HTTP)이고, Windows 데스크톱은 karina 가 더했다.
+> `../SKILL.md` 1·2단계가 레포에 쓸 하네스가 없을 때 읽는다. **레포에 이미 있는 하네스가 언제나 먼저다** — 여기는 그것이 없을 때의 일반 방식이다. pstack create-verification-skill 의 Drive 항목에서 온 것은 수단 이름 셋(브라우저/CDP · tmux/PTY · HTTP)뿐이고, 수단마다의 방식·함정과 Windows 데스크톱은 karina 가 더했다.
 
 ## 목차
 
