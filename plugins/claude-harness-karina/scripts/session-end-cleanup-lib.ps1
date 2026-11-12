@@ -119,8 +119,19 @@ function Test-OrphanScanNeeded {
     return ($PendingCount -gt 0 -or $PreScanCount -gt 0)
 }
 
+function Get-OrphanCleanupBudgetMs {
+    $raw = 0
+    if ([int]::TryParse([string]$env:KARINA_ORPHAN_CLEANUP_BUDGET_MS, [ref]$raw) -and $raw -ge 0) { return $raw }
+    return 8000
+}
+
 function Get-OrphanProcessCandidates {
-    $none = @{ Snapshot = $null; CimCalls = 0; Ok = $false }
+    # 예산은 CIM 호출마다 -OperationTimeoutSec 로 건다 — 근거는 `rules/orphan-cleanup-rationale.md` §8
+    param([int]$BudgetMs = (Get-OrphanCleanupBudgetMs))
+    $clock = [System.Diagnostics.Stopwatch]::StartNew()
+    $exhausted = @{ Snapshot = $null; CimCalls = 0; Ok = $false; BudgetExhausted = $true }
+    if ($BudgetMs - $clock.ElapsedMilliseconds -lt 1000) { return $exhausted }
+    $none = @{ Snapshot = $null; CimCalls = 0; Ok = $false; BudgetExhausted = $false }
     $pendingCount = 0
     $pendingDir = Get-OrphanStateDir 'orphan-pending'
     if ($pendingDir -and (Test-Path -LiteralPath $pendingDir)) {
@@ -132,11 +143,13 @@ function Get-OrphanProcessCandidates {
     }
     if (-not (Test-OrphanScanNeeded -PendingCount $pendingCount -PreScanCount $preCount)) { return $none }
 
+    $timeoutSec = [int][Math]::Floor(($BudgetMs - $clock.ElapsedMilliseconds) / 1000)
+    if ($timeoutSec -lt 1) { return $exhausted }
     try {
-        $procs = @(Get-CimInstance Win32_Process -Property ProcessId, ParentProcessId, CreationDate, Name, SessionId, KernelModeTime, UserModeTime -ErrorAction Stop)
-        return @{ Snapshot = (ConvertTo-OrphanSnapshot -Processes $procs); CimCalls = 1; Ok = $true }
+        $procs = @(Get-CimInstance Win32_Process -Property ProcessId, ParentProcessId, CreationDate, Name, SessionId, KernelModeTime, UserModeTime -OperationTimeoutSec $timeoutSec -ErrorAction Stop)
+        return @{ Snapshot = (ConvertTo-OrphanSnapshot -Processes $procs); CimCalls = 1; Ok = $true; BudgetExhausted = $false }
     } catch {
-        return @{ Snapshot = $null; CimCalls = 1; Ok = $false }
+        return @{ Snapshot = $null; CimCalls = 1; Ok = $false; BudgetExhausted = ($clock.ElapsedMilliseconds -ge $BudgetMs) }
     }
 }
 
@@ -153,6 +166,7 @@ function Add-OrphanPending {
 }
 
 function Resolve-OrphanPending {
+    # 지난 회수의 kill 요청을 이번 목록으로 판정한다 — 근거는 `rules/orphan-cleanup-rationale.md` §9
     param([hashtable]$Snapshot, [string]$Hook, [hashtable]$Result)
     $dir = Get-OrphanStateDir 'orphan-pending'
     if (-not $dir -or -not (Test-Path -LiteralPath $dir)) { return }
@@ -199,9 +213,10 @@ function Invoke-OrphanProcessCleanup {
         [string]$Hook = 'session-end-cleanup-lib',
         [object[]]$Processes = $null,
         [switch]$SnapshotFailed,
-        [switch]$DryRun
+        [switch]$DryRun,
+        [int]$BudgetMs = -1
     )
-    $result = @{ Suppressed = $false; Scanned = 0; CimQueried = $false; CimCalls = 0; Requested = 0; Killed = 0; Unkillable = 0; CpuSec = 0 }
+    $result = @{ Suppressed = $false; Scanned = 0; CimQueried = $false; CimCalls = 0; Requested = 0; Killed = 0; Unkillable = 0; CpuSec = 0; BudgetExhausted = $false }
     try {
         # 안전 계약 ②를 이 파일만으로 자기완결시킨다 — 근거는 `rules/orphan-cleanup-rationale.md` §6
         $ErrorActionPreference = 'SilentlyContinue'
@@ -219,11 +234,14 @@ function Invoke-OrphanProcessCleanup {
         $sessionId = 0
         try { $sessionId = (Get-Process -Id $PID -ErrorAction Stop).SessionId } catch {}
 
+        if ($BudgetMs -lt 0) { $BudgetMs = Get-OrphanCleanupBudgetMs }
+        $clock = [System.Diagnostics.Stopwatch]::StartNew()
         if ($injected) {
-            $cand = @{ Snapshot = (ConvertTo-OrphanSnapshot -Processes $Processes); CimCalls = 0; Ok = (-not $SnapshotFailed) }
+            $cand = @{ Snapshot = (ConvertTo-OrphanSnapshot -Processes $Processes); CimCalls = 0; Ok = (-not $SnapshotFailed); BudgetExhausted = $false }
         } else {
-            $cand = Get-OrphanProcessCandidates
+            $cand = Get-OrphanProcessCandidates -BudgetMs $BudgetMs
         }
+        $result.BudgetExhausted = [bool]$cand.BudgetExhausted
         $result.CimCalls = [int]$cand.CimCalls
         $result.CimQueried = ($result.CimCalls -gt 0)
         if (-not $cand.Ok -or $null -eq $cand.Snapshot) { return $result }
@@ -248,6 +266,10 @@ function Invoke-OrphanProcessCleanup {
                     } catch {}
                 }
                 continue
+            }
+            if ($clock.ElapsedMilliseconds -ge $BudgetMs) {
+                $result.BudgetExhausted = $true
+                break
             }
             try { Stop-Process -Id $t.Id -Force -ErrorAction Stop } catch {}
             $result.Requested++

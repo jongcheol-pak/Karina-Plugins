@@ -157,6 +157,24 @@ Assert-Case -Name "orphan-cleanup: 목록 조회가 실패하면 대기 기록�
     -ExpectExit 0 -ExpectContains 'killed=0 pending=1'
 Clear-OpcState
 
+$opcBudgetCand = Get-OrphanProcessCandidates -BudgetMs 500
+Assert-Case -Name "orphan-cleanup: 남은 예산이 1초 미만이면 목록 조회를 부르지 않는다" `
+    -R @{ code = 0; out = "exhausted=$($opcBudgetCand.BudgetExhausted) cim=$($opcBudgetCand.CimCalls)" } `
+    -ExpectExit 0 -ExpectContains 'exhausted=True cim=0'
+
+$opcBudgetSaved = $env:KARINA_ORPHAN_CLEANUP_BUDGET_MS
+try {
+    $env:KARINA_ORPHAN_CLEANUP_BUDGET_MS = '0'
+    $opcBudgetGhost = New-OpcProc 2147483001 'more.com' $opcSid $opcBoot.AddDays(1) 999999
+    $opcB = Invoke-OrphanProcessCleanup -Hook 'golden-budget' -Processes @($opcSysProc, $opcBudgetGhost)
+    Assert-Case -Name "orphan-cleanup: 환경변수 예산 0 이면 kill 요청을 내지 않는다" `
+        -R @{ code = 0; out = "requested=$($opcB.Requested) exhausted=$($opcB.BudgetExhausted) pending=$(Get-OpcCount 'orphan-pending')" } `
+        -ExpectExit 0 -ExpectContains 'requested=0 exhausted=True pending=0'
+} finally {
+    $env:KARINA_ORPHAN_CLEANUP_BUDGET_MS = $opcBudgetSaved
+    Clear-OpcState
+}
+
 # ---- SessionEnd hook 계약 (stdin 주입) ----
 # 회수 사실은 이벤트 로그에만 남으므로 이 hook은 어떤 사유로 불려도 무출력·exit 0이어야 한다.
 foreach ($opcReason in @('clear', 'logout', 'prompt_input_exit', 'other')) {
