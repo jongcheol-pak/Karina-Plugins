@@ -16,6 +16,32 @@ Assert-Case -Name "suggest: 같은 세션 2회째 억제" -R $r -ExpectExit 0 -E
 $r = Invoke-Hook 'suggest-agents-record.ps1' (@{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $aproj; session_id = 's-pre'; tool_input = @{ command = 'dotnet build MyApp.sln' } } | ConvertTo-Json -Compress)
 Assert-Case -Name "suggest: PreToolUse 입력이면 이벤트 이름을 PreToolUse 로 낸다" -R $r -ExpectExit 0 -ExpectContains '"hookEventName":"PreToolUse"'
 Assert-Case -Name "suggest: 실행 전에 나오므로 성공했을 때만 기록하라고 쓴다" -R $r -ExpectExit 0 -ExpectContains '성공했으면'
+$txProj = Join-Path $work 'txproj'; New-Item -ItemType Directory $txProj -Force | Out-Null
+"# AGENTS`n## Build & Test`n" | Set-Content (Join-Path $txProj 'AGENTS.md')
+$txFile = Join-Path $work 'tx-transcript.jsonl'
+function Set-TxLines([string[]]$Lines) { [System.IO.File]::WriteAllText($txFile, (($Lines -join "`n") + "`n")) }
+function New-TxJson([string]$Sid, [string]$Id) { return (@{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $txProj; session_id = $Sid; tool_use_id = $Id; transcript_path = $txFile; tool_input = @{ command = 'dotnet build App.sln' } } | ConvertTo-Json -Compress) }
+$txUse = { param($id) '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"' + $id + '","name":"Bash","input":{"command":"dotnet build App.sln"}}]}}' }
+$txRes = { param($id, $tail) '{"tool_use_id":"' + $id + '","type":"tool_result","content":"out"' + $tail + '}' }
+Set-TxLines @((& $txUse 'toolu_A1'))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx1' 'toolu_A1')
+Assert-Case -Name "suggest 성공 판정: 첫 빌드 명령은 제안한다 (양성 짝)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+Set-TxLines @((& $txUse 'toolu_A1'), ('{"type":"user","message":{"content":[' + (& $txRes 'toolu_A1' ',"is_error":true') + ']}}'), (& $txUse 'toolu_B1'))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx1' 'toolu_B1')
+Assert-Case -Name "suggest 성공 판정: 앞 명령이 실패·거부(is_error:true)면 같은 세션의 같은 종류 명령에 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+Set-TxLines @((& $txUse 'toolu_A1'), ('{"type":"user","message":{"content":[' + (& $txRes 'toolu_A1' ',"is_error":true') + ']}}'), (& $txUse 'toolu_B1'), ('{"type":"user","message":{"content":[' + (& $txRes 'toolu_B1' '') + ']}}'), (& $txUse 'toolu_C1'))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx1' 'toolu_C1')
+Assert-Case -Name "suggest 성공 판정: 다시 제안한 명령이 성공(is_error 없음)이면 그 뒤는 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+Set-TxLines @((& $txUse 'toolu_A2'))
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx2' 'toolu_A2')
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx2' 'toolu_B2')
+Assert-Case -Name "suggest 성공 판정: 앞 명령 결과가 transcript 에 아직 없으면 침묵한다" -R $r -ExpectExit 0 -ExpectSilent $true
+Set-TxLines @((& $txUse 'toolu_A3'))
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx3' 'toolu_A3')
+Set-TxLines @((& $txUse 'toolu_A3'), ('{"type":"user","message":{"content":[' + (& $txRes 'toolu_A3' ',"is_error":false') + ',' + (& $txRes 'toolu_X3' ',"is_error":true') + ']}}'))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx3' 'toolu_B3')
+Assert-Case -Name "suggest 성공 판정: 한 줄에 결과가 여럿이어도 앞 명령의 결과(is_error:false)만 보고 침묵한다" -R $r -ExpectExit 0 -ExpectSilent $true
+
 "# AGENTS`n## Build & Test`n- dotnet build" | Set-Content (Join-Path $aproj 'AGENTS.md')
 $sj2 = @{ tool_name = 'Bash'; cwd = $aproj; session_id = 's2'; tool_input = @{ command = 'dotnet build MyApp.sln' } } | ConvertTo-Json -Compress
 $r = Invoke-Hook 'suggest-agents-record.ps1' $sj2

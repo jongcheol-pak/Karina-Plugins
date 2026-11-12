@@ -118,16 +118,53 @@ $sidSafe = ($sid -replace '[^A-Za-z0-9._-]', '_')
 $projHash = -join ([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($projDir.ToLowerInvariant())) | Select-Object -First 4 | ForEach-Object { $_.ToString('x2') })
 $leafSafe = ($projLeaf -replace '[^A-Za-z0-9._-]', '_') + '-' + $projHash
 
-# ---- 제안 대상 추림: AGENTS.md에 토큰 없음 + 마커 없음 ----
+# 1회 표지의 성공 판정 — 근거는 `rules/suggest-record-rationale.md` §8
+$toolUseId = [string]$data.tool_use_id
+$transcriptPath = [string]$data.transcript_path
+function Get-ToolResultFailed([string]$Path, [string]$Id) {
+    $key = '"tool_use_id":"' + $Id + '"'
+    foreach ($window in @(65536, 4194304)) {
+        $fs = $null
+        try {
+            $fs = [System.IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
+            $take = [int][Math]::Min($fs.Length, $window)
+            $null = $fs.Seek(-$take, 'End')
+            $buf = New-Object byte[] $take
+            $read = $fs.Read($buf, 0, $take)
+            $text = [System.Text.Encoding]::UTF8.GetString($buf, 0, $read)
+        } catch { return $null } finally { if ($fs) { $fs.Dispose() } }
+        $at = $text.LastIndexOf($key, [System.StringComparison]::Ordinal)
+        if ($at -ge 0) {
+            $from = $at + $key.Length
+            $end = $text.Length
+            foreach ($stop in @($text.IndexOf('"tool_use_id":"', $from, [System.StringComparison]::Ordinal), $text.IndexOf("`n", $from))) { if ($stop -ge 0 -and $stop -lt $end) { $end = $stop } }
+            return $text.Substring($from, $end - $from).Contains('"is_error":true')
+        }
+        if ($take -lt $window) { return $null }
+    }
+    return $null
+}
+function Test-SuggestMarkerReopen([string]$MarkerPath) {
+    $mark = ''
+    try { $mark = [System.IO.File]::ReadAllText($MarkerPath) } catch {}
+    $m = [regex]::Match($mark, '^pending (\S+)')
+    if (-not $m.Success -or -not $transcriptPath) { return $false }
+    $failed = Get-ToolResultFailed $transcriptPath $m.Groups[1].Value
+    if ($failed -eq $false) { try { [System.IO.File]::WriteAllText($MarkerPath, '') } catch {} }
+    return ($failed -eq $true)
+}
+
+# ---- 제안 대상 추림: AGENTS.md에 토큰 없음 + 마커 없음(또는 앞 제안 명령이 실패) ----
 $toSuggest = New-Object System.Collections.Generic.List[object]
 foreach ($h in $hits) {
     $tok = ($h.token -replace '\s+', ' ').ToLower()
     if ($agentsHay.Contains($tok)) { continue }   # (1) self-terminating: 이미 기록됨
     $markerName = if ($sidSafe) { $sidSafe + '_' + $leafSafe + '_' + $h.name } else { $leafSafe + '_' + $h.name }
     $markerPath = Join-Path $stateDir $markerName
-    if (Test-Path -LiteralPath $markerPath) { continue }   # (2) 세션·프로젝트·카테고리당 1회
+    if ((Test-Path -LiteralPath $markerPath) -and -not (Test-SuggestMarkerReopen $markerPath)) { continue }   # (2) 세션·프로젝트·카테고리당 1회
     $toSuggest.Add($h)
-    try { New-Item -Force -ItemType File -Path $markerPath | Out-Null } catch {}   # 생성 실패는 무시(비치명)
+    $markerText = if ($toolUseId -and $transcriptPath) { 'pending ' + $toolUseId } else { '' }
+    try { [System.IO.File]::WriteAllText($markerPath, $markerText) } catch {}   # 생성 실패는 무시(비치명)
 }
 if ($toSuggest.Count -eq 0) { exit 0 }
 
@@ -137,7 +174,7 @@ foreach ($s in $toSuggest) {
     $lines += ("  - " + $s.label + ": `"" + $s.token + "`"  -> AGENTS.md '" + $s.section + "' 섹션")
 }
 $lines += ""
-$lines += "이 명령이 성공했으면, 다음 작업부터 재확인하지 않도록 record-project-fact 스킬로 AGENTS.md에 추가할지 사용자에게 물어보세요. 실패했거나 실행되지 않았으면 무시하세요."
+$lines += "이 명령이 성공했으면, 다음 작업부터 재확인하지 않도록 record-project-fact 스킬로 AGENTS.md에 추가할지 사용자에게 물어보세요. 실패했거나 실행되지 않았으면 무시하세요 — 실패·거부된 명령이면 다음 같은 종류 명령에서 다시 제안합니다."
 $lines += "자동 기록이 아닙니다 — 사용자가 승인하면 그때만 기록합니다. (DB는 실제 연결문자열 금지, 환경변수 이름만)"
 $lines += "이 제안은 차단이 아닙니다."
 $msg = $lines -join "`n"
