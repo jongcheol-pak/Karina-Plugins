@@ -150,5 +150,13 @@ $hdNoShared = @($hdBundled | Where-Object { -not (Select-String -LiteralPath (Jo
 Assert-Case -Name "hook-dispatch: 배선 — 묶음에 든 스크립트는 모두 공유 입력을 먼저 읽는다" -R @{ code = 0; out = "bundled=$($hdBundled.Count) missing=$(if ($hdNoShared) { $hdNoShared -join ',' } else { 'none' })" } -ExpectContains 'bundled=11 missing=none'
 $hdBlk = @(@($hdHooks.PreToolUse) | Where-Object { (Test-HdMatcher ([string]$_.matcher) 'Bash') -or (Test-HdMatcher ([string]$_.matcher) 'Write') } | ForEach-Object { @($_.hooks) } | ForEach-Object { "$($_.command -match ' -Blocking ')/$($_.onFailure)/$($_.timeout)" })
 Assert-Case -Name "hook-dispatch: 배선 — 차단 묶음 둘은 -Blocking · onFailure block · timeout 60 이다" -R @{ code = 0; out = "blk=$($hdBlk -join ',')" } -ExpectContains 'blk=True/block/60,True/block/60'
+$hdTimeoutExpect = [ordered]@{ 'PreToolUse|Skill' = 30; 'PostToolUse|Bash' = 15; 'PostToolUse|Edit' = 20; 'SessionStart|startup' = 20; 'UserPromptExpansion|plan' = 20 }
+$hdTimeoutDiff = @()
+foreach ($k in $hdTimeoutExpect.Keys) {
+    $ev, $v = $k -split '\|', 2
+    $t = @(@($hdHooks.$ev) | Where-Object { Test-HdMatcher ([string]$_.matcher) $v } | ForEach-Object { @($_.hooks) } | Where-Object { [string]$_.command -match 'hook-dispatch\.ps1' } | ForEach-Object { [int]$_.timeout })
+    if ($t.Count -ne 1 -or $t[0] -ne $hdTimeoutExpect[$k]) { $hdTimeoutDiff += "$k=$($t -join '/')" }
+}
+Assert-Case -Name "hook-dispatch: 배선 — 비차단 묶음 timeout 은 묶인 스크립트의 종전 timeout 합이다" -R @{ code = 0; out = 'diff=' + $(if ($hdTimeoutDiff) { $hdTimeoutDiff -join ' ' } else { 'none' }) } -ExpectContains 'diff=none'
 
 }
