@@ -61,6 +61,7 @@ function Test-PythonTempPath([string]$Path) {
 function Test-PythonNewCodeScript([string]$Script) {
     $pass = @{ Block = $false; Target = $null; Line = $null }
     if ([string]::IsNullOrEmpty($Script) -or -not $script:PyWriteRx.IsMatch($Script)) { return $pass }
+    if (-not ($Script.Contains("'''") -or $Script.Contains('"""') -or $Script.Contains('\n'))) { return $pass }
     if (-not $script:PyTargetExts['Slash'] -or -not $script:PyTargetExts['Hash']) { return $pass }
 
     $lits = @($script:PyLiteralRx.Matches($Script) | ForEach-Object { $_.Groups[1].Value })
