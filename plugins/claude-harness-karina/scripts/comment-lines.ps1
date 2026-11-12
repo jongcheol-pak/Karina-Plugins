@@ -302,22 +302,27 @@ function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index, [boo
 
 function New-CommentBaseBudget { return @{ LeftMs = [int]$script:CommentBaseBudgetMs } }
 
+function Get-CommentPlanBase([string]$Dir, [string]$Root) {
+    foreach ($d in (Get-CommentSearchDirs $Dir $Root)) {
+        $cand = Join-Path $d 'plan.md'
+        if (-not (Test-Path -LiteralPath $cand -PathType Leaf)) { continue }
+        $m = [regex]::Match([System.IO.File]::ReadAllText($cand), '(?m)^> BASE: ([0-9a-f]{7,40})\b')
+        if ($m.Success) { return $m.Groups[1].Value }
+        return $null
+    }
+    return $null
+}
+
 function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budget) {
     try {
         if (-not $Root -or -not $File.StartsWith($Root, [System.StringComparison]::OrdinalIgnoreCase)) { return @() }
-        $plan = $null
-        foreach ($d in (Get-CommentSearchDirs $Dir $Root)) {
-            $cand = Join-Path $d 'plan.md'
-            if (Test-Path -LiteralPath $cand -PathType Leaf) { $plan = $cand; break }
-        }
-        if (-not $plan) { return @() }
-        $m = [regex]::Match([System.IO.File]::ReadAllText($plan), '(?m)^> BASE: ([0-9a-f]{7,40})\b')
-        if (-not $m.Success) { return @() }
+        $sha = Get-CommentPlanBase $Dir $Root
+        if (-not $sha) { return @() }
         $left = [int]$Budget.LeftMs
         if ($left -le 0) { return @() }
         $rel = $File.Substring($Root.Length).TrimStart('\', '/') -replace '\\', '/'
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
-        $run = Invoke-TimedGit -GitArgs @('-C', $Root, '-c', 'core.quotepath=off', 'show', "$($m.Groups[1].Value):$rel") -WorkDir $Root -TimeoutMs $left
+        $run = Invoke-TimedGit -GitArgs @('-C', $Root, '-c', 'core.quotepath=off', 'show', "${sha}:$rel") -WorkDir $Root -TimeoutMs $left
         $Budget.LeftMs = $left - [int]$sw.ElapsedMilliseconds
         if ($run.Code -ne 0) { return @() }
         return @($run.Lines)
@@ -360,10 +365,60 @@ function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines, $
     if ($null -eq $Budget) { $Budget = New-CommentBaseBudget }
     $baseSet = New-Object System.Collections.Generic.HashSet[string]
     foreach ($b in (Get-CommentBodies $Path (Get-CommentBaseLines $ctx.File $ctx.Dir $ctx.Root $Budget))) { [void]$baseSet.Add($b) }
-    if ($baseSet.Count -eq 0) { return , $blocked }
     $kept = New-Object System.Collections.Generic.List[string]
     foreach ($c in $blocked) { if (-not $baseSet.Contains($c)) { $kept.Add($c) } }
-    return , $kept
+    if ($kept.Count -eq 0) { return , $kept }
+    return , (Get-CommentMovedBodies $ctx $kept $Budget)
+}
+
+function Get-CommentMovedBodies($Ctx, $Bodies, $Budget) {
+    try {
+        $root = $Ctx.Root
+        if (-not $root -or -not $Ctx.File.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase)) { return , $Bodies }
+        $sha = Get-CommentPlanBase $Ctx.Dir $root
+        $left = [int]$Budget.LeftMs
+        if (-not $sha -or $left -le 0) { return , $Bodies }
+        $gitArgs = New-Object System.Collections.Generic.List[string]
+        foreach ($a in @('-C', $root, '-c', 'core.quotepath=off', 'grep', '-F', '--no-color')) { $gitArgs.Add($a) }
+        foreach ($c in ($Bodies | Select-Object -Unique)) { $gitArgs.Add('-e'); $gitArgs.Add([string]$c) }
+        $gitArgs.Add($sha); $gitArgs.Add('--')
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()
+        $run = Invoke-TimedGit -GitArgs $gitArgs.ToArray() -WorkDir $root -TimeoutMs $left
+        $Budget.LeftMs = $left - [int]$sw.ElapsedMilliseconds
+        if ($run.Code -ne 0) { return , $Bodies }
+        $self = $Ctx.File.Substring($root.Length).TrimStart('\', '/') -replace '\\', '/'
+        $origins = @{}
+        foreach ($l in $run.Lines) {
+            $s = [string]$l
+            if (-not $s.StartsWith("${sha}:")) { continue }
+            $rest = $s.Substring($sha.Length + 1)
+            $cut = $rest.IndexOf(':')
+            if ($cut -le 0) { continue }
+            $rel = $rest.Substring(0, $cut)
+            if ($rel -eq $self) { continue }
+            $line = $rest.Substring($cut + 1).Trim()
+            if (-not $origins.ContainsKey($line)) { $origins[$line] = New-Object System.Collections.Generic.HashSet[string] }
+            [void]$origins[$line].Add($rel)
+        }
+        $now = @{}
+        $kept = New-Object System.Collections.Generic.List[string]
+        foreach ($c in $Bodies) {
+            $moved = $false
+            if ($origins.ContainsKey($c)) {
+                foreach ($rel in $origins[$c]) {
+                    if (-not $now.ContainsKey($rel)) {
+                        $set = New-Object System.Collections.Generic.HashSet[string]
+                        $full = Join-Path $root $rel
+                        if (Test-Path -LiteralPath $full -PathType Leaf) { foreach ($x in [System.IO.File]::ReadAllLines($full)) { [void]$set.Add($x.Trim()) } }
+                        $now[$rel] = $set
+                    }
+                    if (-not $now[$rel].Contains($c)) { $moved = $true; break }
+                }
+            }
+            if (-not $moved) { $kept.Add($c) }
+        }
+        return , $kept
+    } catch { return , $Bodies }
 }
 
 function Get-CommentPostImage([string]$File, $Data, $Added) {

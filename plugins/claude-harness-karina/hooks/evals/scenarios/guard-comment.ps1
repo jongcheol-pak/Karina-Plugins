@@ -347,4 +347,24 @@ Assert-Case -Name "doc-owner (음성): 대상이 .md 면 보지 않는다" -R $r
 $r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'do-write'; tool_name = 'Write'; cwd = $doDir; tool_input = @{ file_path = $doRs; content = $doBody.Replace('pub fn a() {}', "fn b() {}`npub fn a() {}") } } | ConvertTo-Json -Compress -Depth 5)
 Assert-Case -Name "doc-owner (음성): Write 는 대상 밖" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
 
+if ($gitOk) {
+$mv = Join-Path $gc 'movegit'; New-Item -ItemType Directory -Force -Path (Join-Path $mv 'src') | Out-Null
+$mvA = Join-Path $mv 'src/a.rs'; $mvB = Join-Path $mv 'src/b.rs'
+$mvAText = "/// 옮겨 갈 시험 설명.`nfn t_moved() {}`n`nfn keep() {}`n"
+[System.IO.File]::WriteAllText($mvA, $mvAText, [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($mvB, "fn other() {}`n", [System.Text.UTF8Encoding]::new($false))
+git -C $mv init -q; git -C $mv config user.email t@t; git -C $mv config user.name t; git -C $mv config core.autocrlf false
+git -C $mv add .; git -C $mv commit -qm base
+[System.IO.File]::WriteAllText((Join-Path $mv 'plan.md'), "# plan`n`n## Goal`n`n> BASE: $((git -C $mv rev-parse --short HEAD).Trim())`n> 승인: 2026-11-13 · 화면 Y`n", [System.Text.UTF8Encoding]::new($false))
+$mvAdd = "fn other() {}`n`n/// 옮겨 갈 시험 설명.`nfn t_moved() {}"
+[System.IO.File]::WriteAllText($mvA, "fn keep() {}`n", [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-GcEditAt $mvB 'fn other() {}' $mvAdd
+Assert-Case -Name "guard-comment: 다른 파일 BASE 에 있던 doc 을 그 파일에서 지우고 옮겨 오면 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+[System.IO.File]::WriteAllText($mvA, $mvAText, [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-GcEditAt $mvB 'fn other() {}' $mvAdd
+Assert-Case -Name "guard-comment: 원래 파일에 그대로 남은 doc 의 복사는 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcEditAt $mvB 'fn other() {}' "fn other() {}`n`n/// BASE 어디에도 없던 설명.`nfn t_new() {}"
+Assert-Case -Name "guard-comment: BASE 어디에도 없던 doc 은 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+}
+
 }

@@ -672,5 +672,18 @@ for ($i = 0; $i -lt 201; $i++) { Set-CcFile $d "f$i.cs" "// 대량 설명 $i`nin
 git -C $d add .
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-cap'
 Assert-Case -Name "commit-comments: 수집 상한을 넘으면 알리고 통과" -R $r -ExpectExit 0 -ExpectContains '상한'
+
+$d = New-CcRepo
+$ccMoveA = "/// 옮겨 갈 시험 설명.`nfn t_moved() {}`n`nfn keep() {}`n"
+Set-CcFile $d 'm.rs' $ccMoveA; Set-CcFile $d 'n.rs' "fn other() {}`n"
+git -C $d add .; git -C $d commit -qm move-base
+Set-CcFile $d 'plan.md' "# plan`n`n## Goal`n`n> BASE: $((git -C $d rev-parse --short HEAD).Trim())`n"
+Set-CcFile $d 'm.rs' "fn keep() {}`n"
+Set-CcFile $d 'n.rs' "fn other() {}`n`n/// 옮겨 갈 시험 설명.`nfn t_moved() {}`n"
+$r = Invoke-CcCommit $d 'git commit -m x -- n.rs' 'cc-move'
+Assert-Case -Name "commit-comments: 다른 파일 BASE 의 doc 을 그 파일에서 지우고 옮긴 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Set-CcFile $d 'm.rs' $ccMoveA
+$r = Invoke-CcCommit $d 'git commit -m x -- n.rs' 'cc-copy'
+Assert-Case -Name "commit-comments: 원래 파일에 남은 doc 의 복사 커밋은 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
 }
 
