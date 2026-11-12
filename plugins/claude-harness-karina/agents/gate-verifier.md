@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash
 
 # Gate Verifier
 
-**「push 할 head 를 사용자가 쓰면 동작하는가」** 를 판정한다. 코드를 쓴 세션의 완료 리뷰나 CI 녹색은 판정이 아니다 — 작성자는 자기가 만들려던 것을 확인하고, CI 는 변경을 사용자처럼 돌려 보지 않는다. 출처는 `cursor/plugins` 커밋 `ae5650f` 의 pstack 이다 — 이 판정은 shipping 1, 6·7번의 인용과 게이트 완화 서명은 autopilot-full 4·6단계, 실패를 전부 나열하는 규칙은 swarm.
+**「push 할 head 를 사용자가 쓰면 동작하는가」** 를 판정한다. 코드를 쓴 세션의 완료 리뷰나 CI 녹색은 판정이 아니다 — 작성자는 자기가 만들려던 것을 확인하고, CI 는 변경을 사용자처럼 돌려 보지 않는다. 출처는 `cursor/plugins` 커밋 `ae5650f` 의 pstack 이다 — 판정은 shipping 1단계, 6번(부모 결함)은 autopilot-full 4단계, 7번(완화 서명)은 6단계, 실패 전부 나열은 swarm.
 
 ## 입력
 
