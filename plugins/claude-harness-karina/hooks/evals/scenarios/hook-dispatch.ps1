@@ -28,9 +28,10 @@ $hdInstall = Join-Path $hd '.claude/plugins/cache/karina-plugins/karina/1.89.0'
 $r = Invoke-Hook 'hook-dispatch.ps1' (New-WriteJson $hd (Join-Path $hdInstall 'scripts/block-destructive.ps1')) -Arguments @('-Blocking', 'guard-write.ps1', 'guard-harness.ps1')
 Assert-Case -Name "hook-dispatch: 묶음 두 번째 스크립트도 같은 입력으로 판정한다" -R $r -ExpectExit 2 -ExpectContains '하니스 안전 hook 개조 시도 감지'
 
-$r = Invoke-Hook 'hook-dispatch.ps1' (New-HdBashJson 'git push --force origin main') -Arguments $hdBashPair
-Assert-Case -Name "hook-dispatch: 앞 스크립트가 막아도 뒤 스크립트가 돈다 (차단)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED:'
-Assert-Case -Name "hook-dispatch: 앞 스크립트가 막아도 뒤 스크립트가 돈다 (뒤 경고)" -R $r -ExpectExit 2 -ExpectContains '[EXTERNAL OP WARNING]'
+$r = Invoke-Hook 'hook-dispatch.ps1' (New-HdBashJson 'git push --force origin main') -Arguments $hdBashPair -SplitStreams
+Assert-Case -Name "hook-dispatch: 앞 스크립트가 막아도 뒤 스크립트가 돈다 (차단 사유)" -R @{ code = $r.code; out = $r.err } -ExpectExit 2 -ExpectContains 'BLOCKED:'
+Assert-Case -Name "hook-dispatch: 앞 스크립트가 막아도 뒤 스크립트가 돈다 (뒤 경고는 stdout 컨텍스트)" -R $r -ExpectExit 2 -ExpectContains '[EXTERNAL OP WARNING]'
+Assert-Case -Name "hook-dispatch: 차단 사유(stderr)에 비차단 스크립트의 경고가 섞이지 않는다" -R @{ code = $r.code; out = $r.err } -ExpectExit 2 -ExpectNotContains '[EXTERNAL OP WARNING]'
 
 $r = Invoke-Hook 'hook-dispatch.ps1' (New-HdBashJson 'git status') -Arguments @('nope.ps1')
 Assert-Case -Name "hook-dispatch: 없는 스크립트 인자는 exit 1" -R $r -ExpectExit 1 -ExpectContains 'nope.ps1'
@@ -74,6 +75,12 @@ $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('f-exit2.ps1', 'f-ctx.ps1')
 Assert-Case -Name "hook-dispatch: 비차단 묶음도 exit 2 는 그대로 2" -R $r -ExpectExit 2 -ExpectContains 'FAKE-BLOCK'
 $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-Blocking', 'f-exit1.ps1', 'f-exit2.ps1')
 Assert-Case -Name "hook-dispatch: 차단 묶음에서 2 가 1 보다 앞선다" -R $r -ExpectExit 2 -ExpectContains 'FAKE-BLOCK'
+"[Console]::Error.WriteLine('FAKE-WARN'); exit 0" | Set-Content -LiteralPath (Join-Path $hdFake 'f-warn.ps1') -Encoding UTF8
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-Blocking', 'f-warn.ps1', 'f-exit2.ps1') -SplitStreams
+Assert-Case -Name "hook-dispatch: exit 2 묶음의 stderr 는 2 를 낸 스크립트의 것만이다" -R @{ code = $r.code; out = $r.err } -ExpectExit 2 -ExpectContains 'FAKE-BLOCK'
+Assert-Case -Name "hook-dispatch: exit 2 묶음의 stderr 에 exit 0 스크립트의 경고가 없다" -R @{ code = $r.code; out = $r.err } -ExpectExit 2 -ExpectNotContains 'FAKE-WARN'
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('f-warn.ps1', 'f-ctx.ps1') -SplitStreams
+Assert-Case -Name "hook-dispatch: exit 0 묶음의 stderr 경고는 그대로 남는다" -R @{ code = $r.code; out = $r.err } -ExpectExit 0 -ExpectContains 'FAKE-WARN'
 
 Push-Location -LiteralPath $hd
 try {
