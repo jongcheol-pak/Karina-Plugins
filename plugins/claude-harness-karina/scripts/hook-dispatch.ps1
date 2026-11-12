@@ -68,6 +68,14 @@ try {
         $hdJsonText = $hdText.Trim()
         if ($hdJsonText.StartsWith('{')) { try { $hdObj = $hdJsonText | ConvertFrom-Json -ErrorAction Stop } catch {} }
         if ($null -ne $hdObj) {
+            $hdDropped = @($hdObj.PSObject.Properties.Name | Where-Object { $_ -ne 'hookSpecificOutput' })
+            if ($hdObj.hookSpecificOutput -is [System.Management.Automation.PSCustomObject]) {
+                $hdDropped += @($hdObj.hookSpecificOutput.PSObject.Properties.Name | Where-Object { $_ -notin @('hookEventName', 'additionalContext') })
+            }
+            if ($hdDropped.Count -gt 0) {
+                $hdErrs.Add([pscustomobject]@{ Code = $null; Text = "hook-dispatch: $hdLeaf 이 묶음이 전하지 못하는 JSON 필드를 냈습니다 — $($hdDropped -join ', ')`n" })
+                if ($Blocking -and $hdCodes[-1] -eq 0) { $hdCodes[-1] = 1 }
+            }
             if ($hdObj.hookSpecificOutput) {
                 if (-not $hdFirstEvent -and $hdObj.hookSpecificOutput.hookEventName) { $hdFirstEvent = [string]$hdObj.hookSpecificOutput.hookEventName }
                 $hdCtx = [string]$hdObj.hookSpecificOutput.additionalContext

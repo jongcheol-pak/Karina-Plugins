@@ -10,7 +10,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 15 / 종결 120
+**▶ 현행 잔량(기계 대조 대상)**: 대기 14 / 종결 120
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -34,8 +34,6 @@
 - [2026-10-22] **세션 시작 대장 신호의 「축 ② 임계 30일」 문구 정리** — `scripts/session-ledger-signal.ps1` 이 대장 최고령을 「축 ② 임계 30일」 과 함께 주입하는데, 그 임계는 소진 batch 착수 조건이고 batch 절차와 batch 회고 대장은 이제 없다. 문구를 현행 용도로 고치거나 신호를 걷고 `scripts/rules/session-context-rationale-plan.md` §12 와 hook 골든 SC44 계열을 함께 맞춘다 (출처: batch 회고 대장 삭제 회차 후보 라운드 — 사용자 보류) (실해: 2026-10-22 세션 시작 주입 「최고령 8일 — 축 ② 임계 30일」 이 없어진 절차의 임계를 안내)
 
 ### hook · 안전망 (차단·경고·골든 러너)
-
-- [2026-11-12] **디스패처가 `additionalContext` 밖 JSON 필드를 버린다** — `scripts/hook-dispatch.ps1` 은 묶인 스크립트 JSON 에서 `hookSpecificOutput.additionalContext` 만 받아, `permissionDecision`·`systemMessage`·`updatedInput` 을 내는 스크립트가 묶이면 그 필드가 조용히 사라진다(차단 묶음의 JSON deny 는 통과 — fail-open). 지금 묶인 11개 중 그 필드를 쓰는 것은 0개. 착수 조건: 묶인 스크립트가 그 필드를 쓰기 시작할 때 — 디스패처가 stderr 경고를 내거나 필드를 합치게 한다 (출처: 2026-11-12 /code-review 지적 3 · 디스패처 회귀 수정 회차 후보 라운드) (실해: 2026-11-12 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 후보 라운드 답 「보류」)
 
 - [2026-11-07] **세션 시작 버전 점검의 원격 조회 캐시** — `scripts/warn-version-drift.ps1` 가 세션 시작마다 `git show origin/main:…/plugin.json` 과 `git ls-remote --tags origin karina-v<버전>` 을 돌린다. 원격 조회 결과를 짧은 TTL 로 캐시하는 안을 검토한다(체인 run_6150c8ac plan 3 후보 10 — 사용자 답 보류) (실해: 2026-11-07 작업 속도 감사의 후보 라운드에서 세션 시작 지연으로 제기 · 수치는 재지 않았다)
 

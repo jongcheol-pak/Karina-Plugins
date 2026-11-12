@@ -18,11 +18,12 @@
 
 ## §3 출력 합치기와 종료 코드
 
-스크립트마다 `[Console]::SetOut` 으로 stdout 을 받고 파이프라인 출력(`Write-Output`)도 함께 모은다. 판정은 스크립트 하나의 출력 전체로 한다 — Claude Code 가 hook 하나의 stdout 을 통째로 JSON 이거나 평문으로 읽기 때문이다. 전체가 JSON 객체면 그 `hookSpecificOutput.additionalContext` 를 받고(다른 필드는 버린다), 아니면 앞뒤 줄바꿈만 걷은 평문을 그대로 받는다. 스크립트마다 받은 것을 빈 줄 하나로 잇고 JSON 하나로 낸다. `hookEventName` 은 처음 낸 스크립트의 값이고, 없으면 입력의 `hook_event_name` 이다.
+스크립트마다 `[Console]::SetOut` 으로 stdout 을 받고 파이프라인 출력(`Write-Output`)도 함께 모은다. 판정은 스크립트 하나의 출력 전체로 한다 — Claude Code 가 hook 하나의 stdout 을 통째로 JSON 이거나 평문으로 읽기 때문이다. 전체가 JSON 객체면 그 `hookSpecificOutput.additionalContext` 를 받고(다른 필드는 전하지 않는다 — 아래 불릿), 아니면 앞뒤 줄바꿈만 걷은 평문을 그대로 받는다. 스크립트마다 받은 것을 빈 줄 하나로 잇고 JSON 하나로 낸다. `hookEventName` 은 처음 낸 스크립트의 값이고, 없으면 입력의 `hook_event_name` 이다.
 
 - **줄 단위로 자르지 않는다** — 2026-11-12 첫 판은 줄마다 Trim 하고 빈 줄을 끼워 이었다. 그러자 `session-context` 가 싣는 AGENTS.md 전문의 중첩 목록·표·코드 들여쓰기가 깨졌고, `{` 로 시작하는 평문 줄을 JSON 으로 읽었다.
 - **평문은 SessionStart·UserPromptExpansion·UserPromptSubmit 에서만 싣는다** — 공식 hooks 문서상 평문 stdout 을 컨텍스트로 넣는 이벤트가 그것뿐이다(PostModelSwitch 는 묶음이 없다). PreToolUse·PostToolUse 의 평문은 단독일 때 transcript 에만 남았으므로, 묶음도 버린다.
 - **stderr 는 스크립트마다 `[Console]::SetError` 로 받아 두었다가 끝에 순서대로 낸다 — 묶음이 `2` 로 끝나면 `2` 를 낸 스크립트의 것만 낸다** — exit 2 의 stderr 는 차단 사유로 Claude 에 가는데, 같은 묶음의 비차단 경고(`guard-bash` 의 외부 작업 경고)가 섞이면 차단 사유가 흐려진다. exit 0 의 stderr 는 Claude 에 가지 않는다. 합친 stdout JSON 은 `2` 여도 그대로 낸다 — 공식 문서 *"Exit 2 blocks even when your hook prints JSON … Claude Code still reads the JSON output fields, but they can't override the block"*.
+- **`additionalContext`·`hookEventName` 밖 JSON 필드(`permissionDecision`·`systemMessage`·`updatedInput` 등)를 낸 스크립트는 stderr 에 경고하고, 차단 묶음이면 그 스크립트의 `0` 을 `1` 로 센다** — 디스패처는 그 필드를 합치지 않는다(스크립트끼리 값이 갈릴 때의 우선순위를 정할 근거가 없고, 지금 묶인 스크립트는 쓰지 않는다). 그대로 버리면 차단 hook 을 JSON deny(`permissionDecision: "deny"` + exit 0)로 바꾼 순간 묶음이 통과시킨다(fail-open). `1` 로 세면 `onFailure: block` 으로 막혀, 단독 골든은 통과하고 묶음에서만 뚫리는 변경이 조용히 들어가지 못한다(사용자 답 2026-11-12 「1번으로 진행해」).
 
 - **앞 스크립트가 `2` 여도 뒤 스크립트를 돌린다** — 종전에는 같은 이벤트의 hook 이 모두 돌았다. 건너뛰면 뒤 스크립트의 이벤트 로그·경고 같은 부수 효과가 달라진다.
 - **차단 묶음(`-Blocking`)** — `2` 가 하나라도 있으면 `2`, 아니면 비0 이 있으면 `1`, 아니면 `0`. 스크립트가 단독으로 실패했을 때처럼 `onFailure: block` 으로 막혀야 한다.

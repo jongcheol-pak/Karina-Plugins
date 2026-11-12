@@ -81,6 +81,17 @@ Assert-Case -Name "hook-dispatch: exit 2 묶음의 stderr 는 2 를 낸 스크�
 Assert-Case -Name "hook-dispatch: exit 2 묶음의 stderr 에 exit 0 스크립트의 경고가 없다" -R @{ code = $r.code; out = $r.err } -ExpectExit 2 -ExpectNotContains 'FAKE-WARN'
 $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('f-warn.ps1', 'f-ctx.ps1') -SplitStreams
 Assert-Case -Name "hook-dispatch: exit 0 묶음의 stderr 경고는 그대로 남는다" -R @{ code = $r.code; out = $r.err } -ExpectExit 0 -ExpectContains 'FAKE-WARN'
+'[Console]::Out.WriteLine(''{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"FAKE-DENY"}}''); exit 0' | Set-Content -LiteralPath (Join-Path $hdFake 'f-deny.ps1') -Encoding UTF8
+'[Console]::Out.WriteLine(''{"systemMessage":"FAKE-SYS"}''); exit 0' | Set-Content -LiteralPath (Join-Path $hdFake 'f-sysmsg.ps1') -Encoding UTF8
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-Blocking', 'f-deny.ps1', 'f-ctx.ps1') -SplitStreams
+Assert-Case -Name "hook-dispatch: 차단 묶음에서 전하지 못하는 JSON 필드(permissionDecision)는 exit 1 로 막는다" -R @{ code = $r.code; out = $r.err } -ExpectExit 1 -ExpectContains 'f-deny.ps1'
+Assert-Case -Name "hook-dispatch: 전하지 못하는 JSON 필드 경고는 필드 이름을 밝힌다" -R @{ code = $r.code; out = $r.err } -ExpectExit 1 -ExpectContains 'permissionDecision'
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('f-deny.ps1', 'f-ctx.ps1') -SplitStreams
+Assert-Case -Name "hook-dispatch: 비차단 묶음은 전하지 못하는 JSON 필드를 경고만 한다" -R @{ code = $r.code; out = $r.err } -ExpectExit 0 -ExpectContains 'permissionDecision'
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-Blocking', 'f-sysmsg.ps1', 'f-ctx.ps1') -SplitStreams
+Assert-Case -Name "hook-dispatch: 최상위 JSON 필드(systemMessage)도 차단 묶음에서 exit 1" -R @{ code = $r.code; out = $r.err } -ExpectExit 1 -ExpectContains 'systemMessage'
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-Blocking', 'f-ctx.ps1') -SplitStreams
+Assert-Case -Name "hook-dispatch: additionalContext 만 내는 JSON 은 차단 묶음에서도 경고 없이 exit 0" -R @{ code = $r.code; out = $r.err } -ExpectExit 0 -ExpectNotContains 'hook-dispatch:'
 
 Push-Location -LiteralPath $hd
 try {
