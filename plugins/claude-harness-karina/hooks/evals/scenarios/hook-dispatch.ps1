@@ -93,6 +93,45 @@ Assert-Case -Name "hook-dispatch: 최상위 JSON 필드(systemMessage)도 차단
 $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-Blocking', 'f-ctx.ps1') -SplitStreams
 Assert-Case -Name "hook-dispatch: additionalContext 만 내는 JSON 은 차단 묶음에서도 경고 없이 exit 0" -R @{ code = $r.code; out = $r.err } -ExpectExit 0 -ExpectNotContains 'hook-dispatch:'
 
+'[Console]::Out.WriteLine(''{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"ADV-CTX"}}''); exit 0' | Set-Content -LiteralPath (Join-Path $hdFake 'f-adv-ctx.ps1') -Encoding UTF8
+'[System.IO.File]::WriteAllText((Join-Path $PSScriptRoot ''adv-ran.txt''), ''x''); exit 0' | Set-Content -LiteralPath (Join-Path $hdFake 'f-mark.ps1') -Encoding UTF8
+$hdMark = Join-Path $hdFake 'adv-ran.txt'
+function Invoke-HdAdv([string[]]$HdArgs, [switch]$Process) {
+    if (Test-Path -LiteralPath $hdMark) { [System.IO.File]::Delete($hdMark) }
+    $res = if ($Process) { Invoke-Hook $hdFakeDispatch $hdIn -Arguments $HdArgs -SplitStreams -Process } else { Invoke-Hook $hdFakeDispatch $hdIn -Arguments $HdArgs -SplitStreams }
+    $res.ran = Test-Path -LiteralPath $hdMark
+    return $res
+}
+$r = Invoke-HdAdv @('-Blocking', 'f-ctx.ps1', 'advisory:', 'f-mark.ps1', 'f-adv-ctx.ps1')
+Assert-Case -Name "hook-dispatch: 권고 — 차단 스크립트가 모두 통과하면 권고가 돈다" -R @{ code = $r.code; out = "ran=$($r.ran)" } -ExpectExit 0 -ExpectContains 'ran=True'
+Assert-Case -Name "hook-dispatch: 권고 — 권고의 컨텍스트가 차단 스크립트 컨텍스트와 한 JSON 으로 합쳐진다" -R (Get-HdJsonSummary $r) -ExpectExit 0 -ExpectContains 'json=True event=PreToolUse'
+Assert-Case -Name "hook-dispatch: 권고 — 합친 컨텍스트에 두 출력이 다 있다" -R $r -ExpectExit 0 -ExpectContains 'FAKE-CTX\n\nADV-CTX'
+$r = Invoke-HdAdv @('-Blocking', 'f-ctx.ps1', 'advisory:', 'f-throw.ps1', 'f-adv-ctx.ps1')
+Assert-Case -Name "hook-dispatch: 권고 — 권고 예외는 차단 묶음을 막지 않는다" -R $r -ExpectExit 0 -ExpectContains 'ADV-CTX'
+Assert-Case -Name "hook-dispatch: 권고 — 권고 예외는 stderr 에 남는다" -R @{ code = $r.code; out = $r.err } -ExpectExit 0 -ExpectContains 'f-throw.ps1'
+$r = Invoke-HdAdv @('-Blocking', 'f-ctx.ps1', 'advisory:', 'f-exit1.ps1')
+Assert-Case -Name "hook-dispatch: 권고 — 권고 exit 1 은 차단 묶음을 막지 않는다" -R $r -ExpectExit 0
+$r = Invoke-HdAdv @('-Blocking', 'f-ctx.ps1', 'advisory:', 'f-sysmsg.ps1')
+Assert-Case -Name "hook-dispatch: 권고 — 권고의 여분 JSON 필드는 차단 묶음을 막지 않는다" -R $r -ExpectExit 0
+$r = Invoke-HdAdv @('-Blocking', 'f-ctx.ps1', 'advisory:', 'f-exit2.ps1')
+Assert-Case -Name "hook-dispatch: 권고 — 권고 exit 2 도 묶음 결과에 들지 않는다" -R $r -ExpectExit 0
+$r = Invoke-HdAdv @('-Blocking', 'f-exit2.ps1', 'advisory:', 'f-mark.ps1')
+Assert-Case -Name "hook-dispatch: 권고 — 차단 exit 2 면 권고를 돌리지 않는다" -R @{ code = $r.code; out = "ran=$($r.ran)" } -ExpectExit 2 -ExpectContains 'ran=False'
+$r = Invoke-HdAdv @('-Blocking', 'f-exit1.ps1', 'advisory:', 'f-mark.ps1')
+Assert-Case -Name "hook-dispatch: 권고 — 차단 exit 1 이면 권고를 돌리지 않는다" -R @{ code = $r.code; out = "ran=$($r.ran)" } -ExpectExit 1 -ExpectContains 'ran=False'
+$r = Invoke-HdAdv @('-AdvisoryBudgetMs', '0', '-Blocking', 'f-ctx.ps1', 'advisory:', 'f-mark.ps1') -Process
+Assert-Case -Name "hook-dispatch: 권고 — 권고 예산이 0 이면 권고를 돌리지 않고 exit 0" -R @{ code = $r.code; out = "ran=$($r.ran)" } -ExpectExit 0 -ExpectContains 'ran=False'
+$r = Invoke-HdAdv @('-Blocking', 'f-ctx.ps1', 'advisory:', 'f-mark.ps1') -Process
+Assert-Case -Name "hook-dispatch: 권고 — 실제 프로세스 경로에서도 기본 예산이면 권고가 돈다" -R @{ code = $r.code; out = "ran=$($r.ran)" } -ExpectExit 0 -ExpectContains 'ran=True'
+$r = Invoke-HdAdv @('-Blocking', 'f-ctx.ps1', 'advisory:', 'nope.ps1')
+Assert-Case -Name "hook-dispatch: 권고 — 없는 권고 스크립트 인자는 exit 1" -R @{ code = $r.code; out = $r.err } -ExpectExit 1 -ExpectContains 'nope.ps1'
+$r = Invoke-HdAdv @('-Blocking', 'f-ctx.ps1', 'advisory:', 'f-mark.ps1', 'advisory:', 'f-adv-ctx.ps1')
+Assert-Case -Name "hook-dispatch: 권고 — 구분 토큰이 두 번이면 exit 1" -R $r -ExpectExit 1
+$r = Invoke-HdAdv @('-Blocking', 'f-ctx.ps1', 'advisory:')
+Assert-Case -Name "hook-dispatch: 권고 — 구분 토큰 뒤가 비면 exit 1" -R $r -ExpectExit 1
+$r = Invoke-HdAdv @('advisory:', 'f-mark.ps1')
+Assert-Case -Name "hook-dispatch: 권고 — 구분 토큰 앞이 비면 exit 1" -R $r -ExpectExit 1
+
 Push-Location -LiteralPath $hd
 try {
     $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('f-move.ps1', 'f-loc.ps1')

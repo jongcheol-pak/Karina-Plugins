@@ -2,28 +2,51 @@
 
 param(
     [switch]$Blocking,
-    [Parameter(ValueFromRemainingArguments = $true)][string[]]$Scripts
+    [int]$AdvisoryBudgetMs = 20000,
+    [Parameter(Position = 0, ValueFromRemainingArguments = $true)][string[]]$Scripts
 )
 
+$hdClock = [System.Diagnostics.Stopwatch]::StartNew()
 $ErrorActionPreference = 'Continue'
 try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
-$hdNames = @($Scripts | Where-Object { $_ })
+# 권고 스크립트 구간 — 근거는 `rules/hook-dispatch-rationale.md` §7
+$hdArgs = @($Scripts | Where-Object { $_ })
+$hdSplit = @(for ($hdI = 0; $hdI -lt $hdArgs.Count; $hdI++) { if ($hdArgs[$hdI] -ceq 'advisory:') { $hdI } })
+$hdNames = $hdArgs
+$hdAdvNames = @()
+if ($hdSplit.Count -gt 1) {
+    [Console]::Error.WriteLine('hook-dispatch: 구분 토큰 advisory: 가 두 번 이상입니다')
+    exit 1
+}
+if ($hdSplit.Count -eq 1) {
+    $hdNames = @($hdArgs | Select-Object -First $hdSplit[0])
+    $hdAdvNames = @($hdArgs | Select-Object -Skip ($hdSplit[0] + 1))
+    if ($hdAdvNames.Count -eq 0) {
+        [Console]::Error.WriteLine('hook-dispatch: 구분 토큰 advisory: 뒤에 스크립트가 없습니다')
+        exit 1
+    }
+}
 if ($hdNames.Count -eq 0) {
     [Console]::Error.WriteLine('hook-dispatch: 부를 스크립트가 없습니다')
     exit 1
 }
 $hdSelf = Split-Path -Leaf $PSCommandPath
-$hdPaths = @()
-foreach ($hdName in $hdNames) {
-    $hdPath = Join-Path $PSScriptRoot $hdName
-    if ($hdName -cnotmatch '^[a-z0-9-]+\.ps1$' -or $hdName -eq $hdSelf -or -not (Test-Path -LiteralPath $hdPath -PathType Leaf)) {
-        [Console]::Error.WriteLine("hook-dispatch: 부를 수 없는 스크립트 인자 — $hdName")
-        exit 1
+function Resolve-HdScriptPaths([string[]]$Names) {
+    $paths = @()
+    foreach ($name in $Names) {
+        $path = Join-Path $PSScriptRoot $name
+        if ($name -cnotmatch '^[a-z0-9-]+\.ps1$' -or $name -eq $hdSelf -or -not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            [Console]::Error.WriteLine("hook-dispatch: 부를 수 없는 스크립트 인자 — $name")
+            exit 1
+        }
+        $paths += $path
     }
-    $hdPaths += $hdPath
+    return $paths
 }
+$hdPaths = @(Resolve-HdScriptPaths $hdNames)
+$hdAdvPaths = @(Resolve-HdScriptPaths $hdAdvNames)
 
 $global:KarinaHookStdin = [Console]::In.ReadToEnd()
 $hdEvent = $null
@@ -36,8 +59,12 @@ $hdContexts = New-Object System.Collections.Generic.List[string]
 $hdErrs = New-Object System.Collections.Generic.List[object]
 $hdFirstEvent = $null
 $hdCodes = @()
+$hdRuns = @($hdPaths | ForEach-Object { [pscustomobject]@{ Path = $_; Advisory = $false } }) + @($hdAdvPaths | ForEach-Object { [pscustomobject]@{ Path = $_; Advisory = $true } })
 try {
-    foreach ($hdPath in $hdPaths) {
+    foreach ($hdRun in $hdRuns) {
+        $hdPath = $hdRun.Path
+        $hdAdv = $hdRun.Advisory
+        if ($hdAdv -and (@($hdCodes | Where-Object { $_ -ne 0 }).Count -gt 0 -or $hdClock.ElapsedMilliseconds -ge $AdvisoryBudgetMs)) { break }
         $hdLeaf = Split-Path -Leaf $hdPath
         $hdBuf = New-Object System.IO.StringWriter
         $hdErrBuf = New-Object System.IO.StringWriter
@@ -58,10 +85,10 @@ try {
             [Console]::SetError($hdErr)
             Set-Location -LiteralPath $hdStart
         }
-        $hdErrs.Add([pscustomobject]@{ Code = $hdCode; Text = $hdErrBuf.ToString() })
+        $hdErrs.Add([pscustomobject]@{ Code = $(if ($hdAdv) { $null } else { $hdCode }); Text = $hdErrBuf.ToString() })
         if ($hdFault) { $hdErrs.Add([pscustomobject]@{ Code = $null; Text = $hdFault + "`n" }) }
-        if ($hdCode -ne 0 -and $hdCode -ne 2) { $hdErrs.Add([pscustomobject]@{ Code = $null; Text = "hook-dispatch: $hdLeaf exit $hdCode`n" }) }
-        $hdCodes += $hdCode
+        if ($hdCode -ne 0 -and ($hdAdv -or $hdCode -ne 2)) { $hdErrs.Add([pscustomobject]@{ Code = $null; Text = "hook-dispatch: $hdLeaf exit $hdCode`n" }) }
+        if (-not $hdAdv) { $hdCodes += $hdCode }
         $hdText = (@($hdBuf.ToString(), $hdPipe) | ForEach-Object { $_.Trim("`r", "`n") } | Where-Object { $_ }) -join "`n"
         if (-not $hdText.Trim()) { continue }
         $hdObj = $null
@@ -74,7 +101,7 @@ try {
             }
             if ($hdDropped.Count -gt 0) {
                 $hdErrs.Add([pscustomobject]@{ Code = $null; Text = "hook-dispatch: $hdLeaf 이 묶음이 전하지 못하는 JSON 필드를 냈습니다 — $($hdDropped -join ', ')`n" })
-                if ($Blocking -and $hdCodes[-1] -eq 0) { $hdCodes[-1] = 1 }
+                if ($Blocking -and -not $hdAdv -and $hdCodes[-1] -eq 0) { $hdCodes[-1] = 1 }
             }
             if ($hdObj.hookSpecificOutput) {
                 if (-not $hdFirstEvent -and $hdObj.hookSpecificOutput.hookEventName) { $hdFirstEvent = [string]$hdObj.hookSpecificOutput.hookEventName }
