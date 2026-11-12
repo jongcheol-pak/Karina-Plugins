@@ -48,6 +48,18 @@ $null = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx4' 'toolu_A4')
 Set-TxLines @((& $txUse 'toolu_A4'), (& $txLine @((& $txOk 'toolu_Y4'), (& $txFail 'toolu_A4'))))
 $r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx4' 'toolu_B4')
 Assert-Case -Name "suggest 성공 판정: 한 줄에 결과가 여럿이고 그 id 의 결과가 실패(is_error 가 id 앞)면 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+$txPad = '{"type":"user","message":{"content":[{"type":"tool_result","content":"' + ('p' * 1000) + '","tool_use_id":"toolu_PAD"}]}}'
+Set-TxLines @((& $txUse 'toolu_A5'))
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx5' 'toolu_A5')
+Set-TxLines (@((& $txUse 'toolu_A5'), (& $txLine @((& $txFail 'toolu_A5')))) + @(1..80 | ForEach-Object { $txPad }))
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx5' 'toolu_B5')
+Assert-Case -Name "suggest 성공 판정: 실패 결과가 transcript 끝 64KB 밖(4MB 안)이면 큰 창에서 찾아 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+Set-TxLines @((& $txUse 'toolu_A6'))
+$null = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx6' 'toolu_A6')
+$txBigFail = '{"type":"user","message":{"content":[{"type":"tool_result","content":"' + ('q' * 70000) + '","is_error":true,"tool_use_id":"toolu_A6"}]}}'
+Set-TxLines @((& $txUse 'toolu_A6'), $txBigFail)
+$r = Invoke-Hook 'suggest-agents-record.ps1' (New-TxJson 'tx6' 'toolu_B6')
+Assert-Case -Name "suggest 성공 판정: 실패 결과 줄이 64KB 보다 길어 작은 창 첫 줄에서 잘려도 큰 창에서 읽어 다시 제안한다" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
 $saRoot = Join-Path $work 'sa-projects'; New-Item -ItemType Directory $saRoot -Force | Out-Null
 function New-SaJson([string]$Sid, [string]$Id, [string]$AgentId) {
     $o = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $txProj; session_id = $Sid; tool_use_id = $Id; transcript_path = (Join-Path $saRoot ($Sid + '.jsonl')); tool_input = @{ command = 'dotnet build App.sln' } }
