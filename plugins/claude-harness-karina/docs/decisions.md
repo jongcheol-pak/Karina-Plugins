@@ -2,6 +2,8 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-12] `git ls-remote` 시간 상한 — 번복: 2026-08-26 「`git ls-remote`에 타임아웃을 거는 완화책은 넣지 않는다」를 뒤집어 `warn-version-drift.ps1` 이 상한(기본 5초, `KARINA_VD_REMOTE_TIMEOUT_MS`)을 넘긴 조회를 프로세스 트리째 죽이고 침묵한다(사용자 답 「트리 kill 로 번복」).
+  - 기각 사유였던 고아 프로세스는 트리 kill(pwsh 7 `Kill($true)` · 5.1 `taskkill /T /F`)로 남기지 않는다. 기각 때 감수한 비용은 「세션 시작 최대 10초 지연」이었는데, v3.11.0 의 SessionStart 묶음 뒤로는 묶음 timeout 에 걸리면 `session-context` 컨텍스트 주입까지 버려졌다(무응답 원격 재현 16초).
 - [2026-11-12] hook 스크립트 독립 실행 두 건 — 번복: 2026-07-08 「`block-destructive` 는 hooks.json 독립 엔트리로 유지」와 2026-07-10 「SessionStart 스크립트 +1 수용」을 뒤집어, 같은 이벤트·matcher 의 스크립트를 `hook-dispatch.ps1` 이 한 pwsh 에서 차례로 부르게 했다(사용자 답 「block-destructive 포함」). 여러 세션을 띄우면 도구 호출마다 pwsh 가 2~3개씩 떠 CPU 를 먹었다. 디스패처 실패는 `onFailure: block` 으로 막히고 `block-destructive` 는 여전히 아무것도 dot-source 하지 않는다. 교대 5쌍 CPU 중앙값 Bash 6,797→4,016ms · Edit 6,250→3,453 · Skill 5,219→1,781.
 - [2026-11-12] 계획 때 미등록 프로젝트 위키 자동 등록 — 기각: README·llm-wiki schema-types 에만 적혀 있고 `karina:plan` 에 절차가 없던 기능이다. 계획은 위키를 「허브 개요가 코드보다 빠를 때」와 「사용자 검색 요청」에만 읽는다는 사용자 방침에 맞춰 주장을 지웠고, 등록은 사용자가 `karina:llm-wiki` 로 요청할 때만 한다(v3.10.0).
 - [2026-11-12] 계획마다 `위키 참조` Log 행 강제(`check-plan` `no-wiki-row`) — 기각: 행이 vault 확인을 매 계획에 끌고 와 토큰만 썼다(사용자 답 「강제 행 폐지」). 위키를 실제로 읽었을 때만 그 행을 쓴다(v3.10.0).
