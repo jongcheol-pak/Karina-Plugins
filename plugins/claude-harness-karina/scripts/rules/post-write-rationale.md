@@ -235,5 +235,7 @@
 - **실행 파일은 `Get-Command git -CommandType Application` 으로 고르고 `.cmd`·`.bat` 면 `cmd.exe /d /s /c` 로 띄운다** — `Process.Start("git")` 은 PATHEXT 를 보지 않아 `& git` 과 다른 git 을 집는다(2026-11-12 실측: PATH 앞 `git.cmd` 를 `& git` 은 집고 `Process.Start` 는 건너뛴다). 인자는 모두 따옴표로 감싼다 — `cmd` 경로에서 grep 정규식의 `|` 가 파이프로 읽히지 않게.
 - **`-C` 없는 호출은 `WorkingDirectory` 를 지금 위치(`Get-Location`)로 준다** — `System.Diagnostics.Process` 의 기본 작업 폴더는 `Set-Location` 을 따르지 않는다(레포 `docs/conventions.md` 2026-09-10 함정).
 - **stdout·stderr 를 `ReadToEndAsync` 로 읽고, 남은 예산으로 `WaitForExit` 한다** — `ReadToEnd()` 를 먼저 부르면 상한이 걸리지 않고, stderr 를 비우지 않으면 파이프가 차서 git 이 멈춘다(같은 문서 2026-10-08·2026-10-14 함정).
-- **시간이 다 되면 `Kill($true)`(pwsh 7 — 자식까지) 또는 `Kill()`(5.1)하고 읽기 작업을 기다리지 않는다** — `cmd` 를 끝내도 손자 프로세스가 stdout 파이프를 쥐고 남아, 읽기를 기다리면 그 손자가 끝날 때까지 선다.
+- **시간이 다 되면 `Kill($true)`(pwsh 7) 또는 `taskkill /T /F`(Windows 5.1)로 자식까지 끝내고 읽기 작업을 기다리지 않는다** — 5.1 의 `Kill()` 은 `cmd` 만 끝내 `.cmd` shim 밑의 git 이 고아로 남는다(async 라 쓰기마다 쌓인다 — `warn-version-drift` 와 같은 처리). `cmd` 를 끝내도 손자 프로세스가 stdout 파이프를 쥐고 남아, 읽기를 기다리면 그 손자가 끝날 때까지 선다.
+- **`cmd` 경로는 인자에 `%`·`"` 가 있거나 인자 줄이 7000자를 넘으면 git 을 부르지 않고 `Code = -1` 이다** — `cmd` 는 따옴표 안의 `%VAR%` 를 펼치고 `\"` 를 이스케이프로 읽지 않아 다른 경로가 git 에 가며, 명령줄 상한이 8191자다(직접 실행은 32767자).
+- **EOL 표본 캐시(§15)는 `ls-files` 가 `Code = 0` 일 때만 쓴다** — 실패 결과(빈 줄)를 지금 index 시각으로 쓰면 index 가 바뀔 때까지 표본이 0 이 되어 줄바꿈 경고가 꺼진다. 증분 갱신이 실패하면 전체 갱신으로 넘어가고, 그것도 실패하면 캐시를 그대로 두고 빈 표본을 돌려준다(골든 EOL13·EOL13c).
 - **결과는 `Code`·`Lines` 이고 시간 초과·기동 실패는 `Code = -1`** — `check-ignore` 는 `1` 이 「ignore 아님」이라는 양성 신호라, 실패를 `1` 로 돌리면 예산이 바닥날 때마다 줄바꿈 오탐이 난다. 각 섹션은 `-1` 을 종전 git 실패와 같게(fail-open 침묵) 다룬다.

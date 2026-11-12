@@ -69,6 +69,7 @@ function Invoke-PwGit {
     $argText = (@($GitArgs) | ForEach-Object { ConvertTo-PwArgument $_ }) -join ' '
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     if ($script:pwGitExe -match '(?i)\.(cmd|bat)$') {
+        if (@($GitArgs | Where-Object { $_ -match '[%"]' }).Count -or $argText.Length -gt 7000) { return $none }
         $psi.FileName = $env:ComSpec
         $psi.Arguments = '/d /s /c "' + (ConvertTo-PwArgument $script:pwGitExe) + ' ' + $argText + '"'
     } else {
@@ -89,7 +90,11 @@ function Invoke-PwGit {
         $null = $p.StandardError.ReadToEndAsync()
         $left = [int][Math]::Max(0, $BudgetMs - $pwClock.ElapsedMilliseconds)
         if (-not $p.WaitForExit($left)) {
-            try { $p.Kill($true) } catch { try { $p.Kill() } catch {} }
+            try {
+                if ($PSVersionTable.PSVersion.Major -ge 7) { $p.Kill($true) }
+                elseif ($env:OS -eq 'Windows_NT') { $null = & taskkill /T /F /PID $p.Id 2>$null }
+                else { $p.Kill() }
+            } catch {}
             return $none
         }
         $left = [int][Math]::Max(0, $BudgetMs - $pwClock.ElapsedMilliseconds)
@@ -107,14 +112,16 @@ function Invoke-PwGit {
 # H3 표본 캐시 — 근거는 `rules/post-write-rationale.md` §15
 function Get-EolSampleRows {
     param([string]$Dir, [string]$Top, [string]$IndexPath, [string[]]$Specs)
-    $fresh = { param([string[]]$Paths) @((Invoke-PwGit -GitArgs (@('-C', $Dir, '-c', 'core.quotepath=off', 'ls-files', '--full-name', '--eol', '--') + @($Paths))).Lines) }
-    if (-not $Top -or -not $IndexPath -or -not (Test-Path -LiteralPath $IndexPath)) { return (& $fresh $Specs) }
+    $fresh = { param([string[]]$Paths) Invoke-PwGit -GitArgs (@('-C', $Dir, '-c', 'core.quotepath=off', 'ls-files', '--full-name', '--eol', '--') + @($Paths)) }
+    if (-not $Top -or -not $IndexPath -or -not (Test-Path -LiteralPath $IndexPath)) { return @((& $fresh $Specs).Lines) }
     try {
         $indexTicks = [string][System.IO.File]::GetLastWriteTimeUtc($IndexPath).Ticks
         $cachePath = Join-Path $pwStateDir ($pwSid + '_eolcache_' + (Get-PwKeyHash $Top))
         $rows = New-Object System.Collections.Specialized.OrderedDictionary ([System.StringComparer]::Ordinal)
         $lines = if (Test-Path -LiteralPath $cachePath) { [System.IO.File]::ReadAllLines($cachePath) } else { @() }
+        $full = $true
         if ($lines.Count -ge 1 -and $lines[0] -eq $indexTicks) {
+            $full = $false
             $changed = New-Object System.Collections.Generic.List[string]
             for ($i = 1; $i -lt $lines.Count; $i++) {
                 $parts = $lines[$i] -split "`t", 3
@@ -124,15 +131,24 @@ function Get-EolSampleRows {
                 if ($now -ne $parts[1]) { $changed.Add($parts[2]) }
             }
             if ($changed.Count) {
-                foreach ($p in $changed) { $rows.Remove($p) }
-                foreach ($row in @(& $fresh @($changed | ForEach-Object { ':(top,literal)' + $_ }))) {
-                    $cols = $row -split "`t", 2
-                    if ($cols.Count -lt 2) { continue }
-                    $rows[$cols[1]] = @($cols[0], [string][System.IO.File]::GetLastWriteTimeUtc((Join-Path $Top $cols[1])).Ticks)
+                $run = & $fresh @($changed | ForEach-Object { ':(top,literal)' + $_ })
+                if ($run.Code -ne 0) {
+                    $full = $true
+                } else {
+                    foreach ($p in $changed) { $rows.Remove($p) }
+                    foreach ($row in @($run.Lines)) {
+                        $cols = $row -split "`t", 2
+                        if ($cols.Count -lt 2) { continue }
+                        $rows[$cols[1]] = @($cols[0], [string][System.IO.File]::GetLastWriteTimeUtc((Join-Path $Top $cols[1])).Ticks)
+                    }
                 }
             }
-        } else {
-            foreach ($row in @(& $fresh $Specs)) {
+        }
+        if ($full) {
+            $run = & $fresh $Specs
+            if ($run.Code -ne 0) { return @() }
+            $rows.Clear()
+            foreach ($row in @($run.Lines)) {
                 $cols = $row -split "`t", 2
                 if ($cols.Count -lt 2) { continue }
                 $rows[$cols[1]] = @($cols[0], [string][System.IO.File]::GetLastWriteTimeUtc((Join-Path $Top $cols[1])).Ticks)
@@ -144,7 +160,7 @@ function Get-EolSampleRows {
         try { [System.IO.File]::WriteAllLines($cachePath, $out) } catch {}
         return @(foreach ($k in $rows.Keys) { $rows[$k][0] + "`t" + $k })
     } catch {
-        return (& $fresh $Specs)
+        return @((& $fresh $Specs).Lines)
     }
 }
 

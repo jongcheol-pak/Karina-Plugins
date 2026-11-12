@@ -337,6 +337,41 @@ if ($IsWindows) {
     $pwClock.Stop()
     Assert-Case -Name "budget: 멈춘 git 은 예산에서 끊는다 — 가짜 git(7초) + 예산 2초 → 5초 안에 exit 0" -R @{ code = $r.code; out = "fast=$($pwClock.ElapsedMilliseconds -lt 5000) ms=$($pwClock.ElapsedMilliseconds)" } -ExpectExit 0 -ExpectContains 'fast=True'
     Assert-Case -Name "budget: 끊긴 check-ignore 를 「ignore 아님」으로 읽지 않는다 — LF 파일이어도 EOL 경고 없음 (양성 짝: EOL1)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+
+    $pwRealGit = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Where-Object { $_.Source -match '(?i)\.exe$' } | ForEach-Object { $_.Source })[0]
+    $pwLsFailGit = Join-Path $work 'pw-lsfail-git'; New-Item -ItemType Directory $pwLsFailGit -Force | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $pwLsFailGit 'git.cmd'), "@if `"%~5`"==`"ls-files`" exit /b 128`r`n@`"$pwRealGit`" %*`r`n")
+    $eolFailRepo = Join-Path $work 'eol-lsfail-repo'; New-Item -ItemType Directory $eolFailRepo -Force | Out-Null
+    Push-Location $eolFailRepo
+    git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
+    1..12 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolFailRepo "c$_.md"), "줄`r`n") }
+    'a', 'b', 'd' | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolFailRepo "$_.md"), "줄`r`n") }
+    git add -A 2>$null; git commit -qm init
+    Pop-Location
+    $pwStateWarn = Join-Path $env:USERPROFILE '.claude/.state/post-write-warn'
+    Get-ChildItem -LiteralPath $pwStateWarn -Filter 'eol-lsfail*' -ErrorAction SilentlyContinue | ForEach-Object { [System.IO.File]::Delete($_.FullName) }
+    $pwOldPath = $env:PATH
+    try {
+        $env:PATH = $pwLsFailGit + [System.IO.Path]::PathSeparator + $env:PATH
+        $p = Join-Path $eolFailRepo 'a.md'
+        [System.IO.File]::WriteAllText($p, "LF 로 저장`n")
+        $null = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolFailRepo; session_id = 'eol-lsfail'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress) -Process
+    } finally { $env:PATH = $pwOldPath }
+    $pwCacheFiles = @(Get-ChildItem -LiteralPath $pwStateWarn -Filter 'eol-lsfail_eolcache_*' -ErrorAction SilentlyContinue)
+    Assert-Case -Name "eol cache: ls-files 가 실패하면 빈 표본을 캐시에 쓰지 않는다 (EOL13)" -R @{ code = 0; out = "cachefiles=$($pwCacheFiles.Count)" } -ExpectExit 0 -ExpectContains 'cachefiles=0'
+    $p = Join-Path $eolFailRepo 'b.md'
+    [System.IO.File]::WriteAllText($p, "LF 로 저장`n")
+    $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolFailRepo; session_id = 'eol-lsfail'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress) -Process
+    Assert-Case -Name "eol cache: 실패한 표본 뒤 같은 세션의 다음 LF 쓰기는 경고한다 (EOL13b)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
+    [System.IO.File]::WriteAllText((Join-Path $eolFailRepo 'c1.md'), "다시 저장`r`n")
+    try {
+        $env:PATH = $pwLsFailGit + [System.IO.Path]::PathSeparator + $env:PATH
+        $p = Join-Path $eolFailRepo 'd.md'
+        [System.IO.File]::WriteAllText($p, "LF 로 저장`n")
+        $null = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolFailRepo; session_id = 'eol-lsfail'; tool_input = @{ file_path = $p } } | ConvertTo-Json -Compress) -Process
+    } finally { $env:PATH = $pwOldPath }
+    $pwCacheText = (@(Get-ChildItem -LiteralPath $pwStateWarn -Filter 'eol-lsfail_eolcache_*' -ErrorAction SilentlyContinue) | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
+    Assert-Case -Name "eol cache: 증분 갱신의 ls-files 가 실패해도 바뀐 행을 캐시에서 잃지 않는다 (EOL13c)" -R @{ code = 0; out = "c1row=$($pwCacheText -match '(?m)\tc1\.md\r?$')" } -ExpectExit 0 -ExpectContains 'c1row=True'
 }
 
 # EOL1b (양성 — 신규 미추적 파일): **이번 사고 형태가 이것이다.** 회차 50 이 Write 로 만든
