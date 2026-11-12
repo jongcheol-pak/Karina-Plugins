@@ -135,7 +135,7 @@ $groupCostSec = @{
     'screen-cover' = 60; 'session-context' = 28; 'post-write-checks' = 25; 'guard-harness' = 29; 'guard-write' = 22
     'guard-stale-docs' = 21; 'guard-task-audit' = 20; 'warn-version-drift' = 18; 'work-clock' = 10; 'loop-continue' = 4
     'guard-harness-content' = 3; 'guard-harness-installed+hook-event-log' = 4; 'suggest-agents-record' = 4
-    'session-end-cleanup' = 22; 'record-work-start' = 2; 'inject-reply-language' = 7; 'guard-comment' = 19; 'comment-scope' = 45
+    'session-end-cleanup' = 8; 'record-work-start' = 2; 'inject-reply-language' = 7; 'guard-comment' = 19; 'comment-scope' = 45
     'hook-dispatch' = 15
 }
 $launchGroups = @(
