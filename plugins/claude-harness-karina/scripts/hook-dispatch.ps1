@@ -28,6 +28,7 @@ foreach ($hdName in $hdNames) {
 $global:KarinaHookStdin = [Console]::In.ReadToEnd()
 $hdEvent = $null
 try { $hdEvent = [string](($global:KarinaHookStdin | ConvertFrom-Json -ErrorAction Stop).hook_event_name) } catch {}
+$hdPlainEvents = @('SessionStart', 'UserPromptExpansion', 'UserPromptSubmit')
 $hdOut = [Console]::Out
 $hdStart = (Get-Location).ProviderPath
 $hdContexts = New-Object System.Collections.Generic.List[string]
@@ -53,18 +54,19 @@ try {
         }
         if ($hdCode -ne 0 -and $hdCode -ne 2) { [Console]::Error.WriteLine("hook-dispatch: $hdLeaf exit $hdCode") }
         $hdCodes += $hdCode
-        foreach ($hdLine in (($hdBuf.ToString() + "`n" + $hdPipe) -split "\r?\n")) {
-            $hdTrim = $hdLine.Trim()
-            if (-not $hdTrim) { continue }
-            $hdObj = $null
-            if ($hdTrim.StartsWith('{')) { try { $hdObj = $hdTrim | ConvertFrom-Json -ErrorAction Stop } catch {} }
-            if ($hdObj -and $hdObj.hookSpecificOutput) {
+        $hdText = (@($hdBuf.ToString(), $hdPipe) | ForEach-Object { $_.Trim("`r", "`n") } | Where-Object { $_ }) -join "`n"
+        if (-not $hdText.Trim()) { continue }
+        $hdObj = $null
+        $hdJsonText = $hdText.Trim()
+        if ($hdJsonText.StartsWith('{')) { try { $hdObj = $hdJsonText | ConvertFrom-Json -ErrorAction Stop } catch {} }
+        if ($null -ne $hdObj) {
+            if ($hdObj.hookSpecificOutput) {
                 if (-not $hdFirstEvent -and $hdObj.hookSpecificOutput.hookEventName) { $hdFirstEvent = [string]$hdObj.hookSpecificOutput.hookEventName }
                 $hdCtx = [string]$hdObj.hookSpecificOutput.additionalContext
                 if ($hdCtx) { $hdContexts.Add($hdCtx) }
-            } else {
-                $hdContexts.Add($hdTrim)
             }
+        } elseif ($hdPlainEvents -contains $hdEvent) {
+            $hdContexts.Add($hdText)
         }
     }
 } finally {

@@ -82,6 +82,25 @@ try {
 $hdFwd = $hd.Replace('\', '/')
 Assert-Case -Name "hook-dispatch: 앞 스크립트가 위치를 옮겨도 다음 스크립트는 시작 위치에서 돈다" -R $r -ExpectExit 0 -ExpectContains "loc=$hdFwd"
 
+$hdPlainText = "    PLAIN-MARK code line`n- a`n  - nested`n`n| x | y |`n|---|---|`n{""hookSpecificOutput"":{""additionalContext"":""INNER""}}`n    tail"
+[System.IO.File]::WriteAllText((Join-Path $hdFake 'plain.txt'), $hdPlainText, [System.Text.UTF8Encoding]::new($false))
+'Write-Output ([System.IO.File]::ReadAllText((Join-Path $PSScriptRoot ''plain.txt'')))' | Set-Content -LiteralPath (Join-Path $hdFake 'f-plain.ps1') -Encoding UTF8
+function Get-HdCtx([hashtable]$R) {
+    try { $o = $R.out | ConvertFrom-Json -ErrorAction Stop } catch { return $null }
+    return $o.hookSpecificOutput
+}
+$hdSsIn = @{ session_id = 'hd-ss'; hook_event_name = 'SessionStart'; source = 'startup'; cwd = $hd } | ConvertTo-Json -Compress
+$hdUpeIn = @{ session_id = 'hd-upe'; hook_event_name = 'UserPromptExpansion'; command_name = 'plan'; cwd = $hd } | ConvertTo-Json -Compress
+$r = Invoke-Hook $hdFakeDispatch $hdSsIn -Arguments @('f-plain.ps1', 'f-ctx.ps1') -SplitStreams
+$hdGot = [string](Get-HdCtx $r).additionalContext
+Assert-Case -Name "hook-dispatch: 평문 보존 — 묶음 컨텍스트가 스크립트가 낸 평문(들여쓰기·표·빈 줄·{ 시작 줄)과 글자 단위로 같다" -R @{ code = $r.code; out = "eq=$($hdGot -ceq ($hdPlainText + "`n`nFAKE-CTX"))" } -ExpectExit 0 -ExpectContains 'eq=True'
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('f-plain.ps1', 'f-ctx.ps1') -SplitStreams
+Assert-Case -Name "hook-dispatch: 도구 이벤트 평문 제외 — PreToolUse 평문은 컨텍스트로 가지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'PLAIN-MARK'
+$r = Invoke-Hook $hdFakeDispatch $hdUpeIn -Arguments @('f-plain.ps1', 'f-ctx.ps1') -SplitStreams
+Assert-Case -Name "hook-dispatch: UserPromptExpansion 평문은 컨텍스트로 실린다" -R @{ code = $r.code; out = [string](Get-HdCtx $r).additionalContext } -ExpectExit 0 -ExpectContains 'PLAIN-MARK'
+$r = Invoke-Hook $hdFakeDispatch $hdSsIn -Arguments @('f-plain.ps1', 'f-plain.ps1') -SplitStreams
+Assert-Case -Name "hook-dispatch: 평문만 낸 묶음의 이벤트 이름은 입력값이다" -R @{ code = $r.code; out = "event=$([string](Get-HdCtx $r).hookEventName)" } -ExpectExit 0 -ExpectContains 'event=SessionStart'
+
 $hdKo = Join-Path $work 'hd-한글프로젝트'; New-Item -ItemType Directory $hdKo -Force | Out-Null
 $hdKoJson = New-WriteJson $hdKo (Join-Path $hdKo '소스파일.cs')
 $rSolo = Invoke-Hook 'guard-write.ps1' $hdKoJson -Process -SplitStreams
