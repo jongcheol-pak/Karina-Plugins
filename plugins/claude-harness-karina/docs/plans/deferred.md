@@ -10,7 +10,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 16 / 종결 120
+**▶ 현행 잔량(기계 대조 대상)**: 대기 15 / 종결 120
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -49,7 +49,6 @@
 
 ### 하니스 스킬 (plan · implement · 리뷰어 · 템플릿)
 
-- [2026-11-13] **화면 검증 서브에이전트 대기에 시한·진행 확인** — `implement` 의 화면 시나리오 실행(`implement/references/screen-scenarios.md`)이 서브에이전트에 시한을 주지 않고, 메인은 중간 진행을 확인하지 않은 채 알림만 기다린다. 시한 값은 화면 검증 소요 분포를 먼저 재서 정한다 (출처: v3.13.0 계획 후보 라운드 — 넘김 ② 새 절차 · 사용자 답 「보류」) (실해: 2026-11-12 Karina 체인 plan 7 — 메인이 38분 동안 시한·모니터 없이 대기 · 검증 에이전트 도구 호출 297회 · 앱 기동·정리 3회 넘게 반복)
 
 - [2026-11-07] **완료 리뷰 전사 요약 증분 생성** — `implement/references/final-review.md` 「절차」 는 `completion-reviewer` 를 부를 때마다(재호출 포함) `reflect/scripts/digest_transcript.py --audit` 로 세션 전사 전체를 다시 요약한다. 재호출 때 앞 요약 뒤 구간만 더하는 증분 생성을 검토한다(체인 run_6150c8ac plan 3 후보 11 — 사용자 답 보류) (실해: 2026-11-07 작업 속도 감사의 후보 라운드에서 리뷰 재호출 비용으로 제기 · 수치는 재지 않았다)
 - [2026-10-15] **chain-plan 후보 라운드에 「설계 결함」 종류가 없다** — `plan/references/interview.md` 「후보 라운드」는 코디네이터도 그 절을 따른다고 하나 `chain-plan/SKILL.md` 후보 라운드 줄·`references/measure.md` 반환 칸에 그 종류가 없다. 코디네이터가 물을지, 워커 몫(`relay-mode.md` 2-3)으로 두고 interview.md 에 예외를 적을지 정해 한쪽 문면을 고친다 (출처: v1.374.0 회차 후보 라운드 ④) (실해: 2026-10-15 prompt-audit 2회차가 interview.md 와 chain-plan 문면이 갈리는 것을 관측)
