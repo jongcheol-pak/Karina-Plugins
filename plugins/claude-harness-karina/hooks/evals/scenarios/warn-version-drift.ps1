@@ -177,9 +177,9 @@ try {
             $env:GIT_SSH_COMMAND = $vdSshPrev
             $env:GIT_SSH = $vdSshExePrev
             $env:KARINA_VD_REMOTE_TIMEOUT_MS = $vdLimitPrev
-            Get-VdStallSleeps | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+            Get-VdStallSleeps | ForEach-Object { Stop-Process -Id $(if ($null -ne $_.ProcessId) { $_.ProcessId } else { $_.Id }) -Force -ErrorAction SilentlyContinue }
         }
-        Assert-Case -Name "version-drift: 원격 조회 상한 — 멈춘 원격이어도 상한 안에 무출력으로 끝난다" -R @{ code = $r.code; out = "$($r.out)|fast=$($vdStallMs -ge 0 -and $vdStallMs -lt 6000)" } -ExpectExit 0 -ExpectContains '|fast=True' -ExpectNotContains '릴리즈 누락'
+        Assert-Case -Name "version-drift: 원격 조회 상한 — 멈춘 원격이어도 상한 안에 무출력으로 끝난다" -R @{ code = $r.code; out = "silent=$([string]::IsNullOrWhiteSpace($r.out))|fast=$($vdStallMs -ge 0 -and $vdStallMs -lt 6000)" } -ExpectExit 0 -ExpectContains 'silent=True|fast=True'
         Assert-Case -Name "version-drift: 상한 kill 뒤 원격 조회의 자식 프로세스가 남지 않는다" -R @{ code = 0; out = "started=$(Test-Path -LiteralPath $vdSshMark) left=$vdStallLeft" } -ExpectContains 'started=True left=0'
 
         # 8) ① 로컬 태그 없음 + 원격에도 없음 → 릴리즈 누락 발화 (구 케이스 5의 축을 이어받는다)
