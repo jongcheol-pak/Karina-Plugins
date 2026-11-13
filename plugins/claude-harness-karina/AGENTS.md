@@ -22,7 +22,7 @@
   ```
 - **Plan check**: `python evals/check-harness-consistency.py --plan` — 계획 단계 검사(`karina:plan` Step 6 의 `check-plan` 이 승인 전에 돌린다)
 - **Comment (보존)**: `.` · 경로: `skills/plan/scripts/check-plan.ps1 evals/check-harness-consistency.py evals/run-evals.py skills/llm-wiki/evals/check_consistency.py skills/chain-plan/scripts/run-verify.py skills/chain-plan/scripts/wait-worker.py skills/record-project-fact/scripts/relocate-agents.py skills/temp-cleanup/scripts/temp_cleanup.py skills/worktree-cleanup/scripts/worktree_cleanup.py`
-- **조건부 검증**: 변경 파일 패턴별 명령(합집합)과 `[면제 ⑤]` 대상은 `docs/verification-mapping.md` 「검증 매핑 (task 검증 선택)」 — 「줄바꿈 정합」 축은 모든 task. 골든 부분 실행 규칙은 `docs/harness-conventions.md` 「골든 부분 실행의 판정 자격」 절만 읽는다(`sed -n '/^## 골든 부분 실행의 판정 자격/,/^## /p' docs/harness-conventions.md`).
+- **조건부 검증**: 변경 파일 패턴별 명령(합집합)과 `[면제 ⑤]` 대상은 `docs/verification-mapping.md` 「검증 매핑 (task 검증 선택)」 — 「줄바꿈 정합」 축은 모든 task. 골든 부분 실행 규칙은 `docs/harness-conventions.md` 「골든 부분 실행의 판정 자격」 절만 읽는다(`awk '/^(```|~~~)/{g=!g} !g&&/^## /{if(f)exit; if(index($0,"## 골든 부분 실행의 판정 자격")==1)f=1} f' docs/harness-conventions.md` — 펜스 안 `## ` 를 세지 않고 다음 절 헤딩을 딸려 내지 않는다 · `skills/WIKI.md`「절 단위 읽기」).
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 보므로 재설치 후에만 반영된다.
 - **Gate 필수 경로**: `scripts/**` · `hooks/**` — 차단 hook·그 규칙·골든은 크기와 관계없이 push 전 검증자를 거친다(`skills/implement/references/local-gate.md`「경량 면제」).
 - **Release**: 버전 정본은 `plugin.json`(`README.md` 상단 `**버전**:` 은 파생) · 회차 끝 버전 커밋 → 로컬 게이트 → push → 발행 · 발행 여부는 마지막 `karina-v<버전>` 태그 이후 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`) 변경으로 판정 · **릴리즈 발행은 별도 승인** · ⚠ 태그는 원격에만 생겨 확인은 `gh release list`. 정본은 `docs/harness-conventions.md` 「Release (배포·릴리즈 발행)」.
@@ -47,7 +47,7 @@
 - **파일 크기**: 상한 표·초과 처방은 `skills/BUDGET.md`「예산 표」, 참조 깊이·목차 규칙은 `skills/BUDGET.md`「나눈 뒤에 지킬 것」이 정본. **처방은 묻지 않고 적용하고, 상한을 올리는 것은 처방이 아니다.**
 - **병행 세션의 커밋은 `git commit -- <경로…>` 다** — 순서는 `git commit -m "$(cat <<'MSG' … MSG)" -- <경로…>`(`-m` 을 `--` 뒤에 두면 경로로 읽혀 실패), 명령에 `2>&1`. 근거·주의는 `docs/harness-conventions.md` 「병행 세션의 커밋」.
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext, **차단은 `exit 2` 하나**(hook 넷) · 우회 변수 둘 · `guard-write` 게이트 2종의 정규식 공유 — hook 수정 전 `docs/harness-conventions.md` 「자격증명 취급」·「`guard-write`의 PLAN-EXEMPT 면제 경로」와 `scripts/rules/write-gate-rationale.md` 를 읽는다.
-- **⚠ `llm-wiki` 의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md` 의 vault 예외를 함께 확인**한다(검사기 밖 — 정본 `docs/harness-conventions.md` 「llm-wiki ↔ 글로벌 지침 결합」).
+- **⚠ `llm-wiki` 의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md` 「절대 금지」 의 「기록의 해석 기준」 조항(스킬 자기 큐·지식베이스 기록 면제)과 함께 확인**한다(검사기 밖 — 정본 `docs/harness-conventions.md` 「llm-wiki ↔ 글로벌 지침 결합」).
 - **SKILL 문서**: 형식은 `skills/AUTHORING.md`, **설계 원칙은 `skills/DESIGN.md` 가 정본**이다.
 - **위키 연동**: `skills/WIKI.md` 가 정본.
 - **README.md 갱신 규약**: changelog 기재 **금지**(현재 기능 설명만) · 버전 표기는 상단 1곳. 정본은 `docs/harness-conventions.md` 「README.md 갱신 규약」.
