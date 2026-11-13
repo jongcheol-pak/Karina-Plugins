@@ -27,6 +27,7 @@ if ([string]::IsNullOrWhiteSpace($targetPath)) { exit 0 }
 # [이벤트 로깅] 차단(plan 없음)·경고(G4/H3) 이벤트를 오탐 리뷰 데이터로 적재 — 게이트 판정은 무변경,
 #   실패 전면 격리(try/catch + Get-Command 가드).
 try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
+try { . (Join-Path $PSScriptRoot 'plan-round.ps1') } catch {}
 function Write-RpEvent {
     param([string]$Decision, [string]$Rule)
     try {
@@ -301,8 +302,9 @@ if ($foundIn) {
             $taskText = [regex]::Replace($planText, $planFenceRx, '')
             $incomplete = [regex]::Matches($taskText, $planBulletRx + '\[[ /~-]\]').Count
             $done = [regex]::Matches($taskText, $planBulletRx + '\[[xX]\]').Count
+            $roundActive = [bool]((Get-Command Test-ActivePlanRound -ErrorAction SilentlyContinue) -and (Test-ActivePlanRound $planFile))
             if ($incomplete -eq 0 -and $done -ge 1) {
-                if (Test-WarnOnce -Kind 'G4') {
+                if (-not $roundActive -and (Test-WarnOnce -Kind 'G4')) {
                     $warnMsg = "[HARNESS] 이 plan은 완료된 것으로 보입니다 (task 체크박스 ${done}개 전부 [x], 미완료 0). " +
                                "이번 코드 변경이 이 완료된 plan의 범위 내 후속 작업(리뷰 지적 수정·마무리·문서 갱신 등)이면 새 plan 없이 그대로 진행하세요. " +
                                "완료된 plan과 무관한 '새 작업'일 때만 karina:plan으로 plan을 갱신하세요 — plan 존재 게이트는 plan 존재만 보고 통과시키므로, 완료된 옛 plan으로 무관한 변경이 새는 것을 막지 못합니다. (이 경고는 세션당 1회)"

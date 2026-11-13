@@ -54,6 +54,21 @@ $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $emptyplan (Join-Path $emptypl
 Assert-Case -Name "require-plan: 빈 plan(체크박스 0) 경고+비차단 (H3)" -R $r -ExpectExit 0 -ExpectContains '빈/플레이스홀더'
 $r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $starplan (Join-Path $starplan 'A.cs'))
 Assert-Case -Name "require-plan: 별표('*') 완료 plan은 G4(완료)로 판정, H3(빈) 오탐 아님" -R $r -ExpectExit 0 -ExpectContains '완료된 것으로'
+$g4Today = (Get-Date).ToString('yyyy-MM-dd'); $g4Yesterday = (Get-Date).AddDays(-1).ToString('yyyy-MM-dd')
+$g4Active = Join-Path $work 'proj-g4-active'; New-Item -ItemType Directory $g4Active -Force | Out-Null
+"# plan`n`n> 승인: $g4Yesterday · Y`n> 완료: $g4Today 01:00 · 소요 1시간`n`n- [x] **T1-1** done" | Set-Content (Join-Path $g4Active 'plan.md')
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $g4Active (Join-Path $g4Active 'A.cs'))
+Assert-Case -Name "require-plan: 오늘 완료 기록된 승인 회차는 G4(완료 plan) 경고를 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '완료된 것으로'
+$g4Old = Join-Path $work 'proj-g4-old'; New-Item -ItemType Directory $g4Old -Force | Out-Null
+"# plan`n`n> 승인: $g4Yesterday · Y`n> 완료: $g4Yesterday 23:00 · 소요 1시간`n`n- [x] **T1-1** done" | Set-Content (Join-Path $g4Old 'plan.md')
+$r = Invoke-Hook 'guard-write.ps1' (New-WriteJson $g4Old (Join-Path $g4Old 'A.cs'))
+Assert-Case -Name "require-plan: 어제 끝난 회차는 G4(완료 plan) 경고를 낸다" -R $r -ExpectExit 0 -ExpectContains '완료된 것으로'
+$g4NoLib = Join-Path $work 'gw-nolib'; New-Item -ItemType Directory $g4NoLib -Force | Out-Null
+Copy-Item (Join-Path $scriptsDir '*') $g4NoLib -Recurse -Force -Exclude 'plan-round.ps1'
+$g4ActiveB = Join-Path $work 'proj-g4-active-b'; New-Item -ItemType Directory $g4ActiveB -Force | Out-Null
+"# plan`n`n> 승인: $g4Yesterday · Y`n> 완료: $g4Today 01:00 · 소요 1시간`n`n- [x] **T1-1** done" | Set-Content (Join-Path $g4ActiveB 'plan.md')
+$r = Invoke-Hook (Join-Path $g4NoLib 'guard-write.ps1') (New-WriteJson $g4ActiveB (Join-Path $g4ActiveB 'A.cs')) -Process
+Assert-Case -Name "require-plan: 회차 헬퍼(plan-round.ps1)가 없으면 G4 경고를 그대로 낸다" -R $r -ExpectExit 0 -ExpectContains '완료된 것으로'
 # [회차 44 T5] 계수가 $planBulletRx 를 공유하는지 — 번호 불릿 미완료 plan 은 H3 도 G4 도 아니고(델타 음성), `+` 불릿 전부 완료 plan 은 G4 다.
 #   작성 게이트($planTaskRx)는 두 불릿을 이미 받았으므로 계수만 좁으면 위 두 오판이 난다.
 $numplan = Join-Path $work 'proj-num';  New-Item -ItemType Directory $numplan -Force | Out-Null
