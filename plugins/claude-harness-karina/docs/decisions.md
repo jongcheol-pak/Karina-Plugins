@@ -2,6 +2,8 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-13] pstack 누락 셋 — 기각: v3.13.3 이 trace-forensics 좁히기·형식 검증 미등록 찾기·린트 억제 사유를 들이면서 나머지를 기각했다(사용자 답 「권장」). ① reflect convergence(여러 리뷰어의 같은 지적) — karina reflect 는 리뷰어가 하나라 성립하지 않는다. ② live lane 없이는 clean 이 아니다 — `Verify (앱 조작)` 없는 레포의 push 가 전부 막혀, NOTES·HUMAN-VERIFY 로 둔다. ③ correct 예외의 만료일·사람 승인 — 혼자 쓰는 하니스라 지킬 주체가 없어 사유만 들였다.
+
 - [2026-11-13] 「변경이 틀리게 만든 문서 줄」 FAIL 사유 보류 — 사유 해소: 아래 2026-10-29 보류의 선행 조건(검증자 정의의 글자 수 감량)이 v3.13.3 에서 풀렸다 — `agents/gate-verifier.md` 의 조건부 단락을 `implement/references/gate-verifier-conditional.md` 로 옮겨 5982 → 5193자. 판정 변경 자체는 여전히 보류다(사용자 답 「별도 회차」) — 막는 사유가 바뀌어 push 가 어떻게 밀리는지 정해야 한다.
 
 - [2026-11-13] pstack 기각 이력 정정 — 번복(부분): 아카이브 2026-10-20 의 pstack 항목 다섯이 원문(`ae5650f`)과 다르게 서술됐다. 아카이브는 고치지 않고 여기서 바로잡는다(사용자 답).
