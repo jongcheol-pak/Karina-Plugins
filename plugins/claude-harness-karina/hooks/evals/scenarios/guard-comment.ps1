@@ -262,11 +262,11 @@ Assert-Case -Name "guard-comment: NotebookEdit 는 검사하지 않는다" -R $r
 if ($gitOk) {
 $gb = Join-Path $gc 'basegit'; New-Item -ItemType Directory -Force -Path (Join-Path $gb 'src') | Out-Null
 $gbFile = Join-Path $gb 'src/e.rs'
-[System.IO.File]::WriteAllText($gbFile, "/// 화면에 보이는 줄 범위를 센다.`nfn rows() {}`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($gbFile, "/// 화면에 보이는 줄 범위를 센다.`nfn rows() {}`n`n/// 보이는 칸 수를 센다.`n/// 접힌 칸은 빼지 않는다.`nfn span() {}`n", [System.Text.UTF8Encoding]::new($false))
 git -C $gb init -q; git -C $gb config user.email t@t; git -C $gb config user.name t; git -C $gb config core.autocrlf false
 git -C $gb add .; git -C $gb commit -qm base
 $gbBase = (git -C $gb rev-parse --short HEAD).Trim()
-[System.IO.File]::WriteAllText($gbFile, "fn rows() {}`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($gbFile, "fn rows() {}`n`nfn span() {}`n", [System.Text.UTF8Encoding]::new($false))
 git -C $gb commit -qam drop
 $gbPlan = Join-Path $gb 'plan.md'
 function Set-GbPlan([string]$Head) { [System.IO.File]::WriteAllText($gbPlan, "# plan`n`n## Goal`n`n$Head`n", [System.Text.UTF8Encoding]::new($false)) }
@@ -284,6 +284,8 @@ $r = Invoke-GcEditAt $gbFile 'fn rows() {}' "/// 보이는 줄의 범위를 센�
 Assert-Case -Name "guard-comment: plan BASE 때 같은 항목에 있던 doc 을 줄 수 그대로 문구만 고쳐 되살리는 Edit 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 $r = Invoke-GcEditAt $gbFile 'fn rows() {}' "/// 보이는 줄의 범위를 센다.`n/// 스크롤 위치는 보지 않는다.`nfn rows() {}"
 Assert-Case -Name "guard-comment: plan BASE 때보다 줄이 많은 문구 수정 복원은 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcEditAt $gbFile 'fn span() {}' "/// 보이는 칸의 수를 센다.`n/// 접힌 칸은 세지 않는다.`nfn span() {}"
+Assert-Case -Name "guard-comment: plan BASE 때 2줄이던 doc 을 2줄로 문구만 고쳐 되살리는 Edit 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 $r = Invoke-GcEditAt $gbFile 'fn rows() {}' "/// 보이는 줄의 범위를 센다.`nfn rows(n: usize) {}"
 Assert-Case -Name "guard-comment: 시그니처를 바꾼 항목(다음 코드 줄이 BASE 와 다름)의 문구 수정 복원은 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 Set-GbPlan '> BASE: <승인 시점 HEAD 의 SHA>'

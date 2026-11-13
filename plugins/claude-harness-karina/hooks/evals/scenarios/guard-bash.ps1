@@ -658,9 +658,9 @@ $r = Invoke-CcCommit $d 'git commit -m x' 'cc-move'
 Assert-Case -Name "commit-comments: 주석을 파일 사이로 옮긴 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 $d = New-CcRepo
-Set-CcFile $d 'q.rs' "/// 화면에 보이는 줄 범위를 센다.`nfn rows() {}`n"; git -C $d add q.rs; git -C $d commit -qm doc
+Set-CcFile $d 'q.rs' "/// 화면에 보이는 줄 범위를 센다.`nfn rows() {}`n`n/// 보이는 칸 수를 센다.`n/// 접힌 칸은 빼지 않는다.`nfn span() {}`n"; git -C $d add q.rs; git -C $d commit -qm doc
 $ccBase = (git -C $d rev-parse --short HEAD).Trim()
-Set-CcFile $d 'q.rs' "fn rows() {}`n"; git -C $d commit -qam drop
+Set-CcFile $d 'q.rs' "fn rows() {}`n`nfn span() {}`n"; git -C $d commit -qam drop
 Set-CcFile $d 'plan.md' "# plan`n`n## Goal`n`n> BASE: $ccBase`n"
 Set-CcFile $d 'q.rs' "/// 화면에 보이는 줄 범위를 센다.`nfn rows() {}`n"; git -C $d add q.rs
 $r = Invoke-CcCommit $d 'git commit -m x -- q.rs' 'cc-base-restore'
@@ -674,6 +674,9 @@ Assert-Case -Name "commit-comments: plan BASE 때 같은 항목의 doc 을 문�
 Set-CcFile $d 'q.rs' "/// 보이는 줄의 범위를 센다.`n/// 스크롤 위치는 보지 않는다.`nfn rows() {}`n"; git -C $d add q.rs
 $r = Invoke-CcCommit $d 'git commit -m x -- q.rs' 'cc-base-reword-grow'
 Assert-Case -Name "commit-comments: plan BASE 때보다 줄이 많은 문구 수정 복원 커밋은 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+Set-CcFile $d 'q.rs' "fn rows() {}`n`n/// 보이는 칸의 수를 센다.`n/// 접힌 칸은 세지 않는다.`nfn span() {}`n"; git -C $d add q.rs
+$r = Invoke-CcCommit $d 'git commit -m x -- q.rs' 'cc-base-reword-two'
+Assert-Case -Name "commit-comments: plan BASE 때 2줄이던 doc 을 2줄로 문구만 고쳐 되살린 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 $d = New-CcRepo
 Set-CcFile $d 'a.cs' "// 기존 설명`n// 남의 staged 설명`nint a;`n"; git -C $d add a.cs
