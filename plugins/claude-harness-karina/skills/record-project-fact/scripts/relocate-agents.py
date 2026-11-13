@@ -55,11 +55,11 @@
      유실이 통과한다). 하나라도 실패하면 ⓕ 사본으로 원복하고 보고한다. **쓰기 도중 실패도
      같은 경로로 되돌린다** — 이관처만 써진 채 죽으면 같은 내용이 두 곳에 남는다.
   ※ 소급 정리(이미 있는 AGENTS.md를 새 경계로 맞추는 것)는 이 스크립트 소관이 아니다 —
-     정본은 SKILL.md 「소급 정리」다(삭제를 포함해 승인이 필요하고 산출물이 plan.md다).
+     정본은 references/retrofit.md 「소급 정리」다(삭제를 포함해 승인이 필요하고 산출물이 plan.md다).
   ⓗ 이관 불가 — 잔류 절만으로 이미 상한을 넘거나 옮길 절이 하나도 없으면 **아무것도 옮기지
      않고** 그 사실을 보고한다. 마커로 남기지 않는다(잔류 크기는 이후 기록으로 바뀐다).
      새 경계에서 잔류 8종은 AGENTS.md 절의 사실상 전부라 이것은 예외가 아니라 **정상 귀결**이다 —
-     그래서 막다른 메시지로 끝내지 않고 **소급 정리 경로**를 함께 지목한다(SKILL.md 「소급 정리」).
+     그래서 막다른 메시지로 끝내지 않고 **소급 정리 경로**를 함께 지목한다(references/retrofit.md 「소급 정리」).
 
 사용: python relocate-agents.py <레포 루트> [--dry-run]
 사용: python relocate-agents.py --verify-only <원문> <결과...> [--declared <선언파일>]
@@ -92,7 +92,7 @@ except Exception:
 # 그래서 막다른 메시지로 끝내지 않고 실제 해소 경로를 지목한다 — 절을 옮기는 대신 절 **안**을 줄인다.
 MIGRATE_HINT = (
     "[이관 불가] %s\n"
-    "    절 단위로는 해소할 수 없다 — `record-project-fact` SKILL.md 「소급 정리」로 간다"
+    "    절 단위로는 해소할 수 없다 — `record-project-fact` references/retrofit.md 「소급 정리」로 간다"
     "(잔류 절 안의 근거 서술을 레포 상세 문서·위키로 보내고 명령·값만 남긴다).")
 
 KEEP_SECTIONS = ("위키", "Build & Test", "Conventions", "데이터 접근",
@@ -415,7 +415,7 @@ def verify_reachability(orig_path, dest_paths, declared_path=None):
 
     **소급 정리가 쓰는 진입점이다.** 그 경로는 이 스크립트가 수행하지 않고 `plan.md`로 넘어가
     `karina:implement`가 실행하므로, 검증 단계에서 부를 수 있는 **명령**이 없으면 도달 대조가
-    「걸어야 한다」는 서술로만 남는다(SKILL.md 「소급 정리」 절차 4가 이 명령을 acceptance로 넣게 한다).
+    「걸어야 한다」는 서술로만 남는다(references/retrofit.md 「소급 정리」 절차 4가 이 명령을 acceptance로 넣게 한다).
 
     `relocate()` 경로와 달리 **삭제가 정상**이므로 `--declared`로 「의도적으로 지운 줄」을 받는다 —
     그 목록이 없으면 소급 정리는 원리상 언제나 실패한다(지운 만큼 미도달로 잡힌다).
