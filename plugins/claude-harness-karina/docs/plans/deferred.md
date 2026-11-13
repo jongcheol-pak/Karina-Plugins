@@ -35,7 +35,7 @@
 
 ### hook · 안전망 (차단·경고·골든 러너)
 
-- [2026-11-13] **block-python-newcode 가 기존 eval 실행을 막는 오탐** — `python skills/chain-plan/evals/run_verify_evals.py`·`skills/evals/test_exit_code.py`·`trigger_eval.py --filter <id>` 실행이 「python 스크립트로 소스 파일에 새 코드·주석을 씁니다」 로 exit 2 다. 픽스처 문자열을 임시 폴더에 쓰는 기존 스크립트라 새 코드 쓰기가 아니다 — 오탐 수정 + 골든 RED/GREEN (코디네이터 판정) (실해: 2026-11-13 체인 run_7c21af27 plan 2 의 T7·T10 검증 3건이 미검증으로 남음)
+- [2026-11-13] **block-python-newcode 가 기존 eval 실행을 막는 오탐** — `python skills/chain-plan/evals/run_verify_evals.py`·`skills/evals/test_exit_code.py`·`trigger_eval.py --filter <id>` 실행이 「python 스크립트로 소스 파일에 새 코드·주석을 씁니다」 로 exit 2 다. 픽스처 문자열을 임시 폴더에 쓰는 기존 스크립트라 새 코드 쓰기가 아니다 — 오탐 수정 + 골든 RED/GREEN — 넘김 사유: 안전 임계 hook(guard-bash) 판정 코드라 이 회차 범위 밖(plan 1 hook 판정 코드)이고 골든 실증 회차가 필요하다 (코디네이터 판정) (실해: 2026-11-13 체인 run_7c21af27 plan 2 의 T7·T10 검증 3건이 미검증으로 남음)
 
 - [2026-11-07] **세션 시작 버전 점검의 원격 조회 캐시** — `scripts/warn-version-drift.ps1` 가 세션 시작마다 `git show origin/main:…/plugin.json` 과 `git ls-remote --tags origin karina-v<버전>` 을 돌린다. 원격 조회 결과를 짧은 TTL 로 캐시하는 안을 검토한다(체인 run_6150c8ac plan 3 후보 10 — 사용자 답 보류) (실해: 2026-11-07 작업 속도 감사의 후보 라운드에서 세션 시작 지연으로 제기 · 수치는 재지 않았다)
 
@@ -67,6 +67,6 @@
 
 ### eval · 측정
 
-- [2026-11-13] **참조 깊이 검사 축** — 스킬 문서가 참조 문서를 거쳐 다시 참조 문서를 가리키는 깊이(`skills/BUDGET.md`「나눈 뒤에 지킬 것」)를 `check-harness-consistency.py` 축으로 잰다 — 지금은 문면 규칙뿐이다 (체인 run_7c21af27 plan 2 보류 — 사용자 지시) (실해: 2026-11-13 plan/SKILL → rare-paths「승인 답 갈래」 → interview「승인 제시」 깊이 2 를 하니스 검토가 사람 눈으로 찾음 — plan 2 T8 이 고침)
-- [2026-11-13] **rationale 차단 경로 수 대조 검사** — `scripts/rules/bash-guard-rationale.md` §2 의 「`Block = $true` 경로는 N」·검사 수 서술을 `hooks/evals/check-block-coverage.py` 출력과 대조하는 검사 (체인 run_7c21af27 plan 2 보류 — 사용자 지시) (실해: 2026-11-13 그 문단이 「다섯·10검사 중 4종」 으로 낡아 실제 8경로·12검사와 어긋남 — plan 2 T2 가 고침)
+- [2026-11-13] **참조 깊이 검사 축** — 스킬 문서가 참조 문서를 거쳐 다시 참조 문서를 가리키는 깊이(`skills/BUDGET.md`「나눈 뒤에 지킬 것」)를 `check-harness-consistency.py` 축으로 잰다 — 지금은 문면 규칙뿐이다 — 넘김 사유 ②(새 검사 축) (체인 run_7c21af27 plan 2 보류 — 사용자 지시) (실해: 2026-11-13 plan/SKILL → rare-paths「승인 답 갈래」 → interview「승인 제시」 깊이 2 를 하니스 검토가 사람 눈으로 찾음 — plan 2 T8 이 고침)
+- [2026-11-13] **rationale 차단 경로 수 대조 검사** — `scripts/rules/bash-guard-rationale.md` §2 의 「`Block = $true` 경로는 N」·검사 수 서술을 `hooks/evals/check-block-coverage.py` 출력과 대조하는 검사 — 넘김 사유 ②(새 검사) (체인 run_7c21af27 plan 2 보류 — 사용자 지시) (실해: 2026-11-13 그 문단이 「다섯·10검사 중 4종」 으로 낡아 실제 8경로·12검사와 어긋남 — plan 2 T2 가 고침)
 
