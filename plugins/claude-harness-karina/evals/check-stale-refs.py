@@ -41,6 +41,8 @@ from collections import Counter
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]   # 하니스 루트
+sys.path.insert(0, str(ROOT / 'scripts'))
+import timed_run
 RUNTIME_DIRS = ('.claude-plugin', 'agents', 'evals', 'hooks', 'scripts', 'skills')
 REQUIRED_DIRS = ('skills', 'docs')
 
@@ -48,8 +50,8 @@ REQUIRED_DIRS = ('skills', 'docs')
 def _git_root():
     # 하니스 루트가 git 루트 아래 폴더일 수 있다 — `.github` 를 찾을 자리다. git 이 없으면 하니스 루트.
     try:
-        out = subprocess.run(['git', '-C', str(ROOT), 'rev-parse', '--show-toplevel'],
-                             capture_output=True, text=True, timeout=20, stdin=subprocess.DEVNULL)
+        out = timed_run.run(['git', '-C', str(ROOT), 'rev-parse', '--show-toplevel'],
+                            capture_output=True, text=True, timeout=20, stdin=subprocess.DEVNULL)
     except (OSError, subprocess.TimeoutExpired):
         return ROOT
     top = out.stdout.strip()
@@ -334,13 +336,10 @@ def build_path_index():
     디렉터리를 따로 넣지 않는 것은 매치가 접미형이라 `docs/plans` 가 그 아래 파일 경로에
     이미 걸리기 때문이다(빈 디렉터리는 git 이 애초에 추적하지 않는다).
     """
-    # `timeout` + `stdin` 차단: 상한이 없으면 매달린 git 이 이 검사기를 무한 대기시키고, 그때
-    #   강제로 끊으면 git 이 고아로 남는다. `stdin` 을 닫는 것은 자격증명 프롬프트가 입력을
-    #   기다리며 상한까지 버티는 것을 막기 위해서다. 초과는 아래 실패와 같은 비판정 경로로 보낸다.
     try:
-        out = subprocess.run(['git', '-C', str(ROOT), 'ls-files'],
-                             capture_output=True, text=True, encoding='utf-8', errors='replace',
-                             timeout=30, stdin=subprocess.DEVNULL)
+        out = timed_run.run(['git', '-C', str(ROOT), 'ls-files'],
+                            capture_output=True, text=True, encoding='utf-8', errors='replace',
+                            timeout=30, stdin=subprocess.DEVNULL)
     except subprocess.TimeoutExpired:
         return None
     if out.returncode != 0:

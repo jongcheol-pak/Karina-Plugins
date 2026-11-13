@@ -26,6 +26,8 @@ import sys
 
 # 하니스 루트 = 이 파일의 1단계 상위 (evals/ → 하니스 루트 · 모노레포 plugins/claude-harness-karina/)
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import timed_run
 
 CONV_MD = os.path.join(ROOT, "docs", "harness-conventions.md")
 MAPPING_MD = os.path.join(ROOT, "docs", "verification-mapping.md")
@@ -382,9 +384,9 @@ def check_deleted_section_pointers():
     """
     def git(*args):
         try:
-            r = subprocess.run(["git", "-c", "core.quotePath=false", "-C", ROOT] + list(args),
-                               capture_output=True, encoding="utf-8", errors="replace",
-                               timeout=30, stdin=subprocess.DEVNULL)
+            r = timed_run.run(["git", "-c", "core.quotePath=false", "-C", ROOT] + list(args),
+                              capture_output=True, encoding="utf-8", errors="replace",
+                              timeout=30, stdin=subprocess.DEVNULL)
         except (OSError, subprocess.TimeoutExpired):
             return None
         return r.stdout if r.returncode == 0 else None
@@ -875,13 +877,10 @@ def _line_ending_targets():
     처음 들어오는 외부 프로세스 의존이라 실패 경로를 명시한다.
     """
     try:
-        # `timeout` + `stdin` 차단: 상한이 없으면 매달린 git 이 이 검사기를 무한 대기시키고,
-        #   그때 강제로 끊으면 git 이 고아로 남는다. `stdin` 을 닫는 것은 자격증명 프롬프트가
-        #   입력을 기다리며 상한까지 버티는 것을 막기 위해서다.
-        out = subprocess.run(["git", "-C", ROOT, "ls-files", "-z",
-                              "--cached", "--others", "--exclude-standard"],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             timeout=30, stdin=subprocess.DEVNULL)
+        out = timed_run.run(["git", "-C", ROOT, "ls-files", "-z",
+                             "--cached", "--others", "--exclude-standard"],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            timeout=30, stdin=subprocess.DEVNULL)
     except OSError as e:
         die("[ANCHOR FAIL] git 을 실행할 수 없어 줄바꿈 축이 대상을 열거하지 못했다 — %s" % e)
     except subprocess.TimeoutExpired:
