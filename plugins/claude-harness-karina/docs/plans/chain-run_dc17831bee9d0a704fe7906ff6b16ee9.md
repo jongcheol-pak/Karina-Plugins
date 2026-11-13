@@ -11,7 +11,7 @@
   - `skills/no-comments/scripts/comment-scope.ps1` — git 대기 상한 `KARINA_SCOPE_GIT_TIMEOUT_MS`(기본 60000) · 넘기면 exit 2.
   - `evals/check-harness-consistency.py` 축 ⑧ — autocrlf=true·index `i/lf` 파일은 bare CR 만 · `evals/run-evals.py` 케이스 필드 `git_config`(기본 `core.autocrlf false`).
   - `AGENTS.md` 「줄바꿈」 — CRLF 요구 완화(bare CR 만 금지).
-- 내린 결정과 근거: plan 1 의 `docs/decisions.md` 2026-11-14 「hook 속도·오탐·소음 수정」 줄 · 커밋 본문.
+- 내린 결정과 근거: plan 1 이 `docs/decisions.md` 에 쓴 2026-11-14 hook 속도·오탐·소음 수정 줄 · 커밋 본문.
 - 뒤 계획이 지킬 제약:
   - 스킬 문서가 require-task-checkbox 를 서술하는 자리(`skills/implement/SKILL.md`·`skills/implement/references/final-review.md`「절차」 등)는 이제 하위 ID 완료 커밋이 그 줄만 보고, 차단 안내가 「Edit 로 [x] → 별도 호출로 commit」 이다 — plan 2 가 그 문면을 맞출 때 이 동작을 기준으로 한다.
   - 회차 진행 중 판정(`Test-ActivePlanRound`)은 plan.md 의 `> 승인:`·`> 완료:` 줄 서식에 기댄다 — 그 서식을 바꾸면 이 함수와 골든(`hooks/evals/scenarios/guard-bash.ps1`·`guard-write.ps1`·`post-write-checks.ps1` 의 plan-round 케이스)을 함께 고친다.
