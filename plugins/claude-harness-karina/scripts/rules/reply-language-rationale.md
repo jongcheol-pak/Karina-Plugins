@@ -14,7 +14,7 @@
 
 - **`UserPromptSubmit` 매 턴 주입은 폐지했다(2026-11-04)** — 사용자 턴은 그 직전에 사용자 설정 `language` 와 글로벌 지침이 이미 같은 규칙을 싣는 자리라 겹쳤고, 그 자리에 다른 hook 이 없어 pwsh 기동 시간(실측 0.5~0.7초)이 턴마다 더해졌다. 쏠림이 생기는 것은 영문 스킬 본문이 들어오는 자리다.
 - **`PreToolUse` · `tool_name` = `Skill`** — 스킬 본문이 들어오는 자리다. `karina:implement` 루프처럼 사용자 입력 없이 도구 호출이 이어지는 동안에도 스킬 발동 때마다 본문 옆에 실린다.
-- **모든 스킬에 주입한다** — 영문으로 쓰인 다른 플러그인 스킬도 쏠림의 원인이다.
+- **Skill 도구를 거쳐 발동하는 스킬에는 karina 밖 스킬에도 주입한다** — 영문으로 쓰인 다른 플러그인 스킬도 쏠림의 원인이다. 사용자가 `/스킬` 을 직접 치면 PreToolUse 를 거치지 않아(`loop-continue-rationale.md` 「`UserPromptExpansion`」 의 공식 문서 인용) 주입이 없다 — 그 턴은 사용자 설정 `language` 와 글로벌 지침이 같은 규칙을 싣는 사용자 턴이라 `UserPromptExpansion` 주입을 두지 않는다.
 - **셸·쓰기 도구의 PreToolUse 를 세어 20회째마다 같은 줄을 다시 싣는다(2026-11-07 도입 · 2026-11-12 PostToolUse 에서 이전)** — 스킬 발동 주입만으로는 `karina:implement` 루프 안에서 도구 호출이 수백 번 쌓인 뒤 진행 안내가 영어로 샜다(전사 실측 — 마지막 주입 뒤 약 850·2100줄에서 영문 상태 메모 2줄). 주기는 사용자가 골랐다(20 · 10 · 40 중).
   - **받는 도구는 `Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit`** — 셸·쓰기 PreToolUse 차단 묶음의 권고 구간(`advisory:` 뒤)에 들어간다(`hook-dispatch-rationale.md` §7 — 같은 프로세스라 pwsh 기동이 늘지 않고, 차단되면 돌지 않으며 실패해도 도구 호출을 막지 않는다). hook 이 없는 Read·Grep·Glob 까지 세면 호출마다 pwsh 기동(단독 실측 0.46초)이 더해진다.
   - **PostToolUse 에서 옮긴 이유(2026-11-12)** — 셸 PostToolUse 블록을 지워 셸 호출당 pwsh 를 2 → 1 로 줄였고, 쓰기 PostToolUse(`post-write-checks`)는 async 가 되어 거기서 세면 카운트가 백그라운드에서 돌아 주입이 한 턴 밀린다. 이제 PostToolUse 는 받지 않는다.
