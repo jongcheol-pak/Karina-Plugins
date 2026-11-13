@@ -55,6 +55,12 @@ Assert-Case -Name "comment-scope: Comment (보존) 선언에 맞는 주석은 �
 Assert-Case -Name "comment-scope: 회차의 린트 억제 주석은 목록에 든다" -R $sl -ExpectExit 0 -ExpectContains "src/b.ts:1`t// eslint-disable-next-line no-console"
 Assert-Case -Name "comment-scope: 주석 대상이 아닌 문서 파일은 보지 않는다" -R $sl -ExpectExit 0 -ExpectNotContains 'doc.md'
 Assert-Case -Name "comment-scope: 미커밋·미추적 변경의 주석은 보지 않는다" -R $sl -ExpectExit 0 -ExpectNotContains '미커밋 주석'
+$csSavedLimit = $env:KARINA_SCOPE_GIT_TIMEOUT_MS
+try {
+    $env:KARINA_SCOPE_GIT_TIMEOUT_MS = '1'
+    $r = Invoke-Cs @('-Base', $srBase, '-Out', (Join-Path $csRoot 'scope-timeout.txt'), '-Repo', $sr)
+} finally { $env:KARINA_SCOPE_GIT_TIMEOUT_MS = $csSavedLimit }
+Assert-Case -Name "comment-scope: git 이 상한 안에 답하지 않으면 정상 결과 대신 실패 종료한다" -R $r -ExpectExit 2 -ExpectContains '시간 상한'
 Assert-Case -Name "comment-scope: 미추적 파일의 주석도 보지 않는다" -R $sl -ExpectExit 0 -ExpectNotContains '미추적 주석'
 Assert-Case -Name "comment-scope: 끝 줄에 대상·회차 전·감사·보존 수를 낸다" -R $sl -ExpectExit 0 -ExpectContains 'RESULT: 대상 3 · 회차 전 4 · 감사 1 · 보존 1'
 
@@ -132,6 +138,8 @@ Assert-Case -Name "comment-scope: + 줄이 있는 hunk 는 건드리지 않는�
 Assert-Case -Name "comment-scope: 정리 전부터 미커밋이던 파일은 건너뛴다" -R @{ code = 0; out = [System.IO.File]::ReadAllText((Join-Path $cr 'u.rs')) } -ExpectExit 0 -ExpectNotContains '사용자 전'
 $crDiff = (git -C $cr diff -U0 HEAD -- a.rs w.cs) -join "`n"
 Assert-Case -Name "comment-scope: 되살린 뒤 diff 에 회차 전 주석 삭제가 남지 않는다" -R @{ code = 0; out = $crDiff } -ExpectExit 0 -ExpectNotContains '전 표식'
+$null = Invoke-Cs @('-CheckDeletions', '-Base', $crBase, '-Before', $crSnap, '-Repo', $cr, '-Restore')
+Assert-Case -Name "comment-scope: -Restore 를 다시 돌려도 결과가 같다(중간 실패 뒤 재실행 안전)" -R @{ code = 0; out = ('same=' + ([System.IO.File]::ReadAllText((Join-Path $cr 'a.rs')) -eq $crA)) } -ExpectExit 0 -ExpectContains 'same=True'
 $r = Invoke-Cs @('-CheckDeletions', '-Base', $crBase, '-Before', $crSnap, '-Repo', $cr)
 Assert-Case -Name "comment-scope: 회차 주석 삭제만 남으면 exit 0" -R $r -ExpectExit 0 -ExpectContains 'RESULT: 되살림 0 · 회차 삭제 2 · 건너뜀 1'
 
