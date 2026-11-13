@@ -38,7 +38,7 @@
 
 ### 호출
 
-- **`gate-verifier` 를 부른다 — 입력은 head full SHA · 기본 브랜치와 base SHA · worktree 둘의 경로 · `AGENTS.md` 경로 · 빌드 캐시(없으면 「없음」) · 본문 파일 경로 · 직전 판정(재호출이면 아래 출력 파일 — 아래 「FAIL 처리」) · 단계(중간 단계면 위 「경량 면제」 의 줄, 아니면 생략)이다** — 정의는 `../../../agents/gate-verifier.md`「입력」.
+- **`gate-verifier` 를 부른다 — 입력은 head full SHA · 기본 브랜치와 base SHA · worktree 둘의 경로 · `AGENTS.md` 경로 · 빌드 캐시(없으면 「없음」) · 본문 파일 경로 · 직전 판정(재호출이면 아래 출력 파일 — 아래 「FAIL 처리」) · 단계(중간 단계면 위 「경량 면제」 의 줄, 아니면 생략) · 플러그인 루트(`../../READONLY-SUBAGENTS.md`「플러그인 루트」)이다** — 정의는 `../../../agents/gate-verifier.md`「입력」.
 - **호출 전후 작업 트리 확인은 `../../READONLY-SUBAGENTS.md`「호출 전후 확인」 대로이고, 호출 전에 화면 가리기를 걷고 돌아온 뒤(판정 없이 끝난 경우 포함) 다시 덮는다(`../../SCREEN-COVER.md`「언제 끄고 켜는가」 · 보유자 `local-gate:<head worktree 경로>`)** — 검증자가 head·base 에서 앱을 조작한다.
 - **판정 줄 없이 끝나면(오류·중단) worktree 를 지우고 push 를 보류한 채 「판정 없음」 으로 보고한다** — 판정이 없으면 push 근거가 없다.
 - **판정이 나면(PASS·PASS+NOTES·FAIL 모두) `gate-verifier` 출력 전문을 스크래치 파일(`local-gate-<head sha7>.txt`)로 Write 한다 — 판정 기록의 `출력 <파일>` 칸이 이 파일이다(체인 끝도 같다)** — 재사용으로 push 하는 회차의 화면 확인 블록이 `스크린샷:` 칸 경로를 거기서 읽는다.

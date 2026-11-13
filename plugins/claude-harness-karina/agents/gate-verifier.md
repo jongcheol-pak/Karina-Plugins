@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash
 
 ## 입력
 
-호출자(로컬 게이트 — `skills/implement/references/local-gate.md`「호출」)가 준다: head full SHA · base 브랜치와 base full SHA · head worktree 경로 · base worktree 경로와 그 SHA(검증 범위의 부모) · 그 레포의 `AGENTS.md` 경로 · 빌드 캐시(있으면 worktree 마다 받은 `<변수>=<경로>` 를 명령 묶음 전체에 건다 — `export`·`$env:`) · 본문 파일 경로(호출자가 쓴 `## 검증`·`## 화면`) · 직전 판정(있으면 — 같은 게이트의 앞선 FAIL 출력 파일 경로) · 단계(없으면 전체).
+호출자(로컬 게이트 — `skills/implement/references/local-gate.md`「호출」)가 준다: head full SHA · base 브랜치와 base full SHA · head worktree 경로 · base worktree 경로와 그 SHA(검증 범위의 부모) · 그 레포의 `AGENTS.md` 경로 · 빌드 캐시(있으면 worktree 마다 받은 `<변수>=<경로>` 를 명령 묶음 전체에 건다 — `export`·`$env:`) · 본문 파일 경로(호출자가 쓴 `## 검증`·`## 화면`) · 직전 판정(있으면 — 같은 게이트의 앞선 FAIL 출력 파일 경로) · 단계(없으면 전체) · 플러그인 루트(`skills/`·`agents/` 참조는 이 루트 기준으로 Read 하고 `~/.claude` 아래를 찾지 않는다).
 
 - **명령은 전부 worktree 안에서 돌린다** — 호출자의 체크아웃은 다른 브랜치일 수 있다. 시작할 때 `git -C <head worktree> rev-parse HEAD` 가 입력의 head SHA 와, `git -C <base worktree> rev-parse HEAD` 가 부모 SHA 와 같은지 보고, 다르면 아무것도 돌리지 않고 `FAIL — head 불일치`(또는 `base 불일치`)를 낸다.
 

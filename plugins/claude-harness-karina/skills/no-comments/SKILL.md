@@ -21,7 +21,7 @@ disable-model-invocation: true
    - **판정 대상이 아닌 주석(문서 파일의 HTML 주석 등)은 `code-style.md`「주석」 이 정한다.**
    - diff 는 스크래치 파일에 저장해 리뷰어에게 경로로 넘긴다. **범위가 비면 「정리할 범위 없음」을 보고하고 끝낸다.**
 2. **기준선을 남긴다** — 그 레포 `AGENTS.md` 의 빌드·테스트를 편집 전에 한 번 돌려 실패 목록을 적어 둔다. 명령이 없으면 8번이 「미검증」이다. 기준선 없이 편집하면 원래 있던 실패가 이 스킬 탓으로 잡혀 맞는 편집까지 되돌리게 된다.
-3. **`comment-reviewer` 를 이름으로 1회 부른다 — 호출 전후 작업 트리 확인은 `../READONLY-SUBAGENTS.md`「호출 전후 확인」 대로다** — 입력은 범위 종류 · 파일 목록 또는 diff 파일 경로 · 레포 루트 · `code-style.md` 의 절대 경로(이 SKILL.md 폴더 기준 `../implement/references/code-style.md`)다.
+3. **`comment-reviewer` 를 이름으로 1회 부른다 — 호출 전후 작업 트리 확인은 `../READONLY-SUBAGENTS.md`「호출 전후 확인」 대로다** — 입력은 범위 종류 · 파일 목록 또는 diff 파일 경로 · 레포 루트 · `code-style.md` 의 절대 경로(이 SKILL.md 폴더 기준 `../implement/references/code-style.md`) · 플러그인 루트(`../READONLY-SUBAGENTS.md`「플러그인 루트」)다.
 4. **판정을 검수한다 — 리뷰어의 새 시각을 따르고, 거부는 아래 증거가 있을 때만 한다** — 원문 *"Defer to Comment Sicko's fresh perspective."* 다. 주석을 쓴 세션이 검수에서 삭제를 뒤집으면 쓰지 않은 쪽에 판정을 맡긴 이유가 사라진다.
    - **거부한다**: 범위 밖 행(근거가 `hunk 밖 doc 대조` 인 `유지` 행은 hunk 밖이어도 범위 밖이 아니다) · 근거가 사실과 다른 `MUST KILL`·`불일치:` · 의도적으로 남긴 코드를 결함으로 지목한 행 · 예외(`code-style.md`「주석」)에 드는데 `삭제` 로 판정한 행.
    - **삭제 거부는 정확한 예외 하나와 범위 안 증거가 있을 때만이다** — 증거는 넷 중 하나다: `code-style.md`「주석」 의 예외·보존 대상 항목 이름과 그 주석이 그 조건을 채우는 이유 · 규약 파일 `경로:줄` · 반증 명령 출력 · (자동 모드) 승인된 `plan.md` `## Goal` 성공 기준의 측정 방법이 그 주석 리터럴을 잰다는 `plan.md:줄`. 다른 주석에 기댄 근거는 받지 않는다(`code-style.md`「주석」 의 관례·일관성 줄) — 그 다른 주석의 `유지` 도 같은 기준으로 다시 잰다. 원문 *"Restore deletions only with exact exceptions and scoped proof."* 다.

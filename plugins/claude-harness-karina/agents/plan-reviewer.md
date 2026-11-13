@@ -11,7 +11,7 @@ tools: Read, Grep, Glob
 
 ## 입력
 
-호출자가 준다: `plan.md` 경로 · 대상 레포 경로 · `AGENTS.md` 경로.
+호출자가 준다: `plan.md` 경로 · 대상 레포 경로 · `AGENTS.md` 경로 · 플러그인 루트(`skills/`·`agents/` 참조는 이 루트 기준으로 Read 하고 `~/.claude` 아래를 찾지 않는다).
 
 중계 모드(`skills/plan/references/relay-mode.md`)에서는 아래 줄이 더 온다 — 그 줄이 있으면 해당 검사를 이렇게 읽는다.
 

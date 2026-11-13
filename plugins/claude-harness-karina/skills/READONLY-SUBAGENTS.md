@@ -1,6 +1,6 @@
 # 읽기 전용 서브에이전트 사후 확인
 
-> 일곱 호출부가 가리키는 공용 규칙이다 — `implement/references/final-review.md`(completion-reviewer) · `no-comments/SKILL.md`(comment-reviewer) · `implement/references/local-gate.md`(gate-verifier — 로컬 게이트) · `plan/references/measure-delegation.md`(Explore) · `chain-plan/references/measure.md`(Explore) · `maintain-verification-skill/SKILL.md`(Explore 웨이브) · `karina-systematic-debugging/references/investigation-log.md`(Explore — 아티팩트 파싱). 읽기 전용이라고 정한 서브에이전트가 `Bash` 를 가지면 셸로 파일을 바꿀 수 있어, 그 서브에이전트를 부르기 전후에 이 절을 그대로 거친다.
+> 일곱 호출부가 가리키는 공용 규칙이다 — `implement/references/final-review.md`(completion-reviewer) · `no-comments/SKILL.md`(comment-reviewer) · `implement/references/local-gate.md`(gate-verifier — 로컬 게이트) · `plan/references/measure-delegation.md`(Explore) · `chain-plan/references/measure.md`(Explore) · `maintain-verification-skill/SKILL.md`(Explore 웨이브) · `karina-systematic-debugging/references/investigation-log.md`(Explore — 아티팩트 파싱). 읽기 전용이라고 정한 서브에이전트가 `Bash` 를 가지면 셸로 파일을 바꿀 수 있어, 그 서브에이전트를 부르기 전후에 이 절을 그대로 거친다. 「플러그인 루트」 절은 karina 리뷰어 넷을 부르는 네 곳(위 셋과 `plan/SKILL.md` Step 6)이 가리킨다.
 
 ## 호출 전후 확인
 
@@ -25,3 +25,7 @@
   - `karina:no-comments`·`karina:maintain-verification-skill` — 그 스킬의 「보고」 에 `작업 트리 변경 — <경로>` 한 줄. `karina:no-comments` 자동 모드는 위 `karina:implement` 줄과 같다.
   - `karina:karina-systematic-debugging`(아티팩트 파싱) — 진행 중 `plan.md` 가 있으면 위 `karina:implement` 줄과 같고, 없으면 최종 보고에 `작업 트리 변경 — <경로>` 한 줄.
 - **완료 보고의 「남은 이슈」 에는 싣지 않는다** — 그 줄은 판정 마커(`[등재]`·`[다음 회차]`)를 단 항목만 싣는 자리다(`implement/references/report-format.md`「「남은 이슈」의 판정」).
+
+## 플러그인 루트
+
+- **karina 리뷰어 넷(`gate-verifier`·`completion-reviewer`·`comment-reviewer`·`plan-reviewer`)을 부를 때 입력에 `플러그인 루트: <절대 경로>` 줄을 넣는다 — 작업 디렉터리의 `.claude-plugin/plugin.json` `name` 이 `karina` 이면 그 하니스 루트, 아니면 부르는 SKILL.md 폴더의 두 단계 위(설치본)다(`reflect/SKILL.md` 1번과 같은 기준)** — 정의 파일은 `skills/…` 상대 참조만 가져, 루트 없이 부르면 리뷰어가 `~/.claude` 아래를 뒤져 세션이 쓰지 않는 판의 문서를 읽었다(2026-11-13 Karina 세션 — 3.15.1 세션에서 3.15.2·marketplaces 사본을 읽고 `find /` 까지 시도). 하니스 레포 회차에 설치본을 넘기면 이번 회차가 고치기 전 문서를 정본으로 읽는다(`AGENTS.md` 「규약 조회는 레포의 하니스 루트를 읽는다」).
