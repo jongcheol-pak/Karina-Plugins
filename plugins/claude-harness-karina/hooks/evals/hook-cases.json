@@ -2209,6 +2209,70 @@
     },
     {
       "hook": "block-destructive.ps1",
+      "name": "설치본 원본 이동: mv 로 설치본 hook 스크립트를 옮기면 차단 — 삭제와 결과가 같다",
+      "command": "mv ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts/guard-bash.ps1 /tmp/guard-bash.ps1",
+      "expect_exit": 2,
+      "expect_contains": "설치본 hook 스크립트 삭제·이동"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "설치본 원본 이동: Move-Item 으로 설치본 판정 데이터를 옮기면 차단 (PowerShell 도구)",
+      "command": "Move-Item C:\\Users\\x\\.claude\\plugins\\cache\\karina-plugins\\karina\\1.265.0\\scripts\\rules\\destructive.json C:\\tmp\\d.json",
+      "expect_exit": 2,
+      "expect_contains": "설치본 판정 데이터 삭제·이동",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "설치본 원본 이동: Rename-Item 으로 설치본 hooks.json 이름을 바꾸면 차단 (PowerShell 도구)",
+      "command": "Rename-Item ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/hooks/hooks.json -NewName hooks.bak",
+      "expect_exit": 2,
+      "expect_contains": "설치본 hook 등록표 삭제·이동",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "설치본 원본 이동: mv 로 설치본 scripts 디렉터리를 옮기면 차단",
+      "command": "mv ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts /tmp/scripts-bak",
+      "expect_exit": 2,
+      "expect_contains": "설치본 scripts 디렉터리 삭제·이동"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "worktree 오탐 수정: .claude/worktrees/<이름> 아래 프로젝트 스크립트 삭제는 통과",
+      "command": "rm D:/repo/.claude/worktrees/feat/scripts/build.ps1",
+      "expect_exit": 0
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "worktree 오탐 수정: .claude/worktrees/<이름> 아래 프로젝트 scripts 디렉터리 삭제는 통과 (PowerShell 도구)",
+      "command": "Remove-Item -Recurse -Force D:/repo/.claude/worktrees/feat/scripts",
+      "expect_exit": 0,
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "worktree 경계 밖 유지: worktree 안에 다시 놓인 설치본 hook 스크립트 삭제는 차단",
+      "command": "rm D:/repo/.claude/worktrees/feat/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts/guard-bash.ps1",
+      "expect_exit": 2,
+      "expect_contains": "설치본 hook 스크립트 삭제"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "설치본 원본 이동 델타 음성: 설치본을 원본으로 cp 하는 것은 통과",
+      "command": "cp ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts/guard-bash.ps1 /tmp/guard-bash.ps1",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "설치본 원본 이동 델타 음성: 레포 원본 스크립트 mv 는 통과",
+      "command": "mv plugins/claude-harness-karina/scripts/old.ps1 plugins/claude-harness-karina/scripts/new.ps1",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "block-destructive.ps1",
       "name": "[회차 53 완료 리뷰] hooks 디렉터리 삭제 차단 — 등록표가 사라진다",
       "command": "rm -rf ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/hooks",
       "expect_exit": 2,
