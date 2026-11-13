@@ -7,6 +7,8 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 
 승인 가능한 `plan.md` 하나를 만든다. 이 스킬은 **코드를 고치지 않는다** — 산출물은 `plan.md` 와, Step 1이 없을 때 만드는 `AGENTS.md`뿐이다.
 
+- **`references/` 문서는 머리 목차를 보고 이번 Step 에 필요한 절만 읽는다 — `grep -n '^## '` 로 줄 번호를 얻어 Read 의 offset·limit 으로 읽는다** — 통째 `cat` 은 출력이 파일로 빠져 같은 내용을 Read 로 다시 읽게 된다(43KB 출력 뒤 23KB 재독 실측).
+
 - **Skill args 첫 줄 또는 이 세션 첫 프롬프트의 `할 일:` 다음 줄이 `[chain-plan 중계]` 이면 Step 1 전에 `references/relay-mode.md`「중계 모드」를 Read 한다** — `karina:chain-plan` 워커의 예외(인계 파일 Read·실측 요지 재측정·`ask`)가 Step 1 부터 걸린다. 드문 조건(아키텍처 선언 부재·ask 만료·회차·이어받기·실행 시점 승인·사후 완료)은 `references/relay-edge-cases.md` 다.
 - **Skill args 첫 줄이 `[plan-draft 초안]` 또는 `[plan-draft 진행]` 이면 Step 1 전에 `references/draft-mode.md` 를 Read 한다** — `karina:plan-draft` 가 넘긴 것이고, 초안 모드는 `plan.md` 대신 초안 파일을 쓰며 진행 모드는 승인 직후 초안을 지운다.
 
@@ -55,7 +57,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 - **요청에 버그 항목이 섞였으면 그 항목은 근본 원인을 Log 행으로 받친 뒤에만 task 로 만든다** — `karina:karina-systematic-debugging` 을 Skill 도구로 부르지 않고 그 Phase 1~3 절차만 **읽기 전용 수단**(grep·기존 테스트 실행·로그 열람)으로 따르며 「통과 후 갈림」·Phase 4 로 가지 않는다. 프로브 편집이 필요하거나 받치지 못하면 「원인 규명 + 수정」 task 로 세운다(Files 는 원인 후보 범위). 원인을 모르는 수정이 task 로 박히면 그 스킬의 「원인 규명이 먼저」를 건너뛴다.
 - **변경 대상의 호출자·구현체·직렬화·테스트·심볼 밖 소비자(설정·기능 플래그·DB 열·같은 데이터를 읽는 다른 언어·프로세스)를 task의 Files에 모두 적는다 — 재는 케이스가 없으면 어디에 만들지도 적는다. 호출하는 라이브러리는 소스를 읽고 고정 버전·로컬 패치 유무를 Investigation Log 행으로 적는다** — 빠진 파일은 구현 중에 발견되고 그때는 다른 task가 그 위에 쌓인다. 심볼 검색은 이름을 공유하지 않는 소비자를 내지 못한다(면제 5범주는 `references/plan-template.md`「작업 단계」). Files 는 고치는 파일 목록이라 버전을 적을 자리가 아니고, 라이브러리 동작 가정은 그 소스로 받쳐야 한다.
 - **삭제 대상은 복구 경로를 실측해 대상마다 출력을 Log 에 남기고, 없는 것만(회피 설계가 없을 때) `## 승인 필요 항목` 에 올린다** — 여기서 빠진 복구 불가 삭제는 실행 중에 루프를 세우고, 커밋된 내용의 삭제는 올리지 않아야 plan 승인 한 번으로 덮인다(판정 명령 정본 `references/deletion-recoverability.md`「삭제 복구 경로 판정」).
-- **실측이 끝나면 plan 을 쓰기 전에 후보 라운드를 연다 — 함께 고칠 곳·대장 겹침·설계 결함·추가 기능을 한 목록으로 묻고, 절차는 `references/interview.md`「후보 라운드」 다** — 인터뷰는 실측보다 먼저 끝나 요청한 것만 물었다. 그대로 쓰면 연관 수정이 완료 보고에서야 나온다. 중계 모드와 경량 계획(`references/interview.md`「경량 계획」 — 실측이 네 조건을 채운 작은 변경)은 열지 않는다.
+- **실측이 끝나면 plan 을 쓰기 전에 후보 라운드를 연다 — 함께 고칠 곳·대장 겹침·설계 결함·추가 기능을 한 목록으로 묻고, 절차는 `references/interview.md`「후보 라운드」 다** — 인터뷰는 실측보다 먼저 끝나 요청한 것만 물었다. 그대로 쓰면 연관 수정이 완료 보고에서야 나온다. 중계 모드와 경량 계획(`references/light-plan.md`「경량 계획」 — 실측이 네 조건을 채운 작은 변경)은 열지 않는다.
 
 ## Step 4. 작업 분해
 
@@ -81,7 +83,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 ## Step 6. 리뷰와 승인
 
 - **리뷰어를 부르기 전에 `"<skill>/scripts/check-plan.ps1" "<plan.md>"` 를 work-clock 과 같은 호출형(`../implement/references/report-format.md`「소요 기록」)으로 돌려 exit 0 을 본다 — 고치기·오탐·미해소·미실행 처리와 리뷰어 전달물은 `references/review-rounds.md`「check-plan 처리」 다** — 문자열로 갈리는 판정은 결정적 검사가 먼저 걸러야 리뷰 라운드가 판단에만 쓰인다. 코드 뜻은 스크립트 머리 주석이 정본이다.
-- **`karina:plan-reviewer` 서브에이전트를 호출한다(최소 1회) — 경량 계획이면 부르지 않는다(`references/interview.md`「경량 계획」)** — 전달: `plan.md` 경로, 대상 레포 경로, `AGENTS.md` 경로.
+- **`karina:plan-reviewer` 서브에이전트를 호출한다(최소 1회) — 경량 계획이면 부르지 않는다(`references/light-plan.md`「경량 계획」)** — 전달: `plan.md` 경로, 대상 레포 경로, `AGENTS.md` 경로.
 - **리뷰어는 read-only 라 고치는 것은 이 세션이다.** **호출되지 않는 환경이면 그 사실을 plan 에 적고 승인 단계로 간다** — 리뷰 부재를 통과로 적지 않는다.
 - **`plan-reviewer` 지적은 BLOCKER·MAJOR 를 고치고, 다시 부를지·3라운드 상한·기각·MINOR 는 `references/review-rounds.md`「리뷰 라운드」 대로이며, 남은 지적은 승인 제시 `남은 리뷰 지적:` 에 싣는다** — 지적이 남은 계획을 숨기고 승인받으면 그 결함이 구현 중에 드러난다.
 - **승인이 필요한 항목(파괴적·외부 비가역 작업, 복구 경로 없는 삭제)이 `## 승인 필요 항목`에 있는지 확인한다** — `plan-reviewer` 는 그 항목에 회피 설계가 있는지를 보고, 누락은 복구 경로 없는 삭제만 센다. 그 밖의 누락은 여기서 잡지 않으면 실행 시점에 루프가 멈춘다.
