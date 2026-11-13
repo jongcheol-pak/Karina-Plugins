@@ -523,7 +523,7 @@ if (-not $script:GitCommitRx) {
 }
 
 # 커밋 시점 검사는 별도 파일이고 로드 실패를 침묵시키지 않는다 — 근거는 `rules/stale-docs-rationale.md` §2
-$loadCommitLibs = $cmdText -match 'commit'
+$loadCommitLibs = $cmdText -match $script:GitCommitRx
 foreach ($lib in @(@('guard-commit-secrets.ps1', 'Invoke-WarnCommitSecrets'),
                    @('guard-stale-docs.ps1', 'Invoke-WarnStaleDocs'),
                    @('guard-task-audit.ps1', 'Invoke-WarnTaskAudit'),
