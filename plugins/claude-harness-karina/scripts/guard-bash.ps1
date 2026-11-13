@@ -419,7 +419,8 @@ function Invoke-RequireTaskCheckbox {
 
     # 미완료 마커 매칭·코드 펜스 제외 — 근거는 `rules/bash-guard-rationale.md` §15
     $planFenceRx = '(?ms)^ {0,3}([`~])\1{2,}[^\r\n]*\r?$.*?(?:^ {0,3}\1{3}[^\r\n]*\r?$|\z)'
-    $unchecked = [regex]::Match([regex]::Replace($planText, $planFenceRx, ''), "(?m)^\s*[-*]\s*\[[ /~-]\]\s*\**T$taskNum(-\d+)?\b")
+    $planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
+    $unchecked = [regex]::Match([regex]::Replace($planText, $planFenceRx, ''), $planBulletRx + '\[[ /~-]\]\s*\**T' + $taskNum + '(-\d+)?\b')
     if (-not $unchecked.Success) { return New-HookResult }
 
     $foundLine = $unchecked.Value.Trim()

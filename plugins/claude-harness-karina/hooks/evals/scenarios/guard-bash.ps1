@@ -200,6 +200,18 @@ $rtcDash = Join-Path $work 'rtc-dash'; New-Item -ItemType Directory $rtcDash -Fo
 "# plan`n### T3. 검색`n- [x] **T3-1** 검색 요약`n- [-] **T3-2** 인덱스" | Set-Content (Join-Path $rtcDash 'plan.md')
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcDash '기능: T3 — 검색 요약')
 Assert-Case -Name "rtc: [-] 하위 항목이 남은 T3 커밋 차단" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$rtcNum = Join-Path $work 'rtc-num'; New-Item -ItemType Directory $rtcNum -Force | Out-Null
+"# plan`n### T3. 검색`n1. [x] **T3-1** 검색 요약`n2. [ ] **T3-2** 인덱스" | Set-Content (Join-Path $rtcNum 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcNum '기능: T3 — 검색 요약')
+Assert-Case -Name "rtc: 번호 불릿 1. [ ] 하위 항목이 남은 T3 커밋 차단" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$rtcPlus = Join-Path $work 'rtc-plus'; New-Item -ItemType Directory $rtcPlus -Force | Out-Null
+"# plan`n### T3. 검색`n+ [ ] T3 검색 요약" | Set-Content (Join-Path $rtcPlus 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcPlus '기능: T3 — 검색 요약')
+Assert-Case -Name "rtc: + 불릿 미완 T3 커밋 차단" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+$rtcNumOk = Join-Path $work 'rtc-num-ok'; New-Item -ItemType Directory $rtcNumOk -Force | Out-Null
+"# plan`n### T3. 검색`n1. [x] T3 검색 요약`n2. T3 메모 — 체크박스 없는 번호 줄" | Set-Content (Join-Path $rtcNumOk 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcNumOk '기능: T3 — 검색 요약')
+Assert-Case -Name "rtc: 번호 불릿 [x] 와 체크박스 없는 번호 줄뿐인 T3 커밋 통과(무출력) (델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 $rtcFence = Join-Path $work 'rtc-fence'; New-Item -ItemType Directory $rtcFence -Force | Out-Null
 "# plan`n### T3. 검색`n- [x] **T3-1** 검색 요약`n$($rtcBt)markdown`n- [ ] **T3-9** 서식 예시`n$rtcBt" | Set-Content (Join-Path $rtcFence 'plan.md')
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcFence '기능: T3 — 검색 요약')

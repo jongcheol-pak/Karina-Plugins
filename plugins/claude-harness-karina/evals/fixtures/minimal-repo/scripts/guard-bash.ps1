@@ -1,4 +1,5 @@
 ﻿$planFenceRx = '(?ms)^ {0,3}([`~])\1{2,}[^\r\n]*\r?$.*?(?:^ {0,3}\1{3}[^\r\n]*\r?$|\z)'
+$planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
 
 function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
     $parts = New-Object System.Collections.Generic.List[string]
