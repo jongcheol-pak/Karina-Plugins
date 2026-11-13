@@ -544,6 +544,14 @@
       "why": "rec-pos-9 의 짝 음성 — 기능의 보류·기각 결정은 사실·함정이 아니라 레포 docs/decisions.md(REPO-DECISIONS.md 「쓰기」의 수동 요청) 몫이다. 「기록해」 어휘만으로 이 스킬이 발동하면 안 된다"
     },
     {
+      "id": "rec-neg-5",
+      "skill": "karina:record-project-fact",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "나는 답변을 짧게 요점만 받는 게 좋아. 기억해둬",
+      "why": "「기억해둬」 양성 케이스(테스트 명령·작업 규약)의 짝 음성 — 응답 스타일 같은 개인 선호는 레포 사실·함정이 아니라 AGENTS-BOUNDARY 저장처 표의 어느 레포 저장처에도 들지 않는다. 「기억해둬」 어휘만으로 이 스킬이 발동하면 안 된다"
+    },
+    {
       "id": "rec-pos-10",
       "skill": "karina:record-project-fact",
       "expect": "trigger",
