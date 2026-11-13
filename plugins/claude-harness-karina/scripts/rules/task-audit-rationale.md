@@ -28,6 +28,8 @@ CR(-F 파일의 CRLF 줄 끝)을 걷고 공백을 정규화한 메시지에서 �
 
 증가 정규식이 없거나 컴파일되지 않는 줄은 침묵하지 않고 「규칙을 읽지 못함」으로 알린다. 침묵하면 줄을 망가뜨리는 것이 검사를 끄는 수단이 된다(`stale-docs-rationale.md` 의 fail-closed 와 같은 취지).
 
+**git 이 상한 안에 답하지 않으면 감사 누락 검사를 건너뛰고 한 줄로 알린다** — 경고 검사라 막지 않는다. 커밋 경로 git 의 상한·캐시는 `bash-guard-rationale.md` §18 이 정본이다.
+
 ## §6 감사 줄 파서는 `comment-lines.ps1` 에 있다
 
 **`Test (감사)` 줄 파서(`$script:TaskAuditLineRx`·`Get-TaskAuditRules`)는 `comment-lines.ps1` 에 두고 이 검사가 그것을 쓴다.** 새 주석 게이트(`comment-gate-rationale.md` §3 doc 묶음 ①)도 같은 파서로 감사 대상 doc 을 통과시키는데, 종전에는 파서가 이 파일에 있어 `comment-lines` 가 이 파일을 dot-source 했다. 그래서 이 파일이 없거나 깨지면 감사 규칙이 빈 채로 남아, 감사가 요구하는 doc 주석까지 막혔다 — 비안전 차단의 판정 실패가 막는 쪽으로 떨어지는 fail-closed 였다(2026-11-13 하니스 검토 — 오탐 수정). 차단 게이트가 쓰는 파서를 차단 게이트 쪽 라이브러리에 두면 그 의존이 사라진다.

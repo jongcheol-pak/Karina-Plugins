@@ -8,13 +8,15 @@
 
 function Get-DiffHeadAdded {
     param([string[]]$PathArgs = @())
-    $out = if ($PathArgs.Count) { @(& git diff HEAD --unified=0 -- $PathArgs 2>$null) }
-           else { @(& git diff HEAD --unified=0 2>$null) }
-    if ($LASTEXITCODE -ne 0) {
+    $gitArgs = @('-c', 'core.quotepath=off', 'diff', '--unified=0', '--no-color', '--no-ext-diff', 'HEAD')
+    if ($PathArgs.Count) { $gitArgs += @('--') + $PathArgs }
+    $run = Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs $gitArgs
+    $out = @($run.Lines)
+    if ($run.Code -ne 0) {
         $scope = if ($PathArgs.Count) { ($PathArgs -join ' ') } else { '전체' }
         # ⚠ `Write-Warning`을 쓰지 않는다 — 근거는 `rules/commit-secrets-rationale.md` §3
         if (-not $script:diffHeadFailNotified) {
-            [Console]::Error.WriteLine("[warn-commit-secrets] git diff HEAD 실패(exit $LASTEXITCODE) — 보완 스캔 미수행: $scope. " +
+            [Console]::Error.WriteLine("[warn-commit-secrets] git diff HEAD 실패(exit $($run.Code)) — 보완 스캔 미수행: $scope. " +
                                        'HEAD 없는 초기 저장소면 정상이며 --cached 경로가 그대로 검사한다.')
             $script:diffHeadFailNotified = $true
         }
@@ -45,10 +47,11 @@ function Invoke-WarnCommitSecrets {
             Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR
         }
 
-        $gitDir = & git rev-parse --git-dir 2>$null
-        if (-not $gitDir -or $LASTEXITCODE -ne 0) { return New-HookResult }
+        $gitDirRun = Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('rev-parse', '--git-dir')
+        if ($gitDirRun.TimedOut -and $env:CLAUDE_HARNESS_ALLOW_SECRET -ne '1') { return New-HookResult -Block $true -Stderr (Get-CommitGitTimeoutLines '커밋 시크릿 검사') }
+        if ($gitDirRun.Code -ne 0 -or -not @($gitDirRun.Lines).Count) { return New-HookResult }
 
-        $addedLines = @(@(& git diff --cached --unified=0 2>$null) |
+        $addedLines = @(@((Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('-c', 'core.quotepath=off', 'diff', '--unified=0', '--no-color', '--no-ext-diff', '--cached')).Lines) |
             Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
 
         # -a/-am/--all이면 추적 파일 자동 스테이징분 — 근거는 `rules/commit-secrets-rationale.md` §5
@@ -82,7 +85,7 @@ function Invoke-WarnCommitSecrets {
             $capNotified = $false
             if ($addArgs -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
                 # 전체 스테이징: untracked + 추적 파일 수정분
-                $addTargets = @(& git ls-files --others --exclude-standard 2>$null)
+                $addTargets = @((Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('ls-files', '--others', '--exclude-standard')).Lines)
                 $addedLines += Get-DiffHeadAdded
             } else {
                 # 경로 나열: 플래그를 뺀 인자만 대상으로 본다. — 근거는 `rules/commit-secrets-rationale.md` §9
@@ -99,7 +102,7 @@ function Invoke-WarnCommitSecrets {
                     }
                     if (Test-Path -LiteralPath $rt -PathType Leaf) {
                         # 추적 파일은 diff HEAD 추가 라인만 스캔 — 이력에 이미 있는 내용 — 근거는 `rules/commit-secrets-rationale.md` §10
-                        if (@(& git ls-files -- $rt 2>$null).Count -gt 0) {
+                        if (@((Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('ls-files', '--', $rt)).Lines).Count -gt 0) {
                             $addedLines += Get-DiffHeadAdded -PathArgs @($rt)
                             $scanned++
                         } else {
@@ -108,7 +111,7 @@ function Invoke-WarnCommitSecrets {
                         continue
                     }
                     # 디렉터리·글롭·미존재 경로 → git이 해석하게 맡긴다
-                    $addTargets += @(& git ls-files --others --exclude-standard -- $rt 2>$null)
+                    $addTargets += @((Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('ls-files', '--others', '--exclude-standard', '--', $rt)).Lines)
                     $addedLines += Get-DiffHeadAdded -PathArgs @($rt)
                     $scanned++
                 }
@@ -143,8 +146,9 @@ function Invoke-WarnCommitSecrets {
 
         $envFiles = New-Object System.Collections.Generic.List[string]
         # 커밋 대상 이름은 HEAD 대비 변경이다(`-a`·`-- <경로>` 포함) — 근거는 `rules/commit-secrets-rationale.md` §18
-        $staged = & git diff HEAD --name-only 2>$null
-        if ($LASTEXITCODE -ne 0) { $staged = & git diff --cached --name-only 2>$null }
+        $stagedRun = Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('-c', 'core.quotepath=off', 'diff', '--name-only', 'HEAD')
+        if ($stagedRun.Code -ne 0) { $stagedRun = Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('-c', 'core.quotepath=off', 'diff', '--name-only', '--cached') }
+        $staged = @($stagedRun.Lines)
         if ($staged) {
             foreach ($n in $staged) {
                 if ([string]::IsNullOrWhiteSpace($n)) { continue }
@@ -152,6 +156,10 @@ function Invoke-WarnCommitSecrets {
                 # .env.example / .env.sample 은 템플릿이라 제외한다 — guard-write 가 같은 두 이름을 plan 없이 허용하는 것과 판정을 맞춘다(회차 44).
                 if ($base -match '^\.env(\..*)?$' -and $base -notmatch '^\.env\.(example|sample)$') { $envFiles.Add($n) }
             }
+        }
+
+        if ((Test-CommitGitTimedOut 'warn-commit-secrets') -and $env:CLAUDE_HARNESS_ALLOW_SECRET -ne '1') {
+            return New-HookResult -Block $true -Stderr (Get-CommitGitTimeoutLines '커밋 시크릿 검사')
         }
 
         # `-and -not $capHit` — 캡에 걸렸으면 **검출 0건이어도 여기서 빠져나가면 안 된다** — 근거는 `rules/commit-secrets-rationale.md` §12

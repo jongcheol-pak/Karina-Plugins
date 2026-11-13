@@ -62,9 +62,11 @@ function Get-StagedPaths {
     param([string]$RepoRoot)
     # `--relative` — 경로를 하니스 루트 기준으로 받는다(모노레포에서 git 루트 기준이면 축 표의 `^docs/` 가 어긋난다).
     # 커밋 대상은 HEAD 대비 변경이다 — `-a`·`-- <경로>` 는 스테이징을 거치지 않는다 — 근거는 `rules/stale-docs-rationale.md` §6
-    $out = @(& git -C $RepoRoot diff HEAD --name-only --relative 2>$null)
-    if ($LASTEXITCODE -ne 0) { $out = @(& git -C $RepoRoot diff --cached --name-only --relative 2>$null) }
-    if ($LASTEXITCODE -ne 0) { return $null }   # 판정 불가와 「0건」을 가른다
+    $run = Invoke-CommitGit -Check 'warn-stale-docs' -Dir $RepoRoot -GitArgs @('-c', 'core.quotepath=off', 'diff', '--name-only', '--relative', 'HEAD')
+    if ($run.Code -ne 0 -and -not $run.TimedOut) { $run = Invoke-CommitGit -Check 'warn-stale-docs' -Dir $RepoRoot -GitArgs @('-c', 'core.quotepath=off', 'diff', '--name-only', '--relative', '--cached') }
+    if ($run.TimedOut) { [Console]::Error.WriteLine("[warn-stale-docs] git 이 시간 상한($(Get-CommitGitLimitMs)ms) 안에 답하지 않아 낡음 고지를 건너뜁니다.") }
+    if ($run.Code -ne 0) { return $null }   # 판정 불가와 「0건」을 가른다
+    $out = @($run.Lines)
     # ⚠ `,` 를 빼면 **빈 배열이 `$null` 로 무너져** 「스테이징 0건」이 「판정 불가」로 뒤집힌다 —
     #   PowerShell 이 반환값의 빈 컬렉션을 풀어 버리기 때문이고, 위 `$null` 판정과 충돌한다.
     #   델타 음성 케이스(낡음 없음 무출력)가 이것을 잡았다.

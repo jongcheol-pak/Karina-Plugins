@@ -7,9 +7,9 @@ $script:CommitCommentFileMax = 200
 $script:CommitCommentLineMax = 20000
 
 function Get-CommitCommentDiff([string[]]$GitArgs) {
-    $out = @(& git -c core.quotepath=off diff --unified=0 --no-color @GitArgs 2>$null)
-    if ($LASTEXITCODE -ne 0) { return $null }
-    return $out
+    $run = Invoke-CommitGit -Check 'block-commit-comments' -GitArgs (@('-c', 'core.quotepath=off', 'diff', '--unified=0', '--no-color', '--no-ext-diff') + $GitArgs)
+    if ($run.Code -ne 0) { return $null }
+    return @($run.Lines)
 }
 
 function New-CommitCommentEntry([string]$Source) {
@@ -91,21 +91,21 @@ function Add-CommitCommentPreAdd($Files, [string]$PreText) {
         $argsText = $m.Groups['args'].Value.Trim()
         if ($argsText -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
             $d = Get-CommitCommentDiff @('HEAD'); if ($null -ne $d) { Add-CommitCommentDiff $Files $d 'worktree' }
-            foreach ($u in @(& git -c core.quotepath=off ls-files --others --exclude-standard --full-name 2>$null)) { Add-CommitCommentNewFile $Files $u }
+            foreach ($u in @((Invoke-CommitGit -Check 'block-commit-comments' -GitArgs @('-c', 'core.quotepath=off', 'ls-files', '--others', '--exclude-standard', '--full-name')).Lines)) { Add-CommitCommentNewFile $Files $u }
             continue
         }
         foreach ($t in @($argsText -split '\s+' | Where-Object { $_ -and -not $_.StartsWith('-') } | ForEach-Object { $_.Trim('"', "'") })) {
-            if (@(& git ls-files -- $t 2>$null).Count -gt 0) {
+            if (@((Invoke-CommitGit -Check 'block-commit-comments' -GitArgs @('ls-files', '--', $t)).Lines).Count -gt 0) {
                 $d = Get-CommitCommentDiff @('HEAD', '--', $t); if ($null -ne $d) { Add-CommitCommentDiff $Files $d 'worktree' }
             } else {
-                foreach ($u in @(& git -c core.quotepath=off ls-files --others --exclude-standard --full-name -- $t 2>$null)) { Add-CommitCommentNewFile $Files $u }
+                foreach ($u in @((Invoke-CommitGit -Check 'block-commit-comments' -GitArgs @('-c', 'core.quotepath=off', 'ls-files', '--others', '--exclude-standard', '--full-name', '--', $t)).Lines)) { Add-CommitCommentNewFile $Files $u }
             }
         }
     }
 }
 
 function Add-CommitCommentNewFile($Files, [string]$Path) {
-    $top = [string](& git rev-parse --show-toplevel 2>$null)
+    $top = [string](@((Invoke-CommitGit -Check 'block-commit-comments' -GitArgs @('rev-parse', '--show-toplevel')).Lines)[0])
     $abs = if ($top) { Join-Path $top $Path } else { $Path }
     if (-not (Test-CommentTarget $Path) -or -not (Test-Path -LiteralPath $abs -PathType Leaf)) { return }
     $Files[$Path] = New-CommitCommentEntry 'worktree'
@@ -130,8 +130,10 @@ function Invoke-BlockCommitComments {
     $origLoc = Get-Location
     try {
         Set-Location -LiteralPath $commitDir
-        $gitDir = & git rev-parse --git-dir 2>$null
-        if (-not $gitDir -or $LASTEXITCODE -ne 0) { return New-HookResult }
+        $gitDirRun = Invoke-CommitGit -Check 'block-commit-comments' -GitArgs @('rev-parse', '--git-dir')
+        if ($gitDirRun.TimedOut) { return New-HookResult -Block $true -Stderr (Get-CommitGitTimeoutLines '커밋 새 주석 검사') }
+        $gitDir = [string](@($gitDirRun.Lines)[0])
+        if (-not $gitDir -or $gitDirRun.Code -ne 0) { return New-HookResult }
         if (Test-Path -LiteralPath (Join-Path $gitDir 'MERGE_HEAD')) { return New-HookResult }
 
         $opt = Get-CommitCommentArgs $segment
@@ -146,6 +148,7 @@ function Invoke-BlockCommitComments {
         }
         Add-CommitCommentPreAdd $files $judge.Substring(0, $cm.Index)
 
+        if (Test-CommitGitTimedOut 'block-commit-comments') { return New-HookResult -Block $true -Stderr (Get-CommitGitTimeoutLines '커밋 새 주석 검사') }
         $targets = @($files.Keys | Where-Object { Test-CommentTarget $_ })
         $lineTotal = 0
         foreach ($k in $targets) { $lineTotal += $files[$k].Plus.Count }
@@ -155,7 +158,7 @@ function Invoke-BlockCommitComments {
 
         $moved = New-Object System.Collections.Generic.HashSet[string]
         foreach ($k in $targets) { foreach ($c in (Get-CommentBodies $k $files[$k].Minus)) { [void]$moved.Add($c) } }
-        $top = [string](& git rev-parse --show-toplevel 2>$null)
+        $top = [string](@((Invoke-CommitGit -Check 'block-commit-comments' -GitArgs @('rev-parse', '--show-toplevel')).Lines)[0])
         $found = New-Object System.Collections.Generic.List[string]
         $perFile = New-Object System.Collections.Generic.List[string]
         $baseBudget = New-CommentBaseBudget
@@ -168,8 +171,8 @@ function Invoke-BlockCommitComments {
             foreach ($c in (Get-AddedCommentBodies $k $pairs $rewriteBudget)) { if (-not $moved.Contains($c.Body)) { $added.Add($c) } }
             $text = $null
             if ($entry.Source -eq 'index') {
-                $shown = @(& git -c core.quotepath=off show ":$k" 2>$null)
-                if ($LASTEXITCODE -eq 0) { $text = $shown -join "`n" }
+                $shown = Invoke-CommitGit -Check 'block-commit-comments' -GitArgs @('-c', 'core.quotepath=off', 'show', ":$k")
+                if ($shown.Code -eq 0) { $text = @($shown.Lines) -join "`n" }
             } elseif (Test-Path -LiteralPath $full -PathType Leaf) {
                 $text = [System.IO.File]::ReadAllText($full)
             }
@@ -184,7 +187,10 @@ function Invoke-BlockCommitComments {
             foreach ($c in $blocked) { $found.Add($c) }
             if ($blocked.Count -gt 0) { $perFile.Add("  $k : 주석 $($blocked.Count)줄") }
         }
-        if ($found.Count -eq 0) { return New-HookResult }
+        if ($found.Count -eq 0) {
+            if (Test-CommitGitTimedOut 'block-commit-comments') { return New-HookResult -Block $true -Stderr (Get-CommitGitTimeoutLines '커밋 새 주석 검사') }
+            return New-HookResult
+        }
 
         $lines = @("[HARNESS] BLOCKED: 커밋에 새 주석이 있습니다 (주석 $($found.Count)줄)") + @($perFile) + @(Format-CommentGatePreview $found) + @(
             $script:CommentGateRule,

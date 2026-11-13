@@ -65,8 +65,8 @@ public static class KarinaTimedGitTree {
 
 function Invoke-TimedGit {
     param([string[]]$GitArgs, [string]$WorkDir = (Get-Location).ProviderPath, [int]$TimeoutMs)
-    $none = [pscustomobject]@{ Code = -1; Lines = @() }
-    if ($TimeoutMs -le 0) { return $none }
+    $none = [pscustomobject]@{ Code = -1; Lines = @(); TimedOut = $false }
+    if ($TimeoutMs -le 0) { $none.TimedOut = $true; return $none }
     $clock = [System.Diagnostics.Stopwatch]::StartNew()
     if (-not $script:TimedGitExe) { $script:TimedGitExe = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | ForEach-Object { $_.Source })[0] }
     if (-not $script:TimedGitExe) { return $none }
@@ -102,16 +102,18 @@ function Invoke-TimedGit {
                 elseif ($env:OS -eq 'Windows_NT') { $null = & taskkill /T /F /PID $p.Id 2>$null }
                 else { $p.Kill() }
             } catch {}
+            $none.TimedOut = $true
             return $none
         }
         $left = [int][Math]::Max(0, $TimeoutMs - $clock.ElapsedMilliseconds)
         if (-not $outTask.Wait($left)) {
             Stop-TimedGitOrphans -ParentId $p.Id -Since $started
+            $none.TimedOut = $true
             return $none
         }
         $lines = @($outTask.Result -split "`r?`n")
         if ($lines.Count -and $lines[-1] -eq '') { $lines = @($lines | Select-Object -First ($lines.Count - 1)) }
-        return [pscustomobject]@{ Code = $p.ExitCode; Lines = $lines }
+        return [pscustomobject]@{ Code = $p.ExitCode; Lines = $lines; TimedOut = $false }
     } catch {
         return $none
     } finally {

@@ -31,6 +31,10 @@ try {
     Push-Location $sdRoot
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
     Assert-Case -Name 'stale-docs: 낡음 없음 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+    if ($IsWindows) {
+        $r = Invoke-HookSlowGit $sdCommit @{ CLAUDE_HARNESS_ALLOW_SECRET = '1' }
+        Assert-Case -Name 'stale-docs: git 이 상한 안에 답하지 않으면 낡음 고지를 건너뛴다고 알린다' -R $r -ExpectExit 2 -ExpectContains '[warn-stale-docs] git 이 시간 상한'
+    }
 
     '# 매핑' | Set-Content (Join-Path $sdRoot 'docs/verification-mapping.md')
     & git -C $sdRoot add docs/verification-mapping.md 2>$null

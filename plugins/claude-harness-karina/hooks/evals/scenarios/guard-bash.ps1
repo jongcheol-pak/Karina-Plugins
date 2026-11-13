@@ -36,6 +36,7 @@ Assert-Case -Name "guard-bash: 라이브러리 부재 + 완료 [x] T 커밋은 �
 $stubLib = Join-Path $work 'dispatch-stublib'; New-Item -ItemType Directory $stubLib -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $stubLib -Force
 Copy-Item (Join-Path $scriptsDir 'git-commit-match.ps1') $stubLib -Force
+Copy-Item (Join-Path $scriptsDir 'timed-git.ps1') $stubLib -Force
 New-Item -ItemType Directory (Join-Path $stubLib 'rules') -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'rules/*.json') (Join-Path $stubLib 'rules') -Force
 'Set-Content -LiteralPath (Join-Path $PSScriptRoot ''loaded-cs.txt'') x; function Invoke-WarnCommitSecrets { param($data) New-HookResult }' | Set-Content (Join-Path $stubLib 'guard-commit-secrets.ps1')

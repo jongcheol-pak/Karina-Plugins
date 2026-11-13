@@ -111,6 +111,27 @@ function New-CommitJson([string]$cwd, [string]$msg) {
     return (@{ tool_name = 'Bash'; cwd = $cwd; tool_input = @{ command = "git commit -m `"$msg`"" } } | ConvertTo-Json -Compress)
 }
 
+function Invoke-HookSlowGit([string]$InputJson, [hashtable]$ExtraEnv = @{}, [int]$LimitMs = 2000, [int]$FastMs = 15000) {
+    $slowDir = Join-Path $work 'slow-git'
+    if (-not (Test-Path -LiteralPath (Join-Path $slowDir 'git.cmd'))) {
+        New-Item -ItemType Directory $slowDir -Force | Out-Null
+        [System.IO.File]::WriteAllText((Join-Path $slowDir 'git.cmd'), "@ping -n 30 127.0.0.1 >nul`r`n@exit /b 0`r`n")
+    }
+    $saved = @{ PATH = $env:PATH; KARINA_COMMIT_GIT_TIMEOUT_MS = $env:KARINA_COMMIT_GIT_TIMEOUT_MS }
+    foreach ($k in $ExtraEnv.Keys) { $saved[$k] = [Environment]::GetEnvironmentVariable($k) }
+    try {
+        $env:PATH = $slowDir + [System.IO.Path]::PathSeparator + $env:PATH
+        $env:KARINA_COMMIT_GIT_TIMEOUT_MS = [string]$LimitMs
+        foreach ($k in $ExtraEnv.Keys) { [Environment]::SetEnvironmentVariable($k, [string]$ExtraEnv[$k]) }
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()
+        $r = Invoke-Hook 'guard-bash.ps1' $InputJson -Process
+        $r.out = [string]$r.out + "`nfast=$($sw.ElapsedMilliseconds -lt $FastMs)"
+        return $r
+    } finally {
+        foreach ($k in $saved.Keys) { [Environment]::SetEnvironmentVariable($k, $saved[$k]) }
+    }
+}
+
 function New-TranscriptLine {
     # transcript JSONL 한 줄을 만든다(§4 폴백·게이트 픽스처 공용).
     # 왜 헬퍼인가: 값을 문자열 이어붙이기로 끼우면 따옴표·백슬래시가 든 텍스트에서 JSON이

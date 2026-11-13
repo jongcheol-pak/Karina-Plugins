@@ -3,8 +3,9 @@
 $script:TaskAuditUntrackedMax = 50
 
 function Find-TaskAuditAgents([string]$Dir) {
-    $top = [string](& git -C $Dir rev-parse --show-toplevel 2>$null)
-    if ($LASTEXITCODE -ne 0 -or -not $top) { return $null }
+    $topRun = Invoke-CommitGit -Check 'warn-task-audit' -Dir $Dir -GitArgs @('rev-parse', '--show-toplevel')
+    $top = [string](@($topRun.Lines)[0])
+    if ($topRun.Code -ne 0 -or -not $top) { return $null }
     $top = [System.IO.Path]::GetFullPath($top)
     $cur = [System.IO.Path]::GetFullPath($Dir)
     while ($cur) {
@@ -37,8 +38,9 @@ function Test-TaskAuditFilterCovered([string]$Message, [string]$Command) {
 }
 
 function Get-TaskAuditGrowth([string]$RuleDir, $Rule, [bool]$IncludeUntracked) {
-    $diff = @(& git -C $RuleDir diff HEAD --unified=0 --no-color --no-ext-diff -- $Rule.Pathspec 2>$null)
-    if ($LASTEXITCODE -ne 0) { $diff = @(& git -C $RuleDir diff --cached --unified=0 --no-color --no-ext-diff -- $Rule.Pathspec 2>$null) }
+    $run = Invoke-CommitGit -Check 'warn-task-audit' -Dir $RuleDir -GitArgs (@('-c', 'core.quotepath=off', 'diff', '--unified=0', '--no-color', '--no-ext-diff', 'HEAD', '--') + @($Rule.Pathspec))
+    if ($run.Code -ne 0 -and -not $run.TimedOut) { $run = Invoke-CommitGit -Check 'warn-task-audit' -Dir $RuleDir -GitArgs (@('-c', 'core.quotepath=off', 'diff', '--unified=0', '--no-color', '--no-ext-diff', '--cached', '--') + @($Rule.Pathspec)) }
+    $diff = @($run.Lines)
     $net = 0
     foreach ($l in $diff) {
         if ($l -match '^(\+\+\+|---) (a/|b/|/dev/null)') { continue }
@@ -47,7 +49,7 @@ function Get-TaskAuditGrowth([string]$RuleDir, $Rule, [bool]$IncludeUntracked) {
     }
     $capped = $false
     if ($IncludeUntracked) {
-        $files = @(& git -C $RuleDir ls-files --others --exclude-standard -- $Rule.Pathspec 2>$null | Where-Object { $_ })
+        $files = @((Invoke-CommitGit -Check 'warn-task-audit' -Dir $RuleDir -GitArgs (@('-c', 'core.quotepath=off', 'ls-files', '--others', '--exclude-standard', '--') + @($Rule.Pathspec))).Lines | Where-Object { $_ })
         if ($files.Count -gt $script:TaskAuditUntrackedMax) { $capped = $true; $files = $files[0..($script:TaskAuditUntrackedMax - 1)] }
         foreach ($f in $files) {
             $full = Join-Path $RuleDir $f
@@ -105,6 +107,10 @@ function Invoke-WarnTaskAudit {
         if (Test-TaskAuditFilterCovered $message $rule.Command) { continue }
         $note = if ($g.Capped) { ' (미추적 파일 상한에 걸려 일부만 셈)' } else { '' }
         $lines.Add("  - ``$($rule.Command)`` — 증가 $($g.Net)줄$note (AGENTS.md:$($rule.Line))")
+    }
+    if (Test-CommitGitTimedOut 'warn-task-audit') {
+        $w = "[guard-bash] git 이 시간 상한($(Get-CommitGitLimitMs)ms) 안에 답하지 않아 task 감사 누락 검사를 건너뜁니다."
+        return New-HookResult -Stderr @($w)
     }
     if (-not $lines.Count) { return New-HookResult }
 

@@ -403,6 +403,7 @@ if ($gitOk) {
     @(
         'param([string]$Cwd, [string]$Cmd)',
         'function New-HookResult { param([bool]$Block = $false, [string[]]$Stderr = @(), [string]$Context = $null) @{ Block = $Block; Stderr = $Stderr; Context = $Context } }',   # 결과 객체 생성기는 디스패처(guard-bash.ps1)에 있다 — 단독 프로브는 같은 정의를 직접 둔다
+        ('. ' + [char]39 + (Join-Path $scriptsDir 'timed-git.ps1') + [char]39),
         ('. ' + [char]39 + (Join-Path $scriptsDir 'guard-commit-secrets.ps1') + [char]39),   # 함수 전용 파일을 읽는다 — hook 본체(guard-bash.ps1)를 dot-source하면 최상위 코드가 stdin을 무한 대기한다
         '$script:ghCalls = 0',
         'function Get-DiffHeadAdded { param([string[]]$PathArgs = @()) $script:ghCalls++; return @() }',
@@ -469,6 +470,7 @@ if ($gitOk) {
     @(
         'param([string]$Cwd, [int]$Calls = 1)',
         'function New-HookResult { param([bool]$Block = $false, [string[]]$Stderr = @(), [string]$Context = $null) @{ Block = $Block; Stderr = $Stderr; Context = $Context } }',   # 결과 객체 생성기는 디스패처(guard-bash.ps1)에 있다 — 단독 프로브는 같은 정의를 직접 둔다
+        ('. ' + [char]39 + (Join-Path $scriptsDir 'timed-git.ps1') + [char]39),
         ('. ' + [char]39 + (Join-Path $scriptsDir 'guard-commit-secrets.ps1') + [char]39),   # 함수 전용 파일을 읽는다 — hook 본체(guard-bash.ps1)를 dot-source하면 최상위 코드가 stdin을 무한 대기한다
         '$sw = New-Object System.IO.StringWriter',
         '$prevErr = [Console]::Error',
@@ -520,6 +522,17 @@ if ($gitOk) {
     Assert-Case -Name "dispatch: warn 2개 병합 (external) — exit 0" -R $r -ExpectExit 0 -ExpectContains 'EXTERNAL OP'
     if (($r.out -match 'COMMIT SECRET') -and ($r.out -match 'EXTERNAL OP')) { $script:results.Add(@{ ok = $true; line = "[PASS] dispatch: warn 2개(secret+external) additionalContext 병합" }) }
     else { $script:results.Add(@{ ok = $false; line = "[FAIL] dispatch: warn 병합 누락 | 출력: $(($r.out -split "`r?`n" | Select-Object -First 2) -join ' / ')" }) }
+    if ($IsWindows) {
+        $r = Invoke-HookSlowGit $wcsJson
+        Assert-Case -Name "commit-git 상한: git 이 상한 안에 답하지 않으면 시크릿 검사가 재시도 안내로 차단" -R $r -ExpectExit 2 -ExpectContains '커밋 시크릿 검사'
+        Assert-Case -Name "commit-git 상한: 시크릿 검사는 git 대기를 상한에서 끊는다" -R $r -ExpectExit 2 -ExpectContains 'fast=True'
+        $r = Invoke-HookSlowGit $wcsJson @{ CLAUDE_HARNESS_ALLOW_SECRET = '1' }
+        Assert-Case -Name "commit-git 상한: git 이 상한 안에 답하지 않으면 새 주석 검사가 재시도 안내로 차단" -R $r -ExpectExit 2 -ExpectContains '커밋 새 주석 검사'
+        Assert-Case -Name "commit-git 상한: 새 주석 검사는 git 대기를 상한에서 끊는다" -R $r -ExpectExit 2 -ExpectContains 'fast=True'
+    }
+    $wcsNoRepo = Join-Path $work 'wcs-norepo'; New-Item -ItemType Directory $wcsNoRepo -Force | Out-Null
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsNoRepo; tool_input = @{ command = 'git commit -m x' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-git 상한: 시간 초과가 아닌 git 실패(레포 아님)는 지금처럼 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
     }
 
     if (Test-ScenarioUnit 4) {
