@@ -19,3 +19,19 @@
   - guard-bash 무상태 골든 케이스는 dispatch 에코로 1건이 2로 센다 — hook-cases 에 guard-bash 케이스를 더하면 기준선은 2배로 는다
   - 설치본 판정 리터럴을 바꾸면 guard-harness·guard-bash·정합 픽스처 셋을 함께 바꾼다(축 ⑯)
 - **미해결**: `git commit <경로>`(`--` 없이) 의 시크릿 내용 스캔 — 보류(`docs/decisions.md` 2026-11-13 ②)
+
+## plan 2
+
+- **BASE**: a85b0fca · **커밋**: 750caff2…e8be387e (12개)
+- **바꾼 파일·새 심볼·API**
+  - `scripts/post-write-checks.ps1` — 영문 주석 경고 문구(「이 파일의 기존 주석 언어(영문)를 따르세요」) · :132 주석을 `post-write-rationale.md` §16 포인터로
+  - `skills/plan/scripts/check-plan.ps1` — B3 하위 항목 마커 `[ /xX~-]`(완료 판정 :162 와 같음)
+  - `skills/temp-cleanup/scripts/temp_cleanup.py` — `remove` 가 상대경로를 `--root` 기준으로 읽음 · eval `Fixture.run(cwd=)`
+  - 문서: bash-guard·hook-dispatch·post-write rationale · gate-verifier-conditional(이름-따옴표 조건) · local-gate(입력 직전 판정·출력 파일 단일) · continuation · completion-reviewer(게이트 대기 입력·전사 대조 포인터) · plan 스킬(G·S·C·경량 셈법·재호출 조건 포인터 · Open Questions 「리뷰(check-plan) 전까지」 · rare-paths 「승인 답 갈래」 절 삭제) · no-comments · create(-formal)-verification-skill · relocate-agents 안내 · TEMP-FILES scratch 지목 4곳
+- **기준선(뒤 계획이 대조할 현재값)**: hook 골든 1851케이스 · 트리거 eval 84케이스 · temp-cleanup 13케이스 · Deferred 대장 대기 18 / 종결 120 · 문서 예산 임박 9건(plan/SKILL 여유 952 · plan-template 여유 477 · completion-reviewer 여유 249 · interview 여유 636)
+- **내린 결정과 근거**: 영문 주석 경고는 발동 조건 불변·문구만(새·기존 주석 판정 신설은 동작 변경) · 중복 정본은 앞선 정본을 남기고 사본을 포인터로 · 게이트 출력 파일은 local-gate「호출」 의 것 하나 · block-python-newcode 오탐은 미검증 보고 + 대장 등재(코디네이터 판정 A)
+- **뒤 계획이 지킬 제약**
+  - plan 3 이 재측정할 local-gate·review-rounds·interview 는 이 계획이 고쳤다 — local-gate「호출」 입력·「FAIL 처리」 문장, review-rounds:14, plan-template「경량 plan」·Open Questions
+  - `python` 으로 픽스처 문자열을 쓰는 eval(run_verify_evals·test_exit_code·trigger_eval)은 Bash 도구에서 block-python-newcode 에 막힌다 — 우회 금지, 미검증 보고(`docs/conventions.md` 2026-11-13)
+  - 골든 케이스를 더하면 기준선 셋(`run-hook-evals.ps1` `$GoldenTotalBaseline`·`golden-runner.md`·`harness-conventions.md`)을 함께 바꾼다
+- **미해결**: block-python-newcode 오탐(대장 등재) — 이 계획의 미검증 3건(run_verify_evals.py · test_exit_code.py · trigger_eval.py rec-neg-5)
