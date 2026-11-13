@@ -28,4 +28,4 @@
 
 ## 플러그인 루트
 
-- **karina 리뷰어 넷(`gate-verifier`·`completion-reviewer`·`comment-reviewer`·`plan-reviewer`)을 부를 때 입력에 `플러그인 루트: <절대 경로>` 줄을 넣는다 — 작업 디렉터리의 `.claude-plugin/plugin.json` `name` 이 `karina` 이면 그 하니스 루트, 아니면 부르는 SKILL.md 폴더의 두 단계 위(설치본)다(`reflect/SKILL.md` 1번과 같은 기준)** — 정의 파일은 `skills/…` 상대 참조만 가져, 루트 없이 부르면 리뷰어가 `~/.claude` 아래를 뒤져 세션이 쓰지 않는 판의 문서를 읽었다(2026-11-13 Karina 세션 — 3.15.1 세션에서 3.15.2·marketplaces 사본을 읽고 `find /` 까지 시도). 하니스 레포 회차에 설치본을 넘기면 이번 회차가 고치기 전 문서를 정본으로 읽는다(`AGENTS.md` 「규약 조회는 레포의 하니스 루트를 읽는다」).
+- **karina 리뷰어 넷(`gate-verifier`·`completion-reviewer`·`comment-reviewer`·`plan-reviewer`)을 부를 때 입력에 `플러그인 루트: <절대 경로>` 줄을 넣는다 — 작업 디렉터리의 `.claude-plugin/plugin.json` `name` 이 `karina` 이고 `docs/plans/deferred.md` 가 있으면 그 하니스 루트, 아니면 부르는 SKILL.md 폴더의 두 단계 위(설치본)다(`reflect/SKILL.md` 1번과 같은 기준)** — 정의 파일은 `skills/…` 상대 참조만 가져, 루트 없이 부르면 리뷰어가 `~/.claude` 아래를 뒤져 세션이 쓰지 않는 판의 문서를 읽었다(2026-11-13 Karina 세션 — 3.15.1 세션에서 3.15.2·marketplaces 사본을 읽고 `find /` 까지 시도). 하니스 레포 회차에 설치본을 넘기면 이번 회차가 고치기 전 문서를 정본으로 읽는다(`AGENTS.md` 「규약 조회는 레포의 하니스 루트를 읽는다」).
