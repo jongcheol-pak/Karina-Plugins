@@ -168,6 +168,10 @@ $r = Invoke-CheckPlan ($cpBase.Replace("- **검증**: ``run`` → OK`n", ''))
 Assert-Case -Name "check-plan: B4 task 에 검증 줄이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'task-line T1 verify'
 $r = Invoke-CheckPlan ($cpBase.Replace('- [ ] **T1-1** 한다', "- [x] **T1-1** 한다`n- [X] **T1-2** 한다`n- [/] **T1-3** 하는 중`n- [x] **T1-4** (불요 — 근거)`n- [x] (불요 — 근거) **T1-5** 끝"))
 Assert-Case -Name "check-plan: 하위 항목 상태 x·X·/·불요 표기를 받아들인다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckPlan ($cpBase.Replace('- [ ] **T1-1** 한다', "- [ ] **T1-1** 한다`n- [~] **T2-2** 보류`n- [-] **T2-3** 취소"))
+Assert-Case -Name "check-plan: B3 보류·취소(~·-) 하위 항목도 번호를 대조한다" -R $r -ExpectExit 1 -ExpectContains 'task-item T1'
+$r = Invoke-CheckPlan ($cpBase.Replace('- [ ] **T1-1** 한다', "- [ ] **T1-1** 한다`n- [~] **T1-2** 보류`n- [-] **T1-3** 취소"))
+Assert-Case -Name "check-plan: 보류·취소(~·-) 하위 항목의 맞는 번호는 받아들인다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 }
 
 if (Test-ScenarioUnit 1) {

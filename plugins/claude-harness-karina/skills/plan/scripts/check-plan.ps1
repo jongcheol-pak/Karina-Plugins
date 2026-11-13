@@ -25,7 +25,7 @@
 #   light-approval               경량 plan 에 「승인 필요 항목」 절이 있음
 #   light-relay                  경량 plan 의 「> 요구:」 가 「코디네이터 인터뷰 경유」(중계 모드는 경량 불허)
 #   goal-head <줄>               request(첫 절 앞 「> 요구:」 원문 인용)·base·approval·start·done(Goal 절의 「> BASE:」 등) 없음
-#   task-item T<N>               하위 항목이 「- [ ]·[x]·[X]·[/]」 뒤 (불요 …) 를 지나 **T<N>-<M>** 가 아니거나 번호가 제목과 다름
+#   task-item T<N>               하위 항목이 「- [ ]·[x]·[X]·[/]·[~]·[-]」 뒤 (불요 …) 를 지나 **T<N>-<M>** 가 아니거나 번호가 제목과 다름
 #   task-line T<N> <줄>          task 에 files·acceptance·verify 줄 없음
 #   screen-line T<N> <요소>      「- **화면**:」 줄에 scenario(시나리오)·screenshot(스크린샷)·predicate(통과 조건) 조각이 없거나 값이 빔
 #                                (화면 줄이 없는 task 는 재지 않는다 — 있어야 할 task 인지는 plan-reviewer 가 본다)
@@ -278,9 +278,9 @@ if (Find-Section $tasksTitle) {
         $tag = 'T' + $b.Id
         $items = 0
         foreach ($l in $b.Lines) {
-            if ($l.Text -match '^- \[[ xX/]\]') {
+            if ($l.Text -match '^- \[[ /xX~-]\]') {
                 $items++
-                $m = [regex]::Match($l.Text, '^- \[[ xX/]\] (?:\([^)]*\) )?\*\*T(\d+)-\d+\*\*')
+                $m = [regex]::Match($l.Text, '^- \[[ /xX~-]\] (?:\([^)]*\) )?\*\*T(\d+)-\d+\*\*')
                 if (-not $m.Success -or [int]$m.Groups[1].Value -ne $b.Id) { Add-Problem $l.N ('task-item ' + $tag) }
             }
         }
