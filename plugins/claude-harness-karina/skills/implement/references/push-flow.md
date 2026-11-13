@@ -22,6 +22,7 @@
 **첫 편집 전 1회. 브랜치를 그대로 둔 채 「커밋」 뒤 `local-gate.md`「디버깅 단독」 게이트를 거쳐 위 「기본 브랜치 push」 의 push 를 한다.** 단 진행 중 `plan.md`(미완료 `[ ]`·`[/]`·`[-]`·`[~]` task)가 있으면 push 하지 않고 push 결과를 `건너뜀(진행 중 회차「<plan 제목>」 끝에 함께 push)` 로 적는다 — 회차 중간에 push 하면 끝나지 않은 task 커밋이 기본 브랜치에 먼저 공개된다.
 
 - **디버깅을 시작할 때의 HEAD 를 기억해 둔다** — 원격이 없을 때 게이트가 그것을 범위의 아래 끝으로 쓴다(`local-gate.md`「디버깅 단독」). 디버깅에는 자기 `plan.md` 가 없다.
+- **같은 때 `git ls-files --others --exclude-standard` 를 `../../TEMP-FILES.md` 의 `scratch\untracked-start-<레포 폴더명>-<시작 HEAD sha7>.txt` 에 쓴다(있으면 덮지 않는다)** — 아래 「커밋」 의 clean 판정이 디버깅 전부터 있던 untracked 를 뺀다(회차 끝과 같은 스냅숏 — `../SKILL.md`「작업 범위」).
 
 ### 커밋
 
@@ -37,3 +38,4 @@
 - **메시지는 Bash 면 heredoc(`git commit -m "$(cat <<'MSG'` … `MSG` `)"`), PowerShell 이면 작은따옴표 문자열로 넘긴다** — 판정 줄의 백틱·`$` 가 `-m "…"` 에서 치환돼 사라진다.
 - **제목에 `T<N>` 을 넣지 않는다** — `guard-bash` 는 `{유형}: T<N> — …` 제목을 task 완료 커밋으로 읽어 plan 체크박스를 검사한다. 커밋 메시지 형식은 그 레포 규약이 우선한다.
 - **시크릿 경고가 하나라도 뜨면 커밋하지 않고 push 도 건너뛴 채(`push: 건너뜀(시크릿 경고)`) 보고한다** — 커밋 안 된 변경은 게이트가 검증할 대상이 아니고, 넘길지는 사용자가 정한다.
+- **4-D 가 `AGENTS.md` 「Build & Test」 의 빌드·테스트 전체를 통과했으면 커밋 뒤 게이트 중간 단계 기록을 남긴다 — ⓐ 4-D 통과 직후(4-C 의 원래 재현 수단 정리 뒤) 작업 트리 해시를 잰다: 임시 인덱스 파일 `<t>` 로 `GIT_INDEX_FILE=<t> git read-tree HEAD` → `GIT_INDEX_FILE=<t> git add -A` → `GIT_INDEX_FILE=<t> git write-tree` ⓑ 커밋 뒤 같은 해시를 다시 재 ⓐ 와 같고 ⓒ clean(`git status --porcelain --untracked-files=no` 가 비고, `git ls-files --others --exclude-standard` 에서 「갈래」 스냅숏 줄을 뺀 것이 빈다)이면 `local-gate.md`「판정 재사용」 의 기록 파일에 `4-D 검증: <HEAD full SHA> · clean` 한 줄을 덧붙인다. 하나라도 거짓이면 줄을 남기지 않는다** — 4-D 는 수정이 커밋되기 전 트리에서 돌아, 해시가 같고 tracked 미커밋이 없어야 HEAD 트리가 4-D 가 잰 트리이고 untracked 가 스냅숏뿐이어야 커밋 밖 입력으로 통과하지 않았다(사용자 답 「4-D 전체 검증 시 적용」 — 미커밋 변경 없는 트리로 Build·Test 전체 통과).
