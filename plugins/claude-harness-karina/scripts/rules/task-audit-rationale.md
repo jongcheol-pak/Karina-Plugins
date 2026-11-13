@@ -28,6 +28,8 @@ CR(-F 파일의 CRLF 줄 끝)을 걷고 공백을 정규화한 메시지에서 �
 
 증가 정규식이 없거나 컴파일되지 않는 줄은 침묵하지 않고 「규칙을 읽지 못함」으로 알린다. 침묵하면 줄을 망가뜨리는 것이 검사를 끄는 수단이 된다(`stale-docs-rationale.md` 의 fail-closed 와 같은 취지).
 
+**완료 커밋 제목은 하위 ID(`T1-2`)까지 읽어 경고와 보충 커밋 제목에 그대로 쓴다** — 제목 정규식은 require-task-checkbox 와 같은 사본이다(`bash-guard-rationale.md` §15).
+
 **git 이 상한 안에 답하지 않으면 감사 누락 검사를 건너뛰고 한 줄로 알린다** — 경고 검사라 막지 않는다. 커밋 경로 git 의 상한·캐시는 `bash-guard-rationale.md` §18 이 정본이다.
 
 ## §6 감사 줄 파서는 `comment-lines.ps1` 에 있다

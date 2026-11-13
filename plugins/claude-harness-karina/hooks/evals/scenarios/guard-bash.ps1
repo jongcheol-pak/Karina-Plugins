@@ -121,6 +121,21 @@ $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
 Assert-Case -Name "rtc: 미완료 [ ] T3 커밋 차단 (차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcIn 'T3: 검색 요약')
 Assert-Case -Name "rtc: 진행중 [/] T3 커밋 차단" -R $r -ExpectExit 2 -ExpectContains 'T3'
+$rtcSub = Join-Path $work 'rtc-sub'; New-Item -ItemType Directory $rtcSub -Force | Out-Null
+"# plan`n### T4. 묶음`n- [x] **T4-1** 앞 항목`n- [ ] **T4-2** 뒤 항목`n- [ ] **T4-10** 열째 항목" | Set-Content (Join-Path $rtcSub 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcSub '기능: T4-1 — 앞 항목')
+Assert-Case -Name "rtc: 하위 ID 완료 커밋(T4-1 [x])은 형제 T4-2 미완으로 막지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$rtcSubUn = Join-Path $work 'rtc-sub-un'; New-Item -ItemType Directory $rtcSubUn -Force | Out-Null
+"# plan`n- [ ] **T4-1** 앞 항목`n- [x] **T4-10** 열째 항목" | Set-Content (Join-Path $rtcSubUn 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcSubUn '기능: T4-1 — 앞 항목')
+Assert-Case -Name "rtc: 하위 ID 자신이 미완이면 막는다" -R $r -ExpectExit 2 -ExpectContains 'T4-1'
+$rtcSub10 = Join-Path $work 'rtc-sub-10'; New-Item -ItemType Directory $rtcSub10 -Force | Out-Null
+"# plan`n- [x] **T4-1** 앞 항목`n- [ ] **T4-10** 열째 항목" | Set-Content (Join-Path $rtcSub10 'plan.md')
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcSub10 '기능: T4-1 — 앞 항목')
+Assert-Case -Name "rtc: 하위 ID T4-1 검사는 T4-10 미완에 걸리지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcSub '기능: T4 — 묶음')
+Assert-Case -Name "rtc: 상위 ID 완료 커밋(T4)은 하위 미완(T4-2)으로 막는다" -R $r -ExpectExit 2 -ExpectContains 'T4-2'
+Assert-Case -Name "rtc: 차단 안내는 Edit 로 [x] 뒤 별도 호출 commit 이고 재시작이 필요한 우회 변수를 권하지 않는다" -R $r -ExpectExit 2 -ExpectNotContains 'CLAUDE_HARNESS_QUICK'
 $rtcSp = Join-Path $work 'rtc space dir'; New-Item -ItemType Directory $rtcSp -Force | Out-Null
 "# plan`n- [ ] T2. 워커 작업" | Set-Content (Join-Path $rtcSp 'plan.md')
 $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $rtcSp; tool_input = @{ command = ('git -C "' + $rtcSp + '" commit -m "기능: T2 — 워커 작업"') } } | ConvertTo-Json -Compress)

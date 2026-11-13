@@ -76,7 +76,7 @@ function Invoke-WarnTaskAudit {
     $message = Get-CommitMessage $cmd $commitDir
     if ($null -eq $message -or $message -is [bool]) { return New-HookResult }
     $title = @($message -split '\r?\n')[0]
-    $tm = [regex]::Match($title, '^\s*(?:(?:기능|수정|리팩토링|문서|설정)\s*:\s*)?T(\d+)\s*(?::|—|-)')
+    $tm = [regex]::Match($title, '^\s*(?:(?:기능|수정|리팩토링|문서|설정)\s*:\s*)?T(\d+(?:-\d+)?)\s*(?::|—|-)')
     if (-not $tm.Success) { return New-HookResult }
 
     $agents = Find-TaskAuditAgents $commitDir

@@ -448,9 +448,10 @@ function Invoke-RequireTaskCheckbox {
         $w = '[HARNESS] 커밋 제목을 읽지 못해 task 체크박스 검사를 건너뜁니다 — heredoc -m 을 쓰세요(변수 -m · 본문 없는 -F - · 없는 -F 파일).'
         return New-HookResult -Stderr @($w) -Context $w
     }
-    $m = [regex]::Match($msgTitle, '^\s*(?:(?:기능|수정|리팩토링|문서|설정)\s*:\s*)?T(\d+)\s*(?::|—|-)')
+    $m = [regex]::Match($msgTitle, '^\s*(?:(?:기능|수정|리팩토링|문서|설정)\s*:\s*)?T(\d+(?:-\d+)?)\s*(?::|—|-)')
     if (-not $m.Success) { return New-HookResult }
     $taskNum = $m.Groups[1].Value
+    $idRx = if ($taskNum.Contains('-')) { [regex]::Escape($taskNum) + '(?![\w-])' } else { $taskNum + '(-\d+)?\b' }
 
     if ($env:CLAUDE_HARNESS_QUICK -eq '1') {
         return New-HookResult -Block $false -Stderr @("[HARNESS] QUICK 모드: T$taskNum 체크박스 검사 우회")
@@ -469,7 +470,7 @@ function Invoke-RequireTaskCheckbox {
     # 미완료 마커 매칭·코드 펜스 제외 — 근거는 `rules/bash-guard-rationale.md` §15
     $planFenceRx = '(?ms)^ {0,3}([`~])\1{2,}[^\r\n]*\r?$.*?(?:^ {0,3}\1{3}[^\r\n]*\r?$|\z)'
     $planBulletRx = '(?m)^\s*([-*+]|\d+[.)])\s*'
-    $unchecked = [regex]::Match([regex]::Replace($planText, $planFenceRx, ''), $planBulletRx + '\[[ /~-]\]\s*\**T' + $taskNum + '(-\d+)?\b')
+    $unchecked = [regex]::Match([regex]::Replace($planText, $planFenceRx, ''), $planBulletRx + '\[[ /~-]\]\s*\**T' + $idRx)
     if (-not $unchecked.Success) { return New-HookResult }
 
     $foundLine = $unchecked.Value.Trim()
@@ -483,9 +484,8 @@ function Invoke-RequireTaskCheckbox {
         "구현 완료 커밋 규약: 완료 커밋 전에 해당 task 체크박스를 [x]로 갱신합니다.",
         "",
         "해결 방법:",
-        "  1) plan의 해당 줄을 '- [x] T$taskNum ...'으로 갱신한 뒤 다시 commit",
-        "  2) 긴급 우회 (Claude Code 시작 전 PowerShell에서):",
-        "     `$env:CLAUDE_HARNESS_QUICK = '1'"
+        "  Edit 도구로 plan의 위 줄을 '[x]' 로 고친 뒤, 별도 호출로 다시 commit 하세요.",
+        "  편집과 commit 을 한 명령에 묶으면 이 검사는 편집 전 plan 을 봅니다."
     )
     return New-HookResult -Block $true -Stderr $lines
 }

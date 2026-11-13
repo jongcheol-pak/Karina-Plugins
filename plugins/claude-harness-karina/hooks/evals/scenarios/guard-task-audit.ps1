@@ -41,6 +41,8 @@ try {
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $taBodyNone)
     Assert-Case -Name 'task-audit: pub 증가 + 명령 없음 → 명령을 지목해 경고(exit 0)' -R $r -ExpectExit 0 -ExpectContains $taCmd
     Assert-Case -Name 'task-audit: 경고는 보충 커밋 경로를 안내한다' -R $r -ExpectExit 0 -ExpectContains '--allow-empty'
+    $r = Invoke-TaCase (New-TaCommitCmd '기능: T1-2 — 항목 추가' $taBodyNone)
+    Assert-Case -Name 'task-audit: 하위 ID 완료 커밋은 경고와 보충 커밋 제목에 하위 ID 를 그대로 쓴다' -R $r -ExpectExit 0 -ExpectContains 'T1-2 완료 커밋에'
     $taNoCl = Join-Path $work 'ta-no-comment-lines'; New-Item -ItemType Directory $taNoCl -Force | Out-Null
     Copy-Item (Join-Path $scriptsDir '*') $taNoCl -Recurse -Force -Exclude 'comment-lines.ps1'
     if (Test-Path -LiteralPath (Join-Path $taNoCl 'comment-lines.ps1')) { throw 'task-audit 사본에 comment-lines.ps1 이 남았다 — 전제 깨짐' }
