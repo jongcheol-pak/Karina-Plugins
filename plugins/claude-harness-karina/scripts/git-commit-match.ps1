@@ -7,7 +7,7 @@ $script:GitGlobalOptsRx = '(?:\s+(?:-[cC]\s+' + $script:GitOptValueRx +
 $script:GitCommitRx = 'git' + $script:GitGlobalOptsRx + '\s+commit(?![\w-])'
 $script:GitAddRx = 'git' + $script:GitGlobalOptsRx + '\s+add(?![\w-])'
 
-# 커밋 경로 git 호출 — 검사별 시간 상한·같은 호출 캐시 — 근거는 `rules/bash-guard-rationale.md` §18
+# 커밋 경로 git 호출 — 호출당 시간 상한·같은 호출 캐시 — 근거는 `rules/bash-guard-rationale.md` §18
 if ($null -eq $script:CommitGitCache) {
     $script:CommitGitCache = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
     $script:CommitGitTimedOut = @{}
