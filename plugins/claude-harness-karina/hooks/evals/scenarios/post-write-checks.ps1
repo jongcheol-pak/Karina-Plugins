@@ -14,6 +14,7 @@ $pj = @{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $csPath } }
 $r = Invoke-Hook 'post-write-checks.ps1' $pj
 Assert-Case -Name "post-write: BOM 경고" -R $r -ExpectExit 0 -ExpectContains 'BOM'
 Assert-Case -Name "post-write: 영문 주석 경고" -R $r -ExpectExit 0 -ExpectContains '영문'
+Assert-Case -Name "post-write: 영문 주석 경고는 파일의 기존 주석 언어를 따르라고 안내한다" -R $r -ExpectExit 0 -ExpectContains '기존 주석 언어' -ExpectNotContains '한글 주석 규칙'
 Assert-Case -Name "post-write: password 값 경고" -R $r -ExpectExit 0 -ExpectContains 'password'
 Assert-Case -Name "post-write: 비차단 exit 0" -R $r -ExpectExit 0
 

@@ -129,8 +129,7 @@ $harnessHookName = ''
 try {
     $harnessHookName = ((Get-Content -LiteralPath (Join-Path $PSScriptRoot 'rules/harness-hooks.json') -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json).names -join '|')
 } catch { [Console]::Error.WriteLine('post-write-checks: 규칙 파일을 읽지 못해 하니스 hook 개조 탐지를 건너뜁니다 — rules/harness-hooks.json') }
-# 목록을 못 읽으면 빈 문자열이 되어 아래 정규식이 **모든 `.ps1`에 매치**한다 — 그 상태의 경고는
-#   전부 오탐이므로 검사를 건너뛴다(차단 hook 인 guard-harness 도 같은 상황에서 exit 0 으로 빠진다).
+# 이름 집합 로드 실패 — 근거는 `rules/post-write-rationale.md` §16
 if ([string]::IsNullOrWhiteSpace($harnessHookName)) { $harnessHookName = '(?!)' }
 # 8.3 단축명 마스킹 감지 — 근거는 `rules/post-write-rationale.md` §5
 $has83H2 = ($normFileH2 -match '(?i)/CLAUDE~[0-9]+(/|$)')
@@ -208,7 +207,7 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                 # 세션·파일당 1회 (v1.98.0): 의도적으로 영어를 쓰는 프로젝트(OSS 등)에서 그 파일을 만질
                 #   때마다 반복 주입돼 기존 영어 주석의 한글화(범위 초과 수정)로 오도하던 것 억제.
                 if ($engComments -gt ($totalComments / 2) -and (Test-WarnOnce ('engcomment|' + ($file -replace '\\', '/')))) {
-                    $utf8Warnings.Add("주석이 대부분 영문($engComments/$totalComments). 한글 주석 규칙 위반 가능 — 단 프로젝트가 의도적으로 영어 주석을 쓰면 그 관례를 따르세요(기존 주석의 일괄 한글화는 범위 초과). (세션·파일당 1회)")
+                    $utf8Warnings.Add("주석이 대부분 영문($engComments/$totalComments). 이 파일의 기존 주석 언어(영문)를 따르세요 — 새 주석도 영문으로 쓰고 기존 주석을 한글로 바꾸지 않습니다(범위 초과). (세션·파일당 1회)")
                 }
             }
         }

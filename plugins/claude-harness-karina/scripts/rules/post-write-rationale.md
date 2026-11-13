@@ -60,6 +60,8 @@
 #   개조해 안전 게이트를 무력화할 수 있다(H2). PostToolUse라 예방은 못 하지만 그 시도를 가시화한다.
 ```
 
+**지금 예방은 PreToolUse 의 `guard-harness` 가 한다** — 같은 대상(설치본 hook 스크립트·`hooks.json`·`scripts/rules/*.json`)의 `Write`·`Edit` 를 exit 2 로 막고, 셸 쓰기는 `guard-bash` 의 `block-installed-write` 가 막는다. H2 는 그 차단을 비켜 간 쓰기(차단 hook 이 돌지 않은 경로)가 남긴 결과를 사후에 드러내는 2차 신호다. 위 인용은 `guard-harness` 이전 판의 주석 원문이다.
+
 ## §5 8.3 단축명 마스킹 감지
 
 ```
@@ -204,7 +206,7 @@
 
 **`-ErrorAction Stop` 이 없으면 그 `catch` 는 죽은 코드다.** 이 파일은 머리에서 `$ErrorActionPreference = 'SilentlyContinue'` 를 세우는데, 그 상태에서 `Get-Content` 의 파일 부재는 **non-terminating error** 라 `try/catch` 를 그냥 지나간다. 변수는 `$null` 이 되고 뒤 폴백이 조용히 걸려, **검사가 사라진 것을 아무도 모른다**(회차 53 실측 — 규칙 json 을 지우고 돌리면 stderr 한 줄 없이 통과했다). `block-destructive.ps1` 만 파일 전역이 `'Stop'` 이라 같은 파이프라인 형태로도 `catch` 가 걸린다 — 그 파일의 가시화가 실제로 동작하는 이유이고, 나머지 hook 은 **지역 `-ErrorAction Stop`** 으로 같은 상태를 만든다(전역을 바꾸면 이번에 재지 않은 경로가 함께 바뀐다).
 
-**폴백 `'(?!)'` 는 유지한다** — 빈 문자열이 남으면 아래 정규식이 **모든 `.ps1` 에 매치**해 경고가 전부 오탐이 된다. 탐지를 끄는 쪽이 옳고, 이번 변경은 끈 사실을 알리는 것이다.
+**폴백 `'(?!)'` 는 유지한다** — 빈 문자열이 남으면 아래 정규식이 **모든 `.ps1` 에 매치**해 경고가 전부 오탐이 된다. 탐지를 끄는 쪽이 옳고, 이번 변경은 끈 사실을 알리는 것이다. 끄는 것은 이름 축뿐이고 `hooks.json` 경로 판정은 그대로 돈다 — 차단 hook 인 `guard-harness` 도 같은 실패에서 이름 축만 끄고 경로 축(`hooks.json`·`scripts/rules/*.json`·설치본 `scripts/*.ps1`)은 막는다(`harness-guard-rationale.md`).
 
 ## §20 caller 배치 검색
 
