@@ -35,7 +35,7 @@ import tempfile
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'scripts'))
-from timed_run import WinJob, resume_suspended
+import timed_run
 
 TAIL_LINES = 40
 LOCK_PREFIX = 'karina-chain-verify-'
@@ -161,8 +161,8 @@ def run(opts, launch, clock, sleep, lock, emit):
 
 def git_call(cwd, args):
     try:
-        p = subprocess.run(['git', '-C', cwd] + list(args), stdin=subprocess.DEVNULL, capture_output=True,
-                           timeout=GIT_TIMEOUT_SEC)
+        p = timed_run.run(['git', '-C', cwd] + list(args), stdin=subprocess.DEVNULL, capture_output=True,
+                          timeout=GIT_TIMEOUT_SEC)
     except (OSError, subprocess.SubprocessError):
         return 128, ''
     return p.returncode, p.stdout.decode('utf-8', errors='replace').rstrip('\r\n')
@@ -349,13 +349,13 @@ class RealProc:
         argv = [exe] + list(cmd[1:])
         try:
             if os.name == 'nt':
-                self.job = WinJob()
+                self.job = timed_run.WinJob()
                 self.proc = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=self.log,
                                              stderr=subprocess.STDOUT, creationflags=0x4)  # CREATE_SUSPENDED
                 try:
                     self.job.assign(self.proc._handle)
                 finally:
-                    resume_suspended(self.proc._handle)
+                    timed_run.resume_suspended(self.proc._handle)
             else:
                 self.proc = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=self.log,
                                              stderr=subprocess.STDOUT, start_new_session=True)

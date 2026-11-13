@@ -1073,12 +1073,12 @@ class RecordingRun:
 
 
 def with_run(fake, fn):
-    saved = ww.subprocess.run
-    ww.subprocess.run = fake
+    saved = ww.timed_run.run
+    ww.timed_run.run = fake
     try:
         return fn()
     finally:
-        ww.subprocess.run = saved
+        ww.timed_run.run = saved
 
 
 @case

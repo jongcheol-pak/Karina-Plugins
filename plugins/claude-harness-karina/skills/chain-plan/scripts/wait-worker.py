@@ -34,6 +34,8 @@ import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'scripts'))
+import timed_run
 
 STALL_TAIL = 40
 RAW_LIMIT = 4000
@@ -481,8 +483,8 @@ def _cli_timeout(args):
 def make_call(cli):
     def call(args):
         try:
-            p = subprocess.run([cli, 'orchestration'] + args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                               stderr=subprocess.DEVNULL, timeout=_cli_timeout(args))
+            p = timed_run.run([cli, 'orchestration'] + args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL, timeout=_cli_timeout(args))
         except subprocess.TimeoutExpired as e:
             raise OSError('응답 없음 — %s 초 시한 초과' % e.timeout) from None
         return p.stdout.decode('utf-8', errors='replace')
@@ -632,8 +634,8 @@ def sweep_stale(folder, now):
 def make_git(repo):
     def git(args):
         try:
-            p = subprocess.run(['git', '-C', repo] + args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                               stderr=subprocess.DEVNULL, timeout=GIT_TIMEOUT_SEC)
+            p = timed_run.run(['git', '-C', repo] + args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL, timeout=GIT_TIMEOUT_SEC)
         except (OSError, subprocess.TimeoutExpired):
             return False, ''
         return p.returncode == 0, p.stdout.decode('utf-8', errors='replace').strip()
