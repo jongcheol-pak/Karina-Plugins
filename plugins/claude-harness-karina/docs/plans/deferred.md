@@ -40,7 +40,7 @@
 - [2026-11-07] **session-context 골든의 `$env:USERPROFILE` 누수** — `hooks/evals/scenarios/session-context.ps1` 의 앞 케이스(376·658·770행)가 USERPROFILE 을 vault 홈으로 바꾸고 되돌리지 않아, 뒤 블록들(876–880·926·957·978행)이 저마다 저장·복원하고 859–864행 주석이 그 사정을 해명한다. 앞 케이스를 try/finally 로 복원하고 뒤 블록의 보정과 주석을 지운다 (출처: 응답 언어 주기 재주입 회차 주석 정리 MUST KILL) (실해: 2026-10-08 01c09996 — 첫 RED 시도가 이 누수로 무효)
 
 - [2026-10-23] **chain-plan 코디네이터 검증 명령을 `run-verify.py` 밖에서 띄우면 guard-bash 가 경고** — `continuation.md`「코디네이터 검증」 은 명령마다 래퍼로 띄우라고 하지만 코디네이터가 어기면 감시가 빠진다. 명령줄로 잴 수 있는 것은 「래퍼를 거쳤는가」뿐이다(규칙대로면 `cargo` 는 스크립트 파일 안에 있다). 체인 실행 중 판정·`run_in_background` 판정과 골든 실증이 필요하다 (출처: 2026-10-23 karina-ea 요청 ④ — 사용자 「4는 대장」) (실해: 2026-10-23 run_34c092d3 plan 6 검증이 정리 명령과 검증 셋을 시한 없이 한 백그라운드에 묶어 80분 넘게 섰다)
-- [2026-11-13] **comment-scope.ps1 의 git 대기에 시간 상한이 없다** — `skills/no-comments/scripts/comment-scope.ps1` 의 `Complete-ScopeGit` 이 `WaitForExit()` 를 상한 없이 부른다. git 이 멈추면 회차 끝 주석 정리가 끝없이 선다 — `scripts/timed-git.ps1` 의 `Invoke-TimedGit` 으로 옮길지 정한다 (출처: 시간 상한 자식 실행 헬퍼 회차 후보 라운드 4 — 사용자 「보류」) (실해: 2026-11-13 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 고아 프로세스 검토에서 코드 경로만 확인 · 멈춤은 재현하지 않았다)
+- [2026-11-13] **comment-scope.ps1 의 git 대기에 시간 상한이 없다** — `skills/no-comments/scripts/comment-scope.ps1` 의 `Complete-ScopeGit` 이 `WaitForExit()` 를 상한 없이 부른다. git 이 멈추면 회차 끝 주석 정리가 끝없이 선다 — `scripts/timed-git.ps1` 의 `Invoke-TimedGit` 으로 옮길지 정한다 — 넘김 사유 ① 사용자 결정 대기: 후보 라운드 답 보류 (출처: 시간 상한 자식 실행 헬퍼 회차 후보 라운드 4 — 사용자 「보류」) (실해: 2026-11-13 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 고아 프로세스 검토에서 코드 경로만 확인 · 멈춤은 재현하지 않았다)
 
 
 
