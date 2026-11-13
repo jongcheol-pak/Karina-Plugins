@@ -411,6 +411,20 @@ $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'PowerShell'; cwd = $work; too
 Assert-Case -Name "python 새 코드: PowerShell 도구의 python <파일.py> 도 같은 판정 (PN-ps)" -R $r -ExpectExit 2 -ExpectContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
 $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $pyDir; tool_input = @{ command = 'python ren.py' } } | ConvertTo-Json -Compress)
 Assert-Case -Name "python 새 코드 (음성): .py 파일의 한 줄 치환은 통과 (PN-file-neg)" -R $r -ExpectExit 0 -ExpectNotContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
+
+$pyRepo = Join-Path $work 'py-tracked'; New-Item -ItemType Directory $pyRepo -Force | Out-Null
+git -C $pyRepo init -q 2>&1 | Out-Null
+Copy-Item (Join-Path $pyDir 'gen.py') (Join-Path $pyRepo 'gen.py') -Force
+git -C $pyRepo add gen.py 2>&1 | Out-Null
+git -C $pyRepo -c user.name=t -c user.email=t@t -c commit.gpgsign=false commit -q -m init 2>&1 | Out-Null
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $pyRepo; tool_input = @{ command = 'python gen.py' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "python 새 코드 (음성): 커밋돼 바뀌지 않은 .py 실행은 통과 (PN-tracked 오탐 수정)" -R $r -ExpectExit 0 -ExpectNotContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
+Copy-Item (Join-Path $pyDir 'gen.py') (Join-Path $pyRepo 'new.py') -Force
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $pyRepo; tool_input = @{ command = 'python new.py' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "python 새 코드: 레포 안 미추적 .py 실행은 차단 유지 (PN-untracked)" -R $r -ExpectExit 2 -ExpectContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
+Add-Content -LiteralPath (Join-Path $pyRepo 'gen.py') -Value 'x = 1' -Encoding utf8
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $pyRepo; tool_input = @{ command = 'python gen.py' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "python 새 코드: 커밋 뒤 수정한 .py 실행은 차단 유지 (PN-modified)" -R $r -ExpectExit 2 -ExpectContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
 }
 
 if (Test-ScenarioUnit 1) {
