@@ -83,3 +83,10 @@ pstack `bug-fix.md` 는 6단계 *"Run **Opening a PR**."* 로 끝난다(고정 �
 - **버그 패턴을 재지 않는 자리의 테스트는 통과해도 재발을 막지 못한다** — 여러 호출자나 호출 연쇄가 있어야 나는 버그를 단일 호출자 테스트로 재면, 그 테스트는 수정 전에도 통과하거나 다른 이유로 실패한다. 그 GREEN 이 재발 차단으로 보고되면 거짓 안심이 된다.
 - **seam 이 없다는 것 자체가 발견이다** — 구조가 버그를 테스트로 고정하지 못하게 막고 있다는 뜻이라, 4-D 의 「값싼 상시 신호」 제안이나 Phase 4.5 아키텍처 의심이 이어받을 재료가 된다. 그동안 RED·GREEN 판정은 1-B 원래 재현이 맡는다.
 - 출처: mattpocock/skills diagnosing-bugs Phase 5 `https://github.com/mattpocock/skills/blob/5beb35b040e3de97e54fa9e386d7e42d15c295c2/skills/engineering/diagnosing-bugs/SKILL.md` — *"If the only available seam is too shallow … a regression test there gives false confidence."* · *"If no correct seam exists, that itself is the finding."*
+
+## §13 수정 요청 없는 발화는 원인 보고 뒤 묻는다
+
+- **판정은 발화에 수정을 시키는 말이 있는가다** — 「고쳐」·「수정해」·「fix」·「해결해」·「안 되게 해」 처럼 바꾸라는 요청이 있으면 지금처럼 Phase 4 로 간다. 「왜 이래?」·「이상해」·「에러 나」 처럼 증상만 알리거나 원인을 묻는 발화는 수정 요청이 아니다 — 원인을 물은 사람에게 묻지 않고 코드를 바꾸면 요청하지 않은 변경이 된다(사용자 답 「수정 요청 없으면 원인 보고 후 묻기」).
+- **보고는 Phase 3 통과 뒤(경량 경로는 1-A 뒤) 원인·증거·수정안(고칠 파일 경로 포함) 그대로이고, 질문은 1회다** — `plan.md` 가 없으면 면제 표식 질문과 한 번으로 묶어 `A) 바로 수정 / B) 계획부터 / C) 여기서 멈춤` 을 낸다(A 만 표식을 낸다 — `../../plan/references/interview.md`「계획 불필요 판정과 면제 표식」). `plan.md` 가 있으면 `A) 수정 진행 / B) 여기서 멈춤` 이다. 따로 물으면 같은 수정 앞에서 두 번 기다린다.
+- **멈춤을 고르면 수정 없이 끝내고 원인 보고와 조사 로그만 남긴다** — 커밋·게이트·push 는 없다.
+- **묻지 않는 자리** — `karina:implement` 루프 안(위임된 task 다)과 `karina:plan` Step 3 의 버그 항목 실측(Phase 1~3 만 읽기 전용으로 따른다)은 이 판정 밖이다.
