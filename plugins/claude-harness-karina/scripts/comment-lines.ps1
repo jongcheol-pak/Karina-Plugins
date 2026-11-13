@@ -87,6 +87,34 @@ $script:CommentTrackerRx = '\b(?!(UTF|SHA|ISO|CP|IEC|IEEE|ECMA|ANSI|CRC|AES|RSA|
 $script:CommentTodoRx = '\b(TODO|FIXME|XXX)\b'
 $script:CommentBaseBudgetMs = 10000
 $script:CommentKeepLineRx = '^- \*\*Comment \(보존\)\*\*: `(?<rx>[^`]+)` · 경로: `(?<paths>[^`]+)`'
+$script:TaskAuditLineRx = '^- \*\*Test \(감사\)\*\*: `(?<cmd>[^`]+)`(?<rest>.*)$'
+
+function Get-TaskAuditRules([string]$AgentsPath) {
+    $rules = New-Object System.Collections.Generic.List[object]
+    if (-not (Test-Path -LiteralPath $AgentsPath -PathType Leaf)) { return $rules.ToArray() }
+    $lines = @(Get-Content -LiteralPath $AgentsPath -Encoding UTF8)
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $m = [regex]::Match([string]$lines[$i], $script:TaskAuditLineRx)
+        if (-not $m.Success) { continue }
+        $rest = $m.Groups['rest'].Value
+        $inc = [regex]::Match($rest, ' · 증가: `([^`]+)`')
+        $pathM = [regex]::Match($rest, ' · 경로: `([^`]+)`')
+        $rule = @{
+            Line         = $i + 1
+            Command      = $m.Groups['cmd'].Value.Trim()
+            Pattern      = $null
+            Pathspec     = if ($pathM.Success) { $pathM.Groups[1].Value } else { '.' }
+            Alternatives = @([regex]::Matches($rest, ' · 또는: `([^`]+)`') | ForEach-Object { $_.Groups[1].Value.Trim() })
+            Error        = $null
+        }
+        if (-not $inc.Success) { $rule.Error = '증가 정규식 없음' }
+        else {
+            try { $rule.Pattern = [regex]::new($inc.Groups[1].Value) } catch { $rule.Error = '정규식 오류' }
+        }
+        $rules.Add($rule)
+    }
+    return $rules.ToArray()
+}
 
 $script:CommentRewriteBudgetPairs = 2000
 
@@ -211,12 +239,7 @@ function Get-CommentRepoContext([string]$Path) {
         if (Test-Path -LiteralPath $cand -PathType Leaf) { $ctx.Agents = $cand; break }
     }
     if ($ctx.Agents) {
-        if (-not (Get-Command Get-TaskAuditRules -ErrorAction SilentlyContinue)) {
-            try { . (Join-Path $PSScriptRoot 'guard-task-audit.ps1') } catch {}
-        }
-        if (Get-Command Get-TaskAuditRules -ErrorAction SilentlyContinue) {
-            $ctx.AuditRules = @(Get-TaskAuditRules $ctx.Agents | Where-Object { $_.Pattern })
-        }
+        $ctx.AuditRules = @(Get-TaskAuditRules $ctx.Agents | Where-Object { $_.Pattern })
         $keep = New-Object System.Collections.Generic.List[object]
         foreach ($l in @(Get-Content -LiteralPath $ctx.Agents -Encoding UTF8)) {
             $m = [regex]::Match([string]$l, $script:CommentKeepLineRx)

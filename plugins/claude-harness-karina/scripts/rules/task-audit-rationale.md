@@ -25,3 +25,9 @@ CR(-F 파일의 CRLF 줄 끝)을 걷고 공백을 정규화한 메시지에서 �
 커밋 폴더(`Resolve-GitCommitDir`)에서 git 최상위까지 올라가며 처음 만난 `AGENTS.md` 하나를 읽는다. `check-plan` 의 `Plan check` 탐색과 같은 기준이고, 모노레포 하위 폴더의 `AGENTS.md` 를 읽게 된다. diff 와 경로(pathspec)는 그 `AGENTS.md` 폴더 기준이다(경로를 생략하면 `.`).
 
 증가 정규식이 없거나 컴파일되지 않는 줄은 침묵하지 않고 「규칙을 읽지 못함」으로 알린다. 침묵하면 줄을 망가뜨리는 것이 검사를 끄는 수단이 된다(`stale-docs-rationale.md` 의 fail-closed 와 같은 취지).
+
+## §6 감사 줄 파서는 `comment-lines.ps1` 에 있다
+
+**`Test (감사)` 줄 파서(`$script:TaskAuditLineRx`·`Get-TaskAuditRules`)는 `comment-lines.ps1` 에 두고 이 검사가 그것을 쓴다.** 새 주석 게이트(`comment-gate-rationale.md` §3 doc 묶음 ①)도 같은 파서로 감사 대상 doc 을 통과시키는데, 종전에는 파서가 이 파일에 있어 `comment-lines` 가 이 파일을 dot-source 했다. 그래서 이 파일이 없거나 깨지면 감사 규칙이 빈 채로 남아, 감사가 요구하는 doc 주석까지 막혔다 — 비안전 차단의 판정 실패가 막는 쪽으로 떨어지는 fail-closed 였다(2026-11-13 하니스 검토 — 오탐 수정). 차단 게이트가 쓰는 파서를 차단 게이트 쪽 라이브러리에 두면 그 의존이 사라진다.
+
+**이 검사는 파서를 호출 시점에만 부른다** — 커밋 명령의 라이브러리 로드 순서가 secrets → stale-docs → task-audit → commit-comments 라, 파일 머리에서 부르면 뒤의 `guard-commit-comments.ps1` 이 `comment-lines.ps1` 을 다시 불러 이중 로드가 된다. 검사 호출 때는 넷 다 로드된 뒤라 이미 정의돼 있다. 그래도 없으면(파일 부재·로드 실패) 경고 한 줄을 내고 통과한다(fail-open — 이 검사는 경고 전용이다).

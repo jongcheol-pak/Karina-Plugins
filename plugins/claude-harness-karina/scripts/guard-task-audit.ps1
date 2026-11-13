@@ -1,34 +1,6 @@
 ﻿# guard-task-audit.ps1 — PreToolUse/Bash: task 완료 커밋의 소스 감사 누락 경고 (비차단) — 근거는 `rules/task-audit-rationale.md`
 
-$script:TaskAuditLineRx = '^- \*\*Test \(감사\)\*\*: `(?<cmd>[^`]+)`(?<rest>.*)$'
 $script:TaskAuditUntrackedMax = 50
-
-function Get-TaskAuditRules([string]$AgentsPath) {
-    $rules = New-Object System.Collections.Generic.List[object]
-    if (-not (Test-Path -LiteralPath $AgentsPath -PathType Leaf)) { return $rules.ToArray() }
-    $lines = @(Get-Content -LiteralPath $AgentsPath -Encoding UTF8)
-    for ($i = 0; $i -lt $lines.Count; $i++) {
-        $m = [regex]::Match([string]$lines[$i], $script:TaskAuditLineRx)
-        if (-not $m.Success) { continue }
-        $rest = $m.Groups['rest'].Value
-        $inc = [regex]::Match($rest, ' · 증가: `([^`]+)`')
-        $pathM = [regex]::Match($rest, ' · 경로: `([^`]+)`')
-        $rule = @{
-            Line         = $i + 1
-            Command      = $m.Groups['cmd'].Value.Trim()
-            Pattern      = $null
-            Pathspec     = if ($pathM.Success) { $pathM.Groups[1].Value } else { '.' }
-            Alternatives = @([regex]::Matches($rest, ' · 또는: `([^`]+)`') | ForEach-Object { $_.Groups[1].Value.Trim() })
-            Error        = $null
-        }
-        if (-not $inc.Success) { $rule.Error = '증가 정규식 없음' }
-        else {
-            try { $rule.Pattern = [regex]::new($inc.Groups[1].Value) } catch { $rule.Error = '정규식 오류' }
-        }
-        $rules.Add($rule)
-    }
-    return $rules.ToArray()
-}
 
 function Find-TaskAuditAgents([string]$Dir) {
     $top = [string](& git -C $Dir rev-parse --show-toplevel 2>$null)
@@ -96,6 +68,14 @@ function Invoke-WarnTaskAudit {
 
     $agents = Find-TaskAuditAgents $commitDir
     if (-not $agents) { return New-HookResult }
+    # 감사 줄 파서는 comment-lines.ps1 에 있고 검사 호출 시점에만 부른다 — 근거는 `rules/task-audit-rationale.md` §6
+    if (-not (Get-Command Get-TaskAuditRules -ErrorAction SilentlyContinue)) {
+        try { . (Join-Path $PSScriptRoot 'comment-lines.ps1') } catch {}
+    }
+    if (-not (Get-Command Get-TaskAuditRules -ErrorAction SilentlyContinue)) {
+        $w = '[guard-bash] comment-lines.ps1 로드 실패 — task 감사 누락 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.'
+        return New-HookResult -Stderr @($w)
+    }
     $rules = @(Get-TaskAuditRules $agents)
     if (-not $rules.Count) { return New-HookResult }
     $ruleDir = [System.IO.Path]::GetDirectoryName($agents)
