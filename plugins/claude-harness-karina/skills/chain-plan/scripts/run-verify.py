@@ -34,6 +34,9 @@ import sys
 import tempfile
 import time
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'scripts'))
+from timed_run import WinJob, resume_suspended
+
 TAIL_LINES = 40
 LOCK_PREFIX = 'karina-chain-verify-'
 DEFAULT_STALL_SEC = 600
@@ -333,74 +336,6 @@ class FileLock:
                 pass
 
 
-class _WinJob:
-    """자식을 담는 Job Object — 누적 CPU 를 재고, 끝낼 때 고아 자손까지 한 번에 끝낸다."""
-
-    def __init__(self):
-        import ctypes
-        from ctypes import wintypes
-        self.ctypes = ctypes
-        self.k32 = ctypes.WinDLL('kernel32', use_last_error=True)
-        self.k32.CreateJobObjectW.restype = wintypes.HANDLE
-        self.handle = self.k32.CreateJobObjectW(None, None)
-        if not self.handle:
-            raise OSError(ctypes.get_last_error(), 'CreateJobObjectW 실패')
-
-        class BasicLimit(ctypes.Structure):
-            _fields_ = [('PerProcessUserTimeLimit', ctypes.c_int64), ('PerJobUserTimeLimit', ctypes.c_int64),
-                        ('LimitFlags', wintypes.DWORD), ('MinimumWorkingSetSize', ctypes.c_size_t),
-                        ('MaximumWorkingSetSize', ctypes.c_size_t), ('ActiveProcessLimit', wintypes.DWORD),
-                        ('Affinity', ctypes.c_size_t), ('PriorityClass', wintypes.DWORD),
-                        ('SchedulingClass', wintypes.DWORD)]
-
-        class IoCounters(ctypes.Structure):
-            _fields_ = [(n, ctypes.c_uint64) for n in ('ReadOperationCount', 'WriteOperationCount',
-                                                       'OtherOperationCount', 'ReadTransferCount',
-                                                       'WriteTransferCount', 'OtherTransferCount')]
-
-        class ExtendedLimit(ctypes.Structure):
-            _fields_ = [('BasicLimitInformation', BasicLimit), ('IoInfo', IoCounters),
-                        ('ProcessMemoryLimit', ctypes.c_size_t), ('JobMemoryLimit', ctypes.c_size_t),
-                        ('PeakProcessMemoryUsed', ctypes.c_size_t), ('PeakJobMemoryUsed', ctypes.c_size_t)]
-
-        info = ExtendedLimit()
-        info.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-        if not self.k32.SetInformationJobObject(self.handle, 9, ctypes.byref(info), ctypes.sizeof(info)):
-            raise OSError(ctypes.get_last_error(), 'SetInformationJobObject 실패')
-
-    def assign(self, process_handle):
-        if not self.k32.AssignProcessToJobObject(self.handle, int(process_handle)):
-            raise OSError(self.ctypes.get_last_error(), 'AssignProcessToJobObject 실패')
-
-    def cpu(self):
-        ctypes = self.ctypes
-
-        class Accounting(ctypes.Structure):
-            _fields_ = [('TotalUserTime', ctypes.c_int64), ('TotalKernelTime', ctypes.c_int64),
-                        ('ThisPeriodTotalUserTime', ctypes.c_int64), ('ThisPeriodTotalKernelTime', ctypes.c_int64),
-                        ('TotalPageFaultCount', ctypes.c_uint32), ('TotalProcesses', ctypes.c_uint32),
-                        ('ActiveProcesses', ctypes.c_uint32), ('TotalTerminatedProcesses', ctypes.c_uint32)]
-
-        a = Accounting()
-        if not self.k32.QueryInformationJobObject(self.handle, 1, ctypes.byref(a), ctypes.sizeof(a), None):
-            return None
-        return (a.TotalUserTime + a.TotalKernelTime) / 1e7  # 100ns 단위
-
-    def terminate(self):
-        self.k32.TerminateJobObject(self.handle, 1)
-
-    def close(self):
-        self.k32.CloseHandle(self.handle)
-
-
-def _resume(process_handle):
-    import ctypes
-    ntdll = ctypes.WinDLL('ntdll')
-    status = ntdll.NtResumeProcess(ctypes.c_void_p(int(process_handle)))
-    if status != 0:
-        raise OSError(status, 'NtResumeProcess 실패')
-
-
 class RealProc:
     """명령 하나를 로그 파일로 출력을 받으며 띄운다."""
 
@@ -414,13 +349,13 @@ class RealProc:
         argv = [exe] + list(cmd[1:])
         try:
             if os.name == 'nt':
-                self.job = _WinJob()
+                self.job = WinJob()
                 self.proc = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=self.log,
                                              stderr=subprocess.STDOUT, creationflags=0x4)  # CREATE_SUSPENDED
                 try:
                     self.job.assign(self.proc._handle)
                 finally:
-                    _resume(self.proc._handle)
+                    resume_suspended(self.proc._handle)
             else:
                 self.proc = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=self.log,
                                              stderr=subprocess.STDOUT, start_new_session=True)
