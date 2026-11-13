@@ -55,6 +55,8 @@ disable-model-invocation: true
        작성 이후 바뀐 파일: <경로 목록 | 없음>
        초안 Goal: <Goal 문단>
        초안 Decisions: <표의 결정 열을 한 줄씩>
+       초안 Out of Scope: <`## Out of Scope` 줄 그대로 — 없으면 「없음」>
+       초안 Deferred: <`## Deferred / Follow-up` 줄 그대로 — 없으면 「없음」>
        초안 task: <T<N>. 제목과 Files 줄>
        ```
 
