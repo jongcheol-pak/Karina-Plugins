@@ -80,6 +80,9 @@ import sys
 
 from collections import Counter
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "scripts"))
+import timed_run
+
 # Windows 콘솔(cp949)에서도 한글·줄표가 깨지지 않도록 UTF-8 출력 강제.
 #  형제 스크립트(`llm-wiki/evals/run_lint_evals.py`·`evals/check-harness-consistency.py`)와
 #  같은 관례다 — 이것이 없으면 문서가 안내한 그대로 실행할 때 UnicodeEncodeError로 죽는다.
@@ -194,9 +197,9 @@ def presplit_notice(root, bdir):
     rc 만 본다(`-q`) — 출력을 디코딩하지 않으므로 콘솔 인코딩에 걸리지 않는다. 0 은 무시됨,
     1 은 무시되지 않음, 그 밖(128 = 저장소 아님)과 git 부재·시간 초과는 알릴 대상이 없다."""
     try:
-        r = subprocess.run(["git", "-C", root, "check-ignore", "-q", bdir],
-                           stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL, timeout=30)
+        r = timed_run.run(["git", "-C", root, "check-ignore", "-q", bdir],
+                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL, timeout=30)
     except (OSError, subprocess.TimeoutExpired):
         return []
     if r.returncode != 1:

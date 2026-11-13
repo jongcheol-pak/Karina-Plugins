@@ -45,6 +45,9 @@ import sys
 import tempfile
 import time
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'scripts'))
+import timed_run
+
 DAY = 86400
 HOLD = ('current', 'hold-locked', 'hold-wip', 'hold-open-pr', 'hold-chain')
 CHAIN_RX = re.compile(r'chain-[0-9A-Za-z]{8}-p\d+$')
@@ -60,8 +63,8 @@ class Fatal(Exception):
 # ---- 바깥(git·gh·Karina·파일시스템) ----
 
 def git(cwd, *args):
-    p = subprocess.run(['git', '--no-optional-locks', '-C', cwd] + list(args),
-                       capture_output=True, timeout=120)
+    p = timed_run.run(['git', '--no-optional-locks', '-C', cwd] + list(args),
+                      capture_output=True, timeout=120)
     return p.returncode, p.stdout.decode('utf-8', 'replace')
 
 
@@ -119,8 +122,8 @@ def load_prs(repo, pr_json):
             raw = json.load(f)
     else:
         try:
-            p = subprocess.run(['gh', 'pr', 'list', '--state', 'all', '--limit', '1000', '--json', 'headRefName,state'],
-                               cwd=repo, capture_output=True, timeout=60)
+            p = timed_run.run(['gh', 'pr', 'list', '--state', 'all', '--limit', '1000', '--json', 'headRefName,state'],
+                              cwd=repo, capture_output=True, timeout=60)
             raw = [{'head': r['headRefName'], 'state': r['state']} for r in json.loads(p.stdout)] if p.returncode == 0 else []
         except (OSError, ValueError, subprocess.TimeoutExpired):
             raw = []
@@ -172,7 +175,7 @@ def rmtree(path):
 def karina_call(cli, args):
     cmd = ([sys.executable, cli] if cli.lower().endswith('.py') else [cli]) + args
     try:
-        p = subprocess.run(cmd, capture_output=True, timeout=120)
+        p = timed_run.run(cmd, capture_output=True, timeout=120)
         doc = json.loads(p.stdout.decode('utf-8', 'replace'))
     except (OSError, ValueError, subprocess.TimeoutExpired) as e:
         return False, 'karina 응답 해석 불가 (%s)' % type(e).__name__

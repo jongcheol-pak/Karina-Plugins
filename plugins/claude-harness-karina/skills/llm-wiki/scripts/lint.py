@@ -33,6 +33,9 @@
 """
 import os, re, sys, glob, shutil, datetime, subprocess, collections
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "scripts"))
+import timed_run
+
 try:
     sys.stdout.reconfigure(encoding="utf-8")
 except Exception:
@@ -1220,7 +1223,7 @@ def _git(repo_root, *args):
     그 예외는 reader 스레드에서 나므로 아래 `except` 절로도 잡히지 않는다 —
     `errors="replace"` 로 **디코딩 단계에서** 막는 것이 유일한 자리다."""
     try:
-        proc = subprocess.run(
+        proc = timed_run.run(
             ["git", "-C", repo_root] + list(args),
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
             stdin=subprocess.DEVNULL,

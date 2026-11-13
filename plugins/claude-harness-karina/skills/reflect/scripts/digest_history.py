@@ -10,9 +10,15 @@
 """
 import argparse
 import datetime
+import os
 import re
 import subprocess
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'scripts'))
+import timed_run
+
+GIT_TIMEOUT_SEC = 120
 
 SUBJECT_RX = re.compile(r'^(수정:|Revert\b|되돌리기)')
 SEP = '\x1e'
@@ -20,7 +26,11 @@ END = '\x1f'
 
 
 def git(repo, args):
-    p = subprocess.run(['git', '-C', repo] + args, capture_output=True)
+    try:
+        p = timed_run.run(['git', '-C', repo] + args, capture_output=True, stdin=subprocess.DEVNULL,
+                          timeout=GIT_TIMEOUT_SEC)
+    except subprocess.TimeoutExpired:
+        return 128, ''
     return p.returncode, p.stdout.decode('utf-8', errors='replace')
 
 

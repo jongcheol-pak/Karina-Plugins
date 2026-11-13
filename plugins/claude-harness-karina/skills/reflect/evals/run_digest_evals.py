@@ -768,6 +768,29 @@ def history_not_a_repo_exit2():
         shutil.rmtree(d, ignore_errors=True)
 
 
+@case
+def history_git_timeout_is_git_failure():
+    import importlib.util
+    sys.path.insert(0, os.path.join(HERE, '..', '..', '..', 'scripts'))
+    import timed_run
+    spec = importlib.util.spec_from_file_location('digest_history_under_test', HISTORY)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    calls = []
+
+    def hang(cmd, **kw):
+        calls.append(kw.get('timeout'))
+        raise subprocess.TimeoutExpired(cmd, kw.get('timeout'))
+    saved = timed_run.run
+    timed_run.run = hang
+    try:
+        got = mod.git(tempfile.gettempdir(), ['log'])
+    finally:
+        timed_run.run = saved
+    assert got == (128, ''), got
+    assert calls == [120], calls
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
     failed = 0
