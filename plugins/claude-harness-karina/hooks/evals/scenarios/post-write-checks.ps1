@@ -133,6 +133,19 @@ New-Item -ItemType Directory (Split-Path $hookPath) -Force | Out-Null
 [System.IO.File]::WriteAllText($hookPath, '# test', [System.Text.UTF8Encoding]::new($true))
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pw; tool_input = @{ file_path = $hookPath } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: 하니스 hook 스크립트 변경 감지 (H2)" -R $r -ExpectExit 0 -ExpectContains 'hook 스크립트 변경'
+$pwRound = Join-Path $work 'pw-round'; New-Item -ItemType Directory (Join-Path $pwRound '.git') -Force | Out-Null
+"# plan`n`n> 승인: $((Get-Date).ToString('yyyy-MM-dd')) · Y`n`n- [ ] **T1-1** a" | Set-Content (Join-Path $pwRound 'plan.md')
+$pwRoundHook = Join-Path $pwRound 'plugins/claude-harness-karina/scripts/guard-bash.ps1'
+New-Item -ItemType Directory (Split-Path $pwRoundHook) -Force | Out-Null
+[System.IO.File]::WriteAllText($pwRoundHook, '# test', [System.Text.UTF8Encoding]::new($true))
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $pwRound; tool_input = @{ file_path = $pwRoundHook } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: 승인된 plan 회차 진행 중이면 hook 스크립트 변경 리마인더를 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'hook 스크립트 변경'
+$pwNoLib = Join-Path $work 'pw-nolib'; New-Item -ItemType Directory $pwNoLib -Force | Out-Null
+Copy-Item (Join-Path $scriptsDir '*') $pwNoLib -Recurse -Force -Exclude 'plan-round.ps1'
+$pwRoundHook2 = Join-Path $pwRound 'plugins/claude-harness-karina/scripts/guard-write.ps1'
+[System.IO.File]::WriteAllText($pwRoundHook2, '# test', [System.Text.UTF8Encoding]::new($true))
+$r = Invoke-Hook (Join-Path $pwNoLib 'post-write-checks.ps1') (@{ tool_name = 'Write'; cwd = $pwRound; tool_input = @{ file_path = $pwRoundHook2 } } | ConvertTo-Json -Compress) -Process
+Assert-Case -Name "post-write: 회차 헬퍼(plan-round.ps1)가 없으면 hook 스크립트 리마인더를 그대로 낸다" -R $r -ExpectExit 0 -ExpectContains 'hook 스크립트 변경'
 
 # ---- [T2] H2 이름 집합에 고아 프로세스 회수 계열 합류 (차단 쪽 guard-harness와 대칭) ----
 # 탐지·차단이 같은 술어를 공유하는 것이 규약이라 한쪽만 넓히면 대칭이 깨진다 — 두 이름을 각각 고정한다.
@@ -218,12 +231,12 @@ if ($gitOk) {
     $imp = Join-Path $work 'imprepo'; New-Item -ItemType Directory $imp -Force | Out-Null
     Push-Location $imp
     git init -q; git config user.email t@t; git config user.name t
-    'namespace Demo { }' | Set-Content Widget.cs
+    "public class WidgetService {`n    public static void RefreshCache() { }`n}" | Set-Content Widget.cs
     'var s = WidgetService.RefreshCache();' | Set-Content CallerFile.cs
     'namespace Demo2 { }' | Set-Content Lonely.cs
     git add .; git commit -qm 'base'
     # public 클래스·메서드 심볼 추가 수정 — caller(CallerFile.cs)가 있는 양성 케이스
-    "public class WidgetService {`n    public static void RefreshCache() { }`n}" | Set-Content Widget.cs
+    "public class WidgetService {`n    public static void RefreshCache(bool force) { }`n}" | Set-Content Widget.cs
     Pop-Location
     $ij = @{ tool_name = 'Write'; cwd = $imp; tool_input = @{ file_path = (Join-Path $imp 'Widget.cs') } } | ConvertTo-Json -Compress
     $r = Invoke-Hook 'post-write-checks.ps1' $ij
@@ -237,16 +250,39 @@ if ($gitOk) {
     $r = Invoke-Hook 'post-write-checks.ps1' $ij2
     Assert-Case -Name "impact: caller 없는 심볼 무경고(음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+    $impS = Join-Path $work 'imprepo-sig'; New-Item -ItemType Directory $impS -Force | Out-Null
+    Push-Location $impS
+    git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
+    $impSBase = "public class GadgetHub {`n    public int Measure(int a) {`n        return a;`n    }`n    public void Rotate(int d) {`n        Spin(d);`n    }`n}"
+    $impSBase | Set-Content Gadget.cs
+    'var g = new GadgetHub(); g.Measure(1); g.Rotate(2); g.Calibrate();' | Set-Content GadgetCaller.cs
+    git add .; git commit -qm 'base'
+    Pop-Location
+    $impSFile = Join-Path $impS 'Gadget.cs'
+    $impSJson = @{ tool_name = 'Write'; cwd = $impS; tool_input = @{ file_path = $impSFile } } | ConvertTo-Json -Compress
+    ($impSBase -replace 'return a;', 'return a + 1;') | Set-Content $impSFile
+    $r = Invoke-Hook 'post-write-checks.ps1' $impSJson
+    Assert-Case -Name "impact: 공개 메서드 본문만 고치면 IMPACT 경고 없음" -R $r -ExpectExit 0 -ExpectNotContains 'IMPACT WARNING'
+    ($impSBase -replace '(?m)^}$', "    public void Calibrate() {`n    }`n}") | Set-Content $impSFile
+    $r = Invoke-Hook 'post-write-checks.ps1' $impSJson
+    Assert-Case -Name "impact: 새 공개 메서드를 더하기만 하면 IMPACT 경고 없음(기존 caller 계약 불변)" -R $r -ExpectExit 0 -ExpectNotContains 'IMPACT WARNING'
+    ($impSBase -replace 'Measure\(int a\)', 'Measure(int a, int b)') | Set-Content $impSFile
+    $r = Invoke-Hook 'post-write-checks.ps1' $impSJson
+    Assert-Case -Name "impact: 공개 메서드 시그니처를 바꾸면 caller 를 IMPACT 경고" -R $r -ExpectExit 0 -ExpectContains 'GadgetCaller.cs'
+    ($impSBase -replace 'void Rotate\(', 'void Turn(') | Set-Content $impSFile
+    $r = Invoke-Hook 'post-write-checks.ps1' $impSJson
+    Assert-Case -Name "impact: 공개 메서드 이름을 바꾸면 옛 이름 caller 를 IMPACT 경고" -R $r -ExpectExit 0 -ExpectContains "'Rotate'"
+
     # ---- [회차 3 T4] 대문자 확장자 caller — caller 검색 pathspec 의 icase 를 잰다 ----
     # caller 판정은 확장자를 소문자로 바꿔 대조하므로 `.CS` 도 코드 파일이다. `git grep` 에 확장자
     #   pathspec 을 붙이면서 대소문자를 가리면 이 caller 가 검색 단계에서 빠진다.
     $impU = Join-Path $work 'imprepo-upper'; New-Item -ItemType Directory $impU -Force | Out-Null
     Push-Location $impU
     git init -q; git config user.email t@t; git config user.name t
-    'namespace D { }' | Set-Content Widget.cs
+    "public class Gadget {`n    public static void RecomputeIndex() { }`n}" | Set-Content Widget.cs
     'var s = Gadget.RecomputeIndex();' | Set-Content CallerUpper.CS
     git add .; git commit -qm base
-    "public class Gadget {`n    public static void RecomputeIndex() { }`n}" | Set-Content Widget.cs
+    "public class Gadget {`n    public static void RecomputeIndex(int from) { }`n}" | Set-Content Widget.cs
     Pop-Location
     $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $impU; tool_input = @{ file_path = (Join-Path $impU 'Widget.cs') } } | ConvertTo-Json -Compress)
     Assert-Case -Name "impact: 대문자 확장자 caller(.CS)도 제시 (회차 3 T4)" -R $r -ExpectExit 0 -ExpectContains 'CallerUpper.CS'
@@ -267,10 +303,10 @@ if ($gitOk) {
     $imp3 = Join-Path $work 'imprepo-dedup'; New-Item -ItemType Directory $imp3 -Force | Out-Null
     Push-Location $imp3
     git init -q; git config user.email t@t; git config user.name t
-    'namespace D { }' | Set-Content Widget.cs
+    "public class Svc {`n    public static void RefreshCache() { }`n}" | Set-Content Widget.cs
     'var s = RefreshCache();' | Set-Content Caller.cs
     git add .; git commit -qm base
-    "public class Svc {`n    public static void RefreshCache() { }`n}" | Set-Content Widget.cs
+    "public class Svc {`n    public static void RefreshCache(bool force) { }`n}" | Set-Content Widget.cs
     Pop-Location
     $ijd = @{ tool_name = 'Write'; cwd = $imp3; session_id = 'dedup-sess'; tool_input = @{ file_path = (Join-Path $imp3 'Widget.cs') } } | ConvertTo-Json -Compress
     $r = Invoke-Hook 'post-write-checks.ps1' $ijd
@@ -296,7 +332,7 @@ Assert-Case -Name "post-write: C# 전처리 지시문 영문주석 오집계 제
 
 $eolRepo = Join-Path $work 'eolrepo'; New-Item -ItemType Directory $eolRepo -Force | Out-Null
 Push-Location $eolRepo
-git init -q; git config user.email t@t; git config user.name t
+git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
 $eolLf = Join-Path $eolRepo 'lf.md'
 $eolCrlf = Join-Path $eolRepo 'crlf.md'
 [System.IO.File]::WriteAllText($eolLf, "첫 줄`n둘째 줄`n")
@@ -398,6 +434,24 @@ Pop-Location
 [System.IO.File]::WriteAllText($eolLfDoc, "LF 로 다시 저장`n")
 $r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolLfRepo; session_id = 'eol-e'; tool_input = @{ file_path = $eolLfDoc } } | ConvertTo-Json -Compress)
 Assert-Case -Name "post-write: autocrlf=false 여도 추적 파일 대부분이 CRLF 면 경고 (EOL4)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
+
+$eolAcRepo = Join-Path $work 'eol-autocrlf-repo'; New-Item -ItemType Directory $eolAcRepo -Force | Out-Null
+Push-Location $eolAcRepo
+git init -q; git config user.email t@t; git config user.name t; git config core.autocrlf false
+1..10 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $eolAcRepo "c$_.md"), "줄`r`n") }
+$eolAcBlob = Join-Path $eolAcRepo 'crlf-blob.md'
+[System.IO.File]::WriteAllText($eolAcBlob, "index 에 CRLF 로 커밋된 파일`r`n")
+git add crlf-blob.md 2>$null; git commit -qm crlfblob
+git config core.autocrlf true
+git add -A 2>$null; git commit -qm init
+Pop-Location
+$eolAcDoc = Join-Path $eolAcRepo 'c1.md'
+[System.IO.File]::WriteAllText($eolAcDoc, "LF 로 다시 저장`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolAcRepo; session_id = 'eol-ac'; tool_input = @{ file_path = $eolAcDoc } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: core.autocrlf=true 이고 index 가 LF 면 LF 저장에 EOL 경고를 내지 않는다 (커밋 결과 불변)" -R $r -ExpectExit 0 -ExpectNotContains 'EOL WARNING'
+[System.IO.File]::WriteAllText($eolAcBlob, "LF 로 다시 저장`n")
+$r = Invoke-Hook 'post-write-checks.ps1' (@{ tool_name = 'Write'; cwd = $eolAcRepo; session_id = 'eol-ac2'; tool_input = @{ file_path = $eolAcBlob } } | ConvertTo-Json -Compress)
+Assert-Case -Name "post-write: core.autocrlf=true 여도 index 가 CRLF 인 파일은 LF 저장에 EOL 경고 (커밋 결과가 바뀜)" -R $r -ExpectExit 0 -ExpectContains 'EOL WARNING'
 
 # EOL5: core.autocrlf=**true** + `.gitattributes eol=lf` → **속성이 이긴다**.
 #   Windows 기본값과 크로스플랫폼 .gitattributes 의 흔한 조합이고, autocrlf 만 보던

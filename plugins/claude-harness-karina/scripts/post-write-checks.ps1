@@ -139,7 +139,10 @@ $suspect83H2 = $has83H2 -and
 if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hooks/hooks\.json$') {
     # 문구 중립화 + 세션·파일당 1회 (v1.98.0): 개발 repo의 정상 hook 개발 편집에도 "개조 시도" 프레임이
     #   매번 붙던 것을 검증 리마인더로 낮춘다(설치본 개조 '차단'은 guard-harness 소관 — 여긴 리마인더).
-    if (Test-WarnOnce ('hooksrc|' + $normFileH2)) {
+    try { . (Join-Path $PSScriptRoot 'plan-round.ps1') } catch {}
+    $hookRoundActive = [bool]((Get-Command Test-ActivePlanRound -ErrorAction SilentlyContinue) -and
+        (Test-ActivePlanRound (Find-SinglePlanUpwards -StartDir ([System.IO.Path]::GetDirectoryName($file)))))
+    if (-not $hookRoundActive -and (Test-WarnOnce ('hooksrc|' + $normFileH2))) {
         $allMsgs.Add("[HARNESS] 하니스 hook 스크립트 변경: $file")
         $allMsgs.Add("  hook 동작 변경은 골든 회귀(run-hook-evals.ps1)로 검증하세요. (세션·파일당 1회 리마인더)")
         $allMsgs.Add("")
@@ -302,10 +305,14 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                 }
                 if ($diffLines -and $diffOk) {
                     $symbols = New-Object System.Collections.Generic.HashSet[string]
+                    $plusDecl = [System.Collections.Generic.Dictionary[string, System.Collections.Generic.HashSet[string]]]::new([System.StringComparer]::Ordinal)
+                    $minusDecl = [System.Collections.Generic.Dictionary[string, System.Collections.Generic.HashSet[string]]]::new([System.StringComparer]::Ordinal)
 
                     foreach ($line in $diffLines) {
-                        if (-not $line.StartsWith('+')) { continue }
-                        if ($line.StartsWith('+++')) { continue }
+                        if ($line.StartsWith('+++') -or $line.StartsWith('---')) { continue }
+                        if ($line.StartsWith('+')) { $declSide = $plusDecl }
+                        elseif ($line.StartsWith('-')) { $declSide = $minusDecl; $line = '+' + $line.Substring(1) }
+                        else { continue }
 
                         # 언어별 선언 패턴
                         $patterns = @(
@@ -332,9 +339,15 @@ if ($normFileH2 -match "/($harnessHookName)\.ps1$" -or $normFileH2 -match '/hook
                                 # 너무 짧거나 일반적인 이름은 제외 — 근거는 `rules/post-write-rationale.md` §12
                                 if ($sym.Length -ge 4 -and
                                     $sym -notmatch '^(?i)(get|set|is|has|name|type|data|text|value|item|key|count|index|result|state|status|title|content|message)$') {
-                                    [void]$symbols.Add($sym)
+                                    if (-not $declSide.ContainsKey($sym)) { $declSide[$sym] = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal) }
+                                    [void]$declSide[$sym].Add($line.Substring(1).Trim())
                                 }
                             }
+                        }
+                    }
+                    foreach ($sym in $minusDecl.Keys) {
+                        foreach ($declText in $minusDecl[$sym]) {
+                            if (-not ($plusDecl.ContainsKey($sym) -and $plusDecl[$sym].Contains($declText))) { [void]$symbols.Add($sym); break }
                         }
                     }
 
@@ -429,7 +442,12 @@ try {
             $crlf = ([regex]::Matches($eolText, "`r`n")).Count
             $lf = ($eolText.Length - $eolText.Replace("`n", '').Length) - $crlf
             $crlfRepo = $false; $repoCrlf = 0; $repoTotal = 0
-            if ($lf -gt 0 -and -not (Test-WarnedAlready "eol|$file")) {
+            $commitNormalizes = $false
+            if ($lf -gt 0 -and ((Invoke-PwGit -GitArgs @('-C', $eolDir, 'config', '--get', 'core.autocrlf')).Lines -join '').Trim() -eq 'true') {
+                $idxRun = Invoke-PwGit -GitArgs @('-C', $eolDir, 'ls-files', '--eol', '--', $file)
+                $commitNormalizes = ($idxRun.Code -eq 0 -and (($idxRun.Lines -join '') -eq '' -or ($idxRun.Lines -join '') -match '^i/lf\s'))
+            }
+            if ($lf -gt 0 -and -not $commitNormalizes -and -not (Test-WarnedAlready "eol|$file")) {
                 $eolAttr = ((Invoke-PwGit -GitArgs @('-C', $eolDir, 'check-attr', 'eol', '--', $file)).Lines -join '')
                 if ($eolAttr -match 'eol:\s*(lf|crlf)\s*$') {
                     $crlfRepo = ($Matches[1] -eq 'crlf')
