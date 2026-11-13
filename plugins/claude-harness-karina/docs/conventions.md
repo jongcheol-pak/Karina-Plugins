@@ -253,6 +253,9 @@
 
 ### 골든 러너 운용
 
+- [2026-11-14] **hook 에 새 dot-source 헬퍼 파일을 더하면 골든의 스텁 폴더·단독 프로브·eval 픽스처가 그 파일을 갖지 않아 무관한 케이스가 무더기로 FAIL 한다 — 헬퍼를 더한 task 는 `git grep -n "Copy-Item (Join-Path \$scriptsDir" -- hooks/evals` 와 `guard-commit-secrets.ps1') + [char]39` 프로브, `evals/fixtures/minimal-repo/scripts/` 를 함께 고친다** — 한 회차에 두 번 났다(`timed-git.ps1` 을 커밋 라이브러리 루프에 넣자 LZ 스텁·t5·t6 프로브 14건, `plan-round.ps1` 을 만들자 LZ·no-lib 스텁 4건과 eval 복제 사본 축 6건). 새 픽스처 파일은 `git add -N` 전에는 `run-evals.py` 가 「추적되지 않는 픽스처」 로 멈춘다. (실측)
+  - 시간 기준을 거는 골든(상한·빠름)은 병렬 전체 부하에서 단독 실행보다 몇 배 느리다 — 같은 회차에 10초 호출 상한과 15초 「빠름」 기준이 부하에서만 깨졌다. 기준은 가짜 대기와 함께 벌린다(`post-write-rationale.md` §22 와 같은 처방).
+
 - [2026-11-13] **hook 스크립트를 골든 러너 밖에서 직접 실행해 재면(성능 측정 등) 실제 `~/.claude/.state/hook-events/` 에 차단 이벤트가 쌓인다 — 측정 스크립트는 `USERPROFILE` 을 스크래치 폴더로 바꿔 돌린다.** 이벤트 로그는 `USERPROFILE` 아래에 쓰고(`scripts/hook-event-log.ps1`), 골든 러너만 격리 `USERPROFILE` 로 돈다. v3.13.0 성능 측정이 198줄(guard-doc-owner 95 · block-python-newcode 89 · block-plan-write 14)을 남겨 오탐 집계를 오염시켰고, v3.13.1 이 백업 뒤 지웠다. (실측)
 
 - [2026-11-07] **골든·러너 속도를 BASE 와 견줄 때는 두 쪽을 같은 위치(둘 다 임시 폴더 worktree)에 두고 교대로 잰다 — 다른 세션이 도는 PC 에서는 같은 코드의 전체 골든이 99~293초로 흔들렸다** — BASE 를 `%TEMP%` worktree, HEAD 를 레포 작업 트리(D:)에 두고 잰 guard-bash 1회 호출이 BASE 3초·HEAD 1.3초로 갈렸다가, 같은 위치에서는 1.27·1.29초였다. 골든 동시 상한을 12 로 올리면 BASE·HEAD 모두 느려진다(CPU 포화 — 기본 8 유지). 모노레포 worktree 에서는 하니스 하위 폴더로 cd 해 돌린다 (실측)
