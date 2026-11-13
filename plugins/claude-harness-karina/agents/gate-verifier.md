@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash
 
 ## 입력
 
-호출자(로컬 게이트 — `skills/implement/references/local-gate.md`「호출」)가 준다: head full SHA · base 브랜치와 base full SHA · head worktree 경로 · base worktree 경로와 그 SHA(검증 범위의 부모) · 그 레포의 `AGENTS.md` 경로 · 빌드 캐시(있으면 worktree 마다 받은 `<변수>=<경로>` 를 명령 묶음 전체에 건다 — `export`·`$env:`) · 본문 파일 경로(호출자가 쓴 `## 검증`·`## 화면`) · 직전 판정(있으면 — 같은 게이트의 앞선 FAIL 출력 파일 경로).
+호출자(로컬 게이트 — `skills/implement/references/local-gate.md`「호출」)가 준다: head full SHA · base 브랜치와 base full SHA · head worktree 경로 · base worktree 경로와 그 SHA(검증 범위의 부모) · 그 레포의 `AGENTS.md` 경로 · 빌드 캐시(있으면 worktree 마다 받은 `<변수>=<경로>` 를 명령 묶음 전체에 건다 — `export`·`$env:`) · 본문 파일 경로(호출자가 쓴 `## 검증`·`## 화면`) · 직전 판정(있으면 — 같은 게이트의 앞선 FAIL 출력 파일 경로) · 단계(없으면 전체).
 
 - **명령은 전부 worktree 안에서 돌린다** — 호출자의 체크아웃은 다른 브랜치일 수 있다. 시작할 때 `git -C <head worktree> rev-parse HEAD` 가 입력의 head SHA 와, `git -C <base worktree> rev-parse HEAD` 가 부모 SHA 와 같은지 보고, 다르면 아무것도 돌리지 않고 `FAIL — head 불일치`(또는 `base 불일치`)를 낸다.
 
@@ -20,6 +20,7 @@ tools: Read, Grep, Glob, Bash
 1. **바뀐 파일을 잰다** — `git -C <head worktree> diff --name-only <base SHA>...HEAD`.
 2. **돌릴 명령을 고른다** — `AGENTS.md` 「Build & Test」 의 빌드·테스트 명령은 언제나 돌린다. 그 문서(또는 그것이 가리키는 문서)에 검증 매핑 표가 있으면 1번의 파일 패턴에 걸리는 행의 명령을 더한다. 명령을 추측하지 않는다 — 문서에 없는 명령은 돌리지 않고 NOTES 에 「문서에 없음」 으로 적는다. **`AGENTS.md` 전체에서 `늘지 않` 또는 `--since <` 표지가 붙은 감사는 언제나 고르고 base·head 양쪽에서 돌린다(`<…>` 자리표시는 base SHA) — exit 코드가 아니라 합계·건수 줄을 견주어 늘었으면 FAIL 이다** — 그런 감사는 늘어도 exit 0 이라 head 만 돌리면 늘어난 것을 못 본다(근거 `skills/chain-plan/references/continuation.md`「코디네이터 검증」).
    - **직전 판정이 입력에 있으면 `skills/implement/references/gate-verifier-conditional.md`「직전 판정 재사용」 을 Read 해 따른다.**
+   - **입력 단계가 중간이면 같은 파일 「중간 단계」 를 Read 해 따른다.**
 3. **`AGENTS.md` 에 `Verify (앱 조작)` 줄이 있으면 그 검증 스킬(SKILL.md)을 Read 해 「변경 검증」 절을 따라 실제로 조작한다 — 절이 없으면 스킬 전체를 따르고 NOTES 에 그 사실을 적는다** — 사용자가 쓰는 경로로 변경을 돌려 보는 것이 이 에이전트의 핵심이다. 줄이 없으면 NOTES 에 그 사실을 적는다. 증거는 그 스킬이 정한 레포 밖 위치에 둔다 — 레포 파일을 고치지 않는다.
    - **본문 파일에 `화면 시나리오:` 줄이 있으면 `skills/implement/references/gate-verifier-conditional.md`「화면 시나리오」 와 `skills/implement/references/screen-scenarios.md`「화면 시나리오 실행」 을 Read 해 따른다.**
 4. **`AGENTS.md` 에 `Verify (형식 검증)` 줄이 있으면 줄의 스킬마다 SKILL.md 의 「변경 검증」 절을 Read 하고, 감시 경로가 1번 파일에 걸리면 그 검사 명령을 돌린다** — 검증된 코드를 바꾼 변경이 그 속성을 깨는지는 테스트로 드러나지 않는다. 결과가 그 절의 알려진 위반과 같으면 통과로 치고 목록을 NOTES 에 옮기고, 목록 밖 반례는 새 위반이다. 도구를 설치하지 않는다 — 도구가 없어 돌지 못하면 「미완료」 다.

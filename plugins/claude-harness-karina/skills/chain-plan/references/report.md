@@ -33,7 +33,7 @@ HUMAN-VERIFY·미검증: <워커 --body 에서 받은 것 전부 · 코디네이
 인계 파일: <경로 — 지움 <커밋 sha>(체인 끝 push 가 건너뛰었거나 실패했으면 「로컬 커밋 — push 안 함」 을 덧붙인다) | 남김 — <사유> | 없음>
 병렬 병합: <그룹마다 plan · 병합 커밋 sha | 미병합 — <사유> · worktree 경로 · 브랜치 — 지우지 않음(`parallel.md`「닫기」 · 병합 뒤 정리는 「worktree 정리해줘」 = `karina:worktree-cleanup`) | 없음>
 push: <대상 레포마다 「게이트 <판정> · push <결과>」 | 건너뜀 — <사유> — `chain-end-push.md`「체인 끝 push」 | 건너뜀 — 체인 멈춤 · 미push <k>개(k 는 `git -C "<대상 레포 경로>" rev-list --count origin/<기본>..HEAD`, 원격이 없으면 결정 파일 `- plan 1 · 부모 <sha>`..HEAD · 그 줄도 없으면 「미push 모름 — 범위 아래 끝 없음」)>
-체인 끝 게이트 남은 이슈: <체인 끝 `gate-verifier` 의 `NOTES` 항목 전부 — 코디네이터 출처(워커 `--body` 에 없다 · `../../implement/references/local-gate.md`「체인 끝」 의 보고 자리) — `PASS+NOTES` 가 아니면 줄 생략>
+체인 끝 게이트 남은 이슈: <체인 끝 `gate-verifier` 의 `NOTES` 항목 전부 — 코디네이터 출처(워커 `--body` 에 없다 · `chain-end-push.md`「체인 끝 게이트」 의 보고 자리) — `PASS+NOTES` 가 아니면 줄 생략>
 화면 확인 대기: <체인 끝 게이트가 화면 확인을 기다리면 「화면 확인 블록」(머리 `로컬 게이트 — HEAD <sha7>` · 이름마다 plan N) — 없으면 줄 생략>
 화면 증거: <체인 끝 `gate-verifier` `스크린샷:` 칸의 「변경 검증」 줄 — 「화면 확인 블록」 의 기다리지 않는 틀 · 없으면 줄 생략>
 남은 탭: <체인이 끝나거나 멈출 때 `worker-list --run <Run id> --json` 의 이 Run 행 중 `terminalState` 가 `released` 가 아닌 것(dispatch·state·terminalState) · CLI 오류 응답(`worker_start_failed`·`duplicate_worker`·`task_not_startable`)이 이름 댄 다른 탭·dispatch — 없으면 줄 생략>
