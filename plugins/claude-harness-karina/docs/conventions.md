@@ -137,6 +137,7 @@
 
 - [2026-08-23] **`grep -c`는 0건일 때 exit 1이라 `&&` 체인을 끊는다** — 델타 음성을 세는 `grep -c "패턴" | ...` 뒤에 `&& cp 백업 …`을 붙였다가 **백업이 실행되지 않은 채 복원만 시도**돼 실패했다(파일은 무손상이었다). 검증 스크립트에서 "0건이 정상"인 grep 뒤에는 `|| true`를 붙이거나 `&&` 대신 개행으로 잇는다.
 
+- [2026-11-13] **픽스처 문자열을 쓰는 python eval 을 Bash 도구로 돌리면 `block-python-newcode` 가 exit 2 로 막는다** — `run_verify_evals.py`·`skills/evals/test_exit_code.py`·`trigger_eval.py` 가 한 회차에 3번 막혔다(오탐 — Deferred 대장 「block-python-newcode 가 기존 eval 실행을 막는 오탐」). 다른 명령·인터프리터로 돌려 피하지 않는다(`implement/references/loop-exceptions.md`「실패 처리」) — `미검증 — hook 오탐 차단` 으로 보고하고, 그 eval 이 검증 매핑의 필수 행이면 사용자(중계 모드는 코디네이터)에게 묻는다.
 - [2026-08-23] **Write 도구로 만든 «새» 파일은 LF로 저장된다** — 기존 파일을 고치는 수단별 줄바꿈(`Edit` 는 CRLF·BOM 보존 · `Write`·`sed -i` 는 전면 LF · python 텍스트 쓰기는 실행 플랫폼 줄바꿈)은 레포 AGENTS.md 「Conventions > 줄바꿈」이 정본이고, **여기 남는 것은 「신규 파일」 축이다** — 기존 파일을 `Edit` 로 고치면 보존되는데 새로 만든 것은 LF 로 어긋난다. `core.autocrlf=true`라 커밋 blob은 정규화돼 **`git diff`에 나타나지 않으므로** 파일을 만든 회차가 스스로 확인해야 한다 — 바이너리로 읽어 `\r\n` 개수를 센다. **(2026-09-05 해소 — `check-harness-consistency.py` 의 「줄바꿈 정합」 축이 혼재·bare CR·전면 LF 를 기계로 잡는다. 수동 확인은 더 필요 없다)**
 
 - **`file` 명령은 `.json`에 줄바꿈 종류를 보고하지 않는다** — `file x.json`은 `JSON text data`만 내고 `with CRLF line terminators`를 붙이지 않아, `file | grep CRLF`로 확인하면 CRLF 파일을 LF로 오판한다(`lint-cases.json`을 그렇게 오판할 뻔했다 — 바이트로 세니 CRLF 464/LF-only 0). **줄바꿈 확인은 `.md`·`.ps1`만 `file`로 하고 `.json`은 바이트로 센다**: **CR+LF 바이트열의 개수를 세는 방식**(파이썬으로 파일을 바이너리로 읽어 그 바이트열 count)으로 확인한다.

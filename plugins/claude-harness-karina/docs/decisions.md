@@ -2,6 +2,8 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-13] 처방이 하나인 결함 묶음(체인 plan 2/3) 범위 밖 — 보류: ① 참조 깊이 검사 축 ② rationale 차단 경로 수와 `check-block-coverage.py` 출력의 대조 검사 — 둘 다 사용자 답 「전부 권장안」 의 보류. 이번 회차는 문면을 고쳐 지금 불일치만 닫았고, 재발을 막는 기계 검사는 Deferred 대장 두 항목이 잇는다.
+
 - [2026-11-13] 안전 임계 hook 미탐·판정 결함 보완(체인 plan 1/3) 범위 밖 — 기각·보류: ① plan 상향 탐색의 서브모듈 경계를 session-context·loop-continue 와 차단 hook 사이에서 맞추는 안 — 기각(사용자 답 갈림 4 권장 「기록만」). 어느 쪽으로 맞춰도 상위 plan 의 게이트 상실이나 다른 레포 plan 오주입이 생겨, 경계 차이를 의도로 `scripts/rules/session-context-rationale.md` §5 에 적었다 ② `--` 없이 경로만 적은 `git commit <경로>` 의 시크릿 내용 스캔 — 보류. 메시지·옵션 값과 경로를 가르는 파서가 필요하고 실해가 관측되지 않아 대장에 올리지 않았다(`-- <경로>` 꼴은 v3.13.3 뒤 이 회차가 스캔한다 — `commit-secrets-rationale.md` §18).
 
 - [2026-11-13] pstack 누락 셋 — 기각: v3.13.3 이 trace-forensics 좁히기·형식 검증 미등록 찾기·린트 억제 사유를 들이면서 나머지를 기각했다(사용자 답 「권장」). ① reflect convergence(여러 리뷰어의 같은 지적) — karina reflect 는 리뷰어가 하나라 성립하지 않는다. ② live lane 없이는 clean 이 아니다 — `Verify (앱 조작)` 없는 레포의 push 가 전부 막혀, NOTES·HUMAN-VERIFY 로 둔다. ③ correct 예외의 만료일·사람 승인 — 혼자 쓰는 하니스라 지킬 주체가 없어 사유만 들였다.
