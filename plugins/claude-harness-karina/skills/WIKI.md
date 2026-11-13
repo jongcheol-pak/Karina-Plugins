@@ -25,7 +25,7 @@
 
 **`plan/SKILL.md` Step 1 2번이 정본이다** — 위키는 허브 개요가 코드를 읽는 것보다 빠를 때와 사용자가 검색을 요청할 때만 읽는다. 함정 배분 기준은 `REPO-CONVENTIONS.md` 「읽기」다.
 
-## 3. 쓰기 — 완료 시점 (`karina:implement` 최종 검증 후)
+## 3. 쓰기 — 완료 시점 (`karina:implement` 4번 검증 앞)
 
 **vault 에 작업 함정을 쓰지 않는다 — 판정·형식·위치는 `REPO-CONVENTIONS.md` 「쓰기」 가 정본이다.** 함정은 레포 `docs/conventions.md` 에 그 회차 커밋과 함께 남는다.
 
