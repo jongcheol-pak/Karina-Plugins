@@ -1,6 +1,6 @@
 # Deferred 대장
 
-> 미처리 Deferred의 추적 대장 — **`## 대기`만 담는다**. 기각 종결은 `deferred-closed.md` 이고, 그 파일은 기각 이동 때만 연다.
+> 미처리 Deferred의 추적 대장 — **`## 대기`와 파일 끝 `## 1회 실패`(재발 판정용 1회차 기록 — `- [1회 실패 YYYY-MM-DD] <원인> — <해결>` · 날짜 접두가 아니라 대기 계수에 들지 않는다 · 규칙 `skills/REPO-CONVENTIONS.md`「쓰기」)를 담는다**. 기각 종결은 `deferred-closed.md` 이고, 그 파일은 기각 이동 때만 연다.
 > 항목은 `- [등록일] {요지 1줄} (출처) (실해: YYYY-MM-DD {관측 요지})` — **이 형식의 정본은 이 줄이다.** 실해 필드는 필수이고 `check-harness-consistency.py` 의 「등재 근거 실측」 축이 `## 대기` 전건을 잰다.
 > **등재 판정 규칙**(등재 하한선·회차 순증 금지·리뷰 지적의 필터 패스)의 정본은 `plan/references/deferred-rules.md` 다.
 > **항목 상한은 600자다**(정본은 `skills/BUDGET.md`). **종결은 사유로 갈린다 — 반영·해소·병합은 항목을 지우고 근거를 커밋 본문에 남긴다. 기각만 `deferred-closed.md` 로 `- [등록일 → 종결일] **요지** — 기각: 사유` 1줄로 옮긴다.**
@@ -69,3 +69,5 @@
 - [2026-11-13] **rationale 차단 경로 수 대조 검사** — `scripts/rules/bash-guard-rationale.md` §2 의 「`Block = $true` 경로는 N」·검사 수 서술을 `hooks/evals/check-block-coverage.py` 출력과 대조하는 검사 — 넘김 사유 ②(새 검사) (체인 run_7c21af27 plan 2 보류 — 사용자 지시) (실해: 2026-11-13 그 문단이 「다섯·10검사 중 4종」 으로 낡아 실제 8경로·12검사와 어긋남 — plan 2 T2 가 고침)
 - [2026-11-13] **사용자 몫 범주 단일 정본 검사기 축** — chain-plan 의 넘김 범주(사용자 몫 다섯 — `chain-plan/SKILL.md`「답하는 기준」·`references/user-relay.md`「사용자 몫」)가 다른 참조 문서에 범주 미지정 넘김으로 새로 생기는지 `check-harness-consistency.py` 축으로 잰다 — 지금은 문면 규칙뿐이다 — 넘김 사유 ②(새 검사 축) (체인 run_7c21af27 plan 3 보류 — 사용자 지시) (실해: 2026-11-13 compaction.md「압축 뒤 복원」 이 범주 없이 「사용자 몫으로 넘긴다」를 둬 여섯째 범주가 된 것을 하니스 검토가 찾음 — plan 3 T3 가 문면만 고침)
 
+
+## 1회 실패

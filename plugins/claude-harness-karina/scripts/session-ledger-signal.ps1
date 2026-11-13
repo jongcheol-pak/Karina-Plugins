@@ -12,7 +12,7 @@ function Get-LedgerSignal {
                 $ledgerPath = if ($ledgerRoot) { Join-Path $ledgerRoot 'docs/plans/deferred.md' } else { $null }
                 if ($ledgerPath -and (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
                     $ledgerText = Get-Content -LiteralPath $ledgerPath -Raw -Encoding UTF8
-                    # 종료 앵커 `^## `는 현재 대장에 `## 대기` 하나뿐이라 실질적으로 `\z`로 끝난다. — 근거는 `rules/session-context-rationale-plan.md` §13
+                    # 종료 앵커 `^## `는 대장 끝 `## 1회 실패` 절 앞에서 대기 구간을 끊는다. — 근거는 `rules/session-context-rationale-plan.md` §13
                     $ledgerWait = [regex]::Match($ledgerText, '(?ms)^## 대기\s*?$(.*?)(?=^## |\z)')
                     if ($ledgerWait.Success) {
                         $ledgerItemRx = [regex]'^- \[\d{4}-\d{2}-\d{2}'
