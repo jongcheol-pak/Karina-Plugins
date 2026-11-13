@@ -1,4 +1,4 @@
-﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 11종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
+﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 12종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
 
 # 공용 헬퍼 New-HookResult·Remove-HeredocBodyForJudge 는 여기 둔다 — 근거는 `rules/bash-guard-rationale.md` §2
 function New-HookResult {
@@ -208,12 +208,9 @@ function Invoke-WarnDangerousAssignment {
     return New-HookResult -Stderr @($msg) -Context $ctx
 }
 
-# block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 — 근거는 `rules/bash-guard-rationale.md` §10
-function Invoke-BlockPlanWrite {
-    param($data)
-    $cmd = $data.tool_input.command
-    if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
-
+# 셸 쓰기 구문의 대상 인자를 $IsTarget 으로 판정해 걸린 구문 이름을 모은다 — 근거는 `rules/bash-guard-rationale.md` §23
+function Get-ShellWriteHits {
+    param([string]$cmd, [scriptblock]$IsTarget)
     $assigned = @{}
     foreach ($m in [regex]::Matches($cmd, '(?:^|[\s;&|("''])\s*\$?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[''"]([^''"]*)[''"]')) {
         $assigned[$m.Groups[1].Value] = $m.Groups[2].Value
@@ -224,7 +221,7 @@ function Invoke-BlockPlanWrite {
         if ($a -match '^\$?\{?([A-Za-z_][A-Za-z0-9_]*)\}?$' -and $assigned.ContainsKey($Matches[1])) {
             $a = $assigned[$Matches[1]]
         }
-        return ($a -match '(^|[\\/])plan\.md$')
+        return [bool](& $IsTarget $a)
     }
 
     $hits = New-Object System.Collections.Generic.List[string]
@@ -240,7 +237,7 @@ function Invoke-BlockPlanWrite {
     foreach ($m in [regex]::Matches($stripped, '>>?\s*("[^"]*"|''[^'']*''|\S+)')) {
         if (Test-PlanTarget $m.Groups[1].Value) { $hits.Add('>') }
     }
-    foreach ($m in [regex]::Matches($cmd, '(?i)\[System\.IO\.File\]::(WriteAll\w+|AppendAllText)\s*\(\s*([^,()]+)')) {
+    foreach ($m in [regex]::Matches($cmd, '(?i)\[(?:System\.)?IO\.File\]::(WriteAll\w+|AppendAllText)\s*\(\s*([^,()]+)')) {
         if (Test-PlanTarget $m.Groups[2].Value) { $hits.Add('[System.IO.File]') }
     }
     foreach ($seg in Split-TopLevel $stripped $script:IsPsTool) {
@@ -261,7 +258,15 @@ function Invoke-BlockPlanWrite {
             if (Test-PlanTarget $t) { $hits.Add($verb) }
         }
     }
+    return , $hits
+}
 
+# block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 — 근거는 `rules/bash-guard-rationale.md` §10
+function Invoke-BlockPlanWrite {
+    param($data)
+    $cmd = $data.tool_input.command
+    if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
+    $hits = Get-ShellWriteHits $cmd { param($a) $a -match '(^|[\\/])plan\.md$' }
     if ($hits.Count -eq 0) { return New-HookResult }
     $where = (($hits | Select-Object -Unique) -join ', ')
     return New-HookResult -Block $true -Stderr @(
@@ -269,6 +274,27 @@ function Invoke-BlockPlanWrite {
         "감지된 쓰기 구문: $where.",
         "gitignore 라 잘못 쓰면 복구할 수 없습니다 — 전체 교체는 Write, 부분 수정은 Edit 도구로 하세요(`plan/SKILL.md` 「Step 5」). 읽기는 막지 않습니다."
     ) -Context "plan.md 쓰기가 차단됐습니다($where). Write·Edit 도구를 쓰세요 — 그 둘은 파일 상태를 추적해 잘림을 막습니다."
+}
+
+# block-installed-write: 설치본 hook 자산을 대상으로 하는 셸 쓰기 차단 — 근거는 `rules/bash-guard-rationale.md` §23
+$installedWtRx = '(?i)^.*/\.claude/worktrees/[^/]+'
+$installedAssetRx = '(?i)/\.claude/.*/(hooks\.json|scripts/rules/[^/]+\.json|scripts/[^/]+\.ps1)$'
+function Test-InstalledAssetPath([string]$a) {
+    $n = '/' + ($a -replace '\\', '/')
+    return (($n -replace $installedWtRx, '') -match $installedAssetRx)
+}
+function Invoke-BlockInstalledAssetWrite {
+    param($data)
+    $cmd = $data.tool_input.command
+    if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
+    $hits = Get-ShellWriteHits $cmd { param($a) Test-InstalledAssetPath $a }
+    if ($hits.Count -eq 0) { return New-HookResult }
+    $where = (($hits | Select-Object -Unique) -join ', ')
+    return New-HookResult -Block $true -Stderr @(
+        "[HARNESS] BLOCKED: 설치본 하니스 hook 자산을 셸로 쓰려 합니다.",
+        "감지된 쓰기 구문: $where. 대상: .claude/ 아래 scripts/*.ps1 · scripts/rules/*.json · hooks.json.",
+        "설치본을 고치면 그 hook 의 차단이 조용히 바뀝니다 — 하니스 수정은 개발 레포(경로에 .claude 없음)에서 plan 게이트를 거쳐 진행하세요. 읽기는 막지 않습니다."
+    ) -Context "설치본 하니스 hook 자산 쓰기가 차단됐습니다($where). 개발 레포의 원본을 고치세요."
 }
 
 # ---- warn-external-ops ----
@@ -559,12 +585,13 @@ function Write-GbSlowEvent {
     } catch {}
 }
 
-# 검사 11종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
+# 검사 12종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
 # 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md` §8
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },
     @{ fn = 'Invoke-RequireTaskCheckbox'; name = 'require-task-checkbox' },
     @{ fn = 'Invoke-BlockPlanWrite';      name = 'block-plan-write' },
+    @{ fn = 'Invoke-BlockInstalledAssetWrite'; name = 'block-installed-write' },
     @{ fn = 'Invoke-WarnCommitSecrets';   name = 'warn-commit-secrets' },
     @{ fn = 'Invoke-WarnGlobalFind';      name = 'warn-global-find' },
     @{ fn = 'Invoke-BashBackslash';       name = 'bash-backslash' },

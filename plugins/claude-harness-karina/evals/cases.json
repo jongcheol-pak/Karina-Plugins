@@ -978,7 +978,7 @@
     "fixture": "minimal-repo",
     "expect_rc": 0,
     "expect_keywords": [
-      "복제 사본 동기 14항목",
+      "복제 사본 동기 20항목",
       "대조 전부 일치"
     ]
   },
@@ -1048,6 +1048,57 @@
     "expect_keywords": [
       "복제 사본 동기: `heredoc 정규식` 묶음이 갈렸다",
       "block-destructive.ps1 ↔ guard-bash.ps1"
+    ]
+  },
+  {
+    "id": "harness-copy-sync-installed-wt-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "scripts/guard-bash.ps1",
+        "find": "worktrees/[^/]+'",
+        "replace": "worktrees/[^/]*'"
+      }
+    ],
+    "expect_keywords": [
+      "복제 사본 동기: `설치본 worktree 정규식` 묶음이 갈렸다",
+      "guard-harness.ps1 ↔ guard-bash.ps1"
+    ]
+  },
+  {
+    "id": "harness-copy-sync-installed-asset-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "scripts/guard-bash.ps1",
+        "find": "scripts/[^/]+\\.ps1)$'",
+        "replace": "scripts/[^/]+\\.psm1)$'"
+      }
+    ],
+    "expect_keywords": [
+      "복제 사본 동기: `설치본 자산 경로 정규식` 묶음이 갈렸다",
+      "guard-harness.ps1 ↔ guard-bash.ps1"
+    ]
+  },
+  {
+    "id": "harness-copy-sync-worktree-gitfile-drift",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "scripts/guard-bash.ps1",
+        "find": "-PathType Leaf)) { return $false }",
+        "replace": "-PathType Container)) { return $false }"
+      }
+    ],
+    "expect_keywords": [
+      "복제 사본 동기: `Test-WorktreeGitFile` 묶음이 갈렸다",
+      "guard-write.ps1 ↔ guard-bash.ps1"
     ]
   },
   {

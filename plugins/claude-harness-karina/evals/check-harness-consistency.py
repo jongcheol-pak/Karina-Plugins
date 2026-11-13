@@ -1519,6 +1519,12 @@ COPY_SYNC_GROUPS = (
       ("guard-bash.ps1", "planFenceRx"), ("guard-write.ps1", "planFenceRx"))),
     ("heredoc 정규식", "literal",
      (("block-destructive.ps1", "heredocRx"), ("guard-bash.ps1", "HeredocBlockRx"))),
+    ("설치본 worktree 정규식", "literal",
+     (("guard-harness.ps1", "installedWtRx"), ("guard-bash.ps1", "installedWtRx"))),
+    ("설치본 자산 경로 정규식", "literal",
+     (("guard-harness.ps1", "installedAssetRx"), ("guard-bash.ps1", "installedAssetRx"))),
+    ("Test-WorktreeGitFile", "function",
+     (("guard-write.ps1", "Test-WorktreeGitFile"), ("guard-bash.ps1", "Test-WorktreeGitFile"))),
 )
 
 

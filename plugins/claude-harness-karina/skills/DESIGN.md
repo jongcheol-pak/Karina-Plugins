@@ -126,7 +126,7 @@ RIGHT: (판정 기준은 wiki-sync.md에 있다)
 | E1 | 파괴적 명령을 실행하지 않는다 | `implement` 「멈추는 넷 — 그리고 목록 밖의 넷」 | `block-destructive` | 실행되면 되돌릴 수 없다 |
 | E2 | 외부·비가역 작업(태그·릴리즈·배포)은 승인받는다 — push·병합·PR 은 스킬·plan 밖에서만 | 같은 조항 | `guard-bash` | 같은 이유 |
 | E3 | 커밋 diff에 시크릿이 없다 | `implement` 「커밋」 | `guard-bash` | 커밋된 시크릿은 이력에 남는다 |
-| E4 | 하니스 자기 게이트를 무력화하지 않는다 | (전제) | `guard-harness` | E1~E3이 성립하는 조건이다 |
+| E4 | 하니스 자기 게이트를 무력화하지 않는다 | (전제) | `guard-harness`(Write·Edit) · `guard-bash`(셸 쓰기 — 같은 경로 축의 사본) | E1~E3이 성립하는 조건이다 |
 | E5 | plan 없이 코드를 고치지 않는다 | `plan` 「이 스킬을 건너뛰는 경우」 | `guard-write` | plan 승인이 자율 루프의 위임장이다 |
 | E6 | `AGENTS.md`에 진행 상태·세션 인계를 넣지 않는다 | `AGENTS-BOUNDARY.md` | `guard-harness` | 주입 상한을 잠식하고, 넣은 세션은 자기가 넣은 줄 모른다 |
 | E7 | task 체크박스를 갱신한다 | `implement` 「재개」 | `guard-bash` | 체크박스가 진행 상태의 정본이라 갱신 누락은 재개를 어긋나게 한다 |

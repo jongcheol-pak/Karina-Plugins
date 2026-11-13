@@ -87,3 +87,5 @@
 **경로 축(`/.claude/.*/scripts/*.ps1` · `hooks.json` · `scripts/rules/*.json`)은 `.claude/` 아래 어디든 걸린다.** 그래서 `<레포>/.claude/worktrees/<이름>/scripts/build.ps1` 처럼 worktree 안의 사용자 스크립트 편집이나, 하니스 레포 자신의 worktree 편집이 「설치본 개조」로 막혔다(2026-10-30 재현).
 
 **경로에서 마지막 `.claude/worktrees/<이름>` 까지를 떼고 판정한다.** worktree 안에 다시 `.claude/plugins/cache/…` 가 나오면 그것은 여전히 설치본이라 막힌다. 8.3 짧은 경로 판정은 `/plugins/cache/` 컨텍스트로만 서므로 손대지 않았다.
+
+**떼는 정규식과 경로 축은 리터럴 `$installedWtRx`·`$installedAssetRx` 다 — `guard-bash` 의 셸 쓰기 차단이 같은 글자의 사본을 쓴다(`bash-guard-rationale.md` §23).** 한쪽만 고치면 Write·Edit 와 셸이 다른 대상을 막게 되므로 「복제 사본 동기」 축이 둘을 대조한다.

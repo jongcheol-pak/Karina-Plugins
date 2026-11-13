@@ -3,10 +3,10 @@
 > `guard-bash.ps1`의 주석에서 옮긴 판정 근거다. 스크립트에는 각 자리에 이 문서의 절을 가리키는 1줄만 남겼다.
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 
-## §1 검사 11종을 한 프로세스에서 수행하는 이유
+## §1 검사 12종을 한 프로세스에서 수행하는 이유
 
 ```
-# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 11종 검사를 한 프로세스에서 수행
+# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 12종 검사를 한 프로세스에서 수행
 #
 # 담당 조항(정본: `skills/DESIGN.md`의 hook 담당 조항 표):
 #   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신 · E18 Windows Bash 도구 역슬래시 축소(heredoc·python -c 차단 · 그 밖 경고) · E19 task 완료 커밋의 소스 감사 누락 경고 · E21 python 으로 소스에 새 코드·주석 쓰기 차단.
@@ -26,7 +26,7 @@
 
 **코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 아래 검사 함수 8종(2026-11-02 에 더한 `Invoke-WarnTaskAudit` 은 `task-audit-rationale.md`, `Invoke-BashBackslash` 는 이 문서 §21)의 판정 근거는 이 문서가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
-## §2 검사 11종을 한 프로세스에 담는 구조
+## §2 검사 12종을 한 프로세스에 담는 구조
 
 v1.225.0이 Bash 계열 hook 을 `guard-bash.ps1` 하나로 통폐합하며 공유 모듈 `bash-hook-lib.ps1` 을 삭제했다.
 종전에는 검사 로직을 그 모듈에 두고 ① 검사마다 standalone 래퍼 ② 단일 디스패처
@@ -35,8 +35,8 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 
 현행 구조:
 
-- **검사 11종 중 7종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
-  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-WarnGlobalFind` · `Invoke-BashBackslash` · `Invoke-WarnDangerousAssignment` · `Invoke-BlockPythonNewCode`(I/O — 인자 `.py` 파일 읽기 — 만 여기 있고 판정은 `python-newcode.ps1` 의 순수 함수다, §22).
+- **검사 12종 중 8종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
+  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-BlockInstalledAssetWrite`(§23) · `Invoke-WarnGlobalFind` · `Invoke-BashBackslash` · `Invoke-WarnDangerousAssignment` · `Invoke-BlockPythonNewCode`(I/O — 인자 `.py` 파일 읽기 — 만 여기 있고 판정은 `python-newcode.ps1` 의 순수 함수다, §22).
   **나머지 넷 — `Invoke-WarnCommitSecrets`(`guard-commit-secrets.ps1`) · `Invoke-WarnStaleDocs`
   (`guard-stale-docs.ps1`) · `Invoke-WarnTaskAudit`(`guard-task-audit.ps1`) · `Invoke-BlockCommitComments`(`guard-commit-comments.ps1` — 근거는 `comment-gate-rationale.md` §4) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
   우회 변수·시크릿 패턴 연동을 담아 크기가 따로 놀고, 분리해 두어야 골든이 그 파일만 단독
@@ -323,3 +323,15 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 **전사 재생(2026-11-13 · 판정 함수 직접 호출).** 전사 분류(`newcode`·`comments`)로 새 코드 166건 중 150(90.4%) · 그중 주석 든 123건 중 111(90.2%) · 새 코드도 주석도 없는 226건 중 13(5.8%)을 막았다. 그 13건 중 11건은 그 시각 직전 커밋에 없던 필드·함수(전사 분류가 필드를 새 코드로 세지 않았다)라 막는 것이 맞고, 기존 항목에 걸린 오차단 후보는 2건이다.
 
 **한계.** 경로를 `glob`·문자열 연결로 만들면 ⓑ 가 안 보여 통과한다(fail-open). 한 줄 리터럴만으로 새 코드를 넣는 스크립트, PowerShell here-string 을 python stdin 으로 넘기는 꼴, 다른 인터프리터(node 등)는 보지 않는다. 같은 명령을 다시 내도 통과하지 않는다 — 판정이 틀렸으면 우회 변수 없이 멈추고 사용자에게 보고한다.
+
+## §23 block-installed-write: 설치본 hook 자산을 대상으로 하는 셸 쓰기 차단
+
+**왜 막는가.** 설치본 hook 자산(`.claude/` 아래 `scripts/*.ps1` · `scripts/rules/*.json` · `hooks.json`)의 개조는 `guard-harness` 경로 축이 Write·Edit 에서 막고(`harness-guard-rationale.md`), 삭제는 `block-destructive` 가 막는다(`destructive-rationale.md`「설치본 하니스 자산 삭제 차단」). 셸 쓰기(리다이렉트·cp/mv 목적지·Set-Content 계열·tee·sed -i·`[IO.File]::Write*`·python open(w)/pathlib)만 뚫려 있어, 같은 개조가 Bash·PowerShell 도구로는 그대로 지나갔다(2026-11-13 하니스 검토 — 미탐 보완).
+
+**대상 판정은 `guard-harness` 경로 축의 사본이다** — `$installedWtRx`(`.claude/worktrees/<이름>` 까지 떼기 — `harness-guard-rationale.md` §8)와 `$installedAssetRx` 를 같은 글자로 두고 「복제 사본 동기」 축이 대조한다. 안전 임계 hook 은 외부 파일 의존을 만들지 않아(`skills/DESIGN.md` 2절 예외 ①) 공유 모듈로 빼지 않는다. 셸 인자는 상대 경로일 수 있어 판정 전에 `/` 를 앞에 붙이고 `\` 를 `/` 로 바꾼다 — `/.claude/scripts/x.ps1` 꼴은 정규식이 `/.claude/` 뒤에 또 `/` 를 요구해 맞지 않으므로 프로젝트 루트 `.claude/scripts` 는 `guard-harness` 와 같이 대상 밖이다.
+
+**쓰기 구문 탐지는 `block-plan-write`(§10)와 같은 함수 `Get-ShellWriteHits` 다** — 대상 판정 스크립트블록만 받아, 두 검사가 같은 구문 집합을 본다. 한 검사에 두 대상을 섞지 않은 것은 차단 문구·rule 이름(이벤트 로그)이 대상을 가리켜야 해서다. `[IO.File]` 짧은 형(`[IO.File]::WriteAllText`)도 이때 함께 잡게 했다 — 종전에는 `[System.IO.File]` 긴 형만 보아 `plan.md` 쓰기에서도 짧은 형이 지나갔다.
+
+**원본 쪽 이동은 여기가 아니다** — 설치본 자산을 `mv`·`Move-Item`·`Rename-Item` 의 원본으로 옮기는 것은 삭제와 결과가 같아 `block-destructive` 가 막는다. 이 검사는 목적지(마지막 인자·`-Destination`)만 본다.
+
+**한계.** `Get-ShellWriteHits` 의 구문 집합 밖(다른 인터프리터의 쓰기·변수 두 겹 경유·경로 문자열 연결)은 보지 않는다. 읽기(`cat`·`cp` 원본 쪽)는 막지 않는다.

@@ -23,3 +23,12 @@ function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
 
 # heredoc 정규식 — 같은 축의 리터럴 묶음 대상
 $script:HeredocBlockRx = '(?m)^(?<line>[^\r\n]*<<-?\s*(?<q>["'']?)(?<tag>\w+)\k<q>[^\r\n]*)\r?\n(?<body>[\s\S]*?)\r?\n[ \t]*\k<tag>[ \t]*(?=\r?\n|$)'
+$installedWtRx = '(?i)^.*/\.claude/worktrees/[^/]+'
+$installedAssetRx = '(?i)/\.claude/.*/(hooks\.json|scripts/rules/[^/]+\.json|scripts/[^/]+\.ps1)$'
+
+function Test-WorktreeGitFile([string]$dir) {
+    $gf = Join-Path $dir '.git'
+    if (-not (Test-Path -LiteralPath $gf -PathType Leaf)) { return $false }
+    $first = [string](@(Get-Content -LiteralPath $gf -TotalCount 1 -ErrorAction SilentlyContinue)[0])
+    return ($first -match '^gitdir:.*[\\/]worktrees[\\/]')
+}

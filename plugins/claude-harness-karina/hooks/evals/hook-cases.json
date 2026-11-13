@@ -2403,6 +2403,151 @@
       "name": "데이터 스트립: 공백 없는 cat<< heredoc 메시지 본문도 데이터 (오탐 수정)",
       "command": "git commit -m \"$(cat<<'EOF'\n수정: rm -rf ~ 오탐 정리\nEOF\n)\"",
       "expect_exit": 0
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: 리다이렉트로 설치본 hook 스크립트 덮어쓰기 차단",
+      "command": "echo 'exit 0' > ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts/guard-bash.ps1",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: >> 로 설치본 판정 데이터 덧붙이기 차단",
+      "command": "printf '{}' >> ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts/rules/destructive.json",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: cp 목적지가 설치본 hooks.json 이면 차단",
+      "command": "cp /tmp/empty.json ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/hooks/hooks.json",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: mv 목적지가 설치본 hook 스크립트면 차단",
+      "command": "mv /tmp/stub.ps1 ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts/guard-harness.ps1",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: Set-Content -Path 백슬래시 설치본 판정 데이터 차단 (PowerShell 도구)",
+      "command": "Set-Content -Path C:\\Users\\x\\.claude\\plugins\\cache\\karina-plugins\\karina\\1.265.0\\scripts\\rules\\write-gate.json -Value '{}'",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: Copy-Item -Destination 설치본 hook 스크립트 차단 (PowerShell 도구)",
+      "command": "Copy-Item C:\\tmp\\a.ps1 -Destination C:\\Users\\x\\.claude\\plugins\\cache\\karina-plugins\\karina\\1.265.0\\scripts\\guard-write.ps1",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: Out-File 로 설치본 hook 스크립트 차단 (PowerShell 도구)",
+      "command": "'exit 0' | Out-File C:\\Users\\x\\.claude\\plugins\\cache\\karina-plugins\\karina\\1.265.0\\scripts\\guard-bash.ps1",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: tee 로 설치본 hooks.json 차단",
+      "command": "echo '{}' | tee ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/hooks/hooks.json",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: sed -i 로 설치본 hook 스크립트 차단",
+      "command": "sed -i 's/exit 2/exit 0/' ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts/block-destructive.ps1",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: [IO.File]::WriteAllText 짧은 형 설치본 hook 스크립트 차단 (PowerShell 도구)",
+      "command": "[IO.File]::WriteAllText('C:\\Users\\x\\.claude\\plugins\\cache\\karina-plugins\\karina\\1.265.0\\scripts\\guard-bash.ps1', 'exit 0')",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: python open(w) 로 설치본 판정 데이터 차단",
+      "command": "python -c \"open('/c/Users/x/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts/rules/harness-hooks.json','w').write('{}')\"",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: pathlib write_text 로 설치본 hooks.json 차단",
+      "command": "python -c \"from pathlib import Path; Path('/home/u/.claude/plugins/cache/karina-plugins/karina/1.265.0/hooks/hooks.json').write_text('{}')\"",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: worktree 안에 다시 놓인 설치본은 여전히 차단",
+      "command": "echo x > D:/repo/.claude/worktrees/feat/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts/guard-bash.ps1",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "plan.md 쓰기: [IO.File]::WriteAllText 짧은 형도 차단 (PowerShell 도구)",
+      "command": "[IO.File]::WriteAllText('plan.md', 'x')",
+      "expect_exit": 2,
+      "expect_contains": "plan.md 를 스크립트로 쓰려 합니다",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기 델타 음성: 레포 안 원본 hook 스크립트 쓰기는 통과",
+      "command": "echo x > plugins/claude-harness-karina/scripts/guard-bash.ps1",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기 델타 음성: 설치본이라도 hook 자산이 아니면(README) 통과",
+      "command": "echo x > ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/README.md",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기 델타 음성: .claude/worktrees/<이름> 아래 프로젝트 스크립트 쓰기는 통과",
+      "command": "echo x > D:/repo/.claude/worktrees/feat/scripts/build.ps1",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기 델타 음성: 설치본을 읽어 다른 곳에 쓰는 것은 통과",
+      "command": "cat ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/scripts/guard-bash.ps1 > /tmp/guard-bash-copy.ps1",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기 델타 음성: cp 원본이 설치본이면 통과",
+      "command": "cp ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/hooks/hooks.json /tmp/hooks.json",
+      "expect_exit": 0,
+      "expect_silent": true
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기 델타 음성: .claude 설정 파일(settings.json) 쓰기는 통과",
+      "command": "echo '{}' > ~/.claude/settings.json",
+      "expect_exit": 0,
+      "expect_silent": true
     }
   ]
 }

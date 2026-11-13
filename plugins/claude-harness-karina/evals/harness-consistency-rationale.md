@@ -66,7 +66,7 @@
   ⑮ 등재 근거 실측  — 대장 `## 대기` 의 각 항목이 **실해 근거 필드**(`(실해: YYYY-MM-DD …)`)를
      갖는가. 등재 하한선(「실해가 관측된 것만 올린다」)의 정본은 `plan/references/deferred-rules.md`
      「Deferred / Follow-up」이고 이 축은 그것을 기계로 잰다.
-  ⑯ 복제 사본 동기  — **의도적 복제**의 사본이 원본과 같은가. 묶음은 다섯이고 각 묶음의 첫
+  ⑯ 복제 사본 동기  — **의도적 복제**의 사본이 원본과 같은가. 묶음은 여덟이고 각 묶음의 첫
      파일이 원본이다(목록 정본은 검사기 `COPY_SYNC_GROUPS`):
        · `Split-TopLevel` 함수 — `block-destructive.ps1` → `guard-bash.ps1`
        · `Find-PlanFileUpwards` 함수 — `session-context.ps1` → `loop-continue.ps1`
@@ -74,6 +74,8 @@
        · 펜스 정규식 `$planFenceRx` — `session-context.ps1` → `loop-continue.ps1`·`guard-bash.ps1`·`guard-write.ps1`
        · heredoc 정규식 — `block-destructive.ps1` 의 `$heredocRx` → `guard-bash.ps1` 의 `$script:HeredocBlockRx`
          (변수 이름이 다르다 — 둘 다 차단 hook 이라 이름을 맞추지 않는다. 그래서 묶음은 (파일, 이름) 쌍이다)
+       · 설치본 worktree 정규식 `$installedWtRx`·설치본 자산 경로 정규식 `$installedAssetRx` — `guard-harness.ps1` → `guard-bash.ps1`(셸 쓰기 차단)
+       · `Test-WorktreeGitFile` 함수 — `guard-write.ps1` → `guard-bash.ps1`
      **복제를 둔 이유는 둘이다**(`skills/DESIGN.md` 2절의 복제 예외 문단이 정본) — ① 안전 임계
      hook 은 외부 파일 의존을 만들지 않는다: `block-destructive` 는 `AGENTS.md` 「DO NOT」의 마지막
      방어선이라, 공유 모듈로 빼면 dot-source 실패 시 차단이 통째로 사라지고 그 fail-open 경로를

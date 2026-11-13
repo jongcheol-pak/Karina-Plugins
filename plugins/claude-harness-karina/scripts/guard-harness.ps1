@@ -57,11 +57,11 @@ try {
 #   밖으로 내렸다. 그 파일을 고치면 차단이 통째로 꺼지는데 스크립트는 한 글자도 안 바뀐다 —
 #   보호면이 데이터로 옮겨간 만큼 보호 대상도 따라가야 한다.
 # `.claude/worktrees/<이름>/` 까지는 떼고 본다 — 그 아래는 설치본이 아니라 프로젝트 worktree 다 — 근거는 `rules/harness-guard-rationale.md` §8
-$normWt = $norm -replace '(?i)^.*/\.claude/worktrees/[^/]+', ''
+$installedWtRx = '(?i)^.*/\.claude/worktrees/[^/]+'
+$installedAssetRx = '(?i)/\.claude/.*/(hooks\.json|scripts/rules/[^/]+\.json|scripts/[^/]+\.ps1)$'
+$normWt = $norm -replace $installedWtRx, ''
 $isHookScript = ($normWt -match ('/\.claude/.*/(' + $harnessHookName + ')\.ps1$')) -or
-                ($normWt -match '/\.claude/.*/hooks\.json$') -or
-                ($normWt -match '(?i)/\.claude/.*/scripts/rules/[^/]+\.json$') -or
-                ($normWt -match '(?i)/\.claude/.*/scripts/[^/]+\.ps1$')
+                ($normWt -match $installedAssetRx)
 # 규칙 — 근거는 `rules/harness-guard-rationale.md` §3
 $has83 = ($norm -match '(?i)/CLAUDE~[0-9]+(/|$)')
 $suspect83 = $has83 -and
