@@ -20,6 +20,8 @@
 
 CR(-F 파일의 CRLF 줄 끝)을 걷고 공백을 정규화한 메시지에서 명령(또는 `또는:` 명령)이 나오고, 그 뒤가 줄 끝·백틱·따옴표이거나 공백 다음 토큰이 리다이렉션·연결 기호(`>`·`2>&1`·`|`·`;`·`&&`) 또는 `→` 일 때만 충족이다. 뒤에 아무 토큰이나 허용하면 대안 `cargo test` 가 `cargo test --lib -- x`·`cargo test computer_guard` 같은 필터 실행에 맞아, 이 검사가 막으려는 바로 그 꼴이 통과한다. 여러 `-m` 은 이어 붙여 읽는다(`Get-CommitMessage`). 메시지를 못 읽는 커밋(변수 `-m` 등)은 침묵한다. 같은 조건에서 `require-task-checkbox` 가 이미 heredoc 을 쓰라고 경고한다.
 
+**감사 명령이 `cargo test … -- <필터>` 하나로 끝나면, 본문의 `<같은 앞부분> -- <F>` 에서 `F` 가 감사 필터의 부분 문자열일 때도 충족이다(`Test-TaskAuditFilterCovered`).** libtest 필터는 테스트 경로의 부분 문자열 대조라, `F` 를 품은 감사 테스트는 그 실행에서 함께 돈다 — 방향은 실행 필터 ⊂ 감사 필터다(`doc_audit` ⊂ `test_doc_audit`). 2026-11-13 Karina 회차는 `cargo test --lib -- doc_audit` 실행 출력에 `test_doc_audit` 가 함께 통과했는데도 그 감사 누락 경고를 T2·T4·T5 에서 받아, 빈 보충 커밋 3건과 손으로 옮긴 수치를 고친 정정 커밋 1건(`187067d` → `9b808fe`)이 생겼다. 경계는 위와 같고 필터 뒤에 다른 인자가 붙으면(`--exact` 포함) 대조하지 않는다 — `--exact` 는 부분 문자열 대조를 끄고, 다른 인자의 뜻까지 해석하지 않는다. `또는:` 대체 명령은 필터 없는 전체 실행이라 이 판정을 걸지 않는다.
+
 ## §5 어느 `AGENTS.md` 인가 · 깨진 줄
 
 커밋 폴더(`Resolve-GitCommitDir`)에서 git 최상위까지 올라가며 처음 만난 `AGENTS.md` 하나를 읽는다. `check-plan` 의 `Plan check` 탐색과 같은 기준이고, 모노레포 하위 폴더의 `AGENTS.md` 를 읽게 된다. diff 와 경로(pathspec)는 그 `AGENTS.md` 폴더 기준이다(경로를 생략하면 `.`).

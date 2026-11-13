@@ -25,6 +25,17 @@ function Test-TaskAuditCommandInMessage([string]$Message, [string]$Command) {
     return [regex]::IsMatch($msg, $rx, [System.Text.RegularExpressions.RegexOptions]::Multiline)
 }
 
+function Test-TaskAuditFilterCovered([string]$Message, [string]$Command) {
+    $cm = [regex]::Match(($Command -replace '\s+', ' ').Trim(), '^(?<pre>cargo test\b.*?) -- (?<f>[^\s-]\S*)$')
+    if (-not $cm.Success) { return $false }
+    $msg = ($Message -replace '\r', '') -replace '[ \t]+', ' '
+    $rx = [regex]::Escape($cm.Groups['pre'].Value + ' -- ') + '(?<g>[^\s`"'']+)(?=$|[`"'']| (?:\d?>|\||;|&&|→))'
+    foreach ($m in [regex]::Matches($msg, $rx, [System.Text.RegularExpressions.RegexOptions]::Multiline)) {
+        if ($cm.Groups['f'].Value.Contains($m.Groups['g'].Value)) { return $true }
+    }
+    return $false
+}
+
 function Get-TaskAuditGrowth([string]$RuleDir, $Rule, [bool]$IncludeUntracked) {
     $diff = @(& git -C $RuleDir diff HEAD --unified=0 --no-color --no-ext-diff -- $Rule.Pathspec 2>$null)
     if ($LASTEXITCODE -ne 0) { $diff = @(& git -C $RuleDir diff --cached --unified=0 --no-color --no-ext-diff -- $Rule.Pathspec 2>$null) }
@@ -91,6 +102,7 @@ function Invoke-WarnTaskAudit {
         if ($g.Net -le 0) { continue }
         $accepted = @($rule.Command) + @($rule.Alternatives)
         if (@($accepted | Where-Object { Test-TaskAuditCommandInMessage $message $_ }).Count) { continue }
+        if (Test-TaskAuditFilterCovered $message $rule.Command) { continue }
         $note = if ($g.Capped) { ' (미추적 파일 상한에 걸려 일부만 셈)' } else { '' }
         $lines.Add("  - ``$($rule.Command)`` — 증가 $($g.Net)줄$note (AGENTS.md:$($rule.Line))")
     }

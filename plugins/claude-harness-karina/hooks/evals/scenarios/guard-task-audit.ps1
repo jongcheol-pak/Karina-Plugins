@@ -115,6 +115,20 @@ try {
     & git -C $taRoot add -A 2>$null
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $taBodyNone) (Join-Path $taRoot 'sub')
     Assert-Case -Name 'task-audit: 하위 폴더에 AGENTS.md 가 있으면 그쪽 규칙만 따른다' -R $r -ExpectExit 0 -ExpectContains 'sub-audit-run' -ExpectNotContains $taCmd
+
+    Reset-TaRepo
+    $taSubCmd = 'cargo test --lib -- test_doc_audit'
+    ('# AGENTS.md' + $nl + '- **Test (감사)**: `' + $taSubCmd + '` · 증가: `^\s*pub\s+fn\b` · 경로: `*.rs` · 또는: `cargo test`' + $nl) | Set-Content (Join-Path $taRoot 'AGENTS.md')
+    ('pub fn old() {}' + $nl + 'pub fn added() {}') | Set-Content (Join-Path $taRoot 'src/lib.rs')
+    & git -C $taRoot add src/lib.rs 2>$null
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- cargo test --lib -- doc_audit → 5 passed')
+    Assert-Case -Name 'task-audit: 감사 필터를 부분 문자열로 품는 cargo 필터 실행 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- cargo test --lib -- other_audit → ok')
+    Assert-Case -Name 'task-audit: 감사 필터에 들지 않는 cargo 필터 → 경고' -R $r -ExpectExit 0 -ExpectContains $taSubCmd
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- cargo test --lib -- doc_audit --exact → ok')
+    Assert-Case -Name 'task-audit: --exact 가 붙은 부분 필터 → 경고' -R $r -ExpectExit 0 -ExpectContains $taSubCmd
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- cargo test -- doc_audit → ok')
+    Assert-Case -Name 'task-audit: 필터 앞부분이 감사 명령과 다른 cargo 실행 → 경고' -R $r -ExpectExit 0 -ExpectContains $taSubCmd
 } finally {
     if (Test-Path $taRoot) { Remove-Item $taRoot -Recurse -Force -ErrorAction SilentlyContinue }
 }
