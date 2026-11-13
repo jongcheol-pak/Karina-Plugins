@@ -2,6 +2,9 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-14] Karina 세션 26574569 하니스 개선 요청 4건(v3.16.0) — 채택: ① 주석 게이트는 BASE 때 같은 항목 doc 묶음을 줄 수를 늘리지 않고 고친 복원을 통과시킨다(오탐 수정 — `comment-gate-rationale.md` §3) ② `guard-task-audit` 는 감사 필터를 품는 `cargo test … -- <F>` 실행을 같은 감사로 본다(핸드오프의 포함 방향은 반대였다 — 실행 필터 ⊂ 감사 필터) ③ karina 리뷰어 넷에 플러그인 루트(하니스 루트면 레포, 아니면 설치본)를 넘긴다 ④ 회차 끝 중복 검증: 착수 untracked 스냅숏을 중간 단계 clean 판정에서 뺀다(사용자 답 「착수 스냅숏 제외」 — 회차 전 untracked 가 런타임 테스트 입력이면 작성자 통과가 push 근거가 되는 위험을 감수) · 작성자 BASE 대조 worktree 도 `Build cache` 의 `local/base` 를 쓴다 · 게이트는 같은 base SHA 로 찍힌 작성자 `base-` 스크린샷을 대조해 BASE 재조작을 갈음한다(사용자 답 「BASE만 작성자 스크린샷」).
+  - 같은 회차 범위 밖: 게이트의 HEAD 재조작 생략 — 기각(사용자 답 — 작성자 HEAD 스크린샷은 task 커밋 시점·작성자 작업 트리 것이라 push HEAD 를 재지 않는다) · 체인 끝·디버깅 단독 게이트의 BASE 스크린샷 재사용 — 그 화면 줄에 base SHA 가 없다(승인으로 확정) · 「빌드 입력이 아닌 untracked」 판정 — 기계 판정 수단 없음 · Karina 레포 쪽 처방(`또는:` 추가 · 우회 함정 두 줄) — 다른 레포.
+
 - [2026-11-13] 시간 상한 자식 실행의 트리 종료 공용 헬퍼(v3.15.2) — 채택: Python 자식 실행 16곳을 `scripts/timed_run.py` 의 `run` 으로 모았다(사용자 답 「`scripts/timed_run.py`」). Windows 는 Job Object 로 시간 초과 때만 `TerminateJobObject` 하고 정상 완료 때는 `KILL_ON_JOB_CLOSE` 없이 닫아 오래 사는 자손을 살린다 · Job 에 넣지 못하면 대체 경로로 트리를 끝낸다(사용자 답) — 그 경로는 `taskkill` 이 아니라 Toolhelp 스냅샷의 부모 PID·생성 시각 + `TerminateProcess` 다(`taskkill` 자체가 5~11초라 상한을 넘겼다) · 시간 초과 뒤 남은 출력은 2초까지만 기다린다. `timed-git.ps1` 의 직계 선종료 경로는 CIM 조회(계획 승인안)를 버리고 그 경로에서만 `Add-Type` Toolhelp 를 컴파일한다(사용자 답 — CIM 1회 6~9초).
   - 같은 회차 추가(사용자 답 「이번 회차에 task로 추가해」): `block-python-newcode` 가 수정된 추적 `.py` 는 HEAD 에 없던 코드 문자열만 판정한다 — v3.14.1 의 「커밋돼 바뀌지 않은 파일」 면제가 고친 eval 러너를 놓쳐 이 회차에 두 번 막혔다.
   - 범위 밖: 스킬 골든 러너(`skills/*/evals/run_*.py`)의 시간 상한 호출 18곳 — 테스트 전용 · 회수 hook 대상 이름 확대 · POSIX 실기 검증. 보류: `comment-scope.ps1` 의 무상한 `WaitForExit()`.

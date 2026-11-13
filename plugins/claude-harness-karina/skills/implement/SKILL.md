@@ -29,6 +29,7 @@ description: 승인된 plan.md(`## Goal` 아래 `> 승인:` 줄에 날짜가 있
 - **프로젝트가 다른 패턴을 명시했으면 그것이 스킬 절차를 이긴다** — `AGENTS.md`(또는 그것이 가리키는 문서)가 아키텍처·배치·도구를 정해 두었으면 그 프로젝트의 결정이 먼저다. 스킬 절차를 그대로 밀면 그 레포에서만 이질적인 코드가 남는다.
 - **루프 진입 전 1회, `plan.md` 의 승인 표지(`^> 승인: [0-9]{4}-` 줄 — 서식 정본 `../plan/references/plan-template.md` 「Goal」)를 본다** — 없으면 승인 전 초안일 수 있다. 없으면 `references/loop-exceptions.md`「승인 표지 없음」 을 Read 한다 — 확인 방식이 이 루프의 여덟 정지와 갈리는 막힘형 호출이라 그 절에 있다.
 - **루프 진입 전 1회 `references/push-flow.md`「기본 브랜치 push」 를 Read 한다** — 브랜치를 그대로 두고 지금 브랜치에 커밋하며, 회차 끝에 `references/local-gate.md`「회차 끝 게이트」 를 거쳐 push 한다. PR 은 열지 않는다.
+- **루프 진입 전 1회 `git ls-files --others --exclude-standard` 를 `../TEMP-FILES.md` 의 `scratch\untracked-start-<레포 폴더명>-<BASE sha7>.txt` 에 쓴다(있으면 덮지 않는다)** — 4번 clean 판정이 회차 전 untracked 를 뺀다(`references/local-gate.md`「경량 면제」).
 
 ## 자율 루프
 
