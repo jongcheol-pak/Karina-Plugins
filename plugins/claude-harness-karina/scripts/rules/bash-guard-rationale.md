@@ -179,6 +179,8 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 
 **의도적 복제** — 이 함수는 `block-destructive.ps1` 과 `guard-bash.ps1` 두 곳에 같은 본문으로 있고, `guard-bash.ps1` 쪽 정의 위에는 그 사실을 적은 주석이 없다(여기가 정본이다). `block-destructive` 는 `AGENTS.md` 「DO NOT」의 마지막 방어선이라 **외부 파일 의존을 만들지 않는다** — 공유 모듈로 빼면 dot-source 실패 시 차단이 통째로 사라지고 그 경로를 재는 것이 없다. 복제의 드리프트는 `check-harness-consistency.py` 의 「복제 사본 동기」 축이 잡는다.
 
+**분해·스트립 결과는 한 명령 안에서 캐시한다(`Get-TopLevelSegments`·`Get-HeredocSinkStripped`)** — 검사 열둘 중 넷 이상이 같은 명령을 `Remove-HeredocDataSink` 뒤 `Split-TopLevel` 로 다시 나눠, 데이터 싱크가 아닌 12KB heredoc(`python - <<EOF`) 하나에 큰 입력 분해가 다섯 번 돌았다. 캐시 뒤 한 번이고, 콜드 첫 실행 중앙값이 851→790ms 다(2026-11-14 교대 9회 — 체인 run_dc17831b plan 1). 키는 (모드, 입력) 이고 비교는 서수(대소문자 구분)다 — PowerShell `@{}` 는 대소문자를 무시해 `Rm` 과 `rm` 이 한 칸이 된다. 캐시 값은 파이프라인으로 펼쳐 돌려주므로 호출자는 새 배열을 받는다 — `Remove-DataQuotes` 가 `$segs[$i]` 를 제자리에서 덮어도 다음 검사의 입력은 바뀌지 않는다. **함수 본문이 아니라 호출부를 바꾼 이유** — 본문을 고치면 위 복제 사본 축이 block-destructive 까지 번진다.
+
 ## §12 셸 접두어를 벗긴 토큰 배열
 
 `Get-EffectiveTokens` 는 세그먼트를 토큰으로 쪼갠 뒤 **셸 접두어**(`sudo`·`time`·`nohup`·`env`, 그리고 `VAR=값` 형태의 일회성 환경 대입)를 벗기고 **그 뒤부터**를 돌려준다. 첫 원소가 곧 진짜 명령이고, 나머지가 인자다. 실효 토큰이 없으면 빈 배열이다.

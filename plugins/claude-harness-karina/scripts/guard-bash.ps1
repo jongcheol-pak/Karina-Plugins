@@ -83,6 +83,29 @@ function Split-TopLevel([string]$s, [bool]$PsQuoting = $false) {
     return $parts
 }
 
+# 분해·스트립 결과 캐시 — 근거는 `rules/bash-guard-rationale.md` §11
+$script:TopLevelCache = [System.Collections.Generic.Dictionary[string, string[]]]::new([System.StringComparer]::Ordinal)
+$script:SinkStripCache = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::Ordinal)
+function Get-TopLevelSegments([string]$s) {
+    $key = [string][int]$script:IsPsTool + '|' + $s
+    $hit = $null
+    if (-not $script:TopLevelCache.TryGetValue($key, [ref]$hit)) {
+        $hit = [string[]]@(Split-TopLevel $s $script:IsPsTool)
+        $script:TopLevelCache[$key] = $hit
+    }
+    return $hit
+}
+function Get-HeredocSinkStripped([string]$s) {
+    if ([string]::IsNullOrEmpty($s)) { return $s }
+    $key = [string][int]$script:IsPsTool + '|' + $s
+    $hit = $null
+    if (-not $script:SinkStripCache.TryGetValue($key, [ref]$hit)) {
+        $hit = Remove-HeredocDataSink $s
+        $script:SinkStripCache[$key] = $hit
+    }
+    return $hit
+}
+
 # 셸 접두어를 벗긴 토큰 배열 — 근거는 `rules/bash-guard-rationale.md` §12
 function Get-EffectiveTokens([string]$seg) {
     $tk = @(($seg -split '\s+') | Where-Object { $_ })
@@ -99,7 +122,7 @@ function Invoke-WarnGlobalFind {
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
     $hits = New-Object System.Collections.Generic.List[string]
-    foreach ($seg in Split-TopLevel (Remove-HeredocDataSink $cmd) $script:IsPsTool) {
+    foreach ($seg in Get-TopLevelSegments (Get-HeredocSinkStripped $cmd)) {
         $tokens = Get-EffectiveTokens $seg
         if ($tokens.Count -eq 0) { continue }
 
@@ -175,7 +198,7 @@ function Invoke-WarnDangerousAssignment {
 
     $assigned = @{}
     $hits = New-Object System.Collections.Generic.List[string]
-    foreach ($seg in Split-TopLevel (Remove-HeredocDataSink $cmd) $script:IsPsTool) {
+    foreach ($seg in Get-TopLevelSegments (Get-HeredocSinkStripped $cmd)) {
         $t = $seg.Trim()
         if ([string]::IsNullOrWhiteSpace($t)) { continue }
 
@@ -233,14 +256,14 @@ function Get-ShellWriteHits {
         $isWrite = ($m.Groups[2].Value -ne 'open') -or ($m.Groups[3].Value -match '[wa]')
         if ($isWrite -and (Test-PlanTarget $m.Groups[1].Value)) { $hits.Add('pathlib') }
     }
-    $stripped = Remove-HeredocDataSink $cmd
+    $stripped = Get-HeredocSinkStripped $cmd
     foreach ($m in [regex]::Matches($stripped, '>>?\s*("[^"]*"|''[^'']*''|\S+)')) {
         if (Test-PlanTarget $m.Groups[1].Value) { $hits.Add('>') }
     }
     foreach ($m in [regex]::Matches($cmd, '(?i)\[(?:System\.)?IO\.File\]::(WriteAll\w+|AppendAllText)\s*\(\s*([^,()]+)')) {
         if (Test-PlanTarget $m.Groups[2].Value) { $hits.Add('[System.IO.File]') }
     }
-    foreach ($seg in Split-TopLevel $stripped $script:IsPsTool) {
+    foreach ($seg in Get-TopLevelSegments $stripped) {
         $tk = Get-EffectiveTokens $seg
         if ($tk.Count -eq 0) { continue }
         $verb = ($tk[0] -replace '^.*[\\/]', '') -replace '(?i)\.exe$', ''
@@ -320,8 +343,8 @@ function Invoke-WarnExternalOps {
         return New-HookResult
     }
 
-    $src = Remove-HeredocDataSink $scanCmd
-    $segments = Remove-DataQuotes @(Split-TopLevel $src $script:IsPsTool) $src $ops
+    $src = Get-HeredocSinkStripped $scanCmd
+    $segments = Remove-DataQuotes (Get-TopLevelSegments $src) $src $ops
     $hits = New-Object System.Collections.Generic.List[string]
     $hitsLocal = New-Object System.Collections.Generic.List[string]
     $hitContext = $false; $hitAlways = $false
@@ -366,7 +389,7 @@ function Get-CommitMessage([string]$cmd, [string]$baseDir) {
     $judge = [regex]::Replace((Remove-HeredocBodyForJudge $cmd), '(?s)@([''"])[ \t]*\r?\n.*?\r?\n\1@', { param($m) '@' + $m.Groups[1].Value + ' ' + $m.Groups[1].Value + '@' })
     $cm = [regex]::Match($judge, $script:GitCommitRx)
     if (-not $cm.Success) { return $null }
-    $seg = @(Split-TopLevel $judge.Substring($cm.Index) $script:IsPsTool)[0]
+    $seg = @(Get-TopLevelSegments $judge.Substring($cm.Index))[0]
     $hereDocBody = $null
     foreach ($hm in [regex]::Matches($cmd, $script:HeredocBlockRx)) {
         if ($hm.Groups['line'].Value -match $script:GitCommitRx) { $hereDocBody = $hm.Groups['body'].Value; break }
