@@ -58,7 +58,18 @@ function Test-PythonTempPath([string]$Path) {
     return ($tmp -and $p.StartsWith($tmp + '/', [System.StringComparison]::OrdinalIgnoreCase))
 }
 
-function Test-PythonNewCodeScript([string]$Script) {
+function Get-PythonLiteralLineSet([string]$Script) {
+    $set = New-Object System.Collections.Generic.HashSet[string]
+    if ([string]::IsNullOrEmpty($Script)) { return , $set }
+    foreach ($m in $script:PyLiteralRx.Matches($Script)) {
+        $ls = Get-PythonLiteralLines $m.Groups[1].Value
+        if ($null -eq $ls) { continue }
+        foreach ($x in $ls) { [void]$set.Add($x.Trim()) }
+    }
+    return , $set
+}
+
+function Test-PythonNewCodeScript([string]$Script, [string]$Baseline = $null) {
     $pass = @{ Block = $false; Target = $null; Line = $null }
     if ([string]::IsNullOrEmpty($Script) -or -not $script:PyWriteRx.IsMatch($Script)) { return $pass }
     if (-not ($Script.Contains("'''") -or $Script.Contains('"""') -or $Script.Contains('\n'))) { return $pass }
@@ -87,12 +98,13 @@ function Test-PythonNewCodeScript([string]$Script) {
         foreach ($x in $ls) { [void]$set.Add($x.Trim()) }
         $lineSets += , $set
     }
+    $known = Get-PythonLiteralLineSet $Baseline
     for ($i = 0; $i -lt $lits.Count; $i++) {
         $ls = Get-PythonLiteralLines $lits[$i]
         if ($null -eq $ls) { continue }
         foreach ($line in $ls) {
             $t = $line.Trim()
-            if ($t -eq '') { continue }
+            if ($t -eq '' -or $known.Contains($t)) { continue }
             $hit = $script:PyDeclRx.IsMatch($line) -or ($slash -and $script:PySlashCommentRx.IsMatch($line)) -or ($hash -and $script:PyHashCommentRx.IsMatch($line))
             if (-not $hit) { continue }
             $seen = $false

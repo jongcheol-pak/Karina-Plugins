@@ -424,7 +424,10 @@ $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $pyRepo; tool_in
 Assert-Case -Name "python 새 코드: 레포 안 미추적 .py 실행은 차단 유지 (PN-untracked)" -R $r -ExpectExit 2 -ExpectContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
 Add-Content -LiteralPath (Join-Path $pyRepo 'gen.py') -Value 'x = 1' -Encoding utf8
 $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $pyRepo; tool_input = @{ command = 'python gen.py' } } | ConvertTo-Json -Compress)
-Assert-Case -Name "python 새 코드: 커밋 뒤 수정한 .py 실행은 차단 유지 (PN-modified)" -R $r -ExpectExit 2 -ExpectContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
+Assert-Case -Name "python 새 코드 (음성): 커밋 뒤 코드 문자열 없이 수정한 .py 실행은 통과 — HEAD 에 있던 문자열은 판정하지 않는다 (PN-modified 오탐 수정)" -R $r -ExpectExit 0 -ExpectNotContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
+Add-Content -LiteralPath (Join-Path $pyRepo 'gen.py') -Value "p.write_text(p.read_text() + '''`n/// 수정으로 더한 설명`nfn later() {}`n''')" -Encoding utf8
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $pyRepo; tool_input = @{ command = 'python gen.py' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "python 새 코드: 커밋 뒤 수정으로 새 /// 문자열을 더한 .py 실행은 차단 (PN-modified-newcode)" -R $r -ExpectExit 2 -ExpectContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
 }
 
 if (Test-ScenarioUnit 1) {

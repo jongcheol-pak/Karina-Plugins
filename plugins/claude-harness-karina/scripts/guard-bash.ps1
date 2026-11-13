@@ -551,15 +551,22 @@ function Invoke-BlockPythonNewCode {
     $cwd = [string]$data.cwd
     foreach ($inv in (Get-PythonInvocations ([string]$data.tool_input.command) $script:HeredocBlockRx)) {
         $text = $inv.Text
+        $baseline = $null
         if ($inv.Kind -eq 'file') {
             $p = $inv.Path
             if (-not [System.IO.Path]::IsPathRooted($p) -and $cwd) { $p = Join-Path $cwd $p }
             if (-not (Test-Path -LiteralPath $p -PathType Leaf) -or (Get-Item -LiteralPath $p).Length -gt 1MB) { continue }
-            $st = & git -C (Split-Path -Parent $p) status --porcelain --ignored -- (Split-Path -Leaf $p) 2>$null
+            $dir = Split-Path -Parent $p
+            $leaf = Split-Path -Leaf $p
+            $st = & git -C $dir status --porcelain --ignored -- $leaf 2>$null
             if ($LASTEXITCODE -eq 0 -and -not $st) { continue }
+            if ($LASTEXITCODE -eq 0 -and @($st).Count -eq 1 -and [string]$st -match '^[ MARC][ MD] ') {
+                $head = & git -C $dir show "HEAD:./$leaf" 2>$null
+                if ($LASTEXITCODE -eq 0) { $baseline = @($head) -join "`n" }
+            }
             $text = [System.IO.File]::ReadAllText($p)
         }
-        $v = Test-PythonNewCodeScript $text
+        $v = Test-PythonNewCodeScript $text $baseline
         if (-not $v.Block) { continue }
         return New-HookResult -Block $true -Stderr @(
             "[HARNESS] BLOCKED: python 스크립트로 소스 파일에 새 코드·주석을 씁니다 — $($v.Target) : $($v.Line)",
