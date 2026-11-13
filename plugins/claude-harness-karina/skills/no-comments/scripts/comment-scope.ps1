@@ -177,11 +177,14 @@ function Test-ScopeKept($Ctx, [string]$Full, [string]$Body) {
 
 function Test-ScopeAudited($Ctx, [string]$Full, [string]$Rel, [string[]]$Lines, [int]$Index, [bool[]]$DocFlag) {
     if ($null -eq $DocFlag -or -not $DocFlag[$Index]) { return $false }
-    $code = Get-CommentDocTarget $Rel $Lines $Index $DocFlag
+    $attrs = New-Object System.Collections.Generic.List[string]
+    $code = Get-CommentDocTarget $Rel $Lines $Index $DocFlag $attrs
     if (-not $code) { return $false }
     $base = if ($Ctx.Agents) { Split-Path -Parent $Ctx.Agents } else { $Ctx.Dir }
+    $cands = @($code) + @($attrs)
     foreach ($a in $Ctx.AuditRules) {
-        if ($a.Pattern.IsMatch($code) -and (Test-CommentPathLike $Full $base $a.Pathspec)) { return $true }
+        if (-not (Test-CommentPathLike $Full $base $a.Pathspec)) { continue }
+        foreach ($c in $cands) { if ($a.Pattern.IsMatch($c)) { return $true } }
     }
     return $false
 }

@@ -153,6 +153,14 @@ Assert-Case -Name "guard-comment: 여러 줄 속성 #[derive(…)] 뒤 pub struc
 [System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/attr1.rs'), "pub struct T;`n")
 $r = Invoke-GcEditAt (Join-Path $gcAudit 'src/attr1.rs') 'pub struct T;' "/// 계약.`n#[derive(Debug)]`npub struct T;"
 Assert-Case -Name "guard-comment: 단일 줄 속성 뒤 pub struct 위 /// 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$gcTest = New-GcRepo 'testdoc' @{ 'Cargo.toml' = "[package]`nname = `"t`"`npublish = false`n"; 'src/lib.rs' = ''; 'src/t.rs' = "#[test]`nfn t_one() {}`n"; 'src/d.rs' = "#[derive(Debug)]`nstruct P;`n"; 'AGENTS.md' = "# T`n`n- **Test (감사)**: ``cargo test --lib -- test_doc_audit`` · 증가: ``^\s*#\[(tokio::)?test\]`` · 경로: ``*.rs```n" }
+$r = Invoke-GcEditAt (Join-Path $gcTest 'src/t.rs') "#[test]`nfn t_one() {}" "/// 시험 설명.`n#[test]`nfn t_one() {}"
+Assert-Case -Name "guard-comment: 시험 doc 감사 선언 레포의 #[test] 위 /// 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-GcEditAt (Join-Path $gcTest 'src/d.rs') "#[derive(Debug)]`nstruct P;" "/// 비공개 구조체 설명.`n#[derive(Debug)]`nstruct P;"
+Assert-Case -Name "guard-comment: 시험 doc 감사 선언 레포의 #[derive] 비공개 struct 위 /// 차단" -R $r -ExpectExit 2 -ExpectContains '주석 1줄'
+[System.IO.File]::WriteAllText((Join-Path $gcApp 'src/t2.rs'), "#[test]`nfn t_two() {}`n")
+$r = Invoke-GcEditAt (Join-Path $gcApp 'src/t2.rs') "#[test]`nfn t_two() {}" "/// 시험 설명.`n#[test]`nfn t_two() {}"
+Assert-Case -Name "guard-comment: 감사 선언 없는 레포의 #[test] 위 /// 차단" -R $r -ExpectExit 2 -ExpectContains '주석 1줄'
 [System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/multi.rs'), "/// 표지`nfn first() {}`nfn gap() {}`npub fn api() {}`n")
 $gcMultiDup = @(@{ old_string = 'fn gap() {}'; new_string = "fn gap() {}`nfn gap2() {}" }, @{ old_string = 'pub fn api() {}'; new_string = "/// 표지`npub fn api() {}" })
 $r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'gc-mdup'; tool_name = 'MultiEdit'; cwd = $gcAudit; tool_input = @{ file_path = (Join-Path $gcAudit 'src/multi.rs'); edits = $gcMultiDup } } | ConvertTo-Json -Compress -Depth 5)

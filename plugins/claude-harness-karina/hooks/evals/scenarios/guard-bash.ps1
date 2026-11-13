@@ -541,6 +541,13 @@ Assert-Case -Name "commit-comments: 속성 4줄 뒤 pub 항목은 커밋 대상 
 Set-CcFile $d 'q.rs' "/// 감사 대상이 아닌 비공개 함수.`nfn x() {}`n/// 감사가 요구하는 계약.`n#[a]`n#[b]`n#[c]`n#[d]`npub enum E {}`n"; git -C $d add q.rs
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-audit-neg'
 Assert-Case -Name "commit-comments: 감사 레포 비공개 fn 위 /// 차단" -R $r -ExpectExit 2 -ExpectContains '(주석 1줄)'
+$d = New-CcRepo
+[System.IO.File]::WriteAllText((Join-Path $d 'AGENTS.md'), "# A`n`n- **Test (감사)**: ``cargo test --lib -- test_doc_audit`` · 증가: ``^\s*#\[(tokio::)?test\]`` · 경로: ``*.rs```n")
+[System.IO.File]::WriteAllText((Join-Path $d 't.rs'), "#[test]`nfn t_one() {}`n")
+git -C $d add .; git -C $d commit -qm rs
+Set-CcFile $d 't.rs' "/// 시험 설명.`n#[test]`nfn t_one() {}`n"; git -C $d add t.rs
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-testdoc'
+Assert-Case -Name "commit-comments: 시험 doc 감사 선언 레포의 #[test] 위 /// 커밋 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 function New-CcAuditRepo([string]$Name, [string]$Base) {
     $a = New-CcRepo

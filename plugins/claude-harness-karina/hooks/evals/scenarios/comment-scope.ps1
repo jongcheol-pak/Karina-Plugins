@@ -58,6 +58,19 @@ Assert-Case -Name "comment-scope: 미커밋·미추적 변경의 주석은 보�
 Assert-Case -Name "comment-scope: 미추적 파일의 주석도 보지 않는다" -R $sl -ExpectExit 0 -ExpectNotContains '미추적 주석'
 Assert-Case -Name "comment-scope: 끝 줄에 대상·회차 전·감사·보존 수를 낸다" -R $sl -ExpectExit 0 -ExpectContains 'RESULT: 대상 3 · 회차 전 4 · 감사 1 · 보존 1'
 
+$st = New-CsRepo 'scope-testdoc'
+Set-CsFile $st 'AGENTS.md' "# AGENTS`n`n- **Test (감사)**: ``cargo test --lib -- test_doc_audit`` · 증가: ``^\s*#\[(tokio::)?test\]`` · 경로: ``*.rs```n"
+Set-CsFile $st 'src/t.rs' "fn x() {}`n"
+git -C $st add .; git -C $st commit -qm base
+$stBase = (git -C $st rev-parse HEAD).Trim()
+Set-CsFile $st 'src/t.rs' "fn x() {}`n/// 시험 설명.`n#[test]`nfn t_one() {}`n"
+git -C $st add .; git -C $st commit -qm round
+$stOut = Join-Path $csRoot 'scope-testdoc-out.txt'
+$r = Invoke-Cs @('-Base', $stBase, '-Out', $stOut, '-Repo', $st)
+$stListed = if (Test-Path -LiteralPath $stOut) { [System.IO.File]::ReadAllText($stOut) } else { '' }
+$stl = @{ code = $r.code; out = ($r.out + "`n" + $stListed) }
+Assert-Case -Name "comment-scope: 시험 doc 감사 선언 레포의 #[test] 위 doc 은 감사로 뺀다" -R $stl -ExpectExit 0 -ExpectNotContains '/// 시험 설명.'
+
 $srEmpty = Join-Path $csRoot 'scope-empty.txt'
 $r = Invoke-Cs @('-Base', 'HEAD', '-Out', $srEmpty, '-Repo', $sr)
 $emptyText = if (Test-Path -LiteralPath $srEmpty) { 'len=' + ([System.IO.File]::ReadAllText($srEmpty)).Length } else { 'missing' }

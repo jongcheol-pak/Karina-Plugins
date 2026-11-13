@@ -299,7 +299,7 @@ function Get-CommentDocFlags([string[]]$Lines) {
     return , $docFlag
 }
 
-function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index, [bool[]]$DocFlag) {
+function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index, [bool[]]$DocFlag, $Attrs = $null) {
     $ext = [System.IO.Path]::GetExtension($Path).ToLower()
     $docFlag = $DocFlag
     if ($Index -lt 0 -or $Index -ge $docFlag.Count -or -not $docFlag[$Index]) { return $null }
@@ -308,6 +308,7 @@ function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index, [boo
         $t = ([string]$Lines[$j]).Trim()
         if ($t -eq '' -or $docFlag[$j] -or $t.StartsWith('//')) { continue }
         if ($t -match $attrRx) {
+            if ($null -ne $Attrs) { $Attrs.Add($t) }
             $depth = 0
             while ($j -lt $Lines.Count) {
                 $s = [string]$Lines[$j]
@@ -372,10 +373,12 @@ function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines, $
             $allOk = $true
             if ($null -eq $docFlag) { $docFlag = Get-CommentDocFlags $PostLines }
             foreach ($ix in @($a.Indexes)) {
-                $code = Get-CommentDocTarget $Path $PostLines $ix $docFlag
+                $attrs = New-Object System.Collections.Generic.List[string]
+                $code = Get-CommentDocTarget $Path $PostLines $ix $docFlag $attrs
                 $ok = $false
                 if ($code) {
-                    $audited = @($ctx.AuditRules | Where-Object { $_.Pattern.IsMatch($code) -and (Test-CommentPathLike $ctx.File $base $_.Pathspec) }).Count -gt 0
+                    $cands = @($code) + @($attrs)
+                    $audited = @($ctx.AuditRules | Where-Object { $rule = $_; (@($cands | Where-Object { $rule.Pattern.IsMatch($_) }).Count -gt 0) -and (Test-CommentPathLike $ctx.File $base $rule.Pathspec) }).Count -gt 0
                     $ok = $audited -or ($ctx.Library -and (Test-CommentPublicItem $ext $code))
                 }
                 if (-not $ok) { $allOk = $false; break }
