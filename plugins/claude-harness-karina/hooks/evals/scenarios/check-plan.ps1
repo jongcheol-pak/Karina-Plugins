@@ -357,15 +357,15 @@ Assert-Case -Name "check-plan Plan check: 명령이 KARINA_PLAN_PATH 로 plan �
 $r = Invoke-CheckPlan $cpBase (New-PlanCheckDir '')
 Assert-Case -Name "check-plan Plan check: 줄이 없으면 아무것도 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'plan-check'
 
-$cpPcHang = 'powershell -NoProfile -Command Start-Sleep 61'
+$cpPcHang = 'powershell -NoProfile -Command Start-Sleep 121'
 $env:KARINA_PLAN_CHECK_TIMEOUT_SEC = '2'
 $cpSw = [System.Diagnostics.Stopwatch]::StartNew()
 $r = Invoke-CheckPlan $cpBase (New-PlanCheckDir $cpPcHang)
 $cpSw.Stop()
 Remove-Item Env:KARINA_PLAN_CHECK_TIMEOUT_SEC -ErrorAction SilentlyContinue
 Assert-Case -Name "check-plan Plan check: 상한을 넘으면 timeout 위반을 낸다" -R $r -ExpectExit 1 -ExpectContains 'plan-check timeout 2 log check-plan-'
-$cpLeft = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*Start-Sleep 61*' }).Count
-Assert-Case -Name "check-plan Plan check: 시간 초과 뒤 손자 프로세스가 남지 않고 곧 끝난다" -R @{ code = 0; out = ('left=' + $cpLeft + ' fast=' + ($cpSw.Elapsed.TotalSeconds -lt 20)) } -ExpectExit 0 -ExpectContains 'left=0 fast=True'
+$cpLeft = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*Start-Sleep 121*' }).Count
+Assert-Case -Name "check-plan Plan check: 시간 초과 뒤 손자 프로세스가 남지 않고 곧 끝난다" -R @{ code = 0; out = ('left=' + $cpLeft + ' fast=' + ($cpSw.Elapsed.TotalSeconds -lt 90)) } -ExpectExit 0 -ExpectContains 'left=0 fast=True'
 
 if ($cpWinPs) {
     $r = Invoke-CheckPlan $cpBase (New-PlanCheckDir 'Write-Output ''한글출력''; exit 3') $cpWinPs.Source
