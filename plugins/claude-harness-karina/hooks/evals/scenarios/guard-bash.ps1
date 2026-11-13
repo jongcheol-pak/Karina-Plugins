@@ -665,9 +665,15 @@ Set-CcFile $d 'plan.md' "# plan`n`n## Goal`n`n> BASE: $ccBase`n"
 Set-CcFile $d 'q.rs' "/// 화면에 보이는 줄 범위를 센다.`nfn rows() {}`n"; git -C $d add q.rs
 $r = Invoke-CcCommit $d 'git commit -m x -- q.rs' 'cc-base-restore'
 Assert-Case -Name "commit-comments: 앞 커밋에서 지운 plan BASE doc 을 되살린 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
-Set-CcFile $d 'q.rs' "/// BASE 에 없던 새 설명.`nfn rows() {}`n"; git -C $d add q.rs
+Set-CcFile $d 'q.rs' "fn rows() {}`n`n/// BASE 에 없던 새 설명.`nfn cols() {}`n"; git -C $d add q.rs
 $r = Invoke-CcCommit $d 'git commit -m x -- q.rs' 'cc-base-new'
-Assert-Case -Name "commit-comments: plan BASE 에 없던 doc 커밋은 같은 레포에서도 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+Assert-Case -Name "commit-comments: plan BASE 에 doc 이 없던 항목의 doc 커밋은 같은 레포에서도 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+Set-CcFile $d 'q.rs' "/// 보이는 줄의 범위를 센다.`nfn rows() {}`n"; git -C $d add q.rs
+$r = Invoke-CcCommit $d 'git commit -m x -- q.rs' 'cc-base-reword'
+Assert-Case -Name "commit-comments: plan BASE 때 같은 항목의 doc 을 문구만 고쳐 되살린 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Set-CcFile $d 'q.rs' "/// 보이는 줄의 범위를 센다.`n/// 스크롤 위치는 보지 않는다.`nfn rows() {}`n"; git -C $d add q.rs
+$r = Invoke-CcCommit $d 'git commit -m x -- q.rs' 'cc-base-reword-grow'
+Assert-Case -Name "commit-comments: plan BASE 때보다 줄이 많은 문구 수정 복원 커밋은 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
 
 $d = New-CcRepo
 Set-CcFile $d 'a.cs' "// 기존 설명`n// 남의 staged 설명`nint a;`n"; git -C $d add a.cs

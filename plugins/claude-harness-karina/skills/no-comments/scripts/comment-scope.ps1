@@ -130,18 +130,6 @@ function Get-ScopeBaseBodies([string]$Rel, [string[]]$Lines) {
     return , $bodies
 }
 
-function Get-ScopeBaseDocs([string]$Rel, [string[]]$Lines) {
-    $docs = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    if (-not $Rel -or $null -eq $Lines) { return , $docs }
-    $flags = Get-CommentDocFlags $Lines
-    for ($i = 0; $i -lt $Lines.Count; $i++) {
-        if (-not $flags[$i] -or ($i -gt 0 -and $flags[$i - 1])) { continue }
-        $code = Get-CommentDocTarget $Rel $Lines $i $flags
-        if ($code) { [void]$docs.Add($code) }
-    }
-    return , $docs
-}
-
 function Test-ScopeDocCandidate([string[]]$Lines) {
     return $script:CommentDocMarkRx.IsMatch(($Lines -join "`n"))
 }
@@ -149,7 +137,7 @@ function Test-ScopeDocCandidate([string[]]$Lines) {
 function Test-ScopeDocBefore([string]$Rel, [string[]]$Lines, [int]$Index, [bool[]]$DocFlag, $Targets) {
     if ($null -eq $DocFlag -or $null -eq $Targets -or $Targets.Count -eq 0 -or $Index -lt 0 -or $Index -ge $DocFlag.Count -or -not $DocFlag[$Index]) { return $false }
     $code = Get-CommentDocTarget $Rel $Lines $Index $DocFlag
-    return [bool]($code -and $Targets.Contains($code))
+    return [bool]($code -and $Targets.ContainsKey($code))
 }
 
 function Resolve-ScopeRepo([string]$Dir) {
@@ -244,7 +232,7 @@ function Invoke-ScopeList([string]$Root, [string]$BaseSha, [string]$OutPath) {
             $r.DocFlag = $null
             if ($fresh.Count -gt 0 -and (Test-ScopeDocCandidate $r.Lines)) {
                 $r.DocFlag = Get-CommentDocFlags $r.Lines
-                $docs = Get-ScopeBaseDocs $r.OldRel $baseLines
+                $docs = Get-CommentDocOwnerSizes $r.OldRel $baseLines
                 $fresh = @($fresh | Where-Object { -not (Test-ScopeDocBefore $r.Rel $r.Lines ([int]$_.Line) $r.DocFlag $docs) })
             }
             $pre += $r.Cands.Count - $fresh.Count
@@ -351,7 +339,7 @@ function Invoke-ScopeCheck([string]$Root, [string]$BaseSha, [string]$BeforePath,
                 $baseRel = if ($oldPaths.ContainsKey($rel)) { $oldPaths[$rel] } else { $rel }
                 $baseLines = Get-ScopeFileText $Root $BaseSha $baseRel
                 $baseBodies = Get-ScopeBaseBodies $baseRel $baseLines
-                $baseDocs = Get-ScopeBaseDocs $baseRel $baseLines
+                $baseDocs = Get-CommentDocOwnerSizes $baseRel $baseLines
                 [string[]]$headLines = @()
                 $shown = Get-ScopeFileText $Root 'HEAD' $rel
                 if ($null -ne $shown) { $headLines = $shown }

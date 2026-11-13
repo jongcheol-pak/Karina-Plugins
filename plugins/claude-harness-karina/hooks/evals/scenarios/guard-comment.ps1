@@ -278,8 +278,14 @@ Assert-Case -Name "guard-comment: plan BASE 에 있던 비공개 fn doc 을 되�
 Set-GbPlan "> BASE: $gbBase`n> 승인: 2026-11-05 · 화면 Y`n> 완료: 2026-11-05 10:00 · 소요 1시간"
 $r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
 Assert-Case -Name "guard-comment: 완료 기록이 있는 plan 의 BASE doc 복원도 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
-$r = Invoke-GcEditAt $gbFile 'fn rows() {}' "/// BASE 에 없던 새 설명.`nfn rows() {}"
-Assert-Case -Name "guard-comment: plan BASE 에 없던 doc 은 같은 레포에서도 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcEditAt $gbFile 'fn rows() {}' "fn rows() {}`n`n/// BASE 에 없던 새 설명.`nfn cols() {}"
+Assert-Case -Name "guard-comment: plan BASE 에 doc 이 없던 항목의 doc 은 같은 레포에서도 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcEditAt $gbFile 'fn rows() {}' "/// 보이는 줄의 범위를 센다.`nfn rows() {}"
+Assert-Case -Name "guard-comment: plan BASE 때 같은 항목에 있던 doc 을 줄 수 그대로 문구만 고쳐 되살리는 Edit 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-GcEditAt $gbFile 'fn rows() {}' "/// 보이는 줄의 범위를 센다.`n/// 스크롤 위치는 보지 않는다.`nfn rows() {}"
+Assert-Case -Name "guard-comment: plan BASE 때보다 줄이 많은 문구 수정 복원은 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcEditAt $gbFile 'fn rows() {}' "/// 보이는 줄의 범위를 센다.`nfn rows(n: usize) {}"
+Assert-Case -Name "guard-comment: 시그니처를 바꾼 항목(다음 코드 줄이 BASE 와 다름)의 문구 수정 복원은 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 Set-GbPlan '> BASE: <승인 시점 HEAD 의 SHA>'
 $r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
 Assert-Case -Name "guard-comment: BASE 가 자리표시인 plan 이면 복원 Edit 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
@@ -289,7 +295,7 @@ Assert-Case -Name "guard-comment: 레포에 없는 BASE 면 복원 Edit 차단" 
 Set-GbPlan "> BASE: $gbBase`n> 승인: 2026-11-05 · 화면 Y"
 $gbBudgetScript = Join-Path $gc 'base-budget.ps1'
 [System.IO.File]::WriteAllText($gbBudgetScript, @'
-param([string]$Lib, [string]$File, [int]$Ms, [int]$SleepMs, [int]$FakeDelayMs = 0)
+param([string]$Lib, [string]$File, [int]$Ms, [int]$SleepMs, [int]$FakeDelayMs = 0, [string]$Body = '/// 화면에 보이는 줄 범위를 센다.')
 . $Lib
 $pidFile = "$File.fake-pid"
 $ranFile = "$File.fake-ran"
@@ -305,7 +311,7 @@ if ($FakeDelayMs -gt 0) {
 $script:CommentBaseBudgetMs = $Ms
 $budget = New-CommentBaseBudget
 Start-Sleep -Milliseconds $SleepMs
-$body = '/// 화면에 보이는 줄 범위를 센다.'
+$body = $Body
 $added = New-Object System.Collections.Generic.List[object]
 $added.Add(@{ Body = $body; Pair = 0; Line = 0; Indexes = @(0) })
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -330,6 +336,8 @@ $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $g
 Assert-Case -Name "guard-comment: BASE 예산 — 판정 처리 시간이 예산을 넘어도 BASE 복원 doc 은 통과" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=0'
 $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 0 0 2>&1
 Assert-Case -Name "guard-comment: BASE 예산 — 예산이 바닥났으면 복원 doc 도 차단" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=1'
+$out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 0 0 0 '/// 보이는 줄의 범위를 센다.' 2>&1
+Assert-Case -Name "guard-comment: BASE 예산 — 예산이 바닥났으면 문구 수정 복원 doc 도 차단" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=1'
 $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 1500 0 15000 2>&1
 $gbSlow = @{ code = $LASTEXITCODE; out = ($out -join "`n") }
 Assert-Case -Name "guard-comment: BASE 예산 — PATH 앞 git.cmd 를 & git 과 같이 집고, 대기가 예산을 넘으면 손자까지 끝내고 복원 doc 도 차단" -R $gbSlow -ExpectExit 0 -ExpectContains 'ran=True blocked=1 alive=0'

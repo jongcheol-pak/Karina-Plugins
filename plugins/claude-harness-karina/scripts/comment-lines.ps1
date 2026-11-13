@@ -81,7 +81,7 @@ function Format-CommentGatePreview($Bodies) {
     return @($Bodies | Select-Object -First 3 | ForEach-Object { '  | ' + $(if ($_.Length -gt 100) { $_.Substring(0, 100) + '…' } else { $_ }) })
 }
 
-$script:CommentGateRule = '  통과하는 주석은 라이선스·린트 지시문 · 이슈/RFC 링크·트래커 키·실재하는 레포 .md 경로가 든 줄 · .rs SAFETY: · 레포 감사(Test (감사))가 요구하거나 라이브러리 공개 항목 위의 doc · AGENTS.md Comment (보존) 선언 · 기존 주석의 문구 수정 · 그 회차 plan.md BASE 커밋에 있던 주석 줄(복원)뿐입니다 (code-style.md「주석」).'
+$script:CommentGateRule = '  통과하는 주석은 라이선스·린트 지시문 · 이슈/RFC 링크·트래커 키·실재하는 레포 .md 경로가 든 줄 · .rs SAFETY: · 레포 감사(Test (감사))가 요구하거나 라이브러리 공개 항목 위의 doc · AGENTS.md Comment (보존) 선언 · 기존 주석의 문구 수정 · 그 회차 plan.md BASE 커밋에 있던 주석 줄과 BASE 때 같은 항목 doc 을 줄 수를 늘리지 않고 고친 것(복원)뿐입니다 (code-style.md「주석」).'
 $script:CommentLinkRx = '(?i)https?://\S*(/issues/\d+|/pull/\d+|/-/issues/\d+|rfc-editor\.org)|\bRFC ?\d{3,4}\b|\b(issue|PR|GH)[ -]?#\d+|이슈 ?#\d+'
 $script:CommentTrackerRx = '\b(?!(UTF|SHA|ISO|CP|IEC|IEEE|ECMA|ANSI|CRC|AES|RSA|TLS|HTTP|MD|BASE)[A-Z0-9]*-)[A-Z]{2,}[A-Z0-9]*-\d+\b'
 $script:CommentTodoRx = '\b(TODO|FIXME|XXX)\b'
@@ -324,6 +324,23 @@ function Get-CommentDocTarget([string]$Path, [string[]]$Lines, [int]$Index, [boo
     return $null
 }
 
+function Get-CommentDocOwnerSizes([string]$Path, [string[]]$Lines) {
+    $sizes = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::Ordinal)
+    if (-not $Path -or $null -eq $Lines -or $Lines.Count -eq 0) { return , $sizes }
+    $flags = Get-CommentDocFlags $Lines
+    $i = 0
+    while ($i -lt $Lines.Count) {
+        if (-not $flags[$i]) { $i++; continue }
+        $start = $i
+        while ($i + 1 -lt $Lines.Count -and $flags[$i + 1]) { $i++ }
+        $code = Get-CommentDocTarget $Path $Lines $i $flags
+        $n = $i - $start + 1
+        if ($code -and (-not $sizes.ContainsKey($code) -or $sizes[$code] -lt $n)) { $sizes[$code] = $n }
+        $i++
+    }
+    return , $sizes
+}
+
 function New-CommentBaseBudget { return @{ LeftMs = [int]$script:CommentBaseBudgetMs } }
 
 function Get-CommentPlanBase([string]$Dir, [string]$Root) {
@@ -355,6 +372,7 @@ function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budge
 
 function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines, $Budget = $null) {
     $blocked = New-Object System.Collections.Generic.List[string]
+    $blockedDocs = New-Object System.Collections.Generic.List[object]
     if ($Added.Count -eq 0) { return , $blocked }
     $ctx = Get-CommentRepoContext $Path
     $ext = [System.IO.Path]::GetExtension($Path).ToLower()
@@ -369,8 +387,10 @@ function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines, $
             foreach ($p in $k.Paths) { if (Test-CommentPathLike $ctx.File $base $p) { $kept = $true } }
         }
         if ($kept) { continue }
+        $docs = $null
         if ($c -notmatch $script:CommentTodoRx -and @('.rs', '.cs', '.ts', '.tsx', '.js', '.jsx') -contains $ext -and @($a.Indexes).Count -gt 0) {
             $allOk = $true
+            $docs = New-Object System.Collections.Generic.List[object]
             if ($null -eq $docFlag) { $docFlag = Get-CommentDocFlags $PostLines }
             foreach ($ix in @($a.Indexes)) {
                 $attrs = New-Object System.Collections.Generic.List[string]
@@ -381,18 +401,37 @@ function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines, $
                     $audited = @($ctx.AuditRules | Where-Object { $rule = $_; (@($cands | Where-Object { $rule.Pattern.IsMatch($_) }).Count -gt 0) -and (Test-CommentPathLike $ctx.File $base $rule.Pathspec) }).Count -gt 0
                     $ok = $audited -or ($ctx.Library -and (Test-CommentPublicItem $ext $code))
                 }
-                if (-not $ok) { $allOk = $false; break }
+                $s = $ix; while ($s -gt 0 -and $docFlag[$s - 1]) { $s-- }
+                $e = $ix; while ($e + 1 -lt $docFlag.Count -and $docFlag[$e + 1]) { $e++ }
+                $docs.Add(@{ Owner = $code; Size = $e - $s + 1 })
+                if (-not $ok) { $allOk = $false }
             }
             if ($allOk) { continue }
         }
         $blocked.Add($c)
+        $blockedDocs.Add($docs)
     }
     if ($blocked.Count -eq 0) { return , $blocked }
     if ($null -eq $Budget) { $Budget = New-CommentBaseBudget }
+    [string[]]$baseLines = @(Get-CommentBaseLines $ctx.File $ctx.Dir $ctx.Root $Budget)
     $baseSet = New-Object System.Collections.Generic.HashSet[string]
-    foreach ($b in (Get-CommentBodies $Path (Get-CommentBaseLines $ctx.File $ctx.Dir $ctx.Root $Budget))) { [void]$baseSet.Add($b) }
+    foreach ($b in (Get-CommentBodies $Path $baseLines)) { [void]$baseSet.Add($b) }
+    $baseSizes = $null
     $kept = New-Object System.Collections.Generic.List[string]
-    foreach ($c in $blocked) { if (-not $baseSet.Contains($c)) { $kept.Add($c) } }
+    for ($k = 0; $k -lt $blocked.Count; $k++) {
+        $c = $blocked[$k]
+        if ($baseSet.Contains($c)) { continue }
+        $docs = $blockedDocs[$k]
+        if ($docs -and $docs.Count -gt 0) {
+            if ($null -eq $baseSizes) { $baseSizes = Get-CommentDocOwnerSizes $Path $baseLines }
+            $fit = $true
+            foreach ($d in $docs) {
+                if (-not $d.Owner -or -not $baseSizes.ContainsKey($d.Owner) -or $d.Size -gt $baseSizes[$d.Owner]) { $fit = $false; break }
+            }
+            if ($fit) { continue }
+        }
+        $kept.Add($c)
+    }
     if ($kept.Count -eq 0) { return , $kept }
     return , (Get-CommentMovedBodies $ctx $kept $Budget)
 }
