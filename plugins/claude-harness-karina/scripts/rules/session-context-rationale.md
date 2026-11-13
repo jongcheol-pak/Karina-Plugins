@@ -71,6 +71,8 @@
 
 **한 곳만 `guard-write` 와 다르다 — `.git` 은 폴더든 파일이든 레포 경계다.** `guard-write`·`guard-bash` 는 `.git` 을 폴더로만 봐서, worktree(`.git` 이 `gitdir:` 파일)에서는 부모 레포의 plan 을 잡는다(회차 4 착수 실측). 이 hook 은 그 plan 으로 세션 상태를 알리고 `loop-continue` 는 그 plan 의 미완 task 로 「계속」을 주입하므로, 다른 레포의 plan 을 잡지 않도록 경계를 넓혔다. 차단 hook(`guard-write`·`guard-bash`)은 worktree 의 `.git` 파일(`gitdir: …/worktrees/…`)만 경계로 본다 — 서브모듈의 `.git` 파일은 상위 plan 으로 통과하던 동작을 지키려고 경계에서 뺐다(`bash-guard-rationale.md` §20). `.claude` 폴더에서도 멈춘다(사용자 홈이 이것으로 막힌다).
 
+**서브모듈에서 두 쪽이 갈리는 것은 의도다 — 2026-11-13 하니스 검토가 다시 보고 맞추지 않기로 했다.** 서브모듈 안에서 연 세션은 이 hook·`loop-continue` 에서는 「plan 없음」이고, 차단 hook 에서는 상위 레포의 plan 을 본다. 맞추는 방향이 둘 다 비용을 만든다 — 차단 hook 을 이쪽에 맞추면 서브모듈 안 커밋이 상위 plan 의 쓰기 게이트·체크박스 검사를 잃고, 이쪽을 차단 hook 에 맞추면 다른 레포(상위)의 plan 을 세션 상태로 알리고 그 미완 task 로 「계속」 을 주입한다. 각 hook 이 잘못 판정했을 때 치르는 쪽을 덜 위험하게 고른 결과라 경계가 다르다.
+
 **`docs/plans/` 의 날짜별 파일로는 폴백하지 않는다(v1.210.0)** — 과거 회차 plan 이 쌓인 디렉터리라, 폴백하면 그 미완료분이 이번 세션의 상태로 주입된다. 후보의 `docs/plan.md` 는 그 폴더가 아니라 단일 파일이다.
 
 **라벨** — `cwd` 에서 찾으면 후보 이름 그대로(`plan.md` · `docs/plan.md`), 위에서 찾으면 전체 경로다. 함수 안에서 계산해 두 hook 이 같은 라벨을 쓴다. `[System.IO.Path]::GetRelativePath` 는 PowerShell 5.1(.NET Framework)에 없어 쓰지 않는다 — hook 은 pwsh 7 이 없으면 5.1 로 돈다.
