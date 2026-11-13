@@ -49,19 +49,21 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
   오인하지 말 것**(`evals/check-stale-refs.py` 의 DEAD 목록이 이 다섯을 뺀 이유).
 - **함수 계약**: 파싱된 `$data`(hook stdin JSON) → 결과 객체
   `@{ Block = [bool]; Stderr = [string[]]; Context = [string] }`.
-  **`Block = $true`(exit 2)를 내는 경로는 다섯이다** — `guard-bash.ps1` 2곳(`block-plan-write` 의
-  plan.md 스크립트 쓰기 · `require-task-checkbox`) + `warn-commit-secrets` 2곳(`guard-commit-secrets.ps1`
+  **`Block = $true`(exit 2)를 내는 경로는 여덟이다** — `guard-bash.ps1` 5곳(`bash-backslash` ·
+  `block-plan-write` 의 plan.md 스크립트 쓰기 · `block-installed-write` 의 설치본 자산 셸 쓰기 ·
+  `require-task-checkbox` · `block-python-newcode`) + `warn-commit-secrets` 2곳(`guard-commit-secrets.ps1`
   의 시크릿 검출·스캔 캡 초과) + `block-commit-comments` 1곳(`guard-commit-comments.ps1` 의 새 주석 차단).
-  `check-block-coverage.py` 가 세는 「guard-bash 경로 2 · guard-commit-secrets 경로 2 · guard-commit-comments 경로 1」이
-  그 다섯이다. 10검사 중 차단하는 것은 이 4종이고, 나머지 경고 전용 6종은 `Block` 을 세우지 않는다.
+  `check-block-coverage.py` 가 세는 「guard-bash 경로 5 · guard-commit-secrets 경로 2 · guard-commit-comments 경로 1」이
+  그 여덟이다. 12검사 중 차단하는 것은 이 7종이고, 나머지 경고 전용 5종은 `Block` 을 세우지 않는다.
   출력·exit 번역은 파일 하단의 단일 caller 가 하고, 각 함수는 「판정 → 결과」만 낸다.
 - **한 검사의 예외는 나머지를 막지 않는다** — `foreach` 안에서 `try/catch` 로 격리하고
-  안전측으로 통과시킨다. 열 중 하나가 깨져 전체가 침묵하는 것을 막는다.
+  안전측으로 통과시킨다. 열둘 중 하나가 깨져 전체가 침묵하는 것을 막는다.
 - **`New-HookResult` 생성기는 `guard-bash.ps1` 에 있다** — 커밋 판정 라이브러리는 커밋 명령에서만
-  불러오므로 거기 두면 나머지 여섯 검사가 돌 수 없다. 라이브러리를 단독 dot-source 하는 골든
+  불러오므로 거기 두면 나머지 여덟 검사가 돌 수 없다. 라이브러리를 단독 dot-source 하는 골든
   프로브는 같은 정의를 직접 둔다.
 - **`block-destructive.ps1` 은 여기 합치지 않는다** — 「끌 수 없는 마지막 방어선」이라
-  공유 로드 실패에 결합시키지 않고 아무 파일도 dot-source 하지 않는 별도 스크립트로 둔다(결정 B). `hooks.json` 에서는
+  공유 로드 실패에 결합시키지 않고 판정 파일은 dot-source 하지 않는 별도 스크립트로 둔다(결정 B) — 부르는 것은
+  이벤트 로그 `hook-event-log.ps1` 하나이고 `try` 로 격리해, 그 로드가 실패해도 판정은 그대로 돈다. `hooks.json` 에서는
   `hook-dispatch.ps1 -Blocking` 묶음의 첫 스크립트로 같은 프로세스에서 돈다 — 디스패처가 실패하면 `onFailure: block`
   으로 막힌다(`hook-dispatch-rationale.md` §1).
 
