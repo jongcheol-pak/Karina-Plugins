@@ -3,6 +3,7 @@ if ((Test-HookSelected @('guard-bash')) -and (Test-ScenarioUnit 1)) {
 $noLib = Join-Path $work 'dispatch-nolib'; New-Item -ItemType Directory $noLib -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $noLib -Force
 Copy-Item (Join-Path $scriptsDir 'git-commit-match.ps1') $noLib -Force
+Copy-Item (Join-Path $scriptsDir 'plan-round.ps1') $noLib -Force
 $noLibExe = Join-Path $noLib 'guard-bash.ps1'
 # cwd 는 plan.md 없는 사본 폴더 — cwd 를 빼면 require-task-checkbox 가 러너 레포의 실제 plan.md 를 읽어 결과가 갈린다.
 $outNoLib = (New-CommitJson $noLib 'T1: x') | pwsh -NoProfile -ExecutionPolicy Bypass -File $noLibExe 2>&1
@@ -37,6 +38,7 @@ $stubLib = Join-Path $work 'dispatch-stublib'; New-Item -ItemType Directory $stu
 Copy-Item (Join-Path $scriptsDir 'guard-bash.ps1') $stubLib -Force
 Copy-Item (Join-Path $scriptsDir 'git-commit-match.ps1') $stubLib -Force
 Copy-Item (Join-Path $scriptsDir 'timed-git.ps1') $stubLib -Force
+Copy-Item (Join-Path $scriptsDir 'plan-round.ps1') $stubLib -Force
 New-Item -ItemType Directory (Join-Path $stubLib 'rules') -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir 'rules/*.json') (Join-Path $stubLib 'rules') -Force
 'Set-Content -LiteralPath (Join-Path $PSScriptRoot ''loaded-cs.txt'') x; function Invoke-WarnCommitSecrets { param($data) New-HookResult }' | Set-Content (Join-Path $stubLib 'guard-commit-secrets.ps1')
@@ -121,6 +123,37 @@ $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcUn 'T3: 검색 요약')
 Assert-Case -Name "rtc: 미완료 [ ] T3 커밋 차단 (차단 사유 문구 고정)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcIn 'T3: 검색 요약')
 Assert-Case -Name "rtc: 진행중 [/] T3 커밋 차단" -R $r -ExpectExit 2 -ExpectContains 'T3'
+$prToday = (Get-Date).ToString('yyyy-MM-dd'); $prYesterday = (Get-Date).AddDays(-1).ToString('yyyy-MM-dd')
+function New-PrPlan([string]$Name, [string]$Head) {
+    $d = Join-Path $work $Name; New-Item -ItemType Directory $d -Force | Out-Null
+    ("# plan`n`n## Goal`n`n" + $Head + "`n`n- [x] **T1-1** a") | Set-Content (Join-Path $d 'plan.md')
+    return $d
+}
+function New-PrCmd([string]$Cwd, [string]$Cmd) { return (@{ tool_name = 'Bash'; cwd = $Cwd; tool_input = @{ command = $Cmd } } | ConvertTo-Json -Compress) }
+$prActive = New-PrPlan 'pr-active' "> 승인: $prToday · Y`n> 완료: <implement 가 채움>"
+$prDoneToday = New-PrPlan 'pr-done-today' "> 승인: $prYesterday · Y`n> 완료: $prToday 01:50 · 소요 1시간"
+$prDoneOld = New-PrPlan 'pr-done-old' "> 승인: $prYesterday · Y`n> 완료: $prYesterday 23:50 · 소요 1시간"
+$prDraft = New-PrPlan 'pr-draft' "> 승인: <승인 직후 채움>"
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $prActive 'git push origin main')
+Assert-Case -Name "plan-round: 승인된 plan 회차 진행 중 git push 는 외부 작업 경고를 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'EXTERNAL OP'
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $prDoneToday 'gh pr create --title x')
+Assert-Case -Name "plan-round: 오늘 완료 기록된 회차의 gh pr create 는 경고를 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'EXTERNAL OP'
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $prDoneOld 'git push origin main')
+Assert-Case -Name "plan-round: 어제 끝난 회차의 git push 는 경고한다" -R $r -ExpectExit 0 -ExpectContains 'EXTERNAL OP'
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $prDraft 'git push origin main')
+Assert-Case -Name "plan-round: 승인 전 초안 plan 의 git push 는 경고한다" -R $r -ExpectExit 0 -ExpectContains 'EXTERNAL OP'
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $prActive 'git tag v9.9.9')
+Assert-Case -Name "plan-round: 회차 진행 중에도 git tag 는 경고한다" -R $r -ExpectExit 0 -ExpectContains 'git tag'
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $prActive 'gh release create v9.9.9')
+Assert-Case -Name "plan-round: 회차 진행 중에도 gh release create 는 경고한다" -R $r -ExpectExit 0 -ExpectContains 'gh release create'
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $prActive 'git reset --hard HEAD~1')
+Assert-Case -Name "plan-round: 회차 진행 중에도 워킹트리 폐기는 경고한다" -R $r -ExpectExit 0 -ExpectContains 'LOCAL OP'
+$prNoLib = Join-Path $work 'pr-nolib'; New-Item -ItemType Directory $prNoLib -Force | Out-Null
+Copy-Item (Join-Path $scriptsDir '*') $prNoLib -Recurse -Force -Exclude 'plan-round.ps1'
+$r = Invoke-Hook (Join-Path $prNoLib 'guard-bash.ps1') (New-CommitJson $prActive 'x') -Process
+Assert-Case -Name "plan-round: 회차 헬퍼(plan-round.ps1)가 없으면 커밋 명령을 막는다" -R $r -ExpectExit 2 -ExpectContains 'plan-round.ps1'
+$r = Invoke-Hook (Join-Path $prNoLib 'guard-bash.ps1') (New-PrCmd $prActive 'git status') -Process
+Assert-Case -Name "plan-round: 회차 헬퍼가 없어도 커밋이 아닌 명령은 통과한다" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 $rtcSub = Join-Path $work 'rtc-sub'; New-Item -ItemType Directory $rtcSub -Force | Out-Null
 "# plan`n### T4. 묶음`n- [x] **T4-1** 앞 항목`n- [ ] **T4-2** 뒤 항목`n- [ ] **T4-10** 열째 항목" | Set-Content (Join-Path $rtcSub 'plan.md')
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcSub '기능: T4-1 — 앞 항목')

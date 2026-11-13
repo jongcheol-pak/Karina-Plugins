@@ -1091,14 +1091,14 @@
     "expect_rc": 1,
     "mutate": [
       {
-        "file": "scripts/guard-bash.ps1",
+        "file": "scripts/plan-round.ps1",
         "find": "-PathType Leaf)) { return $false }",
         "replace": "-PathType Container)) { return $false }"
       }
     ],
     "expect_keywords": [
       "복제 사본 동기: `Test-WorktreeGitFile` 묶음이 갈렸다",
-      "guard-write.ps1 ↔ guard-bash.ps1"
+      "guard-write.ps1 ↔ plan-round.ps1"
     ]
   },
   {

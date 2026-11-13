@@ -75,7 +75,7 @@
        · heredoc 정규식 — `block-destructive.ps1` 의 `$heredocRx` → `guard-bash.ps1` 의 `$script:HeredocBlockRx`
          (변수 이름이 다르다 — 둘 다 차단 hook 이라 이름을 맞추지 않는다. 그래서 묶음은 (파일, 이름) 쌍이다)
        · 설치본 worktree 정규식 `$installedWtRx`·설치본 자산 경로 정규식 `$installedAssetRx` — `guard-harness.ps1` → `guard-bash.ps1`(셸 쓰기 차단)
-       · `Test-WorktreeGitFile` 함수 — `guard-write.ps1` → `guard-bash.ps1`
+       · `Test-WorktreeGitFile` 함수 — `guard-write.ps1` → `plan-round.ps1`
      **복제를 둔 이유는 둘이다**(`skills/DESIGN.md` 2절의 복제 예외 문단이 정본) — ① 안전 임계
      hook 은 외부 파일 의존을 만들지 않는다: `block-destructive` 는 `AGENTS.md` 「DO NOT」의 마지막
      방어선이라, 공유 모듈로 빼면 dot-source 실패 시 차단이 통째로 사라지고 그 fail-open 경로를

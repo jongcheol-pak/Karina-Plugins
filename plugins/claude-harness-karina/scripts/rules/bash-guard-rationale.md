@@ -203,6 +203,8 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 
 **검사 범위(코드 구획 제목에서 옮김 — 2026-10-17)**: warn-external-ops 는 외부·비가역 작업(push·merge·gh pr — plan·스킬 안이면 진행 / tag·gh release·배포 — 항상 승인)·로컬 비가역(reset --hard 등) 경고 를 본다.
 
+**승인된 plan 회차가 진행 중이면 `approval: context` 군(push·merge·PR 생성·코멘트·병합) 경고를 내지 않는다(2026-11-14 — 체인 run_dc17831b plan 1)** — 그 군은 「승인된 plan·발동된 스킬 안이면 묻지 않고 한다」는 작업이라, 회차 안에서는 경고가 아무것도 바꾸지 않고 소음만 됐다(2026-11 hook-events — warn-external-ops 경고 2,172건 중 스킬·plan 안 정상 push·PR 약 1,360건, 코디네이터 집계). 판정은 `scripts/plan-round.ps1` 의 `Test-ActivePlanRound` 다 — cwd 위로 찾은 `plan.md` 에 `> 승인: <날짜>` 가 있고 `> 완료: <날짜>` 가 없거나 그 날짜가 오늘이면 진행 중이다(push 는 회차 끝 게이트 뒤라 완료 기록이 이미 있다). 파일만 보므로 낡은 세션 마커에 속지 않고, 어제 끝난 회차·승인 전 초안은 그대로 경고한다. **`None` 군(tag·release·배포)과 `localOps`(워킹트리 폐기)는 늘 경고한다** — 승인 범위 밖이거나 되돌릴 수 없는 작업이다. 한 명령에 두 군이 섞이면 전부 경고한다. plan 탐색(`Find-SinglePlanUpwards`·`Test-WorktreeGitFile`)도 같은 파일로 옮겨 guard-write·post-write-checks 가 사본 없이 쓴다. **그 파일이 없으면 커밋 명령을 막는다** — task 체크박스 게이트가 plan 을 못 찾아 통과시키면 설치 손상이 차단 게이트를 끈다(§18 의 커밋 판정식 부재와 같은 처리).
+
 ## §14 완료 커밋 제목 판정
 
 완료 커밋은 **제목(첫 줄)** 이 `{유형}: T<N> — …`(글로벌 「Git」 의 다섯 유형 · 회차 44 정본) 또는 구형 `T<N>: …` 일 때만 판정한다 — 본문이나 괄호 안의 `T<N>` 언급으로 오탐하지 않기 위해서다.

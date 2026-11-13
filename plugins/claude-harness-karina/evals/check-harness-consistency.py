@@ -1523,7 +1523,7 @@ COPY_SYNC_GROUPS = (
     ("설치본 자산 경로 정규식", "literal",
      (("guard-harness.ps1", "installedAssetRx"), ("guard-bash.ps1", "installedAssetRx"))),
     ("Test-WorktreeGitFile", "function",
-     (("guard-write.ps1", "Test-WorktreeGitFile"), ("guard-bash.ps1", "Test-WorktreeGitFile"))),
+     (("guard-write.ps1", "Test-WorktreeGitFile"), ("plan-round.ps1", "Test-WorktreeGitFile"))),
 )
 
 

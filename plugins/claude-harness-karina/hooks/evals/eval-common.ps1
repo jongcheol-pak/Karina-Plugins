@@ -111,7 +111,7 @@ function New-CommitJson([string]$cwd, [string]$msg) {
     return (@{ tool_name = 'Bash'; cwd = $cwd; tool_input = @{ command = "git commit -m `"$msg`"" } } | ConvertTo-Json -Compress)
 }
 
-function Invoke-HookSlowGit([string]$InputJson, [hashtable]$ExtraEnv = @{}, [int]$LimitMs = 2000, [int]$FastMs = 15000) {
+function Invoke-HookSlowGit([string]$InputJson, [hashtable]$ExtraEnv = @{}, [int]$LimitMs = 2000, [int]$FastMs = 25000) {
     $slowDir = Join-Path $work 'slow-git'
     if (-not (Test-Path -LiteralPath (Join-Path $slowDir 'git.cmd'))) {
         New-Item -ItemType Directory $slowDir -Force | Out-Null

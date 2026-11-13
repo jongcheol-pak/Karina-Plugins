@@ -363,6 +363,10 @@ function Invoke-WarnExternalOps {
         }
     }
 
+    if ($hitContext -and -not $hitAlways -and (Get-Command Test-ActivePlanRound -ErrorAction SilentlyContinue)) {
+        $roundDir = if ($data.cwd) { [string]$data.cwd } else { (Get-Location).Path }
+        if (Test-ActivePlanRound (Find-SinglePlanUpwards -StartDir $roundDir)) { $hits.Clear(); $hitContext = $false }
+    }
     if ($hits.Count -eq 0 -and $hitsLocal.Count -eq 0) { return New-HookResult }
 
     $lines = @()
@@ -490,35 +494,6 @@ function Invoke-RequireTaskCheckbox {
     return New-HookResult -Block $true -Stderr $lines
 }
 
-# worktree 의 `.git` 파일(`gitdir: …/worktrees/…`)만 레포 경계로 본다 — 서브모듈(`…/modules/…`)은 아니다 — 근거는 `rules/bash-guard-rationale.md` §20
-function Test-WorktreeGitFile([string]$dir) {
-    $gf = Join-Path $dir '.git'
-    if (-not (Test-Path -LiteralPath $gf -PathType Leaf)) { return $false }
-    $first = [string](@(Get-Content -LiteralPath $gf -TotalCount 1 -ErrorAction SilentlyContinue)[0])
-    return ($first -match '^gitdir:.*[\\/]worktrees[\\/]')
-}
-function Find-SinglePlanUpwards {
-    param([string]$StartDir, [int]$MaxDepth = 8)
-    if ([string]::IsNullOrEmpty($StartDir)) { return $null }
-    $dir = $StartDir
-    for ($i = 0; $i -lt $MaxDepth; $i++) {
-        if (-not $dir) { break }
-        foreach ($cand in @('plan.md', 'PLAN.md', 'docs/plan.md')) {
-            $pf = Join-Path $dir $cand
-            if (Test-Path -LiteralPath $pf -PathType Leaf) { return $pf }
-        }
-        if ((Test-Path -LiteralPath (Join-Path $dir '.git') -PathType Container) -or
-            (Test-WorktreeGitFile $dir) -or
-            (Test-Path -LiteralPath (Join-Path $dir '.claude') -PathType Container)) {
-            return $null
-        }
-        $parent = [System.IO.Path]::GetDirectoryName($dir)
-        if ($parent -eq $dir) { break }
-        $dir = $parent
-    }
-    return $null
-}
-
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -543,6 +518,14 @@ if (-not $script:GitCommitRx) {
         exit 2
     }
     $script:GitCommitRx = '(?!)'
+}
+
+# plan 탐색·회차 판정 헬퍼 — 체크박스 게이트가 쓰므로 없으면 커밋 명령을 막는다 — 근거는 `rules/bash-guard-rationale.md` §13
+$planRoundPath = Join-Path $PSScriptRoot 'plan-round.ps1'
+if (Test-Path -LiteralPath $planRoundPath) { . $planRoundPath }
+if (-not (Get-Command Find-SinglePlanUpwards -ErrorAction SilentlyContinue) -and $cmdText -match $script:GitCommitRx) {
+    [Console]::Error.WriteLine('[HARNESS] BLOCKED: plan 탐색 정의(plan-round.ps1)를 읽지 못해 task 체크박스 검사를 할 수 없습니다 — 플러그인을 재설치하세요.')
+    exit 2
 }
 
 # 커밋 시점 검사는 별도 파일이고 로드 실패를 침묵시키지 않는다 — 근거는 `rules/stale-docs-rationale.md` §2
