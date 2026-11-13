@@ -7,7 +7,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 
 승인 가능한 `plan.md` 하나를 만든다. 이 스킬은 **코드를 고치지 않는다** — 산출물은 `plan.md` 와, Step 1이 없을 때 만드는 `AGENTS.md`뿐이다.
 
-- **Skill args 첫 줄 또는 이 세션 첫 프롬프트의 `할 일:` 다음 줄이 `[chain-plan 중계]` 이면 Step 1 전에 `references/relay-mode.md`「중계 모드」를 Read 한다** — `karina:chain-plan` 워커의 예외(인계 파일 Read·실측 요지 재측정·`ask`)가 Step 1 부터 걸린다.
+- **Skill args 첫 줄 또는 이 세션 첫 프롬프트의 `할 일:` 다음 줄이 `[chain-plan 중계]` 이면 Step 1 전에 `references/relay-mode.md`「중계 모드」를 Read 한다** — `karina:chain-plan` 워커의 예외(인계 파일 Read·실측 요지 재측정·`ask`)가 Step 1 부터 걸린다. 드문 조건(아키텍처 선언 부재·ask 만료·회차·이어받기·실행 시점 승인·사후 완료)은 `references/relay-edge-cases.md` 다.
 - **Skill args 첫 줄이 `[plan-draft 초안]` 또는 `[plan-draft 진행]` 이면 Step 1 전에 `references/draft-mode.md` 를 Read 한다** — `karina:plan-draft` 가 넘긴 것이고, 초안 모드는 `plan.md` 대신 초안 파일을 쓰며 진행 모드는 승인 직후 초안을 지운다.
 
 ## 이 스킬을 건너뛰는 경우
@@ -83,10 +83,10 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 - **리뷰어를 부르기 전에 `"<skill>/scripts/check-plan.ps1" "<plan.md>"` 를 work-clock 과 같은 호출형(`../implement/references/report-format.md`「소요 기록」)으로 돌려 exit 0 을 본다 — 고치기·오탐·미해소·미실행 처리와 리뷰어 전달물은 `references/review-rounds.md`「check-plan 처리」 다** — 문자열로 갈리는 판정은 결정적 검사가 먼저 걸러야 리뷰 라운드가 판단에만 쓰인다. 코드 뜻은 스크립트 머리 주석이 정본이다.
 - **`karina:plan-reviewer` 서브에이전트를 호출한다(최소 1회) — 경량 계획이면 부르지 않는다(`references/interview.md`「경량 계획」)** — 전달: `plan.md` 경로, 대상 레포 경로, `AGENTS.md` 경로.
 - **리뷰어는 read-only 라 고치는 것은 이 세션이다.** **호출되지 않는 환경이면 그 사실을 plan 에 적고 승인 단계로 간다** — 리뷰 부재를 통과로 적지 않는다.
-- **`plan-reviewer` 지적은 BLOCKER·MAJOR 를 고치고, 다시 부르는 것은 BLOCKER 가 있었거나 수정이 task 구조(Files·검증 명령)를 바꿨을 때뿐이며 3라운드에서 멈추고, 남은 지적은 승인 제시 `남은 리뷰 지적:` 에 싣는다 — 기각·MINOR·라운드 계수 세부는 `references/review-rounds.md`「리뷰 라운드」 다** — 지적이 남은 계획을 숨기고 승인받으면 그 결함이 구현 중에 드러난다.
+- **`plan-reviewer` 지적은 BLOCKER·MAJOR 를 고치고, 다시 부를지·3라운드 상한·기각·MINOR 는 `references/review-rounds.md`「리뷰 라운드」 대로이며, 남은 지적은 승인 제시 `남은 리뷰 지적:` 에 싣는다** — 지적이 남은 계획을 숨기고 승인받으면 그 결함이 구현 중에 드러난다.
 - **승인이 필요한 항목(파괴적·외부 비가역 작업, 복구 경로 없는 삭제)이 `## 승인 필요 항목`에 있는지 확인한다** — `plan-reviewer` 는 그 항목에 회피 설계가 있는지를 보고, 누락은 복구 경로 없는 삭제만 센다. 그 밖의 누락은 여기서 잡지 않으면 실행 시점에 루프가 멈춘다.
 - **`plan.md`를 쓴 뒤 화면에 요약을 내고 승인을 받는다** — 서식은 `references/interview.md`의 「승인 제시」. 중계 모드면 화면 대신 `ask` 로 보낸다(`references/relay-mode.md`「중계 모드」).
-  - **승인 답이 `G`·`S`·`C` 면 `references/rare-paths.md`「승인 답 갈래」 를 따른다 — 셋 다 이 turn 에 `karina:implement` 를 부르지 않는다.**
+  - **승인 답이 `G`·`S`·`C` 면 `references/interview.md`「승인 제시」 의 그 갈래를 따른다(`G` 는 `references/grill.md`) — 셋 다 이 turn 에 `karina:implement` 를 부르지 않는다.**
 - **승인 직후 `plan.md` `## Goal` 의 `> BASE:`(그때의 HEAD)와 `> 승인:` 줄을 채운다 — 중계 모드면 코디네이터의 승인 답을 받은 뒤다(서식 정본 `references/plan-template.md` 「Goal」)** — `karina:implement` 가 `> 승인:` 줄 없는 `plan.md` 를 승인 전 초안으로 보고 확인을 묻는다.
 - **두 줄을 채우면 같은 turn에서 `karina:implement` 를 Skill 도구로 부른다(진행 모드면 그 전에 초안을 지운다 — `references/draft-mode.md`)** — 승인이 곧 실행 요청이라 「구현」을 다시 받지 않는다. 부르지 않고 그냥 이어 구현하면 `loop-continue` 의 발동 마커가 서지 않아, 루프가 중간에 멈췄을 때 계속을 주입하는 안전망이 꺼진다. 실행 중 멈추는 자리는 `karina:implement`의 「멈추는 넷 — 그리고 목록 밖의 넷」이 가른다.
 
