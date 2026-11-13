@@ -139,7 +139,7 @@ Assert-Case -Name "comment-scope: 정리 전부터 미커밋이던 파일은 건
 $crDiff = (git -C $cr diff -U0 HEAD -- a.rs w.cs) -join "`n"
 Assert-Case -Name "comment-scope: 되살린 뒤 diff 에 회차 전 주석 삭제가 남지 않는다" -R @{ code = 0; out = $crDiff } -ExpectExit 0 -ExpectNotContains '전 표식'
 $null = Invoke-Cs @('-CheckDeletions', '-Base', $crBase, '-Before', $crSnap, '-Repo', $cr, '-Restore')
-Assert-Case -Name "comment-scope: -Restore 를 다시 돌려도 결과가 같다(중간 실패 뒤 재실행 안전)" -R @{ code = 0; out = ('same=' + ([System.IO.File]::ReadAllText((Join-Path $cr 'a.rs')) -eq $crA)) } -ExpectExit 0 -ExpectContains 'same=True'
+Assert-Case -Name "comment-scope: -Restore 를 끝낸 뒤 다시 돌려도 결과가 같다" -R @{ code = 0; out = ('same=' + ([System.IO.File]::ReadAllText((Join-Path $cr 'a.rs')) -eq $crA)) } -ExpectExit 0 -ExpectContains 'same=True'
 $r = Invoke-Cs @('-CheckDeletions', '-Base', $crBase, '-Before', $crSnap, '-Repo', $cr)
 Assert-Case -Name "comment-scope: 회차 주석 삭제만 남으면 exit 0" -R $r -ExpectExit 0 -ExpectContains 'RESULT: 되살림 0 · 회차 삭제 2 · 건너뜀 1'
 

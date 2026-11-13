@@ -40,7 +40,7 @@ if ($env:KARINA_SCOPE_GIT_TIMEOUT_MS -match '^\d+$' -and [int]$env:KARINA_SCOPE_
 function Complete-ScopeGit($Run) {
     if (-not $Run.Process.WaitForExit($script:ScopeGitTimeoutMs)) {
         foreach ($live in $script:ScopeGitLive) { try { if (-not $live.HasExited) { $live.Kill($true) } } catch {} }
-        Stop-Scope "git 이 시간 상한($($script:ScopeGitTimeoutMs)ms) 안에 답하지 않았습니다 — 범위·되살림 결과를 내지 않고 멈춥니다. 다시 돌리세요(되살린 줄은 대상에서 빠져 재실행이 안전합니다)."
+        Stop-Scope "git 이 시간 상한($($script:ScopeGitTimeoutMs)ms) 안에 답하지 않았습니다 — 범위·되살림 결과를 내지 않고 멈춥니다. 다시 돌리세요."
     }
     $Run.Process.WaitForExit()
     [void]$script:ScopeGitLive.Remove($Run.Process)

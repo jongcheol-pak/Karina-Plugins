@@ -47,6 +47,6 @@
 
 **git 이 상한 안에 답하지 않으면 재시도 안내로 막는다** — 커밋 경로 git 은 `Invoke-CommitGit` 으로 띄워 호출마다 상한이 있다(`bash-guard-rationale.md` §18). 시간 초과를 통과로 두면 git 이 느릴 때 새 주석이 전부 지나가고, 종전에도 git 이 멈추면 hook 이 60초 뒤 `onFailure: block` 으로 막혔으니 결과는 같고 대기만 짧다. 시간 초과가 아닌 git 실패(레포 아님 등)는 종전처럼 통과다.
 
-**회차 끝 주석 정리(`skills/no-comments/scripts/comment-scope.ps1`)의 git 도 호출마다 상한이 있다(`KARINA_SCOPE_GIT_TIMEOUT_MS` 아니면 60000ms)** — 종전 `WaitForExit()` 는 상한이 없어 git 이 멈추면 정리가 끝없이 섰다(대장 2026-11-13). 넘기면 병렬로 띄운 다른 git 까지 트리째 끝내고 **실패 종료(exit 2)** 한다 — 종전 실패 경로(show 실패는 범위에서 빼고 blame 실패는 경계 없음)로 보내면 일부 파일이 빠진 범위·되살림이 정상처럼 나온다. `-Restore` 가 중간에 멈춰도 다시 돌리면 이미 되살린 줄은 작업 트리에 있어 대상에서 빠진다(골든 「-Restore 를 다시 돌려도 결과가 같다」). 동기 `Invoke-TimedGit` 으로 바꾸지 않은 것은 이 스크립트가 git 을 병렬로 띄우기 때문이다.
+**회차 끝 주석 정리(`skills/no-comments/scripts/comment-scope.ps1`)의 git 도 호출마다 상한이 있다(`KARINA_SCOPE_GIT_TIMEOUT_MS` 아니면 60000ms)** — 종전 `WaitForExit()` 는 상한이 없어 git 이 멈추면 정리가 끝없이 섰다(대장 2026-11-13). 넘기면 병렬로 띄운 다른 git 까지 트리째 끝내고 **실패 종료(exit 2)** 한다 — 종전 실패 경로(show 실패는 범위에서 빼고 blame 실패는 경계 없음)로 보내면 일부 파일이 빠진 범위·되살림이 정상처럼 나온다. `-Restore` 가 중간에 멈추면 일부 파일만 되살린 채 끝난다 — 골든은 끝까지 마친 `-Restore` 를 다시 돌려도 결과가 같은 것만 잰다(「-Restore 를 끝낸 뒤 다시 돌려도 결과가 같다」). 중간 실패 뒤 재실행은 재지 않았다. 동기 `Invoke-TimedGit` 으로 바꾸지 않은 것은 이 스크립트가 git 을 병렬로 띄우기 때문이다.
 
 **한계.** `--unified=0` diff 는 hunk 에 주변 줄이 없어, 기존 블록 주석(`/* … */`) 안에 더한 줄은 여는 표지를 보지 못해 주석으로 세지 못한다. 커밋 대상 수집(`-a`·경로·앞선 `git add`)은 `guard-commit-secrets.ps1` 과 따로 구현했다 — 수집 결과의 모양(파일별 `+`·`-` 줄 대 파일 구분 없는 추가 줄)이 달라 공용화하지 않았다.

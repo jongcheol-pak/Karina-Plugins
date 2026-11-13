@@ -529,6 +529,8 @@ if ($gitOk) {
         $r = Invoke-HookSlowGit $wcsJson @{ CLAUDE_HARNESS_ALLOW_SECRET = '1' }
         Assert-Case -Name "commit-git 상한: git 이 상한 안에 답하지 않으면 새 주석 검사가 재시도 안내로 차단" -R $r -ExpectExit 2 -ExpectContains '커밋 새 주석 검사'
         Assert-Case -Name "commit-git 상한: 새 주석 검사는 git 대기를 상한에서 끊는다" -R $r -ExpectExit 2 -ExpectContains 'fast=True'
+        $r = Invoke-HookSlowGit $wcsJson @{} 0 45000
+        Assert-Case -Name "commit-git 상한: 기본 상한에서 git 이 멈춰도 한 hook 의 검사들이 상한을 한 번만 기다려 hook timeout(60초) 전에 차단한다" -R $r -ExpectExit 2 -ExpectContains 'fast=True'
     }
     $wcsNoRepo = Join-Path $work 'wcs-norepo'; New-Item -ItemType Directory $wcsNoRepo -Force | Out-Null
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsNoRepo; tool_input = @{ command = 'git commit -m x' } } | ConvertTo-Json -Compress)

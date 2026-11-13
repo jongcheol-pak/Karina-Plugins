@@ -254,7 +254,7 @@
 ### 골든 러너 운용
 
 - [2026-11-14] **hook 에 새 dot-source 헬퍼 파일을 더하면 골든의 스텁 폴더·단독 프로브·eval 픽스처가 그 파일을 갖지 않아 무관한 케이스가 무더기로 FAIL 한다 — 헬퍼를 더한 task 는 `git grep -n "Copy-Item (Join-Path \$scriptsDir" -- hooks/evals` 와 `guard-commit-secrets.ps1') + [char]39` 프로브, `evals/fixtures/minimal-repo/scripts/` 를 함께 고친다** — 한 회차에 두 번 났다(`timed-git.ps1` 을 커밋 라이브러리 루프에 넣자 LZ 스텁·t5·t6 프로브 14건, `plan-round.ps1` 을 만들자 LZ·no-lib 스텁 4건과 eval 복제 사본 축 6건). 새 픽스처 파일은 `git add -N` 전에는 `run-evals.py` 가 「추적되지 않는 픽스처」 로 멈춘다. (실측)
-  - 시간 기준을 거는 골든(상한·빠름)은 병렬 전체 부하에서 단독 실행보다 몇 배 느리다 — 같은 회차에 10초 호출 상한과 15초 「빠름」 기준이 부하에서만 깨졌다. 기준은 가짜 대기와 함께 벌린다(`post-write-rationale.md` §22 와 같은 처방).
+  - 시간 기준을 거는 골든(상한·빠름)은 병렬 전체 부하에서 단독 실행보다 몇 배 느리다 — 같은 회차에 10초 호출 상한과 15초 「빠름」 기준이 부하에서만 깨졌다. 기준은 가짜 대기와 함께 벌린다(`post-write-rationale.md` §22 와 같은 처방). `guard-comment` 「BASE 예산 … 손자까지 끝내고」(`alive=0`) 도 큰 필터 병렬 실행에서 두 번 `alive=1` 로 깨졌다가 단독·전체 실행에서 통과했다 — 손자 생성과 트리 종료가 겹치는 경합으로 보이며(추정 — 그 kill 경로는 이 회차가 바꾸지 않았다) 깨지면 단독으로 다시 돌려 가른다.
 
 - [2026-11-13] **hook 스크립트를 골든 러너 밖에서 직접 실행해 재면(성능 측정 등) 실제 `~/.claude/.state/hook-events/` 에 차단 이벤트가 쌓인다 — 측정 스크립트는 `USERPROFILE` 을 스크래치 폴더로 바꿔 돌린다.** 이벤트 로그는 `USERPROFILE` 아래에 쓰고(`scripts/hook-event-log.ps1`), 골든 러너만 격리 `USERPROFILE` 로 돈다. v3.13.0 성능 측정이 198줄(guard-doc-owner 95 · block-python-newcode 89 · block-plan-write 14)을 남겨 오탐 집계를 오염시켰고, v3.13.1 이 백업 뒤 지웠다. (실측)
 
@@ -420,7 +420,7 @@
 
 - [2026-09-17] **`[IO.File]::WriteAllText(p, s, UTF8Encoding($true))` 에 `ReadAllBytes` → `GetString` 으로 얻은 문자열을 그대로 넘기면 BOM 이 겹친다** — 그 문자열은 `U+FEFF` 로 시작하는데 인코더가 BOM 을 또 붙여 `EF BB BF` 가 두 번 나온다. `.ps1` 은 BOM 필수라 이 사고는 **BOM 검사를 통과하면서 parse error** 를 낸다. 쓰기 전에 앞머리 `U+FEFF` 를 전부 벗긴다. (실측)
 
-- [2026-09-11] **python 텍스트 쓰기(`open(p,'w')`)는 실행 플랫폼 줄바꿈으로 쓰고, 텍스트 모드로 읽은 내용을 `newline=''`·`'\n'` 으로 쓰거나 LF 플랫폼이면 파일을 전면 LF 로 바꾼다** — 규칙은 레포 AGENTS.md 「Conventions > 줄바꿈」이 정본이다(*"`Write` 도구·`sed -i` 는 파일 전체를 LF 로 바꿔 놓고, python 텍스트 쓰기(`open(p,'w')`)는 실행 플랫폼 줄바꿈으로 쓴다(텍스트 모드로 읽은 내용을 `newline=''`·`'\n'` 으로 쓰거나 LF 플랫폼 python 이면 전면 LF)"* — `Edit` 도구는 CRLF·BOM 을 지킨다, 2026-11-03 실측). **실해 — 그 여파가 「골든 대량 실패」로 위장한다**: 회차 61 이 `cases.json` 과 `check-harness-consistency.py` 를 python 으로 고쳐 전면 LF 가 되자 「줄바꿈 정합」 축이 red 를 냈고, **그 축이 픽스처 검사에 물려 rc 0 을 기대하던 골든 20건이 전부 rc 1** 이 됐다. 골든이 한꺼번에 무너지면 케이스·판정 로직보다 **줄바꿈을 먼저 재는 것**이 빠르다. (실측)
+- [2026-09-11] **python 텍스트 쓰기(`open(p,'w')`)는 실행 플랫폼 줄바꿈으로 쓰고, 텍스트 모드로 읽은 내용을 `newline=''`·`'\n'` 으로 쓰거나 LF 플랫폼이면 파일을 전면 LF 로 바꾼다** — 규칙은 레포 AGENTS.md 「Conventions > 줄바꿈」이 정본이다(*"`Write` 도구·`sed -i` 는 파일 전체를 LF 로 바꿔 놓고, python 텍스트 쓰기(`open(p,'w')`)는 실행 플랫폼 줄바꿈으로 쓴다(텍스트 모드로 읽은 내용을 `newline=''`·`'\n'` 으로 쓰거나 LF 플랫폼 python 이면 전면 LF)"* — `Edit` 도구는 CRLF·BOM 을 지킨다, 2026-11-03 실측). **실해 — 그 여파가 「골든 대량 실패」로 위장한다**: 회차 61 이 `cases.json` 과 `check-harness-consistency.py` 를 python 으로 고쳐 전면 LF 가 되자 「줄바꿈 정합」 축이 red 를 냈고, **그 축이 픽스처 검사에 물려 rc 0 을 기대하던 골든 20건이 전부 rc 1** 이 됐다. 골든이 한꺼번에 무너지면 케이스·판정 로직보다 **줄바꿈을 먼저 재는 것**이 빠르다. (실측) **(2026-11-14 완화 — `core.autocrlf=true`·index `i/lf` 파일의 전면 LF 는 축 ⑧ 이 세지 않는다 · eval 픽스처는 `git_config` 기본 `core.autocrlf false` 라 그 축이 여전히 red 를 낸다 · `AGENTS.md` 「줄바꿈」)**
 
 - [2026-09-10] **PowerShell 함수가 `return @(...)` 로 빈 배열을 내면 `$null` 로 무너진다** — 「결과 0건」과 「판정 불가」를 같은 값으로 표현하는 코드에서 판정이 조용히 뒤집힌다. `return ,@(...)` 로 쉼표를 붙여야 한다. 회차 55 `guard-stale-docs` 가 「스테이징 0건」을 「판정 불가」로 내던 것을 **델타 음성 골든이** 잡았다 (실측)
 

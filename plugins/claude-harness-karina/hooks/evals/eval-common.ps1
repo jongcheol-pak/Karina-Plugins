@@ -121,7 +121,7 @@ function Invoke-HookSlowGit([string]$InputJson, [hashtable]$ExtraEnv = @{}, [int
     foreach ($k in $ExtraEnv.Keys) { $saved[$k] = [Environment]::GetEnvironmentVariable($k) }
     try {
         $env:PATH = $slowDir + [System.IO.Path]::PathSeparator + $env:PATH
-        $env:KARINA_COMMIT_GIT_TIMEOUT_MS = [string]$LimitMs
+        if ($LimitMs -gt 0) { $env:KARINA_COMMIT_GIT_TIMEOUT_MS = [string]$LimitMs } else { $env:KARINA_COMMIT_GIT_TIMEOUT_MS = $null }
         foreach ($k in $ExtraEnv.Keys) { [Environment]::SetEnvironmentVariable($k, [string]$ExtraEnv[$k]) }
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
         $r = Invoke-Hook 'guard-bash.ps1' $InputJson -Process

@@ -11,10 +11,11 @@ $script:GitAddRx = 'git' + $script:GitGlobalOptsRx + '\s+add(?![\w-])'
 if ($null -eq $script:CommitGitCache) {
     $script:CommitGitCache = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
     $script:CommitGitTimedOut = @{}
+    $script:CommitGitHung = $false
 }
 function Get-CommitGitLimitMs {
     if ($env:KARINA_COMMIT_GIT_TIMEOUT_MS -match '^\d+$' -and [int]$env:KARINA_COMMIT_GIT_TIMEOUT_MS -gt 0) { return [int]$env:KARINA_COMMIT_GIT_TIMEOUT_MS }
-    return 30000
+    return 20000
 }
 function Test-CommitGitTimedOut([string]$Check) { return [bool]$script:CommitGitTimedOut[$Check] }
 function Get-CommitGitTimeoutLines([string]$What) {
@@ -28,10 +29,13 @@ function Invoke-CommitGit {
     $key = $Dir + [char]0 + (@($GitArgs) -join [char]0)
     $hit = $null
     if ($script:CommitGitCache.TryGetValue($key, [ref]$hit)) { return $hit }
-    if (Test-CommitGitTimedOut $Check) { return [pscustomobject]@{ Code = -1; Lines = @(); TimedOut = $true } }
+    if ($script:CommitGitHung) {
+        $script:CommitGitTimedOut[$Check] = $true
+        return [pscustomobject]@{ Code = -1; Lines = @(); TimedOut = $true }
+    }
     if (-not (Get-Command Invoke-TimedGit -ErrorAction SilentlyContinue)) { return [pscustomobject]@{ Code = -1; Lines = @(); TimedOut = $false } }
     $run = Invoke-TimedGit -GitArgs $GitArgs -WorkDir $Dir -TimeoutMs (Get-CommitGitLimitMs)
-    if ($run.TimedOut) { $script:CommitGitTimedOut[$Check] = $true } else { $script:CommitGitCache[$key] = $run }
+    if ($run.TimedOut) { $script:CommitGitTimedOut[$Check] = $true; $script:CommitGitHung = $true } else { $script:CommitGitCache[$key] = $run }
     return $run
 }
 
