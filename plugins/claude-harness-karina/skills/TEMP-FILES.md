@@ -19,7 +19,7 @@
 | `backup\` | plan.md·초안 백업, 복구 경로 없는 파일을 지우거나 덮기 전 백업 | `<원래 이름>-<레포 폴더명>-<YYYYMMDD-HHmm>.<확장자>` |
 | `worktree-backup\` | `karina:worktree-cleanup` 이 지우기 전에 복사한 미추적·ignore 파일 | `<레포 이름>\<worktree 이름>-<시각>\`(스크립트가 정한다) |
 | `cover\` | 앱 검증 동안 걷은 화면 가리기 모니터와 보유자 기록·잠금(`implement/scripts/screen-cover.ps1` — 규칙 `SCREEN-COVER.md`) | `cover-state.json` · `cover.lock` — 세션 시작 정리 대상이 아니고, 보유 중에는 지우지 않는다(지우면 걷은 모니터를 다시 덮지 못한다) |
-| `scratch\` | 실험·실행용 일회성 스크립트 · `karina:prototype` 의 동작·아키텍처 스케치 · `check-plan` 의 Plan check 실패·시간 초과 로그(`check-plan-<시각>.log` — 위반 줄이 파일 이름을 가리킨다 · 통과하면 남기지 않는다) · 로컬 게이트 출력(`local-gate-<head sha7>.txt` — 판정 기록이 가리키고 기한이 지나면 재사용 push 의 화면 증거는 「파일 없음」 으로 남는다) | 자유 — 다시 가리키지 않는 파일만(위 둘의 이름은 예외) |
+| `scratch\` | 실험·실행용 일회성 스크립트 · `karina:prototype` 의 동작·아키텍처 스케치 · `check-plan` 의 Plan check 실패·시간 초과 로그(`check-plan-<시각>.log` — 위반 줄이 파일 이름을 가리킨다 · 통과하면 남기지 않는다) · 로컬 게이트 출력(`local-gate-<head sha7>.txt` — 판정 기록이 가리키고 기한이 지나면 재사용 push 의 화면 증거는 「파일 없음」 으로 남는다) · 로컬 게이트 판정 기록(`local-gate-record-<레포 폴더명>.txt` — 한 줄씩 덧붙이고, 기한이 지나 지워지면 판정 재사용 대신 게이트를 다시 돈다) | 자유 — 다시 가리키지 않는 파일만(위 셋의 이름은 예외) |
 
 ## 누가 지우는가
 
