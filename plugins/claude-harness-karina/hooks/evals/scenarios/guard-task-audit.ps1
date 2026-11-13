@@ -41,6 +41,14 @@ try {
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $taBodyNone)
     Assert-Case -Name 'task-audit: pub 증가 + 명령 없음 → 명령을 지목해 경고(exit 0)' -R $r -ExpectExit 0 -ExpectContains $taCmd
     Assert-Case -Name 'task-audit: 경고는 보충 커밋 경로를 안내한다' -R $r -ExpectExit 0 -ExpectContains '--allow-empty'
+    $taNoCl = Join-Path $work 'ta-no-comment-lines'; New-Item -ItemType Directory $taNoCl -Force | Out-Null
+    Copy-Item (Join-Path $scriptsDir '*') $taNoCl -Recurse -Force -Exclude 'comment-lines.ps1'
+    if (Test-Path -LiteralPath (Join-Path $taNoCl 'comment-lines.ps1')) { throw 'task-audit 사본에 comment-lines.ps1 이 남았다 — 전제 깨짐' }
+    $taNoClJson = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $taRoot
+                     tool_input = @{ command = (New-TaCommitCmd $taTitle $taBodyNone) } } | ConvertTo-Json -Compress
+    Push-Location $taRoot
+    try { $r = Invoke-Hook (Join-Path $taNoCl 'guard-bash.ps1') $taNoClJson -Process } finally { Pop-Location }
+    Assert-Case -Name 'task-audit: 감사 파서(comment-lines.ps1) 로드 실패면 경고하고 통과(fail-open)' -R $r -ExpectExit 0 -ExpectContains 'task 감사 누락 검사 미수행'
 
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle ('검증 결과:' + "`n" + '- `' + $taCmd + '` → test result: ok'))
     Assert-Case -Name 'task-audit: 본문에 명령 있음 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true

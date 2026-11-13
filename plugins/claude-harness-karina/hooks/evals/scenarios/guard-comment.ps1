@@ -132,13 +132,12 @@ $r = Invoke-GcEditAt (Join-Path $gcAudit 'src/h.rs') 'fn helper() {}' "/// 감�
 Assert-Case -Name "guard-comment: 감사 레포 비공개 fn 위 /// 차단" -R $r -ExpectExit 2 -ExpectContains '주석 1줄'
 $gcNoTa = Join-Path $work 'gc-no-task-audit'; New-Item -ItemType Directory $gcNoTa -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir '*') $gcNoTa -Recurse -Force -Exclude 'guard-task-audit.ps1'
+if (Test-Path -LiteralPath (Join-Path $gcNoTa 'guard-task-audit.ps1')) { throw 'guard-comment 사본에 guard-task-audit.ps1 이 남았다 — 전제 깨짐' }
 $gcNoTaExe = Join-Path $gcNoTa 'guard-harness.ps1'
 $gcNoTaJson = { param($p, $o, $n) @{ session_id = "gc-nota-$($script:gcSeq++)"; tool_name = 'Edit'; cwd = (Split-Path -Parent $p); tool_input = @{ file_path = $p; old_string = $o; new_string = $n } } | ConvertTo-Json -Compress -Depth 5 }
 [System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/q2.rs'), "pub enum Mode {}`n")
 $r = Invoke-Hook $gcNoTaExe (& $gcNoTaJson (Join-Path $gcAudit 'src/q2.rs') 'pub enum Mode {}' "/// 작업 모드.`npub enum Mode {}") -Process
 Assert-Case -Name "guard-comment: guard-task-audit.ps1 없는 사본에서도 감사 레포 pub enum 위 /// 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
-$r = @{ code = 0; out = $(if (Test-Path -LiteralPath (Join-Path $gcNoTa 'guard-task-audit.ps1')) { 'copy-has-task-audit' } else { 'copy-without-task-audit' }) }
-Assert-Case -Name "guard-comment: 감사 파서 부재 사본은 guard-task-audit.ps1 을 갖지 않는다" -R $r -ExpectExit 0 -ExpectContains 'copy-without-task-audit'
 [System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/h2.rs'), "fn helper2() {}`n")
 $r = Invoke-Hook $gcNoTaExe (& $gcNoTaJson (Join-Path $gcAudit 'src/h2.rs') 'fn helper2() {}' "/// 감사 대상이 아닌 비공개 함수.`nfn helper2() {}") -Process
 Assert-Case -Name "guard-comment: guard-task-audit.ps1 없는 사본에서도 감사 레포 비공개 fn 위 /// 차단" -R $r -ExpectExit 2 -ExpectContains '주석 1줄'

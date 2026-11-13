@@ -2522,6 +2522,22 @@
     },
     {
       "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: Add-Content -Path 로 설치본 판정 데이터 덧붙이기 차단 (PowerShell 도구)",
+      "command": "Add-Content -Path C:\\Users\\x\\.claude\\plugins\\cache\\karina-plugins\\karina\\1.265.0\\scripts\\rules\\destructive.json -Value ''",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "설치본 쓰기: Move-Item 목적지가 설치본 hook 스크립트면 차단 (PowerShell 도구)",
+      "command": "Move-Item C:\\tmp\\stub.ps1 C:\\Users\\x\\.claude\\plugins\\cache\\karina-plugins\\karina\\1.265.0\\scripts\\guard-bash.ps1",
+      "expect_exit": 2,
+      "expect_contains": "설치본 하니스 hook 자산을 셸로 쓰려 합니다",
+      "tool_name": "PowerShell"
+    },
+    {
+      "hook": "guard-bash.ps1",
       "name": "설치본 쓰기: tee 로 설치본 hooks.json 차단",
       "command": "echo '{}' | tee ~/.claude/plugins/cache/karina-plugins/karina/1.265.0/hooks/hooks.json",
       "expect_exit": 2,
