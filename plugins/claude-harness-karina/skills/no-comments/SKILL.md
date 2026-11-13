@@ -17,7 +17,7 @@ disable-model-invocation: true
 
 1. **범위를 정한다**
    - **인자 경로가 있으면** 그 파일 전체다(폴더면 그 아래 추적·untracked 파일).
-   - **없으면 diff 다** — base 는 `git symbolic-ref --short refs/remotes/origin/HEAD` 에서 `origin/` 을 뗀 로컬 브랜치, 실패하면 `main` 이다. 기준점은 `git merge-base <base> HEAD` 이고, 범위는 `git diff <merge-base>`(작업 트리 포함)의 hunk 에 `git ls-files --others --exclude-standard` 가 내는 새 파일 전체를 더한 것이다. base 끝과 비교하지 않는다 — 분기 뒤 base 에 쌓인 남의 커밋이 역방향 hunk 로 섞인다.
+   - **없으면 diff 다** — base 는 `../implement/references/push-flow.md`「기본 브랜치 push」 의 기본 브랜치 판정 사슬로 정한 로컬 브랜치다 — 사슬 끝이 「기본 브랜치 미정」이면 짐작하지 않고 「범위 결정 불가 — 기본 브랜치 미정」을 보고하고 끝낸다. 기준점은 `git merge-base <base> HEAD` 이고, 범위는 `git diff <merge-base>`(작업 트리 포함)의 hunk 에 `git ls-files --others --exclude-standard` 가 내는 새 파일 전체를 더한 것이다. base 끝과 비교하지 않는다 — 분기 뒤 base 에 쌓인 남의 커밋이 역방향 hunk 로 섞인다.
    - **판정 대상이 아닌 주석(문서 파일의 HTML 주석 등)은 `code-style.md`「주석」 이 정한다.**
    - diff 는 스크래치 파일에 저장해 리뷰어에게 경로로 넘긴다. **범위가 비면 「정리할 범위 없음」을 보고하고 끝낸다.**
 2. **기준선을 남긴다** — 그 레포 `AGENTS.md` 의 빌드·테스트를 편집 전에 한 번 돌려 실패 목록을 적어 둔다. 명령이 없으면 8번이 「미검증」이다. 기준선 없이 편집하면 원래 있던 실패가 이 스킬 탓으로 잡혀 맞는 편집까지 되돌리게 된다.

@@ -40,7 +40,7 @@ disable-model-invocation: true
 
 ## 4. 검증 스킬을 만든다
 
-`.claude/skills/formal-<영역>/SKILL.md` 를 쓴다. YAML frontmatter(`name: formal-<영역>` · 영역과 언제 쓰는지를 담은 `description`)가 없으면 스킬로 등록되지 않는다. 이 레포의 실제 명령·경로·명사를 쓰고 **자리표시를 남기지 않는다.** 모델·증명 파일과 헬퍼는 그 폴더 안에 두고, **헬퍼 스크립트는 `helpers/` 아래에 둔다** — `.claude/` 아래 `scripts/*.ps1` 은 karina 하니스의 `guard-harness` hook 이 hook 스크립트 개조로 보고 막는다. PowerShell 헬퍼는 UTF-8 BOM 으로 저장한다(Windows PowerShell 5.1 한글).
+`.claude/skills/formal-<영역>/SKILL.md` 를 쓴다. YAML frontmatter(`name: formal-<영역>` · 영역과 언제 쓰는지를 담은 `description`)가 없으면 스킬로 등록되지 않는다. 이 레포의 실제 명령·경로·명사를 쓰고 **자리표시를 남기지 않는다.** 모델·증명 파일과 헬퍼는 그 폴더 안에 두고, 헬퍼 규칙(실행 가능 · 호출 방법을 본문에 · `helpers/` 아래 · PowerShell 헬퍼 BOM)은 `../create-verification-skill/SKILL.md`「2. 스킬을 만든다」 의 **Helpers** 불릿이 정본이다.
 
 다음 에이전트가 그 스킬만 읽고 변경이 검증된 코드에 닿는지 가르고, 검사를 돌리고, 진짜 버그와 모델링 오류를 가르고, 의도된 변경이면 검증을 고칠 수 있어야 한다. 그래서 본문에 **「변경 검증」 절**을 이 이름으로 두고 일곱을 담는다 — 소비자가 이 절 이름으로 찾는다.
 

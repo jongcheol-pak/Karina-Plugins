@@ -64,7 +64,7 @@ disable-model-invocation: true
 증명에 성공했을 때만 한다. 순서가 정해져 있다.
 
 1. **추적되는 경로인지 본다** — `git check-ignore -q .claude/skills/verify-<app>/SKILL.md` 의 종료 코드가 **1** 이어야 한다(0 이면 무시되는 경로다). 무시되는 경로면 `git check-ignore -v` 출력(어느 ignore 파일의 몇째 줄인지)을 보이고 사용자에게 둘 중 하나를 고르게 한다 — 고르지 않으면 등록하지 않고 보고한다. `gate-verifier` 는 push 할 head 의 worktree 에서만 돌아 추적되지 않은 스킬을 보지 못한다(전역 `core.excludesfile` 이 `.claude/` 를 무시하는 PC 가 흔하다).
-   - **(권장) 레포 `.gitignore` 에 부정 사슬 다섯 줄을 더한다** — `!.claude/` · `.claude/*` · `!.claude/skills/` · `.claude/skills/*` · `!.claude/skills/verify-<app>/`. git 은 제외된 부모 폴더 아래 파일을 되살리지 못해 `!.claude/skills/verify-<app>/` 한 줄로는 풀리지 않는다. 이후 `add` 는 그대로 통하고, 4번 커밋 경로에 `.gitignore` 를 더한다.
+   - **(권장) 레포 `.gitignore` 에 부정 사슬을 더한다** — 사슬이 없으면 다섯 줄 `!.claude/` · `.claude/*` · `!.claude/skills/` · `.claude/skills/*` · `!.claude/skills/verify-<app>/` 이다. **사슬이 이미 있으면(앞서 `formal-<영역>` 등을 등록한 레포) `!.claude/skills/verify-<app>/` 한 줄만 더한다** — gitignore 는 마지막에 맞는 줄이 이겨, 다섯 줄을 다시 붙이면 뒤의 `.claude/skills/*` 가 앞서 풀어 둔 폴더를 다시 막는다. git 은 제외된 부모 폴더 아래 파일을 되살리지 못해 `!.claude/skills/verify-<app>/` 한 줄로는 풀리지 않는다. 이후 `add` 는 그대로 통하고, 4번 커밋 경로에 `.gitignore` 를 더한다.
    - **`git add -f -- .claude/skills/verify-<app>`** — 폴더 전체를 지정한다. 이 경로를 고르면 4번과 유지 스킬의 `add` 에도 `-f` 가 필요하다 — 없으면 `The following paths are ignored` 로 실패한다.
    - 고른 수단을 적용한 뒤 이 1번을 다시 돌려 종료 코드 1 을 확인한다(2026-10-18 전역 ignore 를 둔 임시 레포 실측: 부정 사슬 rc 0→1·이후 add rc 0 · `add -f` 뒤 일반 add rc 1·`add -f` rc 0).
 2. **`AGENTS.md` 에 이번과 무관한 미커밋 변경이 없는지 먼저 본다** — `git status --porcelain -- AGENTS.md` 가 비어 있지 않으면 등록하지 않고 보고한다. 아래 커밋이 그 파일의 다른 변경까지 담기 때문이다.
