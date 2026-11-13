@@ -280,7 +280,7 @@ if (Test-HookSelected @('session-context')) {
     $r = & $scCompact $scPlanless 'sc42'
     Assert-Case -Name "session-context: compact 결정 기록 규약 절 주입 (SC42)" -R $r -ExpectExit 0 -ExpectContains '트리거는 둘이다'
     Assert-Case -Name "session-context: 결정 기록 규약 주입에 발췌 표기 (SC42b)" -R $r -ExpectExit 0 -ExpectContains '원문 발췌 — REPO-DECISIONS.md 「쓰기」'
-    Assert-Case -Name "session-context: 결정 기록 규약 주입이 「쓰기」 끝까지 포함 (SC42f)" -R $r -ExpectExit 0 -ExpectContains '그 회차의 마지막 커밋에 함께 넣는다' -ExpectNotContains '새 항목을 쓰지 않는다'
+    Assert-Case -Name "session-context: 결정 기록 규약 주입이 「쓰기」 끝까지 포함 (SC42f)" -R $r -ExpectExit 0 -ExpectContains '그 회차의 커밋에 함께 넣는다 — `karina:implement` 는 4번 검증 앞' -ExpectNotContains '새 항목을 쓰지 않는다'
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: startup엔 결정 기록 규약 미주입 (SC42c)" -R $r -ExpectExit 0 -ExpectNotContains '트리거는 둘이다'
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
