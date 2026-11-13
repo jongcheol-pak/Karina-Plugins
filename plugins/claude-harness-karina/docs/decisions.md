@@ -8,6 +8,7 @@
   - watch-pr: PR 상태를 폴링하는 CLI 이고 상태 저장소가 없다 — 그 서술은 고정 커밋에 없는 orch 의 것이다.
   - experience-first: 「영향을 소비자·유지보수자 관점으로 서술한다」 는 `implement/references/report-format.md` 「수정 내용」 으로 채택됐다(poteto-mode 경유). 기각으로 남는 것은 모델이 UX 트레이드오프를 대신 판단하는 부분이다.
   - outcome-oriented: 원문은 계획되고 범위가 정해지고 되돌릴 수 있는 중간 깨짐만 허용하고, 그 핵심인 호환 계층 금지는 `implement/references/code-style.md` 「옛 API 정리」 로 채택됐다. 기각으로 남는 것은 검증 전 깨진 상태를 커밋하는 부분이다.
+  - 같은 회차 범위 밖 기각: 로컬 게이트 경량 면제 ⓔ 에 `Verify (형식 검증)` 조건을 더하는 안 — task 루프·디버깅이 감시 경로에 걸리면 형식 검사를 이미 기계적으로 돌려, 면제가 건너뛰는 것은 빌드·테스트와 같은 독립 재실행뿐이다(사용자 답 「범위에서 제외」). `local-gate.md` 의 출처 미표기 셋(patch-id · 완화 서명 · grown callers)에 출처를 다는 안 — 동작이 바뀌지 않는다(사용자 답).
 
 - [2026-11-13] 화면 검증 서브에이전트 대기 시한 — 번복: 아래 보류를 v3.13.1 이 거뒀다. 시한 장치 대신 task 루프의 화면 시나리오를 메인이 직접 돌리게 했다(`implement/references/screen-scenarios.md` — 사용자 답 「메인이 직접 돌린다」). Karina 체인 plan 7 의 52분 대기는 워커가 회차 끝 화면 시나리오를 `general-purpose` 서브에이전트에 맡긴 루프 위임이었다. 로컬 게이트 `gate-verifier` 의 재실행은 독립 판정이라 규칙 밖이다.
 
