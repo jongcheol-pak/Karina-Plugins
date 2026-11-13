@@ -10,7 +10,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 18 / 종결 120
+**▶ 현행 잔량(기계 대조 대상)**: 대기 19 / 종결 120
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -65,9 +65,12 @@
 
 ### eval · 측정
 
+- [2026-11-14] **「완료 순서」 문면 대조 검사 축** — `implement/references/final-review.md`「완료 순서」 와 `local-gate.md`·`push-flow.md`·`report-format.md` 가 서술하는 회차 끝 순서(리뷰·4번·plan 커밋·게이트·push·NOTES 등재)를 `check-harness-consistency.py` 축으로 대조한다 — 넘김 사유 ②(새 검사 축) (출처: 체인 run_dc17831b plan 2 후보 라운드 — 사용자 「보류」) (실해: 2026-11-14 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 게이트 NOTES 를 local-gate.md:48 은 Deferred 로, :77 은 「남은 이슈」로 보내 순서 서술이 갈렸다 — plan 2 T4 가 문면만 고침)
 - [2026-11-13] **참조 깊이 검사 축** — 스킬 문서가 참조 문서를 거쳐 다시 참조 문서를 가리키는 깊이(`skills/BUDGET.md`「나눈 뒤에 지킬 것」)를 `check-harness-consistency.py` 축으로 잰다 — 지금은 문면 규칙뿐이다 — 넘김 사유 ②(새 검사 축) (체인 run_7c21af27 plan 2 보류 — 사용자 지시) (실해: 2026-11-13 plan/SKILL → rare-paths「승인 답 갈래」 → interview「승인 제시」 깊이 2 를 하니스 검토가 사람 눈으로 찾음 — plan 2 T8 이 고침)
 - [2026-11-13] **rationale 차단 경로 수 대조 검사** — `scripts/rules/bash-guard-rationale.md` §2 의 「`Block = $true` 경로는 N」·검사 수 서술을 `hooks/evals/check-block-coverage.py` 출력과 대조하는 검사 — 넘김 사유 ②(새 검사) (체인 run_7c21af27 plan 2 보류 — 사용자 지시) (실해: 2026-11-13 그 문단이 「다섯·10검사 중 4종」 으로 낡아 실제 8경로·12검사와 어긋남 — plan 2 T2 가 고침)
 - [2026-11-13] **사용자 몫 범주 단일 정본 검사기 축** — chain-plan 의 넘김 범주(사용자 몫 다섯 — `chain-plan/SKILL.md`「답하는 기준」·`references/user-relay.md`「사용자 몫」)가 다른 참조 문서에 범주 미지정 넘김으로 새로 생기는지 `check-harness-consistency.py` 축으로 잰다 — 지금은 문면 규칙뿐이다 — 넘김 사유 ②(새 검사 축) (체인 run_7c21af27 plan 3 보류 — 사용자 지시) (실해: 2026-11-13 compaction.md「압축 뒤 복원」 이 범주 없이 「사용자 몫으로 넘긴다」를 둬 여섯째 범주가 된 것을 하니스 검토가 찾음 — plan 3 T3 가 문면만 고침)
 
-
 ## 1회 실패
+
+- [1회 실패 2026-11-14] 스킬 본문에 꺾쇠 인용 「왜 이래?」 를 `references/…` 경로와 같은 줄에 두면 정합 검사기 포인터 도달성 축이 그 파일의 절 포인터로 읽는다 — `*"…"*` 인용 표기로 바꿔 풀었다
+- [1회 실패 2026-11-14] `local-gate.md` 가 14004자에서 세 task 의 추가로 15157자가 돼 단일 references 상한(15000)을 넘었다 — 추가 문면의 근거 서술을 줄여 14877자로 풀었다(다음 추가는 분리 처방이 필요하다)
