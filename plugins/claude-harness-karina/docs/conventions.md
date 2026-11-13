@@ -14,6 +14,8 @@
 
 ## 크기·개수를 잴 때
 
+- [2026-11-13] **Git Bash 에서 `/` 로 시작하는 인자(`git grep -F '/tmp/'` 등)는 MSYS 경로 변환으로 Windows 경로로 바뀌어 계수가 거짓 0 이 된다 — 그런 패턴을 세는 명령은 앞에 `MSYS_NO_PATHCONV=1` 을 둔다** — pstack 정정 회차 계획 실측에서 `git grep -c -F '/tmp/'` 가 0 을 냈는데 같은 파일에 2줄이 있었다(`MSYS_NO_PATHCONV=1` 로 2). acceptance 착수값을 이 0 으로 적으면 도달할 수 없는 기준이 된다.
+
 - [2026-10-25] **Git Bash 의 `wc -m` 은 한글 문서에서 문자가 아니라 바이트를 센다 — 예산·상한 판정에 쓰지 않는다** — 이 PC 의 Git Bash 는 `LC_CTYPE="C.UTF-8"` 인데도 `printf "한글" | wc -m` 이 6 을 낸다. `skills/AUTHORING.md` 를 `wc -m` 으로 13,081 로 재 통지 상한(13,000) 초과로 계획에 적었고, 검사기와 같은 `len(open(p, encoding='utf-8').read())` 로는 7,379 였다(계획 리뷰가 잡음). 문자 수는 그 python 한 줄로 잰다 (실측)
 - [2026-10-24] **크기 표(`docs/harness-conventions.md`「조건부 참조 문서 크기 임계」)의 문자 수는 CR 을 빼고 잰다 — 검사기 `charlen` 이 텍스트 모드로 읽어 CRLF 를 LF 하나로 세기 때문이다.** 바이트를 읽어 `decode` 한 길이를 적으면 CRLF 워킹트리에서 줄 수만큼 커져 「기록값 == 실측」 축이 red 가 된다(실측 — 55,516 이 55,882 로 잡혔다). `open(p, encoding='utf-8').read()` 의 길이를 쓴다.
 - [2026-10-22] **스킬 description 길이·합계는 `evals/check-harness-consistency.py` 와 같은 방식으로 잰다 — `^description:\s*(.*)$` 처럼 한 줄만 잡으면 여러 줄로 접은 description 을 첫 줄만 센다** — 검사기는 다음 키 직전까지를 값으로 잡고 공백을 정규화하며 `disable-model-invocation: true` 스킬을 뺀다. 첫 줄만 센 계획이 합계를 실제보다 1,000자 넘게 낮게 적어 통지선 초과를 미리 못 봤다 (실측)
