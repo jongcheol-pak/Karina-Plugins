@@ -210,6 +210,33 @@ print("[WOULD-FIX] fixture/cases.json baseline 1 -> 2")
     try { $r = Invoke-Hook 'guard-bash.ps1' $sdCommit } finally { Pop-Location }
     Assert-Case -Name 'stale-docs: 비하니스 레포 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
 
+    $sdHead = Join-Path $work 'sd-head'
+    foreach ($d in @("$sdHead/.claude-plugin", "$sdHead/docs")) { New-Item -ItemType Directory $d -Force | Out-Null }
+    '{ "name": "karina", "version": "1.0.0" }' | Set-Content (Join-Path $sdHead '.claude-plugin/plugin.json')
+    '{ "name": "karina-plugins" }' | Set-Content (Join-Path $sdHead '.claude-plugin/marketplace.json')
+    '# 규약' | Set-Content (Join-Path $sdHead 'docs/harness-conventions.md')
+    'n=1' | Set-Content (Join-Path $sdHead 'notes.txt')
+    & git -C $sdHead init -q 2>$null
+    & git -C $sdHead add -A 2>$null
+    & git -C $sdHead -c user.email=t@t -c user.name=t commit -q -m 'init' 2>$null
+    '# 규약' + [Environment]::NewLine + '변경' | Set-Content (Join-Path $sdHead 'docs/harness-conventions.md')
+    foreach ($sdCase in @(@{ Cmd = 'git commit -a -m "x"'; Name = 'stale-docs: 스테이징 없는 -a 커밋도 산문 서술 축 고지' },
+                          @{ Cmd = 'git commit -m "x" -- docs/harness-conventions.md'; Name = 'stale-docs: 스테이징 없는 -- 경로 커밋도 산문 서술 축 고지' })) {
+        $sdHeadJson = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $sdHead
+                         tool_input = @{ command = $sdCase.Cmd } } | ConvertTo-Json -Compress
+        Push-Location $sdHead
+        try { $r = Invoke-Hook 'guard-bash.ps1' $sdHeadJson } finally { Pop-Location }
+        Assert-Case -Name $sdCase.Name -R $r -ExpectExit 0 -ExpectContains '산문 서술'
+    }
+    & git -C $sdHead checkout -q -- docs/harness-conventions.md 2>$null
+    'n=2' | Set-Content (Join-Path $sdHead 'notes.txt')
+    $sdHeadJson = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $sdHead
+                     tool_input = @{ command = 'git commit -a -m "x"' } } | ConvertTo-Json -Compress
+    Push-Location $sdHead
+    try { $r = Invoke-Hook 'guard-bash.ps1' $sdHeadJson } finally { Pop-Location }
+    Assert-Case -Name 'stale-docs: 축 밖 파일만 바뀐 -a 커밋은 무출력 (음성 짝)' -R $r -ExpectExit 0 -ExpectSilent $true
+    Remove-Item $sdHead -Recurse -Force -ErrorAction SilentlyContinue
+
     # 8) [모노레포 이전] 하니스가 git 루트 아래 플러그인 폴더(plugins/claude-harness-karina)에 있는 배치.
     #    하니스 루트에서도 그 하위 폴더에서도 판정이 돌고, 스테이징 경로는 하니스 루트 기준으로 축 표와 대조한다.
     #    음성 짝: 이름이 karina 가 아닌 다른 플러그인 폴더에서는 같은 문서를 스테이징해도 침묵한다.

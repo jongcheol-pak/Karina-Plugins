@@ -50,7 +50,9 @@
 
 `exit 2` 를 내는 hook 은 넷뿐이고(`block-destructive`·`guard-bash`·`guard-write`·`guard-harness`) 그것은 **차단 hook 수**를 못박은 규약이다. 이 검사는 `New-HookResult` 에 `Block` 을 넣지 않으므로 디스패처의 비차단 경로로 흘러 stderr + additionalContext 로만 나간다.
 
-**판정 불가와 「0건」을 가른다** — `git diff --cached` 가 실패하면 「스테이징 없음」이 아니라 `[판정불가]` 로 낸다. 실패를 통과로 읽으면 그 구간에 고지가 통째로 사라지고 아무도 모른다.
+**판정 불가와 「0건」을 가른다** — 대상 수집 git 명령이 실패하면 「변경 없음」이 아니라 `[판정불가]` 로 낸다. 실패를 통과로 읽으면 그 구간에 고지가 통째로 사라지고 아무도 모른다.
+
+**커밋 대상은 `git diff HEAD --name-only --relative`(인덱스와 작업 트리)다 — HEAD 가 없는 초기 저장소면 `--cached` 로 대신하고, 그것도 실패하면 판정 불가다.** 종전에는 `--cached` 만 보아 `git commit -a` · `git commit -- <경로>`(이 레포의 병행 세션 표준 커밋)처럼 스테이징을 거치지 않는 커밋에 고지가 하나도 나지 않았다(2026-11-13 하니스 검토). 커밋에 들어가지 않을 미스테이징 변경까지 세는 과고지는 받아들인다 — 선례는 `task-audit-rationale.md` §3 이다.
 
 ## §7 외부 사실 축의 `verified` TTL
 

@@ -64,6 +64,12 @@ function Invoke-WarnCommitSecrets {
         if ($autoStage) {
             $addedLines += Get-DiffHeadAdded
         }
+        # `git commit -- <경로>` 는 스테이징 없이 그 경로의 작업 트리를 커밋한다 — 근거는 `rules/commit-secrets-rationale.md` §18
+        $pathspecM = [regex]::Match($commitFlags, '(^|\s)--\s+(?<paths>.+)$')
+        if ($pathspecM.Success) {
+            $pathArgs = @($pathspecM.Groups['paths'].Value -split '\s+' | Where-Object { $_ } | ForEach-Object { $_.Trim('"', "'") })
+            if ($pathArgs.Count) { $addedLines += Get-DiffHeadAdded -PathArgs $pathArgs }
+        }
 
         # 선행 스테이징 인지 — 근거는 `rules/commit-secrets-rationale.md` §7
         $capHit = $false
@@ -136,7 +142,9 @@ function Invoke-WarnCommitSecrets {
         $hits = @(Get-SecretMatches $scanText)
 
         $envFiles = New-Object System.Collections.Generic.List[string]
-        $staged = & git diff --cached --name-only 2>$null
+        # 커밋 대상 이름은 HEAD 대비 변경이다(`-a`·`-- <경로>` 포함) — 근거는 `rules/commit-secrets-rationale.md` §18
+        $staged = & git diff HEAD --name-only 2>$null
+        if ($LASTEXITCODE -ne 0) { $staged = & git diff --cached --name-only 2>$null }
         if ($staged) {
             foreach ($n in $staged) {
                 if ([string]::IsNullOrWhiteSpace($n)) { continue }

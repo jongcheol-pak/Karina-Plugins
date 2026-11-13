@@ -209,6 +209,27 @@ if ($gitOk) {
 
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git status' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: git commit 아님 통과(무출력)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    $wcsH = Join-Path $work 'wcs-head'; New-Item -ItemType Directory $wcsH -Force | Out-Null
+    Push-Location $wcsH
+    git init -q; git config user.email t@t; git config user.name t
+    'v=1' | Set-Content app.js; 'A=1' | Set-Content .env; 'r=1' | Set-Content README.md; git add -f .; git commit -qm init
+    'A=2' | Set-Content .env
+    Pop-Location
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsH; tool_input = @{ command = 'git commit -am update' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 추적 .env 를 스테이징 없이 -am 커밋하면 .env 경고" -R $r -ExpectExit 0 -ExpectContains '.env 파일'
+    Push-Location $wcsH; git checkout -q -- .env; 'v=2' | Set-Content app.js; Pop-Location
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsH; tool_input = @{ command = 'git commit -am update' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 추적 일반 파일 -am 커밋은 무출력 (음성 짝)" -R $r -ExpectExit 0 -ExpectSilent $true
+    Push-Location $wcsH; git checkout -q -- app.js; Set-Content README.md $credLine; Pop-Location
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsH; tool_input = @{ command = 'git commit -m docs -- README.md' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 스테이징 없는 -- 경로 커밋의 자격증명 줄 차단" -R $r -ExpectExit 2 -ExpectContains '커밋될 변경에 자격증명으로 보이는 값이 있습니다'
+    $wcsHd = [string]::Join("`n", @('git commit -m "$(cat <<''MSG''', '문서: 갱신', '', '본문', 'MSG', ')" -- README.md'))
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsH; tool_input = @{ command = $wcsHd } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: heredoc 메시지 + -- 경로 커밋의 자격증명 줄 차단" -R $r -ExpectExit 2 -ExpectContains '커밋될 변경에 자격증명으로 보이는 값이 있습니다'
+    Push-Location $wcsH; 'r=2' | Set-Content README.md; Pop-Location
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsH; tool_input = @{ command = 'git commit -m docs -- README.md' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 스테이징 없는 -- 경로 커밋의 깨끗한 변경은 무출력 (음성 짝)" -R $r -ExpectExit 0 -ExpectSilent $true
     }
 
     if (Test-ScenarioUnit 2) {
