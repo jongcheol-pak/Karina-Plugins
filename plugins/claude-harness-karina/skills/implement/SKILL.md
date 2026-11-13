@@ -122,6 +122,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 - `karina:plan` — 이 스킬이 실행할 plan을 만든다
 - `references/code-style.md`「확인할 수 있게 만든다」·「고쳐도 무너지지 않게 만든다」·「파일은 그 프로젝트의 관례로 저장한다」·「주석」 — 코드를 쓰는 순간의 규약
 - `references/final-review.md` — 회차 끝 리뷰 절차
-- `references/report-format.md` — 회차 끝 보고 서식 · 화면 시나리오 실행
+- `references/report-format.md` — 회차 끝 보고 서식
+- `references/screen-scenarios.md` — 화면 시나리오 실행
 - `../WIKI.md` — 위키를 언제 읽고 언제 쓰는가
 - `../DESIGN.md` — 이 스킬의 문면이 따르는 설계 원칙
