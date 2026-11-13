@@ -70,6 +70,7 @@ $r = Invoke-Cs @('-Base', $stBase, '-Out', $stOut, '-Repo', $st)
 $stListed = if (Test-Path -LiteralPath $stOut) { [System.IO.File]::ReadAllText($stOut) } else { '' }
 $stl = @{ code = $r.code; out = ($r.out + "`n" + $stListed) }
 Assert-Case -Name "comment-scope: 시험 doc 감사 선언 레포의 #[test] 위 doc 은 감사로 뺀다" -R $stl -ExpectExit 0 -ExpectNotContains '/// 시험 설명.'
+Assert-Case -Name "comment-scope: 시험 doc 감사 선언 레포의 #[test] 위 doc 을 감사 수로 센다" -R $stl -ExpectExit 0 -ExpectContains 'RESULT: 대상 0 · 회차 전 0 · 감사 1 · 보존 0'
 
 $srEmpty = Join-Path $csRoot 'scope-empty.txt'
 $r = Invoke-Cs @('-Base', 'HEAD', '-Out', $srEmpty, '-Repo', $sr)
