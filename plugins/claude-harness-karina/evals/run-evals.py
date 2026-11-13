@@ -23,6 +23,9 @@
   mutate_after_commit  `mutate` 와 같은 형식 — `mutate` → `git init`·`add -A` → `commit` 뒤에
                   넣는다. git 작업 트리 변경(HEAD 대비)을 재는 통지가 쓴다. 없으면 커밋하지 않는다
                   (HEAD 없음 — 기존 케이스 그대로).
+  git_config      {키: 값} — `git init` 직후 사본 저장소에 `git config` 로 넣는다. 생략하면
+                  {"core.autocrlf": "false"} — 「줄바꿈 정합」 축이 autocrlf 유효 값을 읽으므로
+                  실행 기계의 전역·시스템 설정이 판정에 끼지 않게 고정한다.
   cli_args        검사기에 줄 인자 (예: ["--ledger"])
   expect_rc       기대 종료 코드 (기본 0)
   expect_keywords 출력에 있어야 하는 문구
@@ -116,7 +119,10 @@ def build_tree(case):
     env = dict(os.environ, GIT_CONFIG_NOSYSTEM="1",
                GIT_AUTHOR_NAME="eval", GIT_AUTHOR_EMAIL="eval@local",
                GIT_COMMITTER_NAME="eval", GIT_COMMITTER_EMAIL="eval@local")
-    git_steps = [("init", ["init", "-q"]), ("add", ["add", "-A"])]
+    git_steps = [("init", ["init", "-q"])]
+    for key, value in sorted(case.get("git_config", {"core.autocrlf": "false"}).items()):
+        git_steps.append(("config " + key, ["config", key, value]))
+    git_steps.append(("add", ["add", "-A"]))
     # 커밋 뒤 변이가 있을 때만 커밋한다 — 기존 케이스는 HEAD 없는 트리를 전제로 짰다.
     #   서명·전역 hook 이 켜진 환경에서 커밋이 멈추거나 실패하지 않게 둘 다 끈다.
     if case.get("mutate_after_commit"):

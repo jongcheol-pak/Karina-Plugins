@@ -893,6 +893,38 @@ def _line_ending_targets():
             yield raw.decode("utf-8")
 
 
+def _autocrlf_normalized():
+    """커밋이 줄바꿈을 LF 로 정규화하는 경로 집합 — autocrlf 유효 값이 true 가 아니면 빈 집합.
+
+    index 쪽이 `i/lf` 이거나 비어 있는(미추적) 파일만 든다 — `i/crlf`·`i/mixed` blob 은
+    autocrlf 가 다시 정규화하지 않아 워킹트리 LF 가 커밋 결과를 바꾼다.
+    """
+    try:
+        cfg = timed_run.run(["git", "-C", ROOT, "config", "--get", "core.autocrlf"],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            timeout=30, stdin=subprocess.DEVNULL)
+        if cfg.stdout.decode("utf-8", "replace").strip().lower() != "true":
+            return set()
+        out = timed_run.run(["git", "-C", ROOT, "ls-files", "-z", "--eol",
+                             "--cached", "--others", "--exclude-standard"],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            timeout=30, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        return set()
+    if out.returncode != 0:
+        return set()
+    paths = set()
+    for raw in out.stdout.split(b"\x00"):
+        row = raw.decode("utf-8", "replace")
+        if "\t" not in row:
+            continue
+        info, rel = row.split("\t", 1)
+        index_eol = info.split()[0] if info.split() else ""
+        if index_eol in ("i/lf", "i/"):
+            paths.add(rel)
+    return paths
+
+
 def check_line_endings():
     """⑧ 줄바꿈 정합 — 워킹트리 tracked 파일의 CRLF 규약 위반을 잡는다.
 
@@ -909,6 +941,9 @@ def check_line_endings():
                    박히는 형태로, 원인은 다르나 검출 수단이 같아 여기서 함께 잰다.
       ⓒ 전면 LF  — 파일 전체가 LF. 위 전면 변환이 남기는 형태다.
 
+    `core.autocrlf` 유효 값이 true 이면 index 가 `i/lf`·미추적인 파일은 ⓐⓒ 를 세지 않는다
+    (`_autocrlf_normalized`) — 커밋이 LF 로 정규화해 결과가 같다. ⓑ 는 늘 센다.
+
     **못 잡는 것**: BOM(별도 축이 없다) · gitignore 된 파일(`plan.md`·`notes.md` —
     `--exclude-standard` 가 걸러 낸다) · index 쪽 줄바꿈(항상 LF 로 정규화돼 검사 의미가 없다).
 
@@ -917,6 +952,7 @@ def check_line_endings():
     **fixture**(다른 축과 같은 정책 — 의도적으로 깨뜨린 파일이다).
     """
     issues, n = [], 0
+    normalized = _autocrlf_normalized()
     for rel in _line_ending_targets():
         if _LE_SKIP_RX.search(rel):
             continue
@@ -932,14 +968,16 @@ def check_line_endings():
         lf = b.count(b"\n") - crlf
         cr = b.count(b"\r") - crlf
         n += 1
-        if crlf and lf:
-            issues.append("줄바꿈 혼재: %s (CRLF %d · LF %d) — 편집이 삽입한 줄이 LF 로 남았다"
-                          % (rel, crlf, lf))
-        elif crlf == 0 and lf:
-            issues.append("줄바꿈 전면 LF: %s (LF %d) — 워킹트리 규약은 CRLF 다"
-                          % (rel, lf))
+        if rel not in normalized:
+            if crlf and lf:
+                issues.append("줄바꿈 혼재: %s (CRLF %d · LF %d) — 편집이 삽입한 줄이 LF 로 남았다"
+                              % (rel, crlf, lf))
+            elif crlf == 0 and lf:
+                issues.append("줄바꿈 전면 LF: %s (LF %d) — 워킹트리 규약은 CRLF 다"
+                              % (rel, lf))
         if cr:
-            issues.append("bare CR: %s (%d개) — LF 없는 단독 CR 이 박혔다" % (rel, cr))
+            issues.append("bare CR: %s (%d개) — LF 없는 단독 CR 이 박혔다(bare CR 만 금지 — 줄바꿈 규약은 AGENTS.md 「줄바꿈」)"
+                          % (rel, cr))
     return issues, n
 
 

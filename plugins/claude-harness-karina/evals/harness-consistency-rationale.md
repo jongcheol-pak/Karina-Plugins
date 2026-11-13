@@ -32,7 +32,7 @@
      실재하고 크기 상한 안인가. 헤딩이 바뀌면 hook은 조용히 폴백해 주입이 사라지고, 그 상실은
      압축된 세션에서만 드러나 아무도 모른 채 지나간다.
   ⑦ 문서 예산      — `BUDGET.md` 「예산 표」의 상한과 `docs/harness-conventions.md` 「조건부 참조 문서 크기 임계」 표의 **기록값·상한**을 실측 파일 크기와 대조한다(표는 둘, 축은 하나).
-  ⑧ 줄바꿈 정합    — 워킹트리 tracked 파일이 CRLF 규약을 지키는가(혼재 · bare CR · 전면 LF).
+  ⑧ 줄바꿈 정합    — 워킹트리 tracked 파일이 CRLF 규약을 지키는가(혼재 · bare CR · 전면 LF — autocrlf=true·index LF 파일은 bare CR 만).
   ⑨ 종결 사유 명시  — `deferred-closed.md` `## 종결` 의 각 항목이 기각 1줄 형식
      (`- [등록일 → 종결일] **요지** — 기각: 사유`)이고 하위 줄이 없는가. 규약 문면의 정본은
      `deferred.md` 머리말, 판정 규칙의 정본은 `CLOSED_REJECT_RX` 와 `check_close_reasons()` 다.
@@ -158,6 +158,15 @@
 LF 로 정규화돼 저장되므로 `git diff` 가 비어 있다**. 그래서 사람 눈으로도 리뷰로도
 잡힐 수 없고, 실제로 v1.176.0 부터 다섯 번 재발하며 매번 `git add` 경고나 우연한
 관측으로만 드러났다(대장 `[2026-08-16]` 2회 재확인 · `[2026-08-25]`).
+
+**2026-11-14 부터 `core.autocrlf` 유효 값이 true 이면 index 가 `i/lf`(또는 미추적)인 파일의
+혼재·전면 LF 는 세지 않고 bare CR 만 센다**(체인 run_dc17831b plan 1 · 사용자 답 「AGENTS.md 의
+CRLF 요구도 함께 완화」) — 바로 위 근거대로 그 조건의 워킹트리 LF 는 blob 을 바꾸지 않아 커밋
+결과가 같다. 그 파일을 잡던 판정은 Write 를 쓸 때마다 red 를 내 되돌리는 일만 만들었다.
+index 가 CRLF·혼합인 파일은 autocrlf 가 다시 정규화하지 않으므로 종전대로 센다. bare CR 은
+git 이 binary 로 판정해 정규화가 멈추는 사고(`docs/harness-conventions.md` 「편집 스크립트 사고」 ①)라
+조건 없이 센다. eval 픽스처는 케이스의 `git_config`(기본 `core.autocrlf false`)로 실행 기계
+설정과 무관하게 고정한다.
 
 ### 축 ⑨ — 종결 대장을 기각 1줄로 묶는 이유
 

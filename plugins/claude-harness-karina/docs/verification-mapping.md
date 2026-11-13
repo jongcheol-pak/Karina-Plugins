@@ -8,7 +8,7 @@
 
 task 단위 검증은 변경 파일 패턴에 맞는 행만 실행한다(여러 패턴에 걸치면 해당 행 전부 — 합집합). 전체 검증은 전 task 완료 후 1회 도는 최종 검증이 보장하므로 매 task 전량 실행은 중복이다.
 
-**단 「줄바꿈 정합」 축은 파일 패턴과 무관하게 레포 안 파일을 고치거나 **새로 만든** 모든 task 가 대상이다** — 아래 표에는 `check-harness-consistency.py` 를 부르지 않는 행이 여럿이고(JSON 매니페스트 3종 · `validate.ps1` · `llm-wiki/**` · `record-project-fact/**`), 그 행만 따르면 **v1.214.0 이 실제로 겪은 형태(`plugin.json`·`README.md` 가 편집으로 LF 화)가 task 단위 검증에서 발화하지 않는다**. 행마다 명령을 더하면 표가 부푸므로 여기 예외로 둔다.
+**단 「줄바꿈 정합」 축은 파일 패턴과 무관하게 레포 안 파일을 고치거나 **새로 만든** 모든 task 가 대상이다** — 아래 표에는 `check-harness-consistency.py` 를 부르지 않는 행이 여럿이고(JSON 매니페스트 3종 · `validate.ps1` · `llm-wiki/**` · `record-project-fact/**`), 그 행만 따르면 **v1.214.0 이 실제로 겪은 형태(`plugin.json`·`README.md` 가 편집으로 LF 화)가 task 단위 검증에서 발화하지 않는다**(2026-11-14 부터 `core.autocrlf=true`·index LF 파일의 LF 화는 세지 않고 bare CR 만 센다 — `AGENTS.md` 「줄바꿈」). 행마다 명령을 더하면 표가 부푸므로 여기 예외로 둔다.
 
 | 변경 파일 패턴 | 필수 검증 |
 |---|---|

@@ -261,6 +261,9 @@
     "id": "linefeed-all-lf",
     "checker": "harness",
     "fixture": "minimal-repo",
+    "git_config": {
+      "core.autocrlf": "false"
+    },
     "expect_rc": 1,
     "mutate": [
       {
@@ -272,6 +275,45 @@
     "expect_keywords": [
       "[MISMATCH]",
       "줄바꿈 전면 LF"
+    ]
+  },
+  {
+    "id": "linefeed-all-lf-autocrlf",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "git_config": {
+      "core.autocrlf": "true"
+    },
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "\r\n",
+        "replace": "\n"
+      }
+    ],
+    "expect_absent": [
+      "줄바꿈 전면 LF"
+    ]
+  },
+  {
+    "id": "linefeed-bare-cr-autocrlf",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "git_config": {
+      "core.autocrlf": "true"
+    },
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "docs/plans/deferred-closed.md",
+        "find": "(픽스처)\r\n",
+        "replace": "(픽스처)\r\r\n"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "bare CR"
     ]
   },
   {
