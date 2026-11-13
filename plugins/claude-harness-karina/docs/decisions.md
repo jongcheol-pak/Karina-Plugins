@@ -2,6 +2,9 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-13] 판정을 바꾸는 규칙 개정 묶음(체인 plan 3/3) 범위 밖 — 기각·보류: ① 비 git vault 백업 자동 회수 — 기각(아카이브 2026-09-13 회차 70 결정 유지 — 원본이 사라진 뒤의 유일한 사본일 수 있다) ② `/스킬` 직접 입력 경로의 `UserPromptExpansion` 응답 언어 주입 — 기각(그 턴은 사용자 설정 `language`·글로벌 지침이 같은 규칙을 싣는다 — `reply-language-rationale.md` §2) ③ 글로벌 `~/.claude/CLAUDE.md` 의 예외 1(위키 vault push)·예외 2(체인 worktree 로컬 병합) 삭제 — 보류(일반 규칙 「스킬·계획 우선」 과 겹쳐 하니스 쪽 근거는 옮겼다. 글로벌은 사용자 파일이라 삭제 문면은 제안만) ④ 사용자 몫 범주 단일 정본 검사기 축 — 보류(Deferred 대장). 모두 사용자 답 「전부 권장안」.
+  - 같은 회차에 채택한 처방(권장안 A~D·F~M): 체인 보고에 체인 끝 게이트 NOTES·릴리즈 줄 · 회차 끝 게이트 판정 기록을 `plan.md` 에서 레포 밖 `scratch\local-gate-record-*` 로(번복 — 앞 규칙은 게이트 전에 커밋한 `plan.md` 를 다시 바꿨다) · 압축 뒤 승인 원문 유실은 사용자 몫 ① · 레포 안 백업 두 곳은 위치 유지·근거 명시 · 초안 모드는 체인 질문·`AGENTS.md` 쓰기 없음 · plan-draft 진행 args 에 초안 범위 밖·보류 · check-plan 미실행이면 경량 불허 · wait-what 은 루프 중 사용자 중단 · reflect 는 실해 ✗ 선택 불가 · 아키텍처 선언은 plan 첫 task 로 기록 · llm-wiki push 근거는 글로벌 일반 규칙 · 응답 언어 주입 근거는 Skill 도구 경유.
+
 - [2026-11-13] 처방이 하나인 결함 묶음(체인 plan 2/3) 범위 밖 — 보류: ① 참조 깊이 검사 축 ② rationale 차단 경로 수와 `check-block-coverage.py` 출력의 대조 검사 — 둘 다 사용자 답 「전부 권장안」 의 보류. 이번 회차는 문면을 고쳐 지금 불일치만 닫았고, 재발을 막는 기계 검사는 Deferred 대장 두 항목이 잇는다.
 
 - [2026-11-13] 안전 임계 hook 미탐·판정 결함 보완(체인 plan 1/3) 범위 밖 — 기각·보류: ① plan 상향 탐색의 서브모듈 경계를 session-context·loop-continue 와 차단 hook 사이에서 맞추는 안 — 기각(사용자 답 갈림 4 권장 「기록만」). 어느 쪽으로 맞춰도 상위 plan 의 게이트 상실이나 다른 레포 plan 오주입이 생겨, 경계 차이를 의도로 `scripts/rules/session-context-rationale.md` §5 에 적었다 ② `--` 없이 경로만 적은 `git commit <경로>` 의 시크릿 내용 스캔 — 보류. 메시지·옵션 값과 경로를 가르는 파서가 필요하고 실해가 관측되지 않아 대장에 올리지 않았다(`-- <경로>` 꼴은 v3.13.3 뒤 이 회차가 스캔한다 — `commit-secrets-rationale.md` §18).
