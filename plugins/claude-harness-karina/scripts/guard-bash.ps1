@@ -555,6 +555,8 @@ function Invoke-BlockPythonNewCode {
             $p = $inv.Path
             if (-not [System.IO.Path]::IsPathRooted($p) -and $cwd) { $p = Join-Path $cwd $p }
             if (-not (Test-Path -LiteralPath $p -PathType Leaf) -or (Get-Item -LiteralPath $p).Length -gt 1MB) { continue }
+            $st = & git -C (Split-Path -Parent $p) status --porcelain --ignored -- (Split-Path -Leaf $p) 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not $st) { continue }
             $text = [System.IO.File]::ReadAllText($p)
         }
         $v = Test-PythonNewCodeScript $text
