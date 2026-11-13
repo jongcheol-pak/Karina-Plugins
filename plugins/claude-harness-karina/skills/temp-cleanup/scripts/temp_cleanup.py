@@ -8,7 +8,8 @@ list — 첫 줄 `RESULT: list · N items · <합계 크기>`, 이어서 항목�
   `ITEM <루트 기준 경로> · <크기> · <수정 시각 YYYY-MM-DD HH:MM>[ · 사용 중일 수 있음]`.
   항목은 하위 폴더의 자식이고, `verify`·`worktree-backup` 은 한 단계 더 내려간 자식(실행·worktree 단위)이다.
   루트가 없으면 `RESULT: list · 0 items · 0 B` 와 exit 0.
-remove — 첫 줄 `RESULT: removed N · refused N · failed N`(--dry-run 이면 `RESULT: dry-run · would remove N · refused N`),
+remove — 상대경로(list 의 `ITEM` 경로 그대로)는 --root 기준, 절대경로는 그대로 읽는다.
+  첫 줄 `RESULT: removed N · refused N · failed N`(--dry-run 이면 `RESULT: dry-run · would remove N · refused N`),
   이어서 경로마다 `REMOVED`·`WOULD-REMOVE`·`REFUSED <경로> — <사유>`·`FAILED <경로> — <사유>`.
   거부: 루트 자체 · 루트 밖(`..` 로 빠지는 경로 포함) · 없는 경로 · `chain` 의 7일 이내 `karina-chain-*.lock`(실행 중일 수 있음)
   · 그런 잠금을 안에 담은 폴더.
@@ -138,7 +139,7 @@ def delete(path):
 def cmd_remove(args):
     done, refused, failed, lines = 0, 0, 0, []
     for raw in args.paths:
-        path = os.path.abspath(raw)
+        path = os.path.abspath(os.path.join(args.root, raw))
         why = refusal(args.root, path, args.now)
         if why:
             refused += 1

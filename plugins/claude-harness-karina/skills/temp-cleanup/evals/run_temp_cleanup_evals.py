@@ -51,9 +51,9 @@ class Fixture:
         os.utime(p, (t, t))
         return p
 
-    def run(self, *args):
-        cmd = [sys.executable, SCRIPT, args[0], '--root', self.root, '--now', str(NOW)] + list(args[1:])
-        p = subprocess.run(cmd, capture_output=True, timeout=60)
+    def run(self, *args, cwd=None):
+        cmd = [sys.executable, os.path.abspath(SCRIPT), args[0], '--root', self.root, '--now', str(NOW)] + list(args[1:])
+        p = subprocess.run(cmd, capture_output=True, timeout=60, cwd=cwd)
         return p.returncode, p.stdout.decode('utf-8', 'replace'), p.stderr.decode('utf-8', 'replace')
 
     def close(self):
@@ -146,6 +146,27 @@ def refuse_dotdot_escape():
         p = fx.put('../stray.txt', 60)
         sneaky = os.path.join(fx.root, 'scratch', '..', '..', 'stray.txt')
         rc, out, _ = fx.run('remove', sneaky)
+        assert rc == 1 and 'REFUSED' in out and os.path.exists(p), out
+    with_fixture(body)
+
+
+@case
+def remove_relative_from_list():
+    def body(fx):
+        p = fx.put('scratch/old.ps1', 30)
+        _, listed, _ = fx.run('list')
+        rel = next(l.split(' ')[1] for l in listed.splitlines() if l.startswith('ITEM '))
+        rc, out, _ = fx.run('remove', rel, cwd=fx.base)
+        assert rc == 0 and out.startswith('RESULT: removed 1 · refused 0 · failed 0'), (rel, out)
+        assert not os.path.exists(p), out
+    with_fixture(body)
+
+
+@case
+def refuse_relative_dotdot():
+    def body(fx):
+        p = fx.put('../stray.txt', 60)
+        rc, out, _ = fx.run('remove', 'scratch/../../stray.txt', cwd=fx.base)
         assert rc == 1 and 'REFUSED' in out and os.path.exists(p), out
     with_fixture(body)
 
