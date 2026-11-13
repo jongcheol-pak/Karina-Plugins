@@ -6,6 +6,63 @@ function ConvertTo-TimedGitArgument([string]$Arg) {
     return '"' + ([regex]::Replace($Arg, '(\\*)("|$)', { param($m) $m.Groups[1].Value + $m.Groups[1].Value + $(if ($m.Groups[2].Value) { '\"' } else { '' }) })) + '"'
 }
 
+function Stop-TimedGitOrphans([int]$ParentId, [datetime]$Since) {
+    if ($env:OS -ne 'Windows_NT') { return }
+    try {
+        if (-not ('KarinaTimedGitTree' -as [type])) {
+            Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+public static class KarinaTimedGitTree {
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct Entry { public uint Size; public uint Usage; public uint Pid; public IntPtr Heap; public uint Module; public uint Threads; public uint ParentPid; public int Priority; public uint Flags; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string Exe; }
+    [DllImport("kernel32.dll")] static extern IntPtr CreateToolhelp32Snapshot(uint flags, uint pid);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern bool Process32FirstW(IntPtr snap, ref Entry e);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern bool Process32NextW(IntPtr snap, ref Entry e);
+    [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+    [DllImport("kernel32.dll")] static extern bool GetProcessTimes(IntPtr h, out long created, out long exited, out long kernel, out long user);
+    [DllImport("kernel32.dll")] static extern bool TerminateProcess(IntPtr h, uint code);
+    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+    public static void KillDescendants(uint root, long rootBorn) {
+        var children = new Dictionary<uint, List<uint>>();
+        IntPtr snap = CreateToolhelp32Snapshot(2, 0);
+        if (snap == IntPtr.Zero || snap == new IntPtr(-1)) return;
+        try {
+            var e = new Entry(); e.Size = (uint)Marshal.SizeOf(typeof(Entry));
+            for (bool more = Process32FirstW(snap, ref e); more; more = Process32NextW(snap, ref e)) {
+                if (e.Pid == e.ParentPid) continue;
+                List<uint> list;
+                if (!children.TryGetValue(e.ParentPid, out list)) { list = new List<uint>(); children[e.ParentPid] = list; }
+                list.Add(e.Pid);
+            }
+        } finally { CloseHandle(snap); }
+        var pending = new Stack<KeyValuePair<uint, long>>();
+        pending.Push(new KeyValuePair<uint, long>(root, rootBorn));
+        while (pending.Count > 0) {
+            var parent = pending.Pop();
+            List<uint> kids;
+            if (!children.TryGetValue(parent.Key, out kids)) continue;
+            foreach (uint pid in kids) {
+                IntPtr h = OpenProcess(0x1001, false, pid);
+                if (h == IntPtr.Zero) continue;
+                try {
+                    long born, x, k, u;
+                    if (GetProcessTimes(h, out born, out x, out k, out u) && born >= parent.Value) {
+                        TerminateProcess(h, 1);
+                        pending.Push(new KeyValuePair<uint, long>(pid, born));
+                    }
+                } finally { CloseHandle(h); }
+            }
+        }
+    }
+}
+'@
+        }
+        [KarinaTimedGitTree]::KillDescendants([uint32]$ParentId, $Since.ToFileTimeUtc())
+    } catch {}
+}
+
 function Invoke-TimedGit {
     param([string[]]$GitArgs, [string]$WorkDir = (Get-Location).ProviderPath, [int]$TimeoutMs)
     $none = [pscustomobject]@{ Code = -1; Lines = @() }
@@ -34,6 +91,7 @@ function Invoke-TimedGit {
     $p = $null
     try {
         $p = [System.Diagnostics.Process]::Start($psi)
+        $started = $p.StartTime
         $p.StandardInput.Close()
         $outTask = $p.StandardOutput.ReadToEndAsync()
         $null = $p.StandardError.ReadToEndAsync()
@@ -47,7 +105,10 @@ function Invoke-TimedGit {
             return $none
         }
         $left = [int][Math]::Max(0, $TimeoutMs - $clock.ElapsedMilliseconds)
-        if (-not $outTask.Wait($left)) { return $none }
+        if (-not $outTask.Wait($left)) {
+            Stop-TimedGitOrphans -ParentId $p.Id -Since $started
+            return $none
+        }
         $lines = @($outTask.Result -split "`r?`n")
         if ($lines.Count -and $lines[-1] -eq '') { $lines = @($lines | Select-Object -First ($lines.Count - 1)) }
         return [pscustomobject]@{ Code = $p.ExitCode; Lines = $lines }

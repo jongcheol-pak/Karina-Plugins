@@ -334,6 +334,35 @@ $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $g
 $gbSlow = @{ code = $LASTEXITCODE; out = ($out -join "`n") }
 Assert-Case -Name "guard-comment: BASE 예산 — PATH 앞 git.cmd 를 & git 과 같이 집고, 대기가 예산을 넘으면 손자까지 끝내고 복원 doc 도 차단" -R $gbSlow -ExpectExit 0 -ExpectContains 'ran=True blocked=1 alive=0'
 Assert-Case -Name "guard-comment: BASE 예산 — 시간 초과 때 예산만큼만 기다린다" -R $gbSlow -ExpectExit 0 -ExpectContains 'fast=True'
+$tgOrphanScript = Join-Path $gc 'timed-git-orphan.ps1'
+[System.IO.File]::WriteAllText($tgOrphanScript, @'
+param([string]$Lib, [string]$Dir)
+. $Lib
+$pidFile = Join-Path $Dir 'gc.pid'
+[System.IO.File]::Delete($pidFile)
+$pw = (Get-Process -Id $PID).Path
+$fake = Join-Path $Dir 'git.cmd'
+[System.IO.File]::WriteAllText($fake, "@start `"`" /b `"$pw`" -NoProfile -Command `"Set-Content -LiteralPath '$pidFile' `$PID; Start-Sleep 20`"`r`n@exit /b 0`r`n")
+$script:TimedGitExe = $fake
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$run = Invoke-TimedGit -GitArgs @('status') -WorkDir $Dir -TimeoutMs 2000
+$ms = $sw.ElapsedMilliseconds
+$gcPid = 0
+$until = [DateTime]::UtcNow.AddMilliseconds(5000)
+while (-not $gcPid -and [DateTime]::UtcNow -lt $until) {
+    if (Test-Path -LiteralPath $pidFile) { $gcPid = [int]((Get-Content -LiteralPath $pidFile -Raw) -as [string]).Trim() } else { Start-Sleep -Milliseconds 100 }
+}
+$alive = $false
+if ($gcPid) {
+    $until = [DateTime]::UtcNow.AddMilliseconds(3000)
+    do { $alive = [bool](Get-Process -Id $gcPid -ErrorAction SilentlyContinue); if ($alive) { Start-Sleep -Milliseconds 200 } } while ($alive -and [DateTime]::UtcNow -lt $until)
+    if ($alive) { Stop-Process -Id $gcPid -Force -ErrorAction SilentlyContinue }
+}
+"code=$($run.Code) pid=$([bool]$gcPid) alive=$alive fast=$($ms -lt 8000)"
+'@, [System.Text.UTF8Encoding]::new($true))
+$tgDir = Join-Path $gc 'timed-git-orphan'; New-Item -ItemType Directory $tgDir -Force | Out-Null
+$out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $tgOrphanScript (Join-Path $pluginRoot 'scripts/timed-git.ps1') $tgDir 2>&1
+Assert-Case -Name "guard-comment: timed-git — 직계가 먼저 끝나고 손자가 출력을 쥔 채 시간 초과면 손자까지 끝내고 예산만큼만 기다린다" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'code=-1 pid=True alive=False fast=True'
 [System.IO.File]::Delete($gbPlan)
 $r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
 Assert-Case -Name "guard-comment: plan.md 가 없으면 복원 Edit 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
