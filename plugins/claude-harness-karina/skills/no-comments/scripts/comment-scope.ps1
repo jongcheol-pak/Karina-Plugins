@@ -144,18 +144,21 @@ function Test-ScopeDocCandidate([string[]]$Lines) {
     return $script:CommentDocMarkRx.IsMatch(($Lines -join "`n"))
 }
 
-$script:ScopeCallNameRx = [regex]'(?<!\w)([^\W\d]\w*)\s*(?:<[^()]*>)?\s*\('
-$script:ScopeItemKeyRx = [regex]'\b(?:(?:fn|struct|enum|trait|const|static|type|mod|union|class|interface|record|def|function)\s+)+(?:(?:mut|readonly|final|abstract|sealed|partial)\s+)*([^\W\d]\w*)'
-$script:ScopeNotItemNames = @('pub', 'if', 'for', 'while', 'match', 'return')
+$script:ScopeDefKeyRx = [regex]'\b(?:(?:fn|struct|enum|trait|type|mod|union|class|interface|record|def|function)\s+)(?:(?:fn|class|struct)\s+)*([^\W\d]\w*)'
+$script:ScopeValueKeyRx = [regex]'^(?:pub(?:\([^)]*\))?\s+)?(?:(?:const|static)\s+)+(?:mut\s+)?([^\W\d]\w*)\s*:'
+$script:ScopeMethodKeyRx = [regex]'(?<![\w.])([\w<>\[\],?]+)\s+([^\W\d]\w*)\s*(?:<[^()]*>)?\s*\('
+$script:ScopeNotTypeWords = @('return', 'await', 'new', 'throw', 'yield', 'else', 'if', 'while', 'for', 'foreach', 'switch', 'using', 'lock', 'case', 'in', 'is', 'as', 'not', 'and', 'or')
 
 function Get-ScopeItemKey([string]$Code) {
     $t = $Code.Trim()
     if ($t -match '^(//|/\*|\*|#)') { return $null }
-    foreach ($c in $script:ScopeCallNameRx.Matches($t)) {
-        if ($script:ScopeNotItemNames -cnotcontains $c.Groups[1].Value) { return "( $($c.Groups[1].Value)" }
-    }
-    $m = $script:ScopeItemKeyRx.Match($t)
+    $m = $script:ScopeDefKeyRx.Match($t)
     if ($m.Success) { return "item $($m.Groups[1].Value)" }
+    $v = $script:ScopeValueKeyRx.Match($t)
+    if ($v.Success) { return "item $($v.Groups[1].Value)" }
+    foreach ($c in $script:ScopeMethodKeyRx.Matches($t)) {
+        if ($script:ScopeNotTypeWords -cnotcontains $c.Groups[1].Value) { return "item $($c.Groups[2].Value)" }
+    }
     return $null
 }
 

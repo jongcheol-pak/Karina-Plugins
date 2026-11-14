@@ -158,9 +158,11 @@ Assert-Case -Name "comment-scope: 이름을 바꾼 파일에서 지운 회차 �
 
 $dr = New-CsRepo 'docscope'
 Set-CsFile $dr 'a.rs' "/// 옛 설명.`nfn old_doc() {}`nfn no_doc() {}`n/// 이름 바꿀 함수 설명.`nfn renamed_before() {}`n/// 시험 설명.`n#[test]`nfn t_case() {}`n/// 시그니처 설명.`nfn sig_changed(a: u8) {}`n/// 같은 이름 설명.`nfn dup() {}`nfn dup(x: u8) {}`n/// 상수 함수 설명.`npub const fn const_old() -> u8 { 0 }`n"
+Set-CsFile $dr 'b.cs' "/// 옛 C# 설명.`npublic static void Run() {}`n"
 git -C $dr add .; git -C $dr commit -qm base
 $drBase = (git -C $dr rev-parse HEAD).Trim()
-Set-CsFile $dr 'a.rs' "/// 옛 설명을 고침.`nfn old_doc() {}`n/// 새로 단 설명.`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`n/// 시그니처 설명을 고침.`nfn sig_changed(a: u8) -> bool {}`n/// 같은 이름 설명.`nfn dup() {}`n/// 새로 단 같은 이름 설명.`nfn dup(x: u8) {}`n/// 이름 바꾼 상수 함수 설명.`npub const fn const_new() -> u8 { 0 }`n"
+Set-CsFile $dr 'a.rs' "/// 옛 설명을 고침.`nfn old_doc() {}`n/// 새로 단 설명.`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`n/// 시그니처 설명을 고침.`nfn sig_changed(a: u8) -> bool {}`n/// 같은 이름 설명.`nfn dup() {}`n/// 새로 단 같은 이름 설명.`nfn dup(x: u8) {}`n/// 이름 바꾼 상수 함수 설명.`npub const fn const_new() -> u8 { 0 }`nfn caller() {`n    let _ = sig_changed(1);`n}`n"
+Set-CsFile $dr 'b.cs' "/// C# 설명을 고침.`npublic static void Run(int x) {}`nvoid Caller() {`n    Run(1);`n}`n"
 git -C $dr commit -qam round
 $drOut = Join-Path $csRoot 'docscope-out.txt'
 $r = Invoke-Cs @('-Base', $drBase, '-Out', $drOut, '-Repo', $dr)
@@ -171,17 +173,19 @@ Assert-Case -Name "comment-scope: doc 대상 — doc 과 fn 사이에 #[test] �
 Assert-Case -Name "comment-scope: doc 대상 — 시그니처만 바뀐 항목의 회차 전 doc 은 이름으로 대조해 뺀다" -R $dl -ExpectExit 0 -ExpectNotContains '시그니처 설명을 고침'
 Assert-Case -Name "comment-scope: doc 대상 — 같은 이름 항목이 여럿이면 새로 단 doc 은 목록에 남는다" -R $dl -ExpectExit 0 -ExpectContains "a.rs:14`t/// 새로 단 같은 이름 설명."
 Assert-Case -Name "comment-scope: doc 대상 — 수식 키워드(const fn)가 붙은 항목도 이름을 바꿨으면 새 doc 은 목록에 남는다" -R $dl -ExpectExit 0 -ExpectContains "a.rs:16`t/// 이름 바꾼 상수 함수 설명."
-Assert-Case -Name "comment-scope: doc 대상 — 끝 줄 수" -R $dl -ExpectExit 0 -ExpectContains 'RESULT: 대상 4 · 회차 전 4 · 감사 0 · 보존 0'
+Assert-Case -Name "comment-scope: doc 대상 — 같은 파일에서 불리는 항목도 시그니처만 바뀌었으면 회차 전 doc 으로 뺀다" -R $dl -ExpectExit 0 -ExpectNotContains '시그니처 설명을 고침'
+Assert-Case -Name "comment-scope: doc 대상 — C# 메서드도 호출 줄이 있어도 시그니처만 바뀌었으면 회차 전 doc 으로 뺀다" -R $dl -ExpectExit 0 -ExpectNotContains 'C# 설명을 고침'
+Assert-Case -Name "comment-scope: doc 대상 — 끝 줄 수" -R $dl -ExpectExit 0 -ExpectContains 'RESULT: 대상 4 · 회차 전 5 · 감사 0 · 보존 0'
 $drSnap = Join-Path $csRoot 'docscope-snap.txt'
 $null = Invoke-Cs @('-Snapshot', $drSnap, '-Repo', $dr)
-Set-CsFile $dr 'a.rs' "fn old_doc() {}`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`nfn sig_changed(a: u8) -> bool {}`n/// 같은 이름 설명.`nfn dup() {}`nfn dup(x: u8) {}`n/// 이름 바꾼 상수 함수 설명.`npub const fn const_new() -> u8 { 0 }`n"
+Set-CsFile $dr 'a.rs' "fn old_doc() {}`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`nfn sig_changed(a: u8) -> bool {}`n/// 같은 이름 설명.`nfn dup() {}`nfn dup(x: u8) {}`n/// 이름 바꾼 상수 함수 설명.`npub const fn const_new() -> u8 { 0 }`nfn caller() {`n    let _ = sig_changed(1);`n}`n"
 $r = Invoke-Cs @('-CheckDeletions', '-Base', $drBase, '-Before', $drSnap, '-Repo', $dr, '-Restore')
 Assert-Case -Name "comment-scope: doc 대상 — 문구만 고친 회차 전 doc 의 삭제는 되살린다" -R $r -ExpectExit 1 -ExpectContains "RESTORE a.rs:1`t/// 옛 설명을 고침."
 Assert-Case -Name "comment-scope: doc 대상 — 새로 단 doc 의 삭제는 되살리지 않는다" -R $r -ExpectExit 1 -ExpectNotContains '새로 단 설명'
 Assert-Case -Name "comment-scope: doc 대상 — 시그니처만 바뀐 항목의 회차 전 doc 삭제도 되살린다" -R $r -ExpectExit 1 -ExpectContains "RESTORE a.rs:10`t/// 시그니처 설명을 고침."
 Assert-Case -Name "comment-scope: doc 대상 — 되살림·회차 삭제 수" -R $r -ExpectExit 1 -ExpectContains 'RESULT: 되살림 2 · 회차 삭제 2 · 건너뜀 0'
 $drA = [System.IO.File]::ReadAllText((Join-Path $dr 'a.rs'))
-Assert-Case -Name "comment-scope: doc 대상 — 되살린 doc 은 제자리에 있다" -R @{ code = 0; out = ('match=' + ($drA -eq "/// 옛 설명을 고침.`nfn old_doc() {}`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`n/// 시그니처 설명을 고침.`nfn sig_changed(a: u8) -> bool {}`n/// 같은 이름 설명.`nfn dup() {}`nfn dup(x: u8) {}`n/// 이름 바꾼 상수 함수 설명.`npub const fn const_new() -> u8 { 0 }`n")) } -ExpectExit 0 -ExpectContains 'match=True'
+Assert-Case -Name "comment-scope: doc 대상 — 되살린 doc 은 제자리에 있다" -R @{ code = 0; out = ('match=' + ($drA -eq "/// 옛 설명을 고침.`nfn old_doc() {}`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`n/// 시그니처 설명을 고침.`nfn sig_changed(a: u8) -> bool {}`n/// 같은 이름 설명.`nfn dup() {}`nfn dup(x: u8) {}`n/// 이름 바꾼 상수 함수 설명.`npub const fn const_new() -> u8 { 0 }`nfn caller() {`n    let _ = sig_changed(1);`n}`n")) } -ExpectExit 0 -ExpectContains 'match=True'
 
 $mr = New-CsRepo 'many'
 $mrNames = @(for ($i = 1; $i -le 50; $i++) { '{0}/f{1:D2}.rs' -f $(if ($i -le 25) { 'one' } else { 'two' }), $i })
