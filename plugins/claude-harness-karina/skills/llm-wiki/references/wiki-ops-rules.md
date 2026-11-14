@@ -136,7 +136,7 @@
 - **판정 술어는 하나다** — 신호를 낼지 정하는 술어와 `--auto-split`이 실제로 옮길지 정하는 술어가 `lint.py`의 같은 함수(`prescribable`, 산문 분리는 그것이 부르는 `relocatable`)다.
 - **`log.md`(문자 예산 특례)도 임박에서 침묵한다** — 그 경로의 처방은 §8 월별 롤오버이고 `--auto-split`이 자동 수행한다(ⓐ와 같은 취지). 초과 WARN은 그대로 남고 그것을 받는 것도 세션이다(ⓓ).
 - 근접(80%)은 임박의 선행 게이트이며, 그 게이트가 참인 파일 중 비율 조건 *또는* 잔여 조건(임계는 위 표) 하나라도 만족하면 임박이다. **선행 게이트를 지우지 않는다** — 잔여 조건만으로 72%짜리가 걸린다.
-- **소비 주체**: ⓑ′·ⓒ·ⓓ 전부가 절차 F(F-2)·절차 B(A-4·B-3)·절차 I(I-4)가 처방을 수행할 대상이며(표의 「소비 주체」 열), 승인 불요·안전장치는 `schema-budget.md` §4 「분할 수행 절차」가 정본이다. 자동 수행하는 것은 이 네 지점뿐이다.
+- **소비 주체**: ⓑ′·ⓒ·ⓓ 전부가 절차 F(F-2)·절차 A(A-4)·절차 B(B-3)·절차 I(I-4)가 처방을 수행할 대상이며(표의 「소비 주체」 열), 승인 불요·안전장치는 `schema-budget.md` §4 「분할 수행 절차」가 정본이다. 자동 수행하는 것은 이 네 지점뿐이다.
 - **「분리 불가 판정」(`budget_split`)**: 나눌 하위가 없는 페이지(단일 레시피·단일 개념)는 §4의 이동·분리 처방이 성립하지 않는다. frontmatter에 `budget_split: none` + `budget_split_chars`(lint 예산 판정과 같은 기준으로 잰 문자 수 — 펜스 제외 guide는 유효 문자 수) + `budget_split_reason`을 적으면 임박이 INFO로 강등된다(표 ⓒ). 재판정 마진을 넘게 자라면 억제가 풀린다. 필드 정의는 wiki-schema §3.
 
 ### 세션 처방
@@ -155,7 +155,7 @@
 
 1. **디렉터리**: `10_sources/{personal,work}`, `20_projects/{personal,work}`, `30_knowledge/{tech,patterns,questions}`, `40_guides/{platforms,ui-ux,recipes}`, `90_archive`
 2. **`index.md`**: 빈 카탈로그 골격 — frontmatter 포함: `type: index` · `updated: YYYY-MM-DD`. 섹션: `## 개인 프로젝트` / `## 업무 프로젝트` / `## 기능별 인덱스` / `## 기술 스택 지식 (tech/)` / `## 범용 패턴 (patterns/)` / `## 미해결 질문` / `## 참조`. **`## 가이드 / 레시피`는 두지 않는다** — 가이드·레시피는 `--build-index`가 `index-guides.md` 통합 표로 파생한다(wiki-schema §6 「인덱스 생성」). 표는 헤더만, 내용은 "아직 없음" 주석. 참조 섹션은 실제 존재하는 파일만 링크(`log.md` 등). 생성 대상 6섹션(개인 프로젝트~미해결 질문)을 `<!-- AUTO-INDEX:BEGIN -->`~`<!-- AUTO-INDEX:END -->`로 감싼다 — 새 vault는 처음부터 생성 체계로 출발하는 것이 옳다(wiki-schema §6). 참조는 마커 밖에 둔다(수기 판단 영역). 마커를 넣어 두면 이후 `--build-index`가 바로 동작하고, 넣지 않으면 그 명령이 "마커 없음"으로 거부한다.
-3. **`log.md`**: `## 최근 변경` + `- [YYYY-MM-DD] [INIT] 위키 초기 골격 생성 (llm-wiki 스킬).` + `## 아카이브 인덱스`(빈 목록 — §7-2 발동 시 월별 롤오버 항목을 `- {YYYY-MM}.md: {키워드}`로 등록, schema-budget §8). `90_archive/log/`는 첫 롤오버 시 생성(미리 만들지 않음).
+3. **`log.md`**: `## 최근 변경` + `- [YYYY-MM-DD] [INIT] 위키 초기 골격 생성 (llm-wiki 스킬).` + `## 아카이브 인덱스`(빈 목록 — §7-2 발동 시 월별 롤오버 항목을 `- {YYYY-MM}.md: {N}건 ({최古}~{최新})`로 등록, schema-budget §8). `90_archive/log/`는 첫 롤오버 시 생성(미리 만들지 않음).
 4. **규칙은 vault에 복사하지 않는다** — 진실원천은 스킬 번들의 schema 네 파일(`references/wiki-schema.md` · `schema-types.md` · `schema-budget.md` · `schema-lint.md`)뿐. index `## 참조`에는 번들 경로를 텍스트로 안내한다(vault에 SCHEMA.md를 만들지 말 것).
 5. 부트스트랩 완료 후 본래 요청(A~I)을 이어서 진행한다.
 
