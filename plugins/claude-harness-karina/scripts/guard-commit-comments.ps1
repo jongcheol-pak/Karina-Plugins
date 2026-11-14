@@ -161,7 +161,7 @@ function Invoke-BlockCommitComments {
         $top = [string](@((Invoke-CommitGit -Check 'block-commit-comments' -GitArgs @('rev-parse', '--show-toplevel')).Lines)[0])
         $found = New-Object System.Collections.Generic.List[string]
         $perFile = New-Object System.Collections.Generic.List[string]
-        $baseBudget = New-CommentBaseBudget
+        $baseBudget = New-CommentBaseBudget $script:CommentCommitBaseBudgetMs
         $rewriteBudget = New-CommentRewriteBudget
         foreach ($k in ($targets | Sort-Object)) {
             $full = if ($top) { [System.IO.Path]::GetFullPath((Join-Path $top $k)) } else { [System.IO.Path]::GetFullPath($k) }

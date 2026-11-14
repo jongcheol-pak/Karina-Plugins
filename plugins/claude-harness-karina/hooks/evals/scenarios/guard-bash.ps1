@@ -779,5 +779,22 @@ Assert-Case -Name "commit-comments: 다른 파일 BASE 의 doc 을 그 파일에
 Set-CcFile $d 'm.rs' $ccMoveA
 $r = Invoke-CcCommit $d 'git commit -m x -- n.rs' 'cc-copy'
 Assert-Case -Name "commit-comments: 원래 파일에 남은 doc 의 복사 커밋은 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+
+$ccSlowDir = Join-Path $ccRoot 'slow-base-git'; New-Item -ItemType Directory $ccSlowDir -Force | Out-Null
+$ccRealGit = @(Get-Command git -CommandType Application | ForEach-Object { $_.Source })[0]
+[System.IO.File]::WriteAllText((Join-Path $ccSlowDir 'git.cmd'), "@echo %*| findstr /c:show /c:grep >nul && ping -n 7 127.0.0.1 >nul`r`n@`"$ccRealGit`" %*`r`n")
+$d = New-CcRepo
+Set-CcFile $d 'm.rs' $ccMoveA; Set-CcFile $d 'n.rs' "fn other() {}`n"
+git -C $d add .; git -C $d commit -qm move-base
+Set-CcFile $d 'plan.md' "# plan`n`n## Goal`n`n> BASE: $((git -C $d rev-parse --short HEAD).Trim())`n"
+Set-CcFile $d 'm.rs' "fn keep() {}`n"
+Set-CcFile $d 'n.rs' "fn other() {}`n`n/// 옮겨 갈 시험 설명.`nfn t_moved() {}`n"
+$ccSaved = @{ PATH = $env:PATH; T = $env:KARINA_COMMIT_GIT_TIMEOUT_MS }
+try {
+    $env:PATH = $ccSlowDir + [System.IO.Path]::PathSeparator + $env:PATH
+    $env:KARINA_COMMIT_GIT_TIMEOUT_MS = '60000'
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ session_id = 'cc-move-slow'; tool_name = 'Bash'; cwd = $d; tool_input = @{ command = 'git commit -m x -- n.rs' } } | ConvertTo-Json -Compress) -Process
+} finally { $env:PATH = $ccSaved.PATH; $env:KARINA_COMMIT_GIT_TIMEOUT_MS = $ccSaved.T }
+Assert-Case -Name "commit-comments: BASE 복원·이동 판정 git 이 6초씩 늦어도 다른 파일 BASE doc 을 옮긴 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 }
 

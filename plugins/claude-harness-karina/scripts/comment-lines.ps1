@@ -86,6 +86,7 @@ $script:CommentLinkRx = '(?i)https?://\S*(/issues/\d+|/pull/\d+|/-/issues/\d+|rf
 $script:CommentTrackerRx = '\b(?!(UTF|SHA|ISO|CP|IEC|IEEE|ECMA|ANSI|CRC|AES|RSA|TLS|HTTP|MD|BASE)[A-Z0-9]*-)[A-Z]{2,}[A-Z0-9]*-\d+\b'
 $script:CommentTodoRx = '\b(TODO|FIXME|XXX)\b'
 $script:CommentBaseBudgetMs = 10000
+$script:CommentCommitBaseBudgetMs = 30000
 $script:CommentKeepLineRx = '^- \*\*Comment \(보존\)\*\*: `(?<rx>[^`]+)` · 경로: `(?<paths>[^`]+)`'
 $script:TaskAuditLineRx = '^- \*\*Test \(감사\)\*\*: `(?<cmd>[^`]+)`(?<rest>.*)$'
 
@@ -341,7 +342,7 @@ function Get-CommentDocOwnerSizes([string]$Path, [string[]]$Lines) {
     return , $sizes
 }
 
-function New-CommentBaseBudget { return @{ LeftMs = [int]$script:CommentBaseBudgetMs } }
+function New-CommentBaseBudget([int]$Ms = $script:CommentBaseBudgetMs) { return @{ LeftMs = $Ms } }
 
 function Get-CommentPlanBase([string]$Dir, [string]$Root) {
     foreach ($d in (Get-CommentSearchDirs $Dir $Root)) {
