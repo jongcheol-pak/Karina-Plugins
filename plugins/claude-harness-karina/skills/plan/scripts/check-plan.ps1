@@ -3,8 +3,9 @@
 #
 # 사용: check-plan.ps1 <plan.md 경로>                 서식 검사(계획 시점)
 #       check-plan.ps1 <plan.md 경로> -Base <sha>     증거 대조만(회차 끝) — 서식 검사는 돌리지 않는다
-# 출력은 ASCII 만이고 줄 종류는 다섯이다:
+# 출력은 ASCII 만이고 줄 종류는 여섯이다:
 #   check-plan <줄>: <코드> <세부>        위반 하나
+#   check-plan: note <코드> T<N>          -Base 모드의 보고 전용 표시(위반 아님 · 위반 수·종료 코드에 세지 않는다)
 #   check-plan: skip <검사> <사유>        건너뛴 검사 하나(위반 아님)
 #   check-plan: ran plan-check exit 0     AGENTS.md 의 Plan check 가 돌아 통과함(위반 아님 · 로그 파일 없음)
 #   check-plan: <N> problems              마지막 줄 — 위반 수
@@ -36,7 +37,15 @@
 # -Base 모드의 코드 — 대상은 하위 항목(마커 [ ]·[/]·[x]·[X]·[-]·[~])이 전부 [x]·[X] 인 task 이고, 전부 「(불요」 인 task 는 뺀다:
 #   no-task-commit T<N>          BASE..HEAD 에 제목이 「{유형}: T<N> —」(또는 「T<N>:」)인 커밋이 없음 — 마지막 task 는
 #                                그 블록이 <버전> 을 담으면 「설정: v<버전> —」(Release 형식 버전 커밋)도 센다
-#   no-commit-evidence T<N>      그 커밋은 있으나 어느 본문에도 「검증 결과」·「검증:」·HUMAN-VERIFY 가 없음
+#   no-commit-evidence T<N>      그 커밋은 있으나 어느 본문에도 「검증 결과」·「검증:」 이 없음(HUMAN-VERIFY 낱말만으로는 증거가 아니다)
+#   아래 넷은 본문 증거가 있는 task 만 잰다. 줄 머리 「- 」 는 허용한다:
+#   no-red-evidence T<N>         Files 줄에 (RED) 가 있는데 어느 본문에도 「RED:」·「RED(구현 전):」·「RED(사후 …):」 줄이 없음
+#                                (「RED: 미확인 — <사유>」 만 있으면 위반 대신 note red-unverified T<N>)
+#   no-screen-verdict T<N>       「- **화면**:」 줄이 있는 task 인데 어느 본문에도 「화면: HEAD 참|거짓」·「화면: 미촬영(HUMAN-VERIFY)」 줄이 없음
+#   screen-false T<N>            화면 판정이 「HEAD 거짓」 뿐임(「HEAD 참」 이 하나라도 있으면 통과)
+#   screen-unshot T<N>           판정이 미촬영뿐이고 AGENTS.md(위 Plan check 와 같은 탐색)의 「- **Verify (앱 조작)**:」 값이
+#                                「없음」 이 아님 — 미촬영 줄에 「· 사유 <…>」 칸이 있으면 위반 대신 note screen-unshot-reason T<N>
+#                                (Verify 줄이 없거나 AGENTS.md 가 없으면 검증 스킬 없음 — 미촬영 통과)
 #   ERROR no-git · ERROR bad-base  plan 이 git 밖 · BASE 가 커밋이 아님(exit 2)
 # 제목 형식의 정본은 guard-bash 의 완료 커밋 판정이다(scripts/rules/bash-guard-rationale.md §14) — 같은 정규식을 쓴다.
 #
@@ -51,8 +60,10 @@ param([string]$PlanPath = '', [string]$Base = '')
 
 $problems = New-Object System.Collections.Generic.List[string]
 function Add-Problem([int]$Line, [string]$Text) { $problems.Add(('check-plan {0}: {1}' -f $Line, $Text)) }
+$notes = New-Object System.Collections.Generic.List[string]
 function Complete-Check {
     foreach ($p in $problems) { Write-Output $p }
+    foreach ($t in $notes) { Write-Output ('check-plan: note ' + $t) }
     Write-Output ('check-plan: {0} problems' -f $problems.Count)
     if ($problems.Count) { exit 1 }
     exit 0
@@ -123,6 +134,26 @@ function Get-TaskBlocks {
     return $blocks
 }
 
+# plan 폴더에서 git 최상위까지 올라가며 처음 만난 AGENTS.md — Plan check 줄과 -Base 의 Verify 줄이 같이 쓴다.
+function Get-AgentsFile([string]$PlanFile) {
+    $dir = Split-Path -Parent $PlanFile
+    $top = $null
+    try { $top = (& git -C $dir rev-parse --show-toplevel 2>$null) } catch { $top = $null }
+    if ($LASTEXITCODE -ne 0 -or -not $top) { $top = $dir }
+    $top = [System.IO.Path]::GetFullPath($top).TrimEnd('\', '/')
+    while ($dir) {
+        $agents = Join-Path $dir 'AGENTS.md'
+        if (Test-Path -LiteralPath $agents -PathType Leaf) {
+            return @{ Dir = $dir; Lines = [System.IO.File]::ReadAllLines($agents, [System.Text.Encoding]::UTF8) }
+        }
+        if ([System.IO.Path]::GetFullPath($dir).TrimEnd('\', '/') -eq $top) { return $null }
+        $parent = Split-Path -Parent $dir
+        if (-not $parent -or $parent -eq $dir) { return $null }
+        $dir = $parent
+    }
+    return $null
+}
+
 # ---- 증거 대조 (-Base) — [x] 로 닫힌 task 마다 BASE..HEAD 의 T<N> 커밋 본문에 검증 기록이 있는가 ----
 if ($Base) {
     # PS 5.1 은 네이티브 출력을 콘솔 코드페이지로 디코딩해 커밋의 한글을 깨뜨린다. 콘솔 없는 호스트에서는 setter 가 던진다.
@@ -139,7 +170,29 @@ if ($Base) {
     $types = (@(@(0xAE30, 0xB2A5), @(0xC218, 0xC815), @(0xB9AC, 0xD329, 0xD1A0, 0xB9C1), @(0xBB38, 0xC11C), @(0xC124, 0xC815)) | ForEach-Object { Get-Text $_ }) -join '|'    # 기능|수정|리팩토링|문서|설정
     $titleRx = '^\s*(?:(?:' + $types + ')\s*:\s*)?T(\d+)\s*(?::|' + [char]0x2014 + '|-)'
     $verify = Get-Text @(0xAC80, 0xC99D)    # 검증
-    $evidenceRx = $verify + '\s*(?:' + (Get-Text @(0xACB0, 0xACFC)) + '|:)|HUMAN-VERIFY'    # 검증 결과 · 검증: · HUMAN-VERIFY
+    $evidenceRx = $verify + '\s*(?:' + (Get-Text @(0xACB0, 0xACFC)) + '|:)'    # 검증 결과 · 검증:
+    $lineHead = '(?m)^\s*(?:[-*]\s*)?'
+    $unverified = Get-Text @(0xBBF8, 0xD655, 0xC778)    # 미확인
+    $redRx = $lineHead + 'RED(?:\((?:' + (Get-Text @(0xAD6C, 0xD604, 0x20, 0xC804)) + '|' + (Get-Text @(0xC0AC, 0xD6C4)) + '[^)\r\n]*)\))?\s*:\s*(?!' + $unverified + ')\S'    # RED: · RED(구현 전): · RED(사후 …):
+    $redUnRx = $lineHead + 'RED\s*:\s*' + $unverified
+    $screenHead = $lineHead + (Get-Text @(0xD654, 0xBA74)) + ':\s*'    # 화면:
+    $screenTrueRx = $screenHead + 'HEAD\s*' + (Get-Text @(0xCC38))    # 참
+    $screenFalseRx = $screenHead + 'HEAD\s*' + (Get-Text @(0xAC70, 0xC9D3))    # 거짓
+    $unshotRx = $screenHead + (Get-Text @(0xBBF8, 0xCD2C, 0xC601)) + '\(HUMAN-VERIFY\)(.*)$'    # 미촬영(HUMAN-VERIFY)
+    $reasonRx = [char]0xB7 + '\s*' + (Get-Text @(0xC0AC, 0xC720)) + '\s+\S'    # · 사유 <…>
+    $verifySkill = $false
+    $agentsFile = Get-AgentsFile (Resolve-Path -LiteralPath $PlanPath).Path
+    if ($agentsFile) {
+        $verifyRx = '^- \*\*Verify \(' + (Get-Text @(0xC571, 0x20, 0xC870, 0xC791)) + '\)\*\*:\s*(.*)$'    # Verify (앱 조작)
+        foreach ($al in $agentsFile.Lines) {
+            $vm = [regex]::Match($al, $verifyRx)
+            if ($vm.Success) {
+                $value = $vm.Groups[1].Value.Trim()
+                $verifySkill = [bool]$value -and ($value -notmatch ('^\W*' + (Get-Text @(0xC5C6, 0xC74C))))    # 없음
+                break
+            }
+        }
+    }
     $versionRx = '^\s*' + (Get-Text @(0xC124, 0xC815)) + '\s*:\s*v(\d+\.\d+\.\d+)\s*' + [char]0x2014    # 설정: v<버전> —
     $taskBlocks = @(Get-TaskBlocks)
     $lastText = if ($taskBlocks.Count) { (@($taskBlocks[-1].Lines | ForEach-Object { $_.Text }) -join "`n") } else { '' }
@@ -154,8 +207,16 @@ if ($Base) {
         if ($m.Success) { $id = [int]$m.Groups[1].Value }
         elseif ($v.Success -and $taskBlocks.Count -and $lastText.Contains($v.Groups[1].Value)) { $id = $taskBlocks[-1].Id }
         else { continue }
-        $commits += [pscustomobject]@{ Id = $id; Evidence = [regex]::IsMatch($body, $evidenceRx) }
+        $unshots = @([regex]::Matches($body, $unshotRx) | ForEach-Object { $_.Groups[1].Value })
+        $commits += [pscustomobject]@{
+            Id = $id; Evidence = [regex]::IsMatch($body, $evidenceRx)
+            Red = [regex]::IsMatch($body, $redRx); RedUnverified = [regex]::IsMatch($body, $redUnRx)
+            ScreenTrue = [regex]::IsMatch($body, $screenTrueRx); ScreenFalse = [regex]::IsMatch($body, $screenFalseRx)
+            Unshot = [bool]$unshots.Count; UnshotReason = [bool]@($unshots | Where-Object { $_ -match $reasonRx }).Count
+        }
     }
+    $screenLabelBase = '- **' + (Get-Text @(0xD654, 0xBA74)) + '**:'    # - **화면**:
+    $filesLabel = '- **Files**:'
 
     $unneeded = '(' + (Get-Text @(0xBD88, 0xC694))    # (불요
     foreach ($b in $taskBlocks) {
@@ -166,6 +227,23 @@ if ($Base) {
         $mine = @($commits | Where-Object { $_.Id -eq $b.Id })
         if (-not $mine.Count) { Add-Problem $b.N ('no-task-commit T' + $b.Id) }
         elseif (-not @($mine | Where-Object { $_.Evidence }).Count) { Add-Problem $b.N ('no-commit-evidence T' + $b.Id) }
+        else {
+            $tag = 'T' + $b.Id
+            $hasRed = [bool]@($b.Lines | Where-Object { (Test-Prefix $_.Text $filesLabel) -and $_.Text.Contains('(RED)') }).Count
+            if ($hasRed -and -not @($mine | Where-Object { $_.Red }).Count) {
+                if (@($mine | Where-Object { $_.RedUnverified }).Count) { $notes.Add('red-unverified ' + $tag) }
+                else { Add-Problem $b.N ('no-red-evidence ' + $tag) }
+            }
+            $hasScreen = [bool]@($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabelBase }).Count
+            if ($hasScreen -and -not @($mine | Where-Object { $_.ScreenTrue }).Count) {
+                if (@($mine | Where-Object { $_.ScreenFalse }).Count) { Add-Problem $b.N ('screen-false ' + $tag) }
+                elseif (-not @($mine | Where-Object { $_.Unshot }).Count) { Add-Problem $b.N ('no-screen-verdict ' + $tag) }
+                elseif ($verifySkill) {
+                    if (@($mine | Where-Object { $_.UnshotReason }).Count) { $notes.Add('screen-unshot-reason ' + $tag) }
+                    else { Add-Problem $b.N ('screen-unshot ' + $tag) }
+                }
+            }
+        }
     }
     Complete-Check
 }
@@ -311,24 +389,10 @@ if (Find-Section $tasksTitle) {
 }
 
 function Find-PlanCheck([string]$PlanFile) {
-    $dir = Split-Path -Parent $PlanFile
-    $top = $null
-    try { $top = (& git -C $dir rev-parse --show-toplevel 2>$null) } catch { $top = $null }
-    if ($LASTEXITCODE -ne 0 -or -not $top) { $top = $dir }
-    $top = [System.IO.Path]::GetFullPath($top).TrimEnd('\', '/')
-    while ($dir) {
-        $agents = Join-Path $dir 'AGENTS.md'
-        if (Test-Path -LiteralPath $agents -PathType Leaf) {
-            $lines = [System.IO.File]::ReadAllLines($agents, [System.Text.Encoding]::UTF8)
-            for ($i = 0; $i -lt $lines.Count; $i++) {
-                if ($lines[$i] -match '^- \*\*Plan check\*\*: `([^`]+)`') { return @{ Dir = $dir; Line = $i + 1; Command = $Matches[1] } }
-            }
-            return $null
-        }
-        if ([System.IO.Path]::GetFullPath($dir).TrimEnd('\', '/') -eq $top) { return $null }
-        $parent = Split-Path -Parent $dir
-        if (-not $parent -or $parent -eq $dir) { return $null }
-        $dir = $parent
+    $agents = Get-AgentsFile $PlanFile
+    if (-not $agents) { return $null }
+    for ($i = 0; $i -lt $agents.Lines.Count; $i++) {
+        if ($agents.Lines[$i] -match '^- \*\*Plan check\*\*: `([^`]+)`') { return @{ Dir = $agents.Dir; Line = $i + 1; Command = $Matches[1] } }
     }
     return $null
 }

@@ -245,7 +245,7 @@ function Invoke-CheckEvidence([string]$Text, [string]$Dir, [string]$Base, [strin
 }
 
 $cpDone = $cpBase.Replace('- [ ] **T1-1** 한다', '- [x] **T1-1** 한다')
-$cpOk = "기능: T1 — 한다`n`n검증 결과: run → OK"
+$cpOk = "기능: T1 — 한다`n`n검증 결과: run → OK`n- RED(구현 전): t.ps1 → FAIL"
 $ev = New-EvidenceRepo @()
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: [x] task 에 T<N> 커밋이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'no-task-commit T1'
@@ -261,9 +261,12 @@ Assert-Case -Name "check-plan 증거: BASE 이전 커밋은 세지 않는다" -R
 $ev = New-EvidenceRepo @($cpOk)
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: 한글 제목·한글 검증 결과 본문이 있으면 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
-$ev = New-EvidenceRepo @("문서: T1 — 한다`n`nHUMAN-VERIFY: 화면 배치는 사용자 확인")
+$ev = New-EvidenceRepo @("문서: T1 — 한다`n`nHUMAN-VERIFY: 화면 배치는 사용자 확인`nRED: t.ps1 → FAIL")
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
-Assert-Case -Name "check-plan 증거: 본문의 HUMAN-VERIFY 를 증거로 받는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+Assert-Case -Name "check-plan 증거: 본문의 HUMAN-VERIFY 낱말만으로는 증거가 아니다" -R $r -ExpectExit 1 -ExpectContains 'no-commit-evidence T1'
+$ev = New-EvidenceRepo @("문서: T1 — 한다`n`n검증 결과: HUMAN-VERIFY — 화면 배치는 검증 스킬이 없어 사용자 확인`nRED: t.ps1 → FAIL")
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 검증 결과 줄의 HUMAN-VERIFY 와 사유는 증거로 받는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 $cpVer = "설정: v1.2.3 — 버전`n`n검증 결과: json → OK"
 $cpTwoVer = $cpDone.Replace("`n## 검증 방법", "`n### T2. 버전`n`n- [x] **T2-1** 버전을 1.2.3 으로 올린다`n`n## 검증 방법")
 $cpTwoPlain = $cpDone.Replace("`n## 검증 방법", "`n### T2. 마무리`n`n- [x] **T2-1** 마무리한다`n`n## 검증 방법")
@@ -308,6 +311,59 @@ $ev = New-EvidenceRepo @()
 [System.IO.File]::WriteAllText((Join-Path $ev.dir 'AGENTS.md'), "# AGENTS.md`n`n- **Plan check**: ``exit 3```n", (New-Object System.Text.UTF8Encoding($false)))
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan Plan check: -Base 모드에서는 돌리지 않는다" -R $r -ExpectExit 1 -ExpectNotContains 'plan-check'
+
+$cpNoRed = "기능: T1 — 한다`n`n검증 결과: run → OK"
+$ev = New-EvidenceRepo @($cpNoRed)
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: (RED) 케이스 task 의 커밋 본문에 RED 표지가 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'no-red-evidence T1'
+$ev = New-EvidenceRepo @($cpNoRed + "`nRED(미확인): 못 봤다")
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 정한 셋 밖의 RED(조건) 은 표지가 아니다" -R $r -ExpectExit 1 -ExpectContains 'no-red-evidence T1'
+$ev = New-EvidenceRepo @($cpNoRed + "`nRED: 미확인 — 뒤 task 가 구현 파일을 고쳐 복원 불가")
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: RED 미확인 종결 표지는 위반이 아니라 note 로 낸다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note red-unverified T1'
+$ev = New-EvidenceRepo @($cpNoRed + "`nRED: t.ps1 → FAIL")
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 줄 머리 RED: 표지는 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$ev = New-EvidenceRepo @($cpNoRed + "`n- RED(사후 — abc1234^ 구현 복원): t.ps1 → FAIL")
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: RED(사후 …) 표지는 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$cpGreenOnly = $cpDone.Replace('케이스 `t.ps1` (RED)', '케이스 `t.ps1` (GREEN — 회귀)')
+$ev = New-EvidenceRepo @($cpNoRed)
+$r = Invoke-CheckEvidence $cpGreenOnly $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: (RED) 케이스가 없는 task 는 RED 표지를 요구하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+
+$cpScrDone = (New-ScreenPlan $cpScreen).Replace('- [ ] **T1-1** 한다', '- [x] **T1-1** 한다')
+$cpScrTail = ' · 스크린샷 demo.png · 시나리오 메뉴→데모 열기 · 통과 조건 데모 창이 보인다'
+$cpVerifyOn = "# AGENTS.md`n`n- **Verify (앱 조작)**: ``.claude/skills/verify-demo/```n"
+function Set-EvidenceAgents([string]$Dir, [string]$Text) {
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'AGENTS.md'), $Text, (New-Object System.Text.UTF8Encoding($false)))
+}
+$ev = New-EvidenceRepo @($cpOk)
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 화면 task 의 커밋 본문에 화면 판정 줄이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'no-screen-verdict T1'
+$ev = New-EvidenceRepo @($cpOk + "`n화면: HEAD 참" + $cpScrTail)
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 화면: HEAD 참 줄이 있으면 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$ev = New-EvidenceRepo @($cpOk + "`n화면: HEAD 거짓" + $cpScrTail)
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 화면 판정이 거짓뿐이면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-false T1'
+$ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY)" + $cpScrTail)
+Set-EvidenceAgents $ev.dir $cpVerifyOn
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 검증 스킬이 있는 레포의 사유 없는 미촬영은 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-unshot T1'
+$ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY) · 사유 Launch 가 세 번 실패" + $cpScrTail)
+Set-EvidenceAgents $ev.dir $cpVerifyOn
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 검증 스킬이 있어도 사유를 단 미촬영은 note 로 낸다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note screen-unshot-reason T1'
+$ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY)" + $cpScrTail)
+Set-EvidenceAgents $ev.dir "# AGENTS.md`n`n- **Verify (앱 조작)**: 없음`n"
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: Verify 가 없음인 레포의 미촬영은 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY)" + $cpScrTail)
+Set-EvidenceAgents $ev.dir "# AGENTS.md`n`n- **Build**: ``run```n"
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: Verify 줄이 없는 레포의 미촬영은 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 }
 
 if (Test-ScenarioUnit 4) {
