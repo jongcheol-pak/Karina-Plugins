@@ -2,6 +2,9 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-14] 계획 경량화(체인 run_2dae0222 plan 3) — 번복: `plan-reviewer` 를 경량 외 항상(최소 1회) 부르던 것을 task Files 경로 합 4 이상이거나 승인 필요 항목이 있을 때만으로, 재호출을 「BLOCKER 또는 task 구조를 바꾼 MAJOR」 에서 BLOCKER 때만으로 줄였다(사용자 답 「4파일 이상·승인 항목 있을 때」 · 「1차에서 수정한 내용을 2차에서 또 검토」) · 후보 라운드의 별도 화면을 없애고 권장 답대로 plan 에 넣어 승인 화면 블록으로 보인다.
+  - 기각: plan 템플릿 필수 필드(검증 방법 절·Out of Scope 절·acceptance 착수값·케이스 표시·면제 범주) 축소 — 사용자가 풀 항목을 하나도 고르지 않았다.
+
 - [2026-11-14] push 전 로컬 게이트(체인 run_2dae0222 plan 2) — 번복: `gate-verifier` 서브에이전트·head/base 새 worktree 재빌드·판정 재사용·게이트 완화 서명·「화면 확인함」 대기를 없애고, 작성자 4번(디버깅 4-D) Build·Test 전체 통과 + clean 줄을 push 근거로 삼는다(`implement/references/push-flow.md`「push 전 확인」) — 혼자 쓰는 하니스에서 게이트가 회차마다 25~48분을 들였다(사용자 답 「바로 push + 스크린샷 보고」).
   - 번복: 구현 루프 화면 시나리오의 `(BASE 대조)`(BASE worktree 재실행) — 완전 제거, 판정은 HEAD 참/거짓 둘(사용자 답 「완전 제거」). 남는 위험: 변경 전에도 참인 화면은 계획의 통과 조건 문면으로만 가른다. 체인 끝도 게이트 대신 마지막 계획의 코디네이터 검증으로 push 하고, 게이트 FAIL 이어받기 절은 지웠다.
 
