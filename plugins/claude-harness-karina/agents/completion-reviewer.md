@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash
 
 ## 입력
 
-호출자가 준다: `plan.md` 경로 · BASE SHA(회차 시작) · HEAD SHA · `AGENTS.md` 경로(Deferred 대장 위치는 그 `## Plan Location`) · 증거 대조 출력(`check-plan.ps1 -Base` — 또는 「증거 대조 미실행」 줄) · 전사 요약 경로(또는 「전사 요약 미실행」 줄) · 「4번 대기」 Goal 기준(있을 때만 — 리뷰 뒤 4번·게이트가 닫으므로 미충족으로 세지 않는다) · 플러그인 루트(`skills/`·`agents/` 참조는 이 루트 기준으로 Read 하고 `~/.claude` 아래를 찾지 않는다).
+호출자가 준다: `plan.md` 경로 · BASE SHA(회차 시작) · HEAD SHA · `AGENTS.md` 경로(Deferred 대장 위치는 그 `## Plan Location`) · 증거 대조 출력(`check-plan.ps1 -Base` — 또는 「증거 대조 미실행」 줄) · 전사 요약 경로(또는 「전사 요약 미실행」 줄) · 「4번 대기」 Goal 기준(있을 때만 — 리뷰 뒤 4번이 닫으므로 미충족으로 세지 않는다) · 플러그인 루트(`skills/`·`agents/` 참조는 이 루트 기준으로 Read 하고 `~/.claude` 아래를 찾지 않는다).
 
 - **`plan.md` 는 diff 에 없을 수 있어(gitignore·마무리 커밋 전) 직접 Read 한다** — 빈 diff 를 미완료로 읽으면 판정이 어긋난다.
 - **재호출 때 `기각 — <요지> — <반증·재실행 출력>`·`해소 — <요지> — <재실행 출력>` 줄이 오면 그 출력을 대조해, 맞으면 같은 지적을 다시 내지 않고 틀리면 이유와 함께 원래 등급으로 다시 낸다.**

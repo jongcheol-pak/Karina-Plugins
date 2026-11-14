@@ -18,7 +18,7 @@ description: 승인된 plan.md(`## Goal` 아래 `> 승인:` 줄에 날짜가 있
 
 > A standing instruction from the user, the person you are working for. It is about how your turns end. A message with no tool call in it ends your turn, and the work stops there until you are asked to continue. The user has seen you end turns in four ways while work they asked for was still owed, and does not want any of them. One: a long summary of what was done that closes by announcing the next step and has no tool call, so the next thing never starts. Two: an offer to carry on with something unless the user would prefer otherwise, which stops to wait for an answer the user was not going to give. Three: a list of decisions for the user when, by your own account, none of them blocks the rest of the work. Four: deciding that this is a good place to report, because the turn has been long or a milestone is done. Status notes are welcome, and so are your recommendations on open decisions, but put them in the same message as your next tool call and carry on with whatever does not depend on the user's answer. If you notice yourself inviting the user to redirect you or offering to wait, delete it and do the next thing. The stops the user does want are the ones where nothing can move without them, or where the thing blocking you is deliberately protected from you. This does not override the need for confirmation on risky or destructive actions.
 
-- **이 단락이 말하는 「원하는 정지」(the stops the user does want)는 아래 「멈추는 넷」과 「목록 밖의 넷」이다** — 승인된 `plan.md`가 전체 작업의 위임장이라 루프 안은 이 단락이 전제한 무인 실행이고, 이 여덟은 루프 안 정지다(회차 끝 게이트의 보류·대기는 루프가 끝난 뒤라 따로 — `references/local-gate.md`). 그 여덟 밖에서 turn을 끝내면 이 단락이 든 넷 중 하나다.
+- **이 단락이 말하는 「원하는 정지」(the stops the user does want)는 아래 「멈추는 넷」과 「목록 밖의 넷」이다** — 승인된 `plan.md`가 전체 작업의 위임장이라 루프 안은 이 단락이 전제한 무인 실행이고, 이 여덟은 루프 안 정지다. 그 여덟 밖에서 turn을 끝내면 이 단락이 든 넷 중 하나다.
 - **사용자가 루프 도중 멈추라고 하면 여덟 정지와 별개로 그 자리에서 멈춘다 — 절차는 `references/loop-exceptions.md`「사용자 중단」** — 위 단락의 「원하는 정지」는 사용자가 지시하지 않은 정지를 가르는 것이라, 중단 지시를 그 넷 중 하나로 읽으면 받은 지시를 어긴다.
 
 ## 작업 범위
@@ -28,8 +28,8 @@ description: 승인된 plan.md(`## Goal` 아래 `> 승인:` 줄에 날짜가 있
 - **task 를 서브에이전트에 하나씩 차례로 맡기지 않는다 — 직접 실행한다** — 맡길 때마다 맥락을 다시 읽고 다시 빌드해 대기만 는다(2026-11-10 Karina 워커 — task 9개를 차례로 넘겨 380분 중 도구 실행 11분).
 - **프로젝트가 다른 패턴을 명시했으면 그것이 스킬 절차를 이긴다** — `AGENTS.md`(또는 그것이 가리키는 문서)가 아키텍처·배치·도구를 정해 두었으면 그 프로젝트의 결정이 먼저다. 스킬 절차를 그대로 밀면 그 레포에서만 이질적인 코드가 남는다.
 - **루프 진입 전 1회, `plan.md` 의 승인 표지(`^> 승인: [0-9]{4}-` 줄 — 서식 정본 `../plan/references/plan-template.md` 「Goal」)를 본다** — 없으면 승인 전 초안일 수 있다. 없으면 `references/loop-exceptions.md`「승인 표지 없음」 을 Read 한다 — 확인 방식이 이 루프의 여덟 정지와 갈리는 막힘형 호출이라 그 절에 있다.
-- **루프 진입 전 1회 `references/push-flow.md`「기본 브랜치 push」 를 Read 한다** — 브랜치를 그대로 두고 지금 브랜치에 커밋하며, 회차 끝에 `references/local-gate.md`「회차 끝 게이트」 를 거쳐 push 한다. PR 은 열지 않는다.
-- **루프 진입 전 1회 `git ls-files --others --exclude-standard` 를 `../TEMP-FILES.md` 의 `scratch\untracked-start-<레포 폴더명>-<BASE sha7>.txt` 에 쓴다(있으면 덮지 않는다)** — 4번 clean 판정이 회차 전 untracked 를 뺀다(`references/local-gate.md`「경량 면제」).
+- **루프 진입 전 1회 `references/push-flow.md`「기본 브랜치 push」 를 Read 한다** — 브랜치를 그대로 두고 지금 브랜치에 커밋하며, 회차 끝에 같은 파일 「push 전 확인」 을 거쳐 push 한다. PR 은 열지 않는다.
+- **루프 진입 전 1회 `git ls-files --others --exclude-standard` 를 `../TEMP-FILES.md` 의 `scratch\untracked-start-<레포 폴더명>-<BASE sha7>.txt` 에 쓴다(있으면 덮지 않는다)** — 4번 clean 판정이 회차 전 untracked 를 뺀다(`references/push-flow.md`「push 전 확인」).
 
 ## 자율 루프
 
@@ -57,7 +57,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 - **계획이 실제 코드와 달라 그 task가 불요해졌으면 닫고 넘어간다** — `[x] (불요 — 근거)`로 적고 근거를 Progress Log에 남긴다. 계획이 실측과 어긋나는 것은 정상이고, 그것을 발견해 처리하는 것이 실행자의 일이다.
 - **외부 계약(공개 API·스키마·UX 동작)이 갈리는 지점만 plan에서 확정돼 있어야 한다** — 그 밖의 결정은 스스로 한다.
 - **그렇게 스스로 정한 것은 `## Progress Log`에 `판정: <무엇을> — <왜> — 근거: <파일:줄 · sha7 | 없음> — 틀리면: <무엇을 치르는가>`로 그 자리에서 적는다(sha 는 커밋 뒤 채운다). 틀린 판정은 고치지 않고 `판정(정정): <원 판정> → <새 판정> — …` 새 줄로, 버린 접근도 판정 줄로 남긴다** — 최종 보고가 이 줄을 전량 옮겨 싣는 자리라, 미루면 근거가 흐려지고 빠지면 사용자가 되돌릴 기회를 못 가진 결정이 남는다. 고쳐 쓰면 번복 이력이 사라진다.
-- **눈으로 봐야 하는 것은 `HUMAN-VERIFY`로 표기하고 계속 간다 — `AGENTS.md` 의 `Verify (앱 조작)` 줄이 검증 스킬을 가리키면 task 의 `**화면**` 줄(없으면 그 SKILL.md 「변경 검증」 절)대로 먼저 조작하고(절차·`(BASE 대조)` 판정은 `references/screen-scenarios.md`「화면 시나리오 실행」), 그래도 사람 눈이 필요한 것만 사유와 함께 표기한다. 명령·스크립트로 돌릴 수 있는 확인은 표기하지 않고 돌린다** — GUI 조작감·시각 확인은 최종 보고에서 사용자가 한 번에 확인한다. 이 표기는 정직한 보고 수단이지 정지 신호가 아니다.
+- **눈으로 봐야 하는 것은 `HUMAN-VERIFY`로 표기하고 계속 간다 — `AGENTS.md` 의 `Verify (앱 조작)` 줄이 검증 스킬을 가리키면 task 의 `**화면**` 줄(없으면 그 SKILL.md 「변경 검증」 절)대로 먼저 조작하고(절차·판정은 `references/screen-scenarios.md`「화면 시나리오 실행」), 그래도 사람 눈이 필요한 것만 사유와 함께 표기한다. 명령·스크립트로 돌릴 수 있는 확인은 표기하지 않고 돌린다** — GUI 조작감·시각 확인은 최종 보고에서 사용자가 한 번에 확인한다. 이 표기는 정직한 보고 수단이지 정지 신호가 아니다.
 - **컨텍스트가 차 가도 멈추지 않는다** — 현재 task를 끝내고 `plan.md`에 상태를 쓴 뒤 계속 진행한다. 압축이 일어나면 첫 행동은 이 SKILL.md와 `plan.md`를 다시 읽는 것이다 — **`AGENTS.md`는 컨텍스트에 전문이 없을 때만 읽는다.** CLAUDE.md 가 없으면 Claude Code 가, 있으면 SessionStart 가(16KB 이하일 때만) 전문을 싣고, `compact` 뒤에도 다시 싣는다.
 
 단 **plan 승인이 덮지 않는 변경**(되돌릴 수 없는 것 — 환경변수/시크릿·DB 데이터·외부 호출·새 패키지 소스·외부 공개 API 삭제나 호환을 깨는 변경 · 안내 경로로 풀리지 않는 hook 차단)이나 plan 에 없던 다른 변경이 필요해지면 **`references/loop-exceptions.md`「plan 밖 변경」 을 Read 한다** — 멈출지 진행할지가 거기서 갈린다.
@@ -80,7 +80,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 |---|---|---|
 | 4 | 전체 빌드 + 전체 테스트 + `Lint/Format` 검사 모드 + Goal 성공 기준 실측 | 모든 기준이 참이고 출력이 남는다 |
 
-- **게이트를 도는 회차면 4번에서 `gate-verifier` 가 반드시 돌릴 명령(`AGENTS.md` 빌드·테스트·검증 매핑 명령)을 빼고, 그 명령이 측정 방법인 Goal 기준은 「게이트 대기」 로 둔다 — 그 회차는 4번 시점에 중계 모드가 아니고 · 지금 브랜치가 기본 브랜치(또는 「기본 브랜치 미정」)이고 · push 범위가 비지 않았고 · `references/local-gate.md`「경량 면제」 의 면제·중간 단계 밖 회차다. 닫는 것은 게이트다(같은 파일 「보고」)** — 같은 결정적 스위트가 4번과 게이트에서 두 번 돈다.
+- **4번이 Build·Test 전체를 통과한 직후 clean 이면 Progress Log 에 `4번 검증: <full SHA> · clean` 한 줄을 남긴다 — clean 정의와 쓰임은 `references/push-flow.md`「push 전 확인」** — push 의 근거가 이 줄이고, 없으면 push 직전에 같은 스위트를 다시 돈다.
 
 - **새 동작을 재는 신규 케이스는 먼저 쓰고 돌려 RED 를 본 뒤 구현하고, 구현 뒤 GREEN 을 본다** — 구현을 본 뒤 쓴 케이스는 그 구현의 값·가정을 기대값으로 옮기기 쉽고, 그런 케이스는 통과해도 재는 것이 없다. 구현 전에는 케이스가 기댈 구현이 없다. 이것은 새 단계가 아니라 위 표의 2번(테스트)이 구현보다 먼저 시작되는 것이고, 루프에서는 「2. 구현」의 첫머리다.
   - **구현 전이라 컴파일조차 안 되면 스텁을 먼저 둔다** — 시그니처만 두고 몸체는 예외를 던지게 해, assertion 이 실패하는 것을 RED 로 본다. 컴파일 실패는 케이스가 그 동작을 재는지 증명하지 못한다.
@@ -109,7 +109,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ## 회차 끝
 
-- **4번 뒤 단계(완료 시각·plan 파일 커밋·로컬 게이트·push)는 `references/final-review.md`「완료 순서」, `completion-reviewer` 호출은 「절차」 대로다** — 리뷰가 4번 앞이라 리뷰 수정까지 4번이 잰다. 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
+- **4번 뒤 단계(완료 시각·plan 파일 커밋·push 전 확인·push)는 `references/final-review.md`「완료 순서」, `completion-reviewer` 호출은 「절차」 대로다** — 리뷰가 4번 앞이라 리뷰 수정까지 4번이 잰다. 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
 - **완료 때 함정 판정과 보류·기각·번복 결정 기록은 같은 파일 「함정 기록·결정 기록」 대로 레포에 한다(기준은 `../REPO-CONVENTIONS.md`「쓰기」·`../REPO-DECISIONS.md`「쓰기」)** — 결정 기록의 배치 시점은 그 절이 정한다.
 - **`## Deferred / Follow-up`의 항목은 전부 판정한다 — 판정과 대장 이관은 같은 파일 「Deferred 판정」** — 판정 없이 남긴 항목은 `plan.md` 와 함께 덮어써진다.
 - **일부 task를 남긴 채 완료라고 보고하지 않는다** — 남은 것이 있으면 그것은 진행 중이거나 중단이지 완료가 아니다.
