@@ -131,6 +131,16 @@ try {
     Assert-Case -Name 'task-audit: --exact 가 붙은 부분 필터 → 경고' -R $r -ExpectExit 0 -ExpectContains $taSubCmd
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- cargo test -- doc_audit → ok')
     Assert-Case -Name 'task-audit: 필터 앞부분이 감사 명령과 다른 cargo 실행 → 경고' -R $r -ExpectExit 0 -ExpectContains $taSubCmd
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- cargo test --lib --no-fail-fast -- _audit → ok')
+    Assert-Case -Name 'task-audit: 대상 선택 뒤에 --no-fail-fast 가 낀 부분 필터 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- cargo test --no-fail-fast --lib -- doc_audit → ok')
+    Assert-Case -Name 'task-audit: 대상 선택 앞에 --no-fail-fast 가 낀 부분 필터 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- cargo test --bin karina --no-fail-fast -- doc_audit → ok')
+    Assert-Case -Name 'task-audit: 대상 선택이 다른(--bin) 부분 필터 → 경고' -R $r -ExpectExit 0 -ExpectContains $taSubCmd
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- cargo test --no-fail-fast -- doc_audit → ok')
+    Assert-Case -Name 'task-audit: 실행 플래그만 있고 --lib 이 없는 부분 필터 → 경고' -R $r -ExpectExit 0 -ExpectContains $taSubCmd
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- cargo test --lib && cargo test -- doc_audit → ok')
+    Assert-Case -Name 'task-audit: 명령 구분자 앞의 --lib 은 뒤 실행의 대상 선택이 아니다 → 경고' -R $r -ExpectExit 0 -ExpectContains $taSubCmd
 } finally {
     if (Test-Path $taRoot) { Remove-Item $taRoot -Recurse -Force -ErrorAction SilentlyContinue }
 }

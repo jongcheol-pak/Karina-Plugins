@@ -26,12 +26,35 @@ function Test-TaskAuditCommandInMessage([string]$Message, [string]$Command) {
     return [regex]::IsMatch($msg, $rx, [System.Text.RegularExpressions.RegexOptions]::Multiline)
 }
 
+$script:TaskAuditTargetFlags = @('--lib', '--bins', '--tests', '--examples', '--benches', '--all-targets', '--doc', '--workspace')
+$script:TaskAuditTargetValueFlags = @('--bin', '--test', '--example', '--bench', '-p', '--package')
+
+function Get-TaskAuditTargetKey([string]$Flags) {
+    $set = New-Object 'System.Collections.Generic.SortedSet[string]' ([System.StringComparer]::Ordinal)
+    $toks = @($Flags -split ' ' | Where-Object { $_ })
+    for ($i = 0; $i -lt $toks.Count; $i++) {
+        $t = $toks[$i]
+        $eq = $t.IndexOf('=')
+        $name = if ($eq -gt 0) { $t.Substring(0, $eq) } else { $t }
+        if ($script:TaskAuditTargetFlags -ccontains $name) { [void]$set.Add($name); continue }
+        if ($script:TaskAuditTargetValueFlags -cnotcontains $name) { continue }
+        $value = ''
+        if ($eq -gt 0) { $value = $t.Substring($eq + 1) }
+        elseif ($i + 1 -lt $toks.Count) { $i++; $value = $toks[$i] }
+        if ($name -eq '-p') { $name = '--package' }
+        [void]$set.Add("$name $value")
+    }
+    return ($set -join ' ')
+}
+
 function Test-TaskAuditFilterCovered([string]$Message, [string]$Command) {
-    $cm = [regex]::Match(($Command -replace '\s+', ' ').Trim(), '^(?<pre>cargo test\b.*?) -- (?<f>[^\s-]\S*)$')
+    $cm = [regex]::Match(($Command -replace '\s+', ' ').Trim(), '^cargo test(?<pre>(?: \S+)*?) -- (?<f>[^\s-]\S*)$')
     if (-not $cm.Success) { return $false }
+    $want = Get-TaskAuditTargetKey $cm.Groups['pre'].Value
     $msg = ($Message -replace '\r', '') -replace '[ \t]+', ' '
-    $rx = [regex]::Escape($cm.Groups['pre'].Value + ' -- ') + '(?<g>[^\s`"'']+)(?=$|[`"'']| (?:\d?>|\||;|&&|→))'
+    $rx = 'cargo test(?<pre>(?: (?!--(?: |$))(?![&|;>→]|\d>)[^\s`"'']+)*) -- (?<g>[^\s`"'']+)(?=$|[`"'']| (?:\d?>|\||;|&&|→))'
     foreach ($m in [regex]::Matches($msg, $rx, [System.Text.RegularExpressions.RegexOptions]::Multiline)) {
+        if ((Get-TaskAuditTargetKey $m.Groups['pre'].Value) -cne $want) { continue }
         if ($cm.Groups['f'].Value.Contains($m.Groups['g'].Value)) { return $true }
     }
     return $false
