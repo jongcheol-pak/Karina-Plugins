@@ -163,6 +163,11 @@ $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('f-plain.ps1', 'f-ctx.ps1') 
 Assert-Case -Name "hook-dispatch: 도구 이벤트 평문 제외 — PreToolUse 평문은 컨텍스트로 가지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'PLAIN-MARK'
 $r = Invoke-Hook $hdFakeDispatch $hdUpeIn -Arguments @('f-plain.ps1', 'f-ctx.ps1') -SplitStreams
 Assert-Case -Name "hook-dispatch: UserPromptExpansion 평문은 컨텍스트로 실린다" -R @{ code = $r.code; out = [string](Get-HdCtx $r).additionalContext } -ExpectExit 0 -ExpectContains 'PLAIN-MARK'
+'Write-Output ''M1''; Write-Output 7; Write-Output "M3`n`n"' | Set-Content -LiteralPath (Join-Path $hdFake 'f-multi.ps1') -Encoding UTF8
+$r = Invoke-Hook $hdFakeDispatch $hdSsIn -Arguments @('f-multi.ps1') -SplitStreams
+$hdGot = [string](Get-HdCtx $r).additionalContext
+$hdNl = [Environment]::NewLine
+Assert-Case -Name "hook-dispatch: 출력 받기 고정 — 여러 출력(문자열·숫자·끝 줄바꿈)은 줄바꿈으로 이어지고 끝 줄바꿈은 걷힌다" -R @{ code = $r.code; out = "eq=$($hdGot -ceq ('M1' + $hdNl + '7' + $hdNl + 'M3'))" } -ExpectExit 0 -ExpectContains 'eq=True'
 $r = Invoke-Hook $hdFakeDispatch $hdSsIn -Arguments @('f-plain.ps1', 'f-plain.ps1') -SplitStreams
 Assert-Case -Name "hook-dispatch: 평문만 낸 묶음의 이벤트 이름은 입력값이다" -R @{ code = $r.code; out = "event=$([string](Get-HdCtx $r).hookEventName)" } -ExpectExit 0 -ExpectContains 'event=SessionStart'
 
