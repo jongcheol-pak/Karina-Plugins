@@ -1542,6 +1542,7 @@ def check_ledger_evidence(ledger):
 
 # 축 ⑯ 「복제 사본 동기」가 대조하는 묶음 — 원본 지정·사본을 둔 이유는 `harness-consistency-rationale.md` 의 ⑯ 항.
 #   묶음 = (이름, 종류, ((파일, 함수·변수 이름), …)) 이고 첫 쌍이 원본이다. heredoc 은 파일마다 변수 이름이 다르다.
+#   파일은 `scripts/` 기준 이름이고, `/` 가 들어 있으면 하니스 루트 기준 경로다(스킬 스크립트).
 #   ⚠ 이 목록을 늘리려면 복제를 늘린다는 뜻이다 — `skills/DESIGN.md` 2절의 예외 문단을 먼저 읽는다.
 COPY_SYNC_GROUPS = (
     ("Split-TopLevel", "function",
@@ -1562,6 +1563,10 @@ COPY_SYNC_GROUPS = (
      (("guard-harness.ps1", "installedAssetRx"), ("guard-bash.ps1", "installedAssetRx"))),
     ("Test-WorktreeGitFile", "function",
      (("guard-write.ps1", "Test-WorktreeGitFile"), ("plan-round.ps1", "Test-WorktreeGitFile"))),
+    ("임시 폴더 루트", "function",
+     (("session-context.ps1", "Get-KarinaTempRoot"), ("timed-git.ps1", "Get-KarinaTempRoot"),
+      ("skills/implement/scripts/screen-cover.ps1", "Get-KarinaTempRoot"),
+      ("skills/plan/scripts/check-plan.ps1", "Get-KarinaTempRoot"))),
 )
 
 
@@ -1612,14 +1617,14 @@ def check_copy_sync():
 
     함수는 주석 줄을 뺀 본문을, 리터럴은 작은따옴표 값을 그대로 비교한다. 항목 수는 읽어 낸 사본 수다.
     """
-    scripts = os.path.join(ROOT, "scripts")
     issues, n = [], 0
     for group, kind, members in COPY_SYNC_GROUPS:
         got = []
         for fname, name in members:
-            path = os.path.join(scripts, fname)
+            rel = fname if "/" in fname else "scripts/" + fname
+            path = os.path.join(ROOT, *rel.split("/"))
             if not os.path.exists(path):
-                issues.append("복제 사본 동기: `%s` 묶음 — 파일 없음: scripts/%s" % (group, fname))
+                issues.append("복제 사본 동기: `%s` 묶음 — 파일 없음: %s" % (group, rel))
                 continue
             text = open(path, encoding="utf-8-sig").read()
             if kind == "function":

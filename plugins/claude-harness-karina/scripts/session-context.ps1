@@ -21,10 +21,14 @@ foreach ($d in $staleMarkerDirs) {
 }
 
 # [임시 폴더 정리] karina-plugin 하위 폴더의 기한 지난 항목을 시간 상한 안에서 걷는다 — 근거는 `rules/session-context-rationale.md` §40
+function Get-KarinaTempRoot {
+    $base = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
+    if (-not $base) { $base = [System.IO.Path]::GetTempPath() }
+    return (Join-Path $base 'karina-plugin')
+}
+
 function Invoke-KarinaTempSweep {
-    $tempBase = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
-    if (-not $tempBase) { $tempBase = [System.IO.Path]::GetTempPath() }
-    $root = Join-Path $tempBase 'karina-plugin'
+    $root = Get-KarinaTempRoot
     if (-not (Test-Path -LiteralPath $root -PathType Container)) { return }
     $budgetMs = 2000
     if ($env:KARINA_TEMP_SWEEP_BUDGET_MS -match '^\d+$') { $budgetMs = [int]$env:KARINA_TEMP_SWEEP_BUDGET_MS }

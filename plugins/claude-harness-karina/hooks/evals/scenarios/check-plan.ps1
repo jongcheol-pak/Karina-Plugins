@@ -440,6 +440,17 @@ try {
 Assert-Case -Name "check-plan Plan check: 명령이 성공하면 로그 이름 없는 실행 표지를 내고 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: ran plan-check exit 0' -ExpectNotContains 'log check-plan-'
 Assert-Case -Name "check-plan Plan check: 통과하면 로그 파일을 남기지 않는다" -R @{ code = 0; out = ('pass-logs=' + $cpPcPassLogs) } -ExpectExit 0 -ExpectContains 'pass-logs=0'
 Assert-Case -Name "check-plan Plan check: 실패하면 로그 파일을 남긴다" -R @{ code = $rFail.code; out = ('fail-logs=' + ($cpPcFailLogs - $cpPcPassLogs)) } -ExpectExit 1 -ExpectContains 'fail-logs=1'
+$cpPcAlt = Join-Path $cpRoot 'pc-tmpdir'
+New-Item -ItemType Directory -Path $cpPcAlt -Force | Out-Null
+$env:TEMP = $cpPcIso; $env:TMP = $cpPcIso; $env:TMPDIR = $cpPcAlt
+try {
+    $rAlt = Invoke-CheckPlan $cpBase (New-PlanCheckDir 'exit 3')
+    $cpPcAltLogs = @(Get-ChildItem -LiteralPath (Join-Path (Join-Path $cpPcAlt 'karina-plugin') 'scratch') -Filter 'check-plan-*.log' -ErrorAction SilentlyContinue).Count
+    $cpPcIsoLogs = @(Get-ChildItem -LiteralPath (Join-Path (Join-Path $cpPcIso 'karina-plugin') 'scratch') -Filter 'check-plan-*.log' -ErrorAction SilentlyContinue).Count
+} finally {
+    $env:TEMP, $env:TMP, $env:TMPDIR = $cpPcTemp
+}
+Assert-Case -Name "check-plan Plan check: TMPDIR 가 TEMP 와 다르면 실패 로그를 TMPDIR 아래에 남긴다" -R @{ code = $rAlt.code; out = ('tmpdir-logs=' + $cpPcAltLogs + ' temp-new=' + ($cpPcIsoLogs - $cpPcFailLogs)) } -ExpectExit 1 -ExpectContains 'tmpdir-logs=1 temp-new=0'
 $r = Invoke-CheckPlan $cpBase (New-PlanCheckDir 'exit 4' -Git -Sub 'sub/deep')
 Assert-Case -Name "check-plan Plan check: plan 이 하위 폴더면 git 최상위까지 올라가 AGENTS.md 를 찾는다" -R $r -ExpectExit 1 -ExpectContains 'plan-check exit 4'
 $r = Invoke-CheckPlan $cpBase (New-PlanCheckDir 'if (-not (Test-Path -LiteralPath $env:KARINA_PLAN_PATH)) { exit 5 }; if ((Split-Path -Leaf $env:KARINA_PLAN_PATH) -ne ''plan.md'') { exit 6 }')

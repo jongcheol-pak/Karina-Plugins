@@ -35,10 +35,14 @@ if ($Now) {
     $nowValue = $parsed
 }
 
+function Get-KarinaTempRoot {
+    $base = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
+    if (-not $base) { $base = [System.IO.Path]::GetTempPath() }
+    return (Join-Path $base 'karina-plugin')
+}
+
 if (-not $StateDir) {
-    $tempBase = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
-    if (-not $tempBase) { $tempBase = [System.IO.Path]::GetTempPath() }
-    $StateDir = Join-Path (Join-Path $tempBase 'karina-plugin') 'cover'
+    $StateDir = Join-Path (Get-KarinaTempRoot) 'cover'
 }
 New-Item -ItemType Directory -Path $StateDir -Force | Out-Null
 $statePath = Join-Path $StateDir 'cover-state.json'

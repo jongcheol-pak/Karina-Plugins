@@ -55,12 +55,16 @@ public static class KarinaTimedGitTree {
 }
 '@
 
+function Get-KarinaTempRoot {
+    $base = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
+    if (-not $base) { $base = [System.IO.Path]::GetTempPath() }
+    return (Join-Path $base 'karina-plugin')
+}
+
 function Import-TimedGitTree {
     if ('KarinaTimedGitTree' -as [type]) { return $true }
     try {
-        $root = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
-        if (-not $root) { $root = [System.IO.Path]::GetTempPath() }
-        $dir = Join-Path (Join-Path $root 'karina-plugin') 'cache'
+        $dir = Join-Path (Get-KarinaTempRoot) 'cache'
         $sha = [System.Security.Cryptography.SHA256]::Create()
         try { $hash = -join ($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($script:TimedGitTreeSource))[0..7] | ForEach-Object { $_.ToString('x2') }) } finally { $sha.Dispose() }
         $final = Join-Path $dir ('timed-git-tree-{0}-{1}.{2}-{3}.dll' -f $PSVersionTable.PSEdition, $PSVersionTable.PSVersion.Major, $PSVersionTable.PSVersion.Minor, $hash)

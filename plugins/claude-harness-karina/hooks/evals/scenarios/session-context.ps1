@@ -918,6 +918,16 @@ if (Test-HookSelected @('session-context')) {
         $env:KARINA_TEMP_SWEEP_BUDGET_MS = '0'
         $null = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scTsProj } | ConvertTo-Json -Compress)
         Assert-Case -Name "session-context: karina-plugin 임시 정리 — 시간 상한 0 이면 아무것도 지우지 않음" -R @{ code = ([int](-not (Test-Path -LiteralPath $scTsBudget))); out = '' } -ExpectExit 0
+        $scTsAlt = Join-Path $work 'sc-tempsweep-tmpdir'
+        $scTsAltOld = Join-Path $scTsAlt 'karina-plugin\scratch\alt-old.ps1'
+        New-Item -ItemType Directory (Split-Path -Parent $scTsAltOld) -Force | Out-Null
+        Set-Content -LiteralPath $scTsAltOld -Value ''
+        (Get-Item -LiteralPath $scTsAltOld).LastWriteTime = (Get-Date).AddDays(-8)
+        $scTsTempOld = New-ScTsItem -Rel 'scratch\temp-old.ps1' -DaysAgo 8
+        $env:KARINA_TEMP_SWEEP_BUDGET_MS = $null; $env:TMPDIR = $scTsAlt
+        $null = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scTsProj } | ConvertTo-Json -Compress)
+        Assert-Case -Name "session-context: karina-plugin 임시 정리 — TMPDIR 가 TEMP 와 다르면 TMPDIR 아래를 걷고 TEMP 아래는 둔다" -R @{ code = 0; out = "alt=$(Test-Path -LiteralPath $scTsAltOld) temp=$(Test-Path -LiteralPath $scTsTempOld)" } -ExpectExit 0 -ExpectContains 'alt=False temp=True'
+        Remove-Item -Recurse -Force $scTsAlt -ErrorAction SilentlyContinue
     } finally {
         $env:TEMP = $scTsSaved.TEMP; $env:TMP = $scTsSaved.TMP; $env:TMPDIR = $scTsSaved.TMPDIR; $env:USERPROFILE = $scTsSaved.P; $env:KARINA_TEMP_SWEEP_BUDGET_MS = $scTsSaved.B
     }

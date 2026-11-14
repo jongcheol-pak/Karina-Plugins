@@ -5,7 +5,7 @@
 ## 루트
 
 - **모든 임시 산출물은 `%TEMP%\karina-plugin\` 아래 하위 폴더에 둔다 — 임시 폴더 바로 아래에 파일·폴더를 만들지 않는다.**
-- **루트는 Python 이면 `os.path.join(tempfile.gettempdir(), 'karina-plugin')` 이다. PowerShell 은 `TMPDIR`→`TEMP`→`TMP` 순으로 있는 폴더를 찾고, 없을 때만 `[IO.Path]::GetTempPath()` 를 쓴다** — `GetTempPath()` 는 Windows 에서 `TMP` 를 먼저 읽고 Python 은 `TEMP` 를 먼저 읽어, 두 값이 다른 환경에서는 스크립트가 쓰는 폴더와 정리가 보는 폴더가 갈린다.
+- **루트는 Python 이면 `os.path.join(tempfile.gettempdir(), 'karina-plugin')` 이다. PowerShell 은 `TMPDIR`→`TEMP`→`TMP` 순으로 있는 폴더를 찾고, 없을 때만 `[IO.Path]::GetTempPath()` 를 쓴다 — 이 순서는 `Get-KarinaTempRoot` 함수(`karina-plugin` 까지 붙여 돌려준다)가 구현하고, 그 함수는 쓰는 스크립트마다 같은 본문의 사본으로 두며 `evals/check-harness-consistency.py` 「복제 사본 동기」 축이 대조한다(`skills/DESIGN.md` 2절 복제 예외 ②)** — `GetTempPath()` 는 Windows 에서 `TMP` 를 먼저 읽고 Python 은 `TEMP` 를 먼저 읽어, 두 값이 다른 환경에서는 스크립트가 쓰는 폴더와 정리가 보는 폴더가 갈린다.
 - **쓰기 전에 하위 폴더를 만든다**(Python `os.makedirs(..., exist_ok=True)` · PowerShell `New-Item -ItemType Directory -Force`). 처음 쓰는 세션에는 폴더가 없다.
 - **plan·커밋 메시지에 싣는 경로는 `%TEMP%\karina-plugin\…` 로 적는다** — 사용자 홈 경로가 커밋과 원격에 남지 않게 한다.
 

@@ -428,13 +428,17 @@ function Find-PlanCheck([string]$PlanFile) {
     return $null
 }
 
+function Get-KarinaTempRoot {
+    $base = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
+    if (-not $base) { $base = [System.IO.Path]::GetTempPath() }
+    return (Join-Path $base 'karina-plugin')
+}
+
 $planFile = (Resolve-Path -LiteralPath $PlanPath).Path
 $pc = Find-PlanCheck $planFile
 if ($pc) {
     $utf8 = New-Object System.Text.UTF8Encoding($false)
-    $tmp = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
-    if (-not $tmp) { $tmp = [System.IO.Path]::GetTempPath() }
-    $logDir = Join-Path (Join-Path $tmp 'karina-plugin') 'scratch'
+    $logDir = Join-Path (Get-KarinaTempRoot) 'scratch'
     $logName = 'check-plan-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '.log'
     $limit = 120
     $n = 0
