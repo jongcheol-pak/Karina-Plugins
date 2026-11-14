@@ -29,7 +29,11 @@
 #   task-item T<N>               하위 항목이 「- [ ]·[x]·[X]·[/]·[~]·[-]」 뒤 (불요 …) 를 지나 **T<N>-<M>** 가 아니거나 번호가 제목과 다름
 #   task-line T<N> <줄>          task 에 files·acceptance·verify 줄 없음
 #   screen-line T<N> <요소>      「- **화면**:」 줄에 scenario(시나리오)·screenshot(스크린샷)·predicate(통과 조건) 조각이 없거나 값이 빔
-#                                (화면 줄이 없는 task 는 재지 않는다 — 있어야 할 task 인지는 plan-reviewer 가 본다)
+#                                (화면 줄이 없는 task 는 재지 않는다 — 있어야 할 task 인지는 아래 screen-missing 과 plan-reviewer 가 본다)
+#   screen-missing T<N>          AGENTS.md(아래 Plan check 와 같은 탐색)의 「- **UI 경로**: `패턴` · …」 에 Files 줄 백틱 경로가 하나라도
+#                                맞는데(-like · 패턴은 그 AGENTS.md 폴더 기준 — plan 폴더가 그 아래면 사이 경로를 붙여 맞춘다)
+#                                「- **화면**:」 줄도 Files 줄의 「[화면 없음 — <사유>]」 표지도 없음(사유가 빈 표지는 표지가 아니다)
+#                                (UI 경로 줄이 없고 Verify (앱 조작) 이 스킬을 가리키면 「check-plan: skip screen-missing no-ui-path」)
 #   plan-check exit <n> log <파일>  plan 폴더에서 git 최상위까지 올라가며 찾은 AGENTS.md 의 「- **Plan check**: `<명령>`」 이
 #                                exit 0 이 아님 — <줄> 은 AGENTS.md 의 줄 · 출력은 임시 폴더 karina-plugin\scratch\<파일>
 #   plan-check timeout <s> log <파일>  그 명령이 상한(KARINA_PLAN_CHECK_TIMEOUT_SEC, 기본 120초)을 넘음
@@ -154,6 +158,22 @@ function Get-AgentsFile([string]$PlanFile) {
     return $null
 }
 
+# AGENTS.md 의 「- **<라벨>**: 값」 줄 값(없으면 $null).
+function Get-AgentsLineValue($Agents, [string]$Label) {
+    if (-not $Agents) { return $null }
+    $rx = '^- \*\*' + [regex]::Escape($Label) + '\*\*:\s*(.*)$'
+    foreach ($al in $Agents.Lines) {
+        $m = [regex]::Match($al, $rx)
+        if ($m.Success) { return $m.Groups[1].Value.Trim() }
+    }
+    return $null
+}
+# Verify (앱 조작) 값이 있고 「없음」 이 아니면 검증 스킬이 있다.
+function Test-VerifySkill($Agents) {
+    $value = Get-AgentsLineValue $Agents ('Verify (' + (Get-Text @(0xC571, 0x20, 0xC870, 0xC791)) + ')')    # Verify (앱 조작)
+    return [bool]$value -and ($value -notmatch ('^\W*' + (Get-Text @(0xC5C6, 0xC74C))))    # 없음
+}
+
 # ---- 증거 대조 (-Base) — [x] 로 닫힌 task 마다 BASE..HEAD 의 T<N> 커밋 본문에 검증 기록이 있는가 ----
 if ($Base) {
     # PS 5.1 은 네이티브 출력을 콘솔 코드페이지로 디코딩해 커밋의 한글을 깨뜨린다. 콘솔 없는 호스트에서는 setter 가 던진다.
@@ -180,19 +200,7 @@ if ($Base) {
     $screenFalseRx = $screenHead + 'HEAD\s*' + (Get-Text @(0xAC70, 0xC9D3))    # 거짓
     $unshotRx = $screenHead + (Get-Text @(0xBBF8, 0xCD2C, 0xC601)) + '\(HUMAN-VERIFY\)(.*)$'    # 미촬영(HUMAN-VERIFY)
     $reasonRx = [char]0xB7 + '\s*' + (Get-Text @(0xC0AC, 0xC720)) + '\s+\S'    # · 사유 <…>
-    $verifySkill = $false
-    $agentsFile = Get-AgentsFile (Resolve-Path -LiteralPath $PlanPath).Path
-    if ($agentsFile) {
-        $verifyRx = '^- \*\*Verify \(' + (Get-Text @(0xC571, 0x20, 0xC870, 0xC791)) + '\)\*\*:\s*(.*)$'    # Verify (앱 조작)
-        foreach ($al in $agentsFile.Lines) {
-            $vm = [regex]::Match($al, $verifyRx)
-            if ($vm.Success) {
-                $value = $vm.Groups[1].Value.Trim()
-                $verifySkill = [bool]$value -and ($value -notmatch ('^\W*' + (Get-Text @(0xC5C6, 0xC74C))))    # 없음
-                break
-            }
-        }
-    }
+    $verifySkill = Test-VerifySkill (Get-AgentsFile (Resolve-Path -LiteralPath $PlanPath).Path)
     $versionRx = '^\s*' + (Get-Text @(0xC124, 0xC815)) + '\s*:\s*v(\d+\.\d+\.\d+)\s*' + [char]0x2014    # 설정: v<버전> —
     $taskBlocks = @(Get-TaskBlocks)
     $lastText = if ($taskBlocks.Count) { (@($taskBlocks[-1].Lines | ForEach-Object { $_.Text }) -join "`n") } else { '' }
@@ -352,6 +360,22 @@ if (Find-Section $tasksTitle) {
         'screenshot' = Get-Text @(0xC2A4, 0xD06C, 0xB9B0, 0xC0F7)          # 스크린샷
         'predicate' = Get-Text @(0xD1B5, 0xACFC, 0x20, 0xC870, 0xAC74)     # 통과 조건
     }
+    # UI 경로 — 패턴은 AGENTS.md 폴더 기준이라 Files 경로(plan 폴더 기준) 앞에 두 폴더 사이 경로를 붙여 맞춘다.
+    $uiAgents = Get-AgentsFile (Resolve-Path -LiteralPath $PlanPath).Path
+    $uiValue = Get-AgentsLineValue $uiAgents ('UI ' + (Get-Text @(0xACBD, 0xB85C)))    # UI 경로
+    $uiPatterns = @()
+    $uiPrefix = ''
+    if ($uiValue) {
+        $uiPatterns = @([regex]::Matches($uiValue, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value.Replace('\', '/') })
+        $planDir = [System.IO.Path]::GetFullPath((Split-Path -Parent (Resolve-Path -LiteralPath $PlanPath).Path)).TrimEnd('\', '/')
+        $agentsDir = [System.IO.Path]::GetFullPath($uiAgents.Dir).TrimEnd('\', '/')
+        if ($planDir.Length -gt $agentsDir.Length -and $planDir.StartsWith($agentsDir, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $uiPrefix = $planDir.Substring($agentsDir.Length + 1).Replace('\', '/') + '/'
+        }
+    } elseif (Test-VerifySkill $uiAgents) {
+        Write-Output 'check-plan: skip screen-missing no-ui-path'
+    }
+    $noScreenRx = '\[' + (Get-Text @(0xD654, 0xBA74)) + '\s+' + (Get-Text @(0xC5C6, 0xC74C)) + '\s*' + [char]0x2014 + '\s*[^\]\s]'    # [화면 없음 — <사유>]
     foreach ($b in $blocks) {
         $tag = 'T' + $b.Id
         $items = 0
@@ -383,6 +407,13 @@ if (Find-Section $tasksTitle) {
                 if (-not @($pieces | Where-Object { (Test-Prefix $_ $head) -and $_.Substring($head.Length).Trim() }).Count) {
                     Add-Problem $s.N ('screen-line ' + $tag + ' ' + $key)
                 }
+            }
+        }
+        if ($files -and $uiPatterns.Count -and -not [regex]::IsMatch($files.Text, $noScreenRx) -and
+            -not @($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabel }).Count) {
+            $paths = @([regex]::Matches($files.Text, '`([^`]+)`') | ForEach-Object { $uiPrefix + $_.Groups[1].Value.Replace('\', '/') })
+            if (@($paths | Where-Object { $p = $_; @($uiPatterns | Where-Object { $p -like $_ }).Count }).Count) {
+                Add-Problem $files.N ('screen-missing ' + $tag)
             }
         }
     }

@@ -188,6 +188,40 @@ Assert-Case -Name "check-plan: 화면 줄의 라벨만 있고 값이 빈 요소�
 $r = Invoke-CheckPlan (New-ScreenPlan "``````text`n- **화면**: 시나리오만 있다`n``````")
 Assert-Case -Name "check-plan: 펜스 안의 화면 줄은 판정하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 
+function New-UiPlanDir([string]$Agents, [string]$Sub = '', [switch]$Git) {
+    $script:cpSeq++
+    $root = Join-Path $cpRoot ('ui' + $script:cpSeq)
+    New-Item -ItemType Directory -Path $root -Force | Out-Null
+    if ($Git) { & git -C $root init -q 2>$null }
+    if ($Agents) { [System.IO.File]::WriteAllText((Join-Path $root 'AGENTS.md'), $Agents, (New-Object System.Text.UTF8Encoding($false))) }
+    $dir = if ($Sub) { Join-Path $root $Sub } else { $root }
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    return $dir
+}
+$cpUiAgents = "# AGENTS.md`n`n- **UI 경로**: ``ui/*```n"
+$cpUiFiles = '- **Files**: `ui/main.xaml` · `a.ps1`'
+$cpUiPlan = $cpBase.Replace('- **Files**: `a.ps1`', $cpUiFiles)
+$r = Invoke-CheckPlan $cpUiPlan (New-UiPlanDir $cpUiAgents)
+Assert-Case -Name "check-plan: UI 경로 파일을 고치는데 화면 줄이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-missing T1'
+$r = Invoke-CheckPlan ($cpBase.Replace('(RED)', '(RED) · [면제 ①] `ui/help.xaml` 도움말')) (New-UiPlanDir $cpUiAgents)
+Assert-Case -Name "check-plan: [면제 뒤에 적힌 UI 경로 파일도 화면 줄을 요구한다" -R $r -ExpectExit 1 -ExpectContains 'screen-missing T1'
+$r = Invoke-CheckPlan ($cpUiPlan.Replace('(RED)', '(RED) [화면 없음]')) (New-UiPlanDir $cpUiAgents)
+Assert-Case -Name "check-plan: 사유 없는 [화면 없음] 은 면제 표지가 아니다" -R $r -ExpectExit 1 -ExpectContains 'screen-missing T1'
+$r = Invoke-CheckPlan $cpBase (New-UiPlanDir "# AGENTS.md`n`n- **Verify (앱 조작)**: ``.claude/skills/verify-demo/```n")
+Assert-Case -Name "check-plan: 검증 스킬이 있는데 UI 경로가 없으면 건너뜀을 표시한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: skip screen-missing no-ui-path'
+$r = Invoke-CheckPlan ($cpUiPlan.Replace('- **Acceptance**:', ($cpScreen + "`n- **Acceptance**:"))) (New-UiPlanDir $cpUiAgents)
+Assert-Case -Name "check-plan: UI 경로 파일 task 에 화면 줄이 있으면 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckPlan $cpBase (New-UiPlanDir $cpUiAgents)
+Assert-Case -Name "check-plan: UI 경로 밖 파일만 고치면 화면 줄을 요구하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckPlan ($cpUiPlan.Replace('(RED)', '(RED) [화면 없음 — 내부 정리]')) (New-UiPlanDir $cpUiAgents)
+Assert-Case -Name "check-plan: 사유를 단 [화면 없음] 표지는 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckPlan $cpBase (New-UiPlanDir "# AGENTS.md`n`n- **Verify (앱 조작)**: 없음`n")
+Assert-Case -Name "check-plan: 검증 스킬이 없으면 UI 경로 미선언을 표시하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'skip screen-missing'
+$r = Invoke-CheckPlan $cpUiPlan
+Assert-Case -Name "check-plan: AGENTS.md 가 없으면 UI 경로 검사를 하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'screen-missing'
+$r = Invoke-CheckPlan $cpUiPlan (New-UiPlanDir "# AGENTS.md`n`n- **UI 경로**: ``app/ui/*```n" 'app' -Git)
+Assert-Case -Name "check-plan: plan 폴더 위의 AGENTS.md 패턴은 그 폴더 기준으로 대조한다" -R $r -ExpectExit 1 -ExpectContains 'screen-missing T1'
+
 # ---- 펜스 · 입력 오류 ----
 $r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', ("| 크기 | ``wc -c a.ps1`` | 10 |`n`n``````text`n| 가짜 |  | 빈 |`n## 가짜 절`n- [ ] T9-9 가짜`n```````n")))
 Assert-Case -Name "check-plan: 펜스 안의 표 행·절·체크박스는 판정하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
