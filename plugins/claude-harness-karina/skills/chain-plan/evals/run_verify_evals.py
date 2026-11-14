@@ -896,7 +896,9 @@ def real_git_reuse_glob_matches_git_pathspec():
                 f.write('x\n')
         subprocess.run(['git', 'init', '-q', d], check=True)
         subprocess.run(['git', '-C', d, 'add', '-A'], check=True)
-        for pattern in ('*.png', 'res/*', 'res/**', 'res/**/*.png', '**/res/*.png', 'res/?.png', 'res/[ab].png'):
+        for pattern in ('*.png', 'res/*', 'res/**', 'res/**/*.png', '**/res/*.png', 'res/?.png', 'res/[ab].png',
+                        '**', 'res**', 'res/**.png', 're**/a.png', 'r**/sub/b.png', 'r**.png', '**.png', '**/*.png',
+                        'res/**/b.png', 'res/**/a.png'):
             listed = subprocess.run(['git', '-C', d, 'ls-files', '--', ':(glob)' + pattern],
                                     capture_output=True, encoding='utf-8', check=True).stdout.split()
             matched = [n for n in names if rv.glob_match(n, pattern)]

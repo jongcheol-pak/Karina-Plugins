@@ -224,16 +224,19 @@ def _load(path):
 def _glob_regex(pattern):
     out, i = [], 0
     while i < len(pattern):
-        if pattern.startswith('**/', i) and (i == 0 or pattern[i - 1] == '/'):
-            out.append('(?:.*/)?')
-            i += 3
-        elif pattern.startswith('/**', i) and i + 3 == len(pattern):
-            out.append('/.*')
-            i += 3
-        elif pattern[i] == '*':
-            while i < len(pattern) and pattern[i] == '*':
-                i += 1
-            out.append('[^/]*')
+        if pattern[i] == '*':
+            j = i
+            while j < len(pattern) and pattern[j] == '*':
+                j += 1
+            after = pattern[j:j + 1]
+            if j - i < 2 or after not in ('', '/'):
+                out.append('[^/]*')
+            elif after == '':
+                out.append('.*')
+            else:
+                out.append('(?:.*/)?' if i == 0 or pattern[i - 1] == '/' else '.*/')
+                j += 1
+            i = j
         elif pattern[i] == '?':
             out.append('[^/]')
             i += 1
@@ -249,7 +252,8 @@ def _glob_regex(pattern):
 
 
 def glob_match(path, pattern):
-    """git `:(glob)` pathspec 과 같은 규칙으로 맞춘다 — `**/`·`/**/`·끝 `/**` 는 폴더를 건너고 `*`·`?` 는 `/` 를 넘지 않는다."""
+    """git `:(glob)` pathspec 과 같은 규칙으로 맞춘다 — 뒤가 `/` 나 패턴 끝인 `**` 는 폴더를 건너고(앞이 경계인 `**/` 는
+    폴더 0개도 맞는다), 그 밖 `*`·`?` 는 `/` 를 넘지 않는다."""
     return _glob_regex(pattern).match(path) is not None
 
 
