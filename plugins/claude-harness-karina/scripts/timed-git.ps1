@@ -64,13 +64,17 @@ function Import-TimedGitTree {
         $sha = [System.Security.Cryptography.SHA256]::Create()
         try { $hash = -join ($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($script:TimedGitTreeSource))[0..7] | ForEach-Object { $_.ToString('x2') }) } finally { $sha.Dispose() }
         $final = Join-Path $dir ('timed-git-tree-{0}-{1}.{2}-{3}.dll' -f $PSVersionTable.PSEdition, $PSVersionTable.PSVersion.Major, $PSVersionTable.PSVersion.Minor, $hash)
+        $stale = [DateTime]::UtcNow.AddHours(-1)
+        foreach ($old in @(Get-ChildItem -LiteralPath $dir -Filter 'timed-git-tree-*.tmp.dll' -ErrorAction SilentlyContinue)) {
+            if ($old.LastWriteTimeUtc -lt $stale) { try { [System.IO.File]::Delete($old.FullName) } catch {} }
+        }
         if (Test-Path -LiteralPath $final -PathType Leaf) {
             try { Add-Type -Path $final; return $true } catch {}
         }
         $null = New-Item -ItemType Directory -Path $dir -Force
         $tmp = Join-Path $dir ('timed-git-tree-' + [guid]::NewGuid().ToString('N') + '.tmp.dll')
         Add-Type -TypeDefinition $script:TimedGitTreeSource -OutputAssembly $tmp -OutputType Library
-        Add-Type -Path $tmp
+        try { Add-Type -Path $tmp } catch { try { [System.IO.File]::Delete($tmp) } catch {}; throw }
         try { Move-Item -LiteralPath $tmp -Destination $final -Force -ErrorAction Stop } catch {}
         return $true
     } catch {}

@@ -401,7 +401,9 @@ if ($gcPid) {
     do { $alive = [bool](Get-Process -Id $gcPid -ErrorAction SilentlyContinue); if ($alive) { Start-Sleep -Milliseconds 200 } } while ($alive -and [DateTime]::UtcNow -lt $until)
     if ($alive) { Stop-Process -Id $gcPid -Force -ErrorAction SilentlyContinue }
 }
-"code=$($run.Code) pid=$([bool]$gcPid) alive=$alive"
+$loc = if ('KarinaTimedGitTree' -as [type]) { [string]([type]'KarinaTimedGitTree').Assembly.Location } else { '' }
+$asm = if (-not $loc) { 'memory' } elseif ($loc -like '*.tmp.dll') { 'tmp' } else { 'final' }
+"code=$($run.Code) pid=$([bool]$gcPid) alive=$alive asm=$asm"
 '@, [System.Text.UTF8Encoding]::new($true))
 function Invoke-TgCache([string]$Root, [string]$Exe = 'pwsh') {
     $saved = $env:TMPDIR
@@ -412,28 +414,35 @@ function Invoke-TgCache([string]$Root, [string]$Exe = 'pwsh') {
     $dlls = @(Get-ChildItem -LiteralPath (Join-Path $Root 'karina-plugin/cache') -Filter 'timed-git-tree-*.dll' -ErrorAction SilentlyContinue)
     $core = @($dlls | Where-Object { $_.Name -like 'timed-git-tree-Core-*' })
     $desk = @($dlls | Where-Object { $_.Name -like 'timed-git-tree-Desktop-*' })
+    $tmps = @($dlls | Where-Object { $_.Name -like '*.tmp.dll' })
     $coreInfo = if ($core.Count -eq 1) { "core=1 size=$([bool]($core[0].Length -gt 0)) ticks=$($core[0].LastWriteTimeUtc.Ticks)" } else { "core=$($core.Count)" }
-    return @{ code = $LASTEXITCODE; out = (($o -join "`n") + " $coreInfo desktop=$($desk.Count)") }
+    return @{ code = $LASTEXITCODE; out = (($o -join "`n") + " tmpdll=$($tmps.Count) $coreInfo desktop=$($desk.Count)") }
 }
 $tgRoot = Join-Path $gc 'tg-cache-root'; New-Item -ItemType Directory $tgRoot -Force | Out-Null
 $r = Invoke-TgCache $tgRoot
-Assert-Case -Name "guard-comment: timed-git 캐시 — 캐시가 없으면 첫 손자 정리가 판별 이름 DLL 을 만들고 손자를 끝낸다" -R $r -ExpectExit 0 -ExpectContains 'alive=False core=1 size=True'
+Assert-Case -Name "guard-comment: timed-git 캐시 — 캐시가 없으면 첫 손자 정리가 판별 이름 DLL 을 만들고 손자를 끝낸다" -R $r -ExpectExit 0 -ExpectContains 'alive=False asm=tmp tmpdll=0 core=1 size=True'
 $tgTicks = [regex]::Match($r.out, 'ticks=(\d+)').Groups[1].Value
 $r = Invoke-TgCache $tgRoot
-Assert-Case -Name "guard-comment: timed-git 캐시 — 두 번째 프로세스는 같은 DLL 을 다시 만들지 않고 써서 손자를 끝낸다" -R $r -ExpectExit 0 -ExpectContains "alive=False core=1 size=True ticks=$tgTicks"
+Assert-Case -Name "guard-comment: timed-git 캐시 — 두 번째 프로세스는 같은 DLL 을 다시 만들지 않고 써서 손자를 끝낸다" -R $r -ExpectExit 0 -ExpectContains "alive=False asm=final tmpdll=0 core=1 size=True ticks=$tgTicks"
 if ($gbWinPs = Get-Command powershell.exe -ErrorAction SilentlyContinue) {
     $r = Invoke-TgCache $tgRoot $gbWinPs.Source
-    Assert-Case -Name "guard-comment: timed-git 캐시 — PS 5.1 은 다른 판별 이름의 DLL 을 만들어 쓴다" -R $r -ExpectExit 0 -ExpectContains 'alive=False core=1 size=True'
+    Assert-Case -Name "guard-comment: timed-git 캐시 — PS 5.1 은 다른 판별 이름의 DLL 을 만들어 쓴다" -R $r -ExpectExit 0 -ExpectContains 'alive=False asm=tmp tmpdll=0 core=1 size=True'
     Assert-Case -Name "guard-comment: timed-git 캐시 — PS 5.1 판별 DLL 이 따로 생긴다" -R $r -ExpectExit 0 -ExpectContains 'desktop=1'
 } else {
-    Assert-Case -Name "guard-comment: timed-git 캐시 — PS 5.1 은 다른 판별 이름의 DLL 을 만들어 쓴다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectContains 'alive=False core=1 size=True'
+    Assert-Case -Name "guard-comment: timed-git 캐시 — PS 5.1 은 다른 판별 이름의 DLL 을 만들어 쓴다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectContains 'alive=False asm=tmp tmpdll=0 core=1 size=True'
     Assert-Case -Name "guard-comment: timed-git 캐시 — PS 5.1 판별 DLL 이 따로 생긴다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectContains 'desktop=1'
 }
 $tgBroken = Join-Path $gc 'tg-cache-broken'; New-Item -ItemType Directory $tgBroken -Force | Out-Null
 $null = Invoke-TgCache $tgBroken
 foreach ($f in @(Get-ChildItem -LiteralPath (Join-Path $tgBroken 'karina-plugin/cache') -Filter 'timed-git-tree-Core-*.dll' -ErrorAction SilentlyContinue)) { [System.IO.File]::WriteAllBytes($f.FullName, [byte[]]@()) }
 $r = Invoke-TgCache $tgBroken
-Assert-Case -Name "guard-comment: timed-git 캐시 — 0바이트로 깨진 캐시면 다시 만들고 손자를 끝낸다" -R $r -ExpectExit 0 -ExpectContains 'alive=False core=1 size=True'
+Assert-Case -Name "guard-comment: timed-git 캐시 — 0바이트로 깨진 캐시면 다시 만들고 손자를 끝낸다" -R $r -ExpectExit 0 -ExpectContains 'alive=False asm=tmp tmpdll=0 core=1 size=True'
+$tgCacheDir = Join-Path $tgBroken 'karina-plugin/cache'
+$tgOld = Join-Path $tgCacheDir 'timed-git-tree-old.tmp.dll'; [System.IO.File]::WriteAllBytes($tgOld, [byte[]]@(0))
+[System.IO.File]::SetLastWriteTimeUtc($tgOld, [DateTime]::UtcNow.AddHours(-2))
+[System.IO.File]::WriteAllBytes((Join-Path $tgCacheDir 'timed-git-tree-new.tmp.dll'), [byte[]]@(0))
+$r = Invoke-TgCache $tgBroken
+Assert-Case -Name "guard-comment: timed-git 캐시 — 한 시간 넘은 임시 DLL 은 지우고 최근 것은 남긴다" -R $r -ExpectExit 0 -ExpectContains 'alive=False asm=final tmpdll=1 core=1'
 [System.IO.File]::Delete($gbPlan)
 $r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
 Assert-Case -Name "guard-comment: plan.md 가 없으면 복원 Edit 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
