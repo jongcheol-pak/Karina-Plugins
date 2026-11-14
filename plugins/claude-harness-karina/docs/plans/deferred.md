@@ -70,3 +70,5 @@
 - [2026-11-13] **사용자 몫 범주 단일 정본 검사기 축** — chain-plan 의 넘김 범주(사용자 몫 다섯 — `chain-plan/SKILL.md`「답하는 기준」·`references/user-relay.md`「사용자 몫」)가 다른 참조 문서에 범주 미지정 넘김으로 새로 생기는지 `check-harness-consistency.py` 축으로 잰다 — 지금은 문면 규칙뿐이다 — 넘김 사유 ②(새 검사 축) (체인 run_7c21af27 plan 3 보류 — 사용자 지시) (실해: 2026-11-13 compaction.md「압축 뒤 복원」 이 범주 없이 「사용자 몫으로 넘긴다」를 둬 여섯째 범주가 된 것을 하니스 검토가 찾음 — plan 3 T3 가 문면만 고침)
 
 ## 1회 실패
+
+- [1회 실패 2026-11-14] Hook 골든 무인자 전체 병렬 실행에서 warn-commit-secrets 「commit-git 상한: 새 주석 검사는 git 대기를 상한에서 끊는다」 가 기대 키워드 `fast=True` 없이 2000ms 시간 상한 차단 문구로 FAIL(1909/1910) — `-Filter warn-commit-secrets` 단독 재실행 135/135 OK, scripts 무변경 회차라 병렬 부하 시간 의존으로 봄
