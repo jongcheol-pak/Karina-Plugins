@@ -253,6 +253,7 @@
 
 ### 골든 러너 운용
 
+- [2026-11-15] **골든의 느린 git 래퍼(`git.cmd` + `findstr`)는 인자를 공백으로 둘러싼 낱말(`/c:" show "`)로 가르지 못한다 — `Invoke-TimedGit` 가 인자마다 따옴표를 붙여(`"show"`) 넘기므로 `/c:show`·`/c:grep` 처럼 낱말만 쓴다** — 공백 낱말로 쓰면 래퍼가 늦추지 않아, 「예산을 넘기면 막는다」를 재려던 RED 가 차단 대신 통과(exit 0)로 났다. `/c:show` 는 `rev-parse --show-toplevel` 에도 걸려 그 호출도 늦어지니 상한(`KARINA_COMMIT_GIT_TIMEOUT_MS`)을 넉넉히 둔다. 새 픽스처 `.ps1` 은 CRLF 로 써야 정합 검사의 「줄바꿈 전면 LF」 에 안 걸린다. (실측)
 - [2026-11-14] **hook 에 새 dot-source 헬퍼 파일을 더하면 골든의 스텁 폴더·단독 프로브·eval 픽스처가 그 파일을 갖지 않아 무관한 케이스가 무더기로 FAIL 한다 — 헬퍼를 더한 task 는 `git grep -n "Copy-Item (Join-Path \$scriptsDir" -- hooks/evals` 와 `guard-commit-secrets.ps1') + [char]39` 프로브, `evals/fixtures/minimal-repo/scripts/` 를 함께 고친다** — 한 회차에 두 번 났다(`timed-git.ps1` 을 커밋 라이브러리 루프에 넣자 LZ 스텁·t5·t6 프로브 14건, `plan-round.ps1` 을 만들자 LZ·no-lib 스텁 4건과 eval 복제 사본 축 6건). 새 픽스처 파일은 `git add -N` 전에는 `run-evals.py` 가 「추적되지 않는 픽스처」 로 멈춘다. (실측)
   - 시간 기준을 거는 골든(상한·빠름)은 병렬 전체 부하에서 단독 실행보다 몇 배 느리다 — 같은 회차에 10초 호출 상한과 15초 「빠름」 기준이 부하에서만 깨졌다. 기준은 가짜 대기와 함께 벌린다(`post-write-rationale.md` §22 와 같은 처방). `guard-comment` 「BASE 예산 … 손자까지 끝내고」(`alive=0`) 도 큰 필터 병렬 실행에서 두 번 `alive=1` 로 깨졌다가 단독·전체 실행에서 통과했다 — 손자 생성과 트리 종료가 겹치는 경합으로 보이며(추정 — 그 kill 경로는 이 회차가 바꾸지 않았다) 깨지면 단독으로 다시 돌려 가른다.
 
