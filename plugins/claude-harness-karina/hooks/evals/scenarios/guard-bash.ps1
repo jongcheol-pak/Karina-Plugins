@@ -796,5 +796,19 @@ try {
     $r = Invoke-Hook 'guard-bash.ps1' (@{ session_id = 'cc-move-slow'; tool_name = 'Bash'; cwd = $d; tool_input = @{ command = 'git commit -m x -- n.rs' } } | ConvertTo-Json -Compress) -Process
 } finally { $env:PATH = $ccSaved.PATH; $env:KARINA_COMMIT_GIT_TIMEOUT_MS = $ccSaved.T }
 Assert-Case -Name "commit-comments: BASE 복원·이동 판정 git 이 6초씩 늦어도 다른 파일 BASE doc 을 옮긴 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$ccBudgetLine = 'BASE 확인 git 이 예산('
+Set-CcFile $d 'm.rs' $ccMoveA
+$r = Invoke-CcCommit $d 'git commit -m x -- n.rs' 'cc-copy-budget'
+Assert-Case -Name "commit-comments: 예산이 남은 커밋 차단에는 BASE 확인 예산 원인 줄이 없다" -R $r -ExpectExit 2 -ExpectNotContains $ccBudgetLine
+Set-CcFile $d 'm.rs' "fn keep() {}`n"
+$ccVerySlowDir = Join-Path $ccRoot 'very-slow-base-git'; New-Item -ItemType Directory $ccVerySlowDir -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $ccVerySlowDir 'git.cmd'), "@echo %*| findstr /c:show /c:grep >nul && ping -n 17 127.0.0.1 >nul`r`n@`"$ccRealGit`" %*`r`n")
+try {
+    $env:PATH = $ccVerySlowDir + [System.IO.Path]::PathSeparator + $env:PATH
+    $env:KARINA_COMMIT_GIT_TIMEOUT_MS = '60000'
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ session_id = 'cc-move-veryslow'; tool_name = 'Bash'; cwd = $d; tool_input = @{ command = 'git commit -m x -- n.rs' } } | ConvertTo-Json -Compress) -Process
+} finally { $env:PATH = $ccSaved.PATH; $env:KARINA_COMMIT_GIT_TIMEOUT_MS = $ccSaved.T }
+Assert-Case -Name "commit-comments: BASE 복원·이동 판정 git 이 예산을 넘겨 막으면 원인 줄과 재시도 안내를 낸다" -R $r -ExpectExit 2 -ExpectContains $ccBudgetLine
+Assert-Case -Name "commit-comments: 예산 소진 차단은 '다시 내도 통과하지 않는다' 대신 재시도 안내를 낸다" -R $r -ExpectExit 2 -ExpectContains 'git 이 한가할 때 같은 커밋을 다시 내면 통과할 수 있습니다' -ExpectNotContains '같은 커밋을 다시 내도 통과하지 않습니다'
 }
 

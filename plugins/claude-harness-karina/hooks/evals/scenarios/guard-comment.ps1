@@ -295,6 +295,19 @@ Set-GbPlan '> BASE: 0123456789abcdef0123'
 $r = Invoke-GcEditAt $gbFile 'fn rows() {}' $gbRestore
 Assert-Case -Name "guard-comment: 레포에 없는 BASE 면 복원 Edit 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 Set-GbPlan "> BASE: $gbBase`n> 승인: 2026-11-05 · 화면 Y"
+$gbBudgetLine = 'BASE 확인 git 이 예산('
+$r = Invoke-GcEditAt $gbFile 'fn rows() {}' "fn rows() {}`n`n/// BASE 에 없던 새 설명.`nfn cols() {}"
+Assert-Case -Name "guard-comment: 예산이 남은 차단에는 BASE 확인 예산 원인 줄이 없다" -R $r -ExpectExit 2 -ExpectNotContains $gbBudgetLine
+$gbSlowDir = Join-Path $gc 'slow-show-git'; New-Item -ItemType Directory $gbSlowDir -Force | Out-Null
+$gbRealGit = @(Get-Command git -CommandType Application | ForEach-Object { $_.Source })[0]
+[System.IO.File]::WriteAllText((Join-Path $gbSlowDir 'git.cmd'), "@echo %*| findstr /c:show >nul && ping -n 12 127.0.0.1 >nul`r`n@`"$gbRealGit`" %*`r`n")
+$gbSavedPath = $env:PATH
+try {
+    $env:PATH = $gbSlowDir + [System.IO.Path]::PathSeparator + $env:PATH
+    $r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'gc-budget-slow'; tool_name = 'Edit'; cwd = $gb; tool_input = @{ file_path = $gbFile; old_string = 'fn rows() {}'; new_string = $gbRestore } } | ConvertTo-Json -Compress -Depth 5) -Process
+} finally { $env:PATH = $gbSavedPath }
+Assert-Case -Name "guard-comment: BASE 복원 git 이 예산을 넘겨 막으면 원인 줄과 재시도 안내를 낸다" -R $r -ExpectExit 2 -ExpectContains $gbBudgetLine
+Assert-Case -Name "guard-comment: 예산 소진 차단은 '다시 내도 통과하지 않는다' 대신 재시도 안내를 낸다" -R $r -ExpectExit 2 -ExpectContains 'git 이 한가할 때 같은 편집을 다시 내면 통과할 수 있습니다' -ExpectNotContains '같은 편집을 다시 내도 통과하지 않습니다'
 $gbBudgetScript = Join-Path $gc 'base-budget.ps1'
 [System.IO.File]::WriteAllText($gbBudgetScript, @'
 param([string]$Lib, [string]$File, [int]$Ms, [int]$SleepMs, [int]$FakeDelayMs = 0, [string]$Body = '/// 화면에 보이는 줄 범위를 센다.')

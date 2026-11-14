@@ -342,7 +342,14 @@ function Get-CommentDocOwnerSizes([string]$Path, [string[]]$Lines) {
     return , $sizes
 }
 
-function New-CommentBaseBudget([int]$Ms = $script:CommentBaseBudgetMs) { return @{ LeftMs = $Ms } }
+function New-CommentBaseBudget([int]$Ms = $script:CommentBaseBudgetMs) { return @{ LeftMs = $Ms; TotalMs = $Ms; Exhausted = $false } }
+
+function Get-CommentResubmitLines([string]$What, [string]$Normal, $Budget) {
+    if (-not ($Budget -and $Budget.Exhausted)) { return @($Normal) }
+    return @(
+        "  - BASE 확인 git 이 예산($([int]($Budget.TotalMs / 1000))초) 안에 끝나지 않아 옮기거나 되살린 주석인지 확인하지 못했습니다.",
+        "  - 옮기거나 되살린 주석이면 git 이 한가할 때 같은 $($What)을 다시 내면 통과할 수 있습니다. 새로 쓴 주석이면 지우고 다시 내고, 남길 이유는 커밋 본문에 적으세요.")
+}
 
 function Get-CommentPlanBase([string]$Dir, [string]$Root) {
     foreach ($d in (Get-CommentSearchDirs $Dir $Root)) {
@@ -361,11 +368,12 @@ function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budge
         $sha = Get-CommentPlanBase $Dir $Root
         if (-not $sha) { return @() }
         $left = [int]$Budget.LeftMs
-        if ($left -le 0) { return @() }
+        if ($left -le 0) { $Budget.Exhausted = $true; return @() }
         $rel = $File.Substring($Root.Length).TrimStart('\', '/') -replace '\\', '/'
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
         $run = Invoke-TimedGit -GitArgs @('-C', $Root, '-c', 'core.quotepath=off', 'show', "${sha}:$rel") -WorkDir $Root -TimeoutMs $left
         $Budget.LeftMs = $left - [int]$sw.ElapsedMilliseconds
+        if ($run.TimedOut) { $Budget.Exhausted = $true }
         if ($run.Code -ne 0) { return @() }
         return @($run.Lines)
     } catch { return @() }
@@ -443,7 +451,8 @@ function Get-CommentMovedBodies($Ctx, $Bodies, $Budget) {
         if (-not $root -or -not $Ctx.File.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase)) { return , $Bodies }
         $sha = Get-CommentPlanBase $Ctx.Dir $root
         $left = [int]$Budget.LeftMs
-        if (-not $sha -or $left -le 0) { return , $Bodies }
+        if (-not $sha) { return , $Bodies }
+        if ($left -le 0) { $Budget.Exhausted = $true; return , $Bodies }
         $gitArgs = New-Object System.Collections.Generic.List[string]
         foreach ($a in @('-C', $root, '-c', 'core.quotepath=off', 'grep', '-F', '--no-color')) { $gitArgs.Add($a) }
         foreach ($c in ($Bodies | Select-Object -Unique)) { $gitArgs.Add('-e'); $gitArgs.Add([string]$c) }
@@ -451,6 +460,7 @@ function Get-CommentMovedBodies($Ctx, $Bodies, $Budget) {
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
         $run = Invoke-TimedGit -GitArgs $gitArgs.ToArray() -WorkDir $root -TimeoutMs $left
         $Budget.LeftMs = $left - [int]$sw.ElapsedMilliseconds
+        if ($run.TimedOut) { $Budget.Exhausted = $true }
         if ($run.Code -ne 0) { return , $Bodies }
         $self = $Ctx.File.Substring($root.Length).TrimStart('\', '/') -replace '\\', '/'
         $origins = @{}
