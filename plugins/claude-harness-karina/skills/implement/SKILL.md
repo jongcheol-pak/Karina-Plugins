@@ -78,7 +78,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 | # | 대상 | 판정 |
 |---|---|---|
-| 4 | 전체 빌드 + 전체 테스트 + `Lint/Format` 검사 모드 + Goal 성공 기준 실측 | 모든 기준이 참이고 출력이 남는다 |
+| 4 | 전체 빌드 + 전체 테스트 + `Lint/Format` 검사 모드 + Goal 성공 기준 실측 + 바뀐 화면의 최종 HEAD 재실행(`references/screen-scenarios.md`) | 모든 기준이 참이고 출력이 남는다 |
 
 - **4번이 Build·Test 전체를 통과한 직후 clean 이면 Progress Log 에 `4번 검증: <full SHA> · clean` 한 줄을 남긴다 — clean 정의와 쓰임은 `references/push-flow.md`「push 전 확인」** — push 의 근거가 이 줄이고, 없으면 push 직전에 같은 스위트를 다시 돈다.
 
