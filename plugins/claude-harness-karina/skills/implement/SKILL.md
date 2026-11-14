@@ -74,13 +74,13 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 **`**성능**` 줄이 있는 task 는 `../PERF-MEASUREMENT.md` 대로 BASE 와 교대로 재고, 결론 불가는 그 문서 「구현 루프의 결론 불가」 대로 닫는다.**
 
-**전 task 완료 후 4번 앞 단계(주석 정리·리뷰)를 `references/final-review.md`「완료 순서」 대로 돈 뒤 4번을 1회 실행한다.**
+**전 task 완료 후 `references/final-review.md`「완료 순서」 대로 주석 정리 등을 돌고, 4번은 리뷰 호출과 함께 시작한다(리뷰 반영 커밋이 생기면 다시).**
 
 | # | 대상 | 판정 |
 |---|---|---|
 | 4 | 전체 빌드 + 전체 테스트 + `Lint/Format` 검사 모드 + Goal 성공 기준 실측 + 바뀐 화면의 최종 HEAD 재실행(`references/screen-scenarios.md`) | 모든 기준이 참이고 출력이 남는다 |
 
-- **4번이 Build·Test 전체를 통과한 직후 clean 이면 Progress Log 에 `4번 검증: <full SHA> · clean` 한 줄을 남긴다 — clean 정의와 쓰임은 `references/push-flow.md`「push 전 확인」** — push 의 근거가 이 줄이고, 없으면 push 직전에 같은 스위트를 다시 돈다.
+- **4번이 Build·Test 전체를 통과한 직후 clean 이면(리뷰가 도는 중이면 리뷰가 끝난 뒤) Progress Log 에 `4번 검증: <full SHA> · clean` 한 줄을 남긴다 — clean 정의와 쓰임은 `references/push-flow.md`「push 전 확인」** — push 의 근거가 이 줄이고, 없으면 push 직전에 같은 스위트를 다시 돈다.
 
 - **새 동작을 재는 신규 케이스는 먼저 쓰고 돌려 RED 를 본 뒤 구현하고, 구현 뒤 GREEN 을 본다** — 구현을 본 뒤 쓴 케이스는 그 구현의 값·가정을 기대값으로 옮기기 쉽고, 그런 케이스는 통과해도 재는 것이 없다. 구현 전에는 케이스가 기댈 구현이 없다. 이것은 새 단계가 아니라 위 표의 2번(테스트)이 구현보다 먼저 시작되는 것이고, 루프에서는 「2. 구현」의 첫머리다.
   - **구현 전이라 컴파일조차 안 되면 스텁을 먼저 둔다** — 시그니처만 두고 몸체는 예외를 던지게 해, assertion 이 실패하는 것을 RED 로 본다. 컴파일 실패는 케이스가 그 동작을 재는지 증명하지 못한다.
@@ -109,7 +109,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ## 회차 끝
 
-- **4번 뒤 단계(완료 시각·plan 파일 커밋·push 전 확인·push)는 `references/final-review.md`「완료 순서」, `completion-reviewer` 호출은 「절차」 대로다** — 리뷰가 4번 앞이라 리뷰 수정까지 4번이 잰다. 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
+- **4번 뒤 단계(완료 시각·plan 파일 커밋·push 전 확인·push)는 `references/final-review.md`「완료 순서」, `completion-reviewer` 호출은 「절차」 대로다** — 리뷰 반영 커밋이 생기면 4번을 다시 돌아 그 수정까지 잰다. 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
 - **완료 때 함정 판정과 보류·기각·번복 결정 기록은 같은 파일 「함정 기록·결정 기록」 대로 레포에 한다(기준은 `../REPO-CONVENTIONS.md`「쓰기」·`../REPO-DECISIONS.md`「쓰기」)** — 결정 기록의 배치 시점은 그 절이 정한다.
 - **`## Deferred / Follow-up`의 항목은 전부 판정한다 — 판정과 대장 이관은 같은 파일 「Deferred 판정」** — 판정 없이 남긴 항목은 `plan.md` 와 함께 덮어써진다.
 - **일부 task를 남긴 채 완료라고 보고하지 않는다** — 남은 것이 있으면 그것은 진행 중이거나 중단이지 완료가 아니다.
