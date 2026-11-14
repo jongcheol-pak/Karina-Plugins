@@ -2,6 +2,9 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-15] 주석 정리의 회차 전 doc 보호 · task 감사 필터 덮음의 실행 플래그(v3.24.3) — 보류: 주석 게이트(`comment-lines.ps1` BASE 복원 예외)의 doc 주인 키를 항목 이름으로 바꾸는 것 — 이번엔 지우지 않게 지키는 헬퍼(`comment-scope.ps1`)만 이름 대조를 더했다. 게이트 쪽은 안전 임계 hook 의 통과 범위를 넓히는 변경이라 골든 실증과 함께 따로 다룬다(한계는 `comment-gate-rationale.md` §3).
+  - 범위 밖: Karina 레포 `AGENTS.md` 의 doc-drift-audit 함정 줄 문구(다른 레포) · `guard-task-audit` 의 `또는:` 대체 명령 글자 대조(필터 없는 전체 실행이라 다른 규칙). 채택 설계: 필터 덮음은 대상 선택 플래그만 비교하고 `--features` 등 나머지는 무시한다(요구 원문 — 무시할 실행 플래그 목록은 새 플래그마다 거짓 경고를 낸다).
+
 - [2026-11-15] 임시 폴더 루트 선택 중복·주석 게이트 예산 소진 문구(v3.24.2) — 기각: 루트 선택을 공용 `scripts/temp-root.ps1` 로 빼는 안 — 새 `scripts/*.ps1` 은 `harness-hooks.json` 보호 목록에 올라 `guard-harness` 차단 범위가 바뀌고 `timed-git.ps1` 만 복사하는 골든 스텁이 깨진다(계획 리뷰 MAJOR · `skills/DESIGN.md` 「의도적 코드 복제」 ②) → 사본 함수 + 「복제 사본 동기」 축으로 감시. 범위 밖: 「시스템 임시 폴더면 면제」 판정의 `GetTempPath()` 다섯 자리는 다른 규칙이고 `TMPDIR` 를 따르게 하면 환경변수 하나로 안전 hook 면제가 넓어진다 · 예산 소진 문구는 사용자 답 「원인 줄 + 재시도 안내」, 예산 상수를 바꾸는 환경변수는 들이지 않았다(안전 hook 표면).
 
 - [2026-11-14] Hook 골든 병렬 부하 flake 제품 수정(v3.24.0) — 기각: 테스트만 고치는 안(직렬 그룹·상한 확대만) — 실제 사용 중에도 손자 정리 컴파일 지연과 커밋 주석 오차단이 같은 부하에서 난다(사용자 답 「권장」 — 제품 수정). 편집 게이트(`guard-harness`) BASE 예산은 10초 유지 — Edit·Write 마다 돌아 대기가 바로 체감된다. 대장의 `warn-commit-secrets 「commit-git 상한」` 사례는 직계 자식 시간 초과 경로라 이번 처방 밖으로 남겼다.
