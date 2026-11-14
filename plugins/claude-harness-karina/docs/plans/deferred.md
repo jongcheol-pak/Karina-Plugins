@@ -10,7 +10,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 19 / 종결 120
+**▶ 현행 잔량(기계 대조 대상)**: 대기 18 / 종결 121
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -50,7 +50,6 @@
 ### 하니스 스킬 (plan · implement · 리뷰어 · 템플릿)
 
 
-- [2026-11-07] **완료 리뷰 전사 요약 증분 생성** — `implement/references/final-review.md` 「절차」 는 `completion-reviewer` 를 부를 때마다(재호출 포함) `reflect/scripts/digest_transcript.py --audit` 로 세션 전사 전체를 다시 요약한다. 재호출 때 앞 요약 뒤 구간만 더하는 증분 생성을 검토한다(체인 run_6150c8ac plan 3 후보 11 — 사용자 답 보류) (실해: 2026-11-07 작업 속도 감사의 후보 라운드에서 리뷰 재호출 비용으로 제기 · 수치는 재지 않았다)
 - [2026-10-15] **chain-plan 후보 라운드에 「설계 결함」 종류가 없다** — `plan/references/interview.md` 「후보 라운드」는 코디네이터도 그 절을 따른다고 하나 `chain-plan/SKILL.md` 후보 라운드 줄·`references/measure.md` 반환 칸에 그 종류가 없다. 코디네이터가 물을지, 워커 몫(`relay-mode.md` 2-3)으로 두고 interview.md 에 예외를 적을지 정해 한쪽 문면을 고친다 (출처: v1.374.0 회차 후보 라운드 ④) (실해: 2026-10-15 prompt-audit 2회차가 interview.md 와 chain-plan 문면이 갈리는 것을 관측)
 - [2026-10-18] **디버깅 재현 BASE 대조** — `karina-systematic-debugging` 재현 단계에서 같은 재현 시나리오를 BASE worktree 에서도 돌려 회귀가 이 변경에서 생겼는지 가른다(절차 선례 `implement/references/report-format.md`「화면 시나리오 실행」의 (BASE 대조)) (출처: 계획 체인 run_60c0ebe3 plan 3 후보 라운드 — 사용자 「보류」) (실해: 2026-10-18 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 디버깅 재현은 현재 HEAD 에서만 돌아 회귀 시점을 가르지 못함)
 - [2026-10-27] **완료 보고 요구 항목별 결과 줄** — `implement/references/report-format.md` 「보고 형식」에 `> 요구:` 항목마다 `완료 | 미검증 | 실패 | 사용자 대기` 와 도중에 고친 결함을 한 줄씩 싣는 줄을 둔다(pstack ketchup *"one short bullet per thing the user asked for"* — HUMAN-VERIFY·수정 내용과 겹치지 않게) (출처: 완료 보고 확인할 파일 회차 후보 라운드 8 — 사용자 「보류」) (실해: 2026-10-27 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 보고 「수정 내용」 이 서술형이라 요구와 결과를 사용자가 직접 대조하지 못함)
