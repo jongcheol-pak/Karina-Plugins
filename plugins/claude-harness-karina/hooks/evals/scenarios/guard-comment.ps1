@@ -354,7 +354,7 @@ $pw = (Get-Process -Id $PID).Path
 $fake = Join-Path $Dir 'git.cmd'
 [System.IO.File]::WriteAllText($fake, "@start `"`" /b `"$pw`" -NoProfile -Command `"Set-Content -LiteralPath '$pidFile' `$PID; Start-Sleep 60`"`r`n@exit /b 0`r`n")
 $script:TimedGitExe = $fake
-Stop-TimedGitOrphans -ParentId 0 -Since ([datetime]::UtcNow)
+$null = Import-TimedGitTree
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $run = Invoke-TimedGit -GitArgs @('status') -WorkDir $Dir -TimeoutMs 2000
 $ms = $sw.ElapsedMilliseconds
