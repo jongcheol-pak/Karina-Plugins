@@ -10,7 +10,8 @@
 그 밖(thinking·BIG_CAP 미만의 성공 결과·메타 레코드)은 싣지 않는다.
 머리에 읽은 파일·갈래별 줄 수·총 줄 수를 싣는다 — 리뷰어가 총 줄 수까지 나눠 읽는다.
 `--audit`(implement 완료 리뷰의 전사 대조용) — 서브에이전트 전사를 읽지 않고 A: 줄 · Bash·Skill 의 T: 줄 ·
-`<command-name>` 이 든 U: 줄만 남긴다(Skill·slash command 줄은 대조 범위를 가르는 표지). 머리에 `# 모드: audit` 을 싣는다.
+이미지(IMAGE_EXT) Read 의 T: 줄 · `<command-name>` 이 든 U: 줄만 남긴다(Skill·slash command 줄은 대조 범위를 가르는 표지
+· 이미지 Read 줄은 완료 리뷰가 화면 판정의 스크린샷을 열어 봤는지 대조하는 재료라 경로를 자르지 않는다). 머리에 `# 모드: audit` 을 싣는다.
   한글 음절(가-힣)이 하나도 없는 A: 줄은 `A: [한글 없음] …` 으로 표지하고 그 수를 머리 `# 한글 없는 A: <N>` 에 싣는다
   — implement·pr 의 「상태 메모도 한글로」 위반을 완료 리뷰가 세는 재료는 대조 범위 안의 표지 줄이고, 머리 수는 세션 전체 값이다.
 
@@ -32,14 +33,19 @@ HOOK_TYPES = ('hook_additional_context', 'hook_cancelled')
 PERSISTED = re.compile(r'<persisted-output>\s*Output too large \(([\d.]+)(KB|MB)\)')
 AUDIT_KINDS = ('U', 'A', 'T')
 AUDIT_TOOLS = ('T: Bash ', 'T: Skill ')
+IMAGE_EXT = ('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp')
 HANGUL = re.compile('[가-힣]')
 HANGUL_FREE_MARK = 'A: [한글 없음] '
+
+
+def is_image_read(line):
+    return line.startswith('T: Read ') and line.lower().endswith(IMAGE_EXT)
 
 
 def audit_keep(line):
     if line.startswith('U: '):
         return '<command-name>' in line
-    return line.startswith('A: ') or line.startswith(AUDIT_TOOLS)
+    return line.startswith('A: ') or line.startswith(AUDIT_TOOLS) or is_image_read(line)
 
 
 def cut(value, cap):
@@ -101,7 +107,10 @@ def record_lines(d, tool_name_by_id):
             if b.get('type') == 'text':
                 out.append('A: ' + cut(b.get('text', ''), TEXT_CAP))
             elif b.get('type') == 'tool_use':
-                hint = cut(_tool_hint(b.get('input') or {}), SHORT_CAP)
+                inp = b.get('input') or {}
+                path = str(inp.get('file_path') or '')
+                whole = b.get('name') == 'Read' and path.lower().endswith(IMAGE_EXT)
+                hint = path if whole else cut(_tool_hint(inp), SHORT_CAP)
                 out.append(('T: %s %s' % (b.get('name'), hint)).rstrip())
         return out
     if t == 'attachment':

@@ -422,6 +422,37 @@ def audit_marks_hangul_free_lines():
         t.close()
 
 
+def read_use(tid, path):
+    return {'type': 'tool_use', 'id': tid, 'name': 'Read', 'input': {'file_path': path}}
+
+
+@case
+def audit_keeps_image_reads_only():
+    t = Tree()
+    try:
+        t.session('proj-a', SID, [rec_assistant([read_use('r1', 'C:\\ev\\demo.png'), read_use('r2', 'C:\\x\\notes.md'),
+                                                 read_use('r3', 'C:\\ev\\shot.JPG')])])
+        rc, out, err = digest(t, ['--audit'])
+        assert rc == 0, (rc, err)
+        body = [l for l in out.splitlines() if not l.startswith('# ')]
+        assert body == ['T: Read C:\\ev\\demo.png', 'T: Read C:\\ev\\shot.JPG'], body
+    finally:
+        t.close()
+
+
+@case
+def audit_keeps_long_image_path_whole():
+    t = Tree()
+    try:
+        path = 'C:\\' + 'a' * 320 + '\\final-demo.png'
+        t.session('proj-a', SID, [rec_assistant([read_use('r1', path)])])
+        rc, out, err = digest(t, ['--audit'])
+        assert rc == 0, (rc, err)
+        assert 'T: Read ' + path in out.splitlines(), out
+    finally:
+        t.close()
+
+
 @case
 def audit_leaves_korean_lines():
     t = Tree()
