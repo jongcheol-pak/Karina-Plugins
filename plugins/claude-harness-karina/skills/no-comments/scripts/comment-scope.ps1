@@ -146,7 +146,7 @@ function Test-ScopeDocCandidate([string[]]$Lines) {
 
 $script:ScopeDefKeyRx = [regex]'\b(?:(?:fn|struct|enum|trait|type|mod|union|class|interface|record|def|function)\s+)(?:(?:fn|class|struct)\s+)*([^\W\d]\w*)'
 $script:ScopeValueKeyRx = [regex]'^(?:pub(?:\([^)]*\))?\s+)?(?:(?:const|static)\s+)+(?:mut\s+)?([^\W\d]\w*)\s*:'
-$script:ScopeMethodKeyRx = [regex]'(?<![\w.])([\w<>\[\],?]+)\s+([^\W\d]\w*)\s*(?:<[^()]*>)?\s*\('
+$script:ScopeMethodKeyRx = [regex]'(?<![\w.])([^\W\d][\w<>\[\],?]*)\s+([^\W\d]\w*)\s*(?:<[^()]*>)?\s*\('
 $script:ScopeNotTypeWords = @('return', 'await', 'new', 'throw', 'yield', 'else', 'if', 'while', 'for', 'foreach', 'switch', 'using', 'lock', 'case', 'in', 'is', 'as', 'not', 'and', 'or')
 $script:ScopeMethodExts = @('.cs', '.java', '.c', '.h', '.cpp', '.hpp')
 

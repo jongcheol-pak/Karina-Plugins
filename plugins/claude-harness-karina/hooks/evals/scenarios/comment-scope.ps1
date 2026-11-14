@@ -162,7 +162,7 @@ Set-CsFile $dr 'b.cs' "/// 옛 C# 설명.`npublic static void Run() {}`n"
 git -C $dr add .; git -C $dr commit -qm base
 $drBase = (git -C $dr rev-parse HEAD).Trim()
 Set-CsFile $dr 'a.rs' "/// 옛 설명을 고침.`nfn old_doc() {}`n/// 새로 단 설명.`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`n/// 시그니처 설명을 고침.`nfn sig_changed(a: u8) -> bool {}`n/// 같은 이름 설명.`nfn dup() {}`n/// 새로 단 같은 이름 설명.`nfn dup(x: u8) {}`n/// 이름 바꾼 상수 함수 설명.`npub const fn const_new() -> u8 { 0 }`nfn caller() {`n    let _ = sig_changed(1);`n    match sig_changed(2) { _ => {} }`n}`n"
-Set-CsFile $dr 'b.cs' "/// C# 설명을 고침.`npublic static void Run(int x) {}`nvoid Caller() {`n    Run(1);`n}`n"
+Set-CsFile $dr 'b.cs' "/// C# 설명을 고침.`npublic static void Run(int x) {}`nvoid Caller() {`n    Run(1);`n    var f = (System.Func<int>)(() => Run(2));`n    int y = ok ? Run(3) : 0;`n}`n"
 git -C $dr commit -qam round
 $drOut = Join-Path $csRoot 'docscope-out.txt'
 $r = Invoke-Cs @('-Base', $drBase, '-Out', $drOut, '-Repo', $dr)
