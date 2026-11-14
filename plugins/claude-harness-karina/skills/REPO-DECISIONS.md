@@ -11,7 +11,7 @@
 
 ## 읽기
 
-- **`karina:plan` Step 1 과 `karina:chain-plan` 후보 라운드가 읽는다 — 파일째 읽지 않고 두 파일을 요청 키워드로 grep 만 한다** — `grep -n -i -E '<키워드1>|<키워드2>' docs/decisions.md docs/decisions-archive.md`. 걸린 줄의 하위 불릿까지가 한 항목이다.
+- **`karina:plan` Step 1 은 `docs/decisions.md` 를 요청 키워드로, 후보를 낼 때는 두 파일을 후보 키워드로, `karina:chain-plan` 후보 라운드는 두 파일을 후보 키워드로 읽는다 — 파일째 읽지 않고 grep 만 한다** — `grep -n -i -E '<키워드1>|<키워드2>' docs/decisions.md docs/decisions-archive.md`. 걸린 줄의 하위 불릿까지가 한 항목이다. 아카이브는 오래된 이력이라 다시 제안하지 않게 거르는 데만 쓴다.
 - **읽은 결과는 plan 의 Investigation Log 에 `결정 이력 — docs/decisions.md` 행으로 남긴다** — 검색어와 걸린 항목 수, 겹치는 기각·보류가 무엇을 바꿨는지를 적는다.
 - **파일이 없으면 「없음」 을 Log 에 1줄 남긴다** — 「확인했는데 없었다」와 「확인하지 않았다」가 갈려야 한다.
 - **같은 주제가 두 파일에 다 있으면 `docs/decisions.md` 의 최신 항목이 유효하다.**
