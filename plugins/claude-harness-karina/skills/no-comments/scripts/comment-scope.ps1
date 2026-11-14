@@ -144,16 +144,18 @@ function Test-ScopeDocCandidate([string[]]$Lines) {
     return $script:CommentDocMarkRx.IsMatch(($Lines -join "`n"))
 }
 
-$script:ScopeItemKeyRx = [regex]'\b(fn|struct|enum|trait|const|static|type|mod|union|class|interface|record|def|function)\s+([^\W\d]\w*)'
-$script:ScopeCallNameRx = [regex]'([^\W\d]\w*)\s*\('
+$script:ScopeCallNameRx = [regex]'(?<!\w)([^\W\d]\w*)\s*(?:<[^()]*>)?\s*\('
+$script:ScopeItemKeyRx = [regex]'\b(?:(?:fn|struct|enum|trait|const|static|type|mod|union|class|interface|record|def|function)\s+)+(?:(?:mut|readonly|final|abstract|sealed|partial)\s+)*([^\W\d]\w*)'
+$script:ScopeNotItemNames = @('pub', 'if', 'for', 'while', 'match', 'return')
 
 function Get-ScopeItemKey([string]$Code) {
     $t = $Code.Trim()
     if ($t -match '^(//|/\*|\*|#)') { return $null }
+    foreach ($c in $script:ScopeCallNameRx.Matches($t)) {
+        if ($script:ScopeNotItemNames -cnotcontains $c.Groups[1].Value) { return "( $($c.Groups[1].Value)" }
+    }
     $m = $script:ScopeItemKeyRx.Match($t)
-    if ($m.Success) { return "$($m.Groups[1].Value) $($m.Groups[2].Value)" }
-    $c = $script:ScopeCallNameRx.Match($t)
-    if ($c.Success) { return "( $($c.Groups[1].Value)" }
+    if ($m.Success) { return "item $($m.Groups[1].Value)" }
     return $null
 }
 
