@@ -144,10 +144,48 @@ function Test-ScopeDocCandidate([string[]]$Lines) {
     return $script:CommentDocMarkRx.IsMatch(($Lines -join "`n"))
 }
 
-function Test-ScopeDocBefore([string]$Rel, [string[]]$Lines, [int]$Index, [bool[]]$DocFlag, $Targets) {
+$script:ScopeItemKeyRx = [regex]'\b(fn|struct|enum|trait|const|static|type|mod|union|class|interface|record|def|function)\s+([^\W\d]\w*)'
+$script:ScopeCallNameRx = [regex]'([^\W\d]\w*)\s*\('
+
+function Get-ScopeItemKey([string]$Code) {
+    $t = $Code.Trim()
+    if ($t -match '^(//|/\*|\*|#)') { return $null }
+    $m = $script:ScopeItemKeyRx.Match($t)
+    if ($m.Success) { return "$($m.Groups[1].Value) $($m.Groups[2].Value)" }
+    $c = $script:ScopeCallNameRx.Match($t)
+    if ($c.Success) { return "( $($c.Groups[1].Value)" }
+    return $null
+}
+
+function Get-ScopeUniqueDocKeys($Targets, [string[]]$HeadLines) {
+    $keys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    if ($null -eq $Targets -or $Targets.Count -eq 0 -or $null -eq $HeadLines) { return , $keys }
+    $baseCount = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::Ordinal)
+    foreach ($code in $Targets.Keys) {
+        $k = Get-ScopeItemKey $code
+        if ($k) { $n = 0; [void]$baseCount.TryGetValue($k, [ref]$n); $baseCount[$k] = $n + 1 }
+    }
+    if ($baseCount.Count -eq 0) { return , $keys }
+    $headCount = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::Ordinal)
+    foreach ($l in $HeadLines) {
+        $k = Get-ScopeItemKey ([string]$l)
+        if ($k -and $baseCount.ContainsKey($k)) { $n = 0; [void]$headCount.TryGetValue($k, [ref]$n); $headCount[$k] = $n + 1 }
+    }
+    foreach ($k in $baseCount.Keys) {
+        $n = 0
+        if ($baseCount[$k] -eq 1 -and $headCount.TryGetValue($k, [ref]$n) -and $n -eq 1) { [void]$keys.Add($k) }
+    }
+    return , $keys
+}
+
+function Test-ScopeDocBefore([string]$Rel, [string[]]$Lines, [int]$Index, [bool[]]$DocFlag, $Targets, $Keys) {
     if ($null -eq $DocFlag -or $null -eq $Targets -or $Targets.Count -eq 0 -or $Index -lt 0 -or $Index -ge $DocFlag.Count -or -not $DocFlag[$Index]) { return $false }
     $code = Get-CommentDocTarget $Rel $Lines $Index $DocFlag
-    return [bool]($code -and $Targets.ContainsKey($code))
+    if (-not $code) { return $false }
+    if ($Targets.ContainsKey($code)) { return $true }
+    if ($null -eq $Keys -or $Keys.Count -eq 0) { return $false }
+    $k = Get-ScopeItemKey $code
+    return [bool]($k -and $Keys.Contains($k))
 }
 
 function Resolve-ScopeRepo([string]$Dir) {
@@ -243,7 +281,8 @@ function Invoke-ScopeList([string]$Root, [string]$BaseSha, [string]$OutPath) {
             if ($fresh.Count -gt 0 -and (Test-ScopeDocCandidate $r.Lines)) {
                 $r.DocFlag = Get-CommentDocFlags $r.Lines
                 $docs = Get-CommentDocOwnerSizes $r.OldRel $baseLines
-                $fresh = @($fresh | Where-Object { -not (Test-ScopeDocBefore $r.Rel $r.Lines ([int]$_.Line) $r.DocFlag $docs) })
+                $docKeys = Get-ScopeUniqueDocKeys $docs $r.Lines
+                $fresh = @($fresh | Where-Object { -not (Test-ScopeDocBefore $r.Rel $r.Lines ([int]$_.Line) $r.DocFlag $docs $docKeys) })
             }
             $pre += $r.Cands.Count - $fresh.Count
             if ($fresh.Count -eq 0) { continue }
@@ -354,13 +393,14 @@ function Invoke-ScopeCheck([string]$Root, [string]$BaseSha, [string]$BeforePath,
                 $shown = Get-ScopeFileText $Root 'HEAD' $rel
                 if ($null -ne $shown) { $headLines = $shown }
                 $headFlags = Get-CommentDocFlags $headLines
+                $baseKeys = Get-ScopeUniqueDocKeys $baseDocs $headLines
             }
             $isComment = @{}
             foreach ($c in $comments) { $isComment[[int]$c.Line] = $c.Body }
             $keep = New-Object System.Collections.Generic.List[string]
             for ($i = 0; $i -lt $h.Lines.Count; $i++) {
                 if (-not $isComment.ContainsKey($i)) { continue }
-                if ((Test-ScopeBoundaryLine $boundary ($h.Old + $i)) -or $baseBodies.Contains($isComment[$i]) -or (Test-ScopeDocBefore $rel $headLines ($h.Old + $i - 1) $headFlags $baseDocs)) {
+                if ((Test-ScopeBoundaryLine $boundary ($h.Old + $i)) -or $baseBodies.Contains($isComment[$i]) -or (Test-ScopeDocBefore $rel $headLines ($h.Old + $i - 1) $headFlags $baseDocs $baseKeys)) {
                     $keep.Add($h.Lines[$i])
                     "RESTORE ${rel}:$($h.Old + $i)`t$($isComment[$i])"
                 } else { $roundDel++ }
