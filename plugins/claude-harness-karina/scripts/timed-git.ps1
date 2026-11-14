@@ -6,11 +6,7 @@ function ConvertTo-TimedGitArgument([string]$Arg) {
     return '"' + ([regex]::Replace($Arg, '(\\*)("|$)', { param($m) $m.Groups[1].Value + $m.Groups[1].Value + $(if ($m.Groups[2].Value) { '\"' } else { '' }) })) + '"'
 }
 
-function Stop-TimedGitOrphans([int]$ParentId, [datetime]$Since) {
-    if ($env:OS -ne 'Windows_NT') { return }
-    try {
-        if (-not ('KarinaTimedGitTree' -as [type])) {
-            Add-Type -TypeDefinition @'
+$script:TimedGitTreeSource = @'
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -58,8 +54,34 @@ public static class KarinaTimedGitTree {
     }
 }
 '@
+
+function Import-TimedGitTree {
+    if ('KarinaTimedGitTree' -as [type]) { return $true }
+    try {
+        $root = @($env:TMPDIR, $env:TEMP, $env:TMP) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -First 1
+        if (-not $root) { $root = [System.IO.Path]::GetTempPath() }
+        $dir = Join-Path (Join-Path $root 'karina-plugin') 'cache'
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        try { $hash = -join ($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($script:TimedGitTreeSource))[0..7] | ForEach-Object { $_.ToString('x2') }) } finally { $sha.Dispose() }
+        $final = Join-Path $dir ('timed-git-tree-{0}-{1}.{2}-{3}.dll' -f $PSVersionTable.PSEdition, $PSVersionTable.PSVersion.Major, $PSVersionTable.PSVersion.Minor, $hash)
+        if (Test-Path -LiteralPath $final -PathType Leaf) {
+            try { Add-Type -Path $final; return $true } catch {}
         }
-        [KarinaTimedGitTree]::KillDescendants([uint32]$ParentId, $Since.ToFileTimeUtc())
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        $tmp = Join-Path $dir ('timed-git-tree-' + [guid]::NewGuid().ToString('N') + '.tmp.dll')
+        Add-Type -TypeDefinition $script:TimedGitTreeSource -OutputAssembly $tmp -OutputType Library
+        Add-Type -Path $tmp
+        try { Move-Item -LiteralPath $tmp -Destination $final -Force -ErrorAction Stop } catch {}
+        return $true
+    } catch {}
+    if ('KarinaTimedGitTree' -as [type]) { return $true }
+    try { Add-Type -TypeDefinition $script:TimedGitTreeSource; return $true } catch { return $false }
+}
+
+function Stop-TimedGitOrphans([int]$ParentId, [datetime]$Since) {
+    if ($env:OS -ne 'Windows_NT') { return }
+    try {
+        if (Import-TimedGitTree) { [KarinaTimedGitTree]::KillDescendants([uint32]$ParentId, $Since.ToFileTimeUtc()) }
     } catch {}
 }
 
