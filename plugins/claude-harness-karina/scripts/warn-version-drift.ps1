@@ -21,76 +21,41 @@ try {
     if (-not $harnessRoot) { exit 0 }
     $repoPluginJson = Join-Path $harnessRoot '.claude-plugin/plugin.json'
 
-    # ---- 릴리즈 누락 감지 — 근거는 `rules/version-drift-rationale.md` §2
+    # ---- 미배포 감지 — 설치 커밋 뒤 origin/main 의 런타임 폴더 커밋 — 근거는 `rules/version-drift-rationale.md` §2
     try {
-        Push-Location -LiteralPath $harnessRoot
-        try {
-            # 하니스 루트의 git 루트 기준 위치(모노레포면 plugins/claude-harness-karina/, 아니면 빈 값)
-            $harnessPrefix = ((& git rev-parse --show-prefix 2>$null) -join '').Trim()
-            # `-join` 필수 — git show는 **줄 배열**을 반환한다 — 근거는 `rules/version-drift-rationale.md` §3
-            $pushedJson = (& git show "origin/main:${harnessPrefix}.claude-plugin/plugin.json" 2>$null) -join "`n"
-            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($pushedJson)) {
-                $pushedVer = $null
-                try { $pushedVer = ($pushedJson | ConvertFrom-Json).version } catch { $pushedVer = $null }
-                if (-not [string]::IsNullOrWhiteSpace($pushedVer)) {
-                    # 원격에서 이미 찾은 태그는 기억해 두고 다시 묻지 않는다 — 「없음」은 기억하지 않는다. 파일 내용은 태그 커밋 sha(빈 파일은 종전 형식).
-                    $vdHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
-                    $releasedDir = Join-Path $vdHome '.claude/.state/version-drift'
-                    $releasedMark = Join-Path $releasedDir ('released-karina-v' + $pushedVer)
-                    $hasMark = Test-Path -LiteralPath $releasedMark
-                    # 미배포 판정의 기준점(태그 커밋) — 로컬 태그 → 캐시 → 원격 순 — 근거는 `rules/version-drift-rationale.md` §5
-                    $tagSha = ((& git rev-parse -q --verify "refs/tags/karina-v$pushedVer^{commit}" 2>$null) -join '').Trim()
-                    if (-not $tagSha -and $hasMark) {
-                        $markText = ((Get-Content -LiteralPath $releasedMark -Raw -ErrorAction SilentlyContinue) -join '').Trim()
-                        if ($markText -match '^[0-9a-f]{40}$') { $tagSha = $markText }
-                    }
-                    if (-not $tagSha) {
-                        # 로컬에 없다 → 원격 확인. — 근거는 `rules/version-drift-rationale.md` §4
-                        $env:GIT_TERMINAL_PROMPT = '0'
-                        $remoteLimitMs = 5000
-                        $remoteLimitRaw = 0
-                        if ([int]::TryParse([string]$env:KARINA_VD_REMOTE_TIMEOUT_MS, [ref]$remoteLimitRaw) -and $remoteLimitRaw -gt 0) { $remoteLimitMs = $remoteLimitRaw }
-                        $remoteTag = @()
-                        $remoteExit = 1
-                        try {
-                            . (Join-Path $PSScriptRoot 'timed-git.ps1')
-                            $remoteRun = Invoke-TimedGit -GitArgs @('ls-remote', '--tags', 'origin', "karina-v$pushedVer", "karina-v$pushedVer^{}") -WorkDir $harnessRoot -TimeoutMs $remoteLimitMs
-                            $remoteTag = @($remoteRun.Lines | Where-Object { $_ })
-                            $remoteExit = $remoteRun.Code
-                        } catch {}
-                        if ($remoteExit -eq 0) {
-                            $peel = $remoteTag | Where-Object { $_ -match "\srefs/tags/karina-v$([regex]::Escape($pushedVer))\^\{\}$" } | Select-Object -First 1
-                            $plain = $remoteTag | Where-Object { $_ -match "\srefs/tags/karina-v$([regex]::Escape($pushedVer))$" } | Select-Object -First 1
-                            $line = if ($peel) { $peel } else { $plain }
-                            if (-not $line) {
-                                if (-not $hasMark) {
-                                    Write-Output "[karina 릴리즈 누락] origin/main에 v${pushedVer}가 올라가 있는데 태그 karina-v${pushedVer}를 로컬·원격 어디에서도 찾지 못했습니다 — 이 레포 규약은 '회차 끝 버전 커밋 push 뒤 곧바로 릴리즈 발행'입니다. 발행: gh release create karina-v$pushedVer --target <버전 커밋을 담아 push 한 HEAD — 지금 origin/main HEAD 의 full-sha> (short sha는 거부됩니다)."
-                                }
+        $vdHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+        $installedRec = Join-Path $vdHome '.claude/plugins/installed_plugins.json'
+        $inst = $null
+        if (Test-Path -LiteralPath $installedRec) {
+            $inst = @((Get-Content -LiteralPath $installedRec -Raw | ConvertFrom-Json).plugins.'karina@karina-plugins') | Where-Object { $_ -and $_.gitCommitSha } | Select-Object -First 1
+        }
+        if ($inst -and ([string]$inst.gitCommitSha) -match '^[0-9a-f]{7,40}$') {
+            $instSha = [string]$inst.gitCommitSha
+            $instVer = [string]$inst.version
+            Push-Location -LiteralPath $harnessRoot
+            try {
+                # 하니스 루트의 git 루트 기준 위치(모노레포면 plugins/claude-harness-karina/, 아니면 빈 값)
+                $harnessPrefix = ((& git rev-parse --show-prefix 2>$null) -join '').Trim()
+                # `-join` 필수 — git show는 **줄 배열**을 반환한다 — 근거는 `rules/version-drift-rationale.md` §3
+                $pushedJson = (& git show "origin/main:${harnessPrefix}.claude-plugin/plugin.json" 2>$null) -join "`n"
+                if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($pushedJson)) {
+                    $pushedVer = $null
+                    try { $pushedVer = ($pushedJson | ConvertFrom-Json).version } catch { $pushedVer = $null }
+                    & git cat-file -e "$instSha^{commit}" 2>$null
+                    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($pushedVer)) {
+                        $undeployed = @(& git log --format=%h "$instSha..origin/main" -- .claude-plugin agents evals hooks scripts skills 2>$null | Where-Object { $_ })
+                        if ($LASTEXITCODE -eq 0 -and $undeployed.Count -gt 0) {
+                            $instLabel = "설치본(v${instVer} · 커밋 $($instSha.Substring(0, 8)))"
+                            if ($pushedVer -eq $instVer) {
+                                Write-Output "[karina 미배포] ${instLabel} 뒤 origin/main 에 하니스 런타임 폴더 커밋 $($undeployed.Count)건이 버전을 올리지 않은 채 있습니다 — 버전 커밋으로 버전을 올려 push 한 뒤 /plugin update 해야 설치본에 갑니다(docs/harness-conventions.md 「판정 시점」)."
                             } else {
-                                $tagSha = ($line -split '\s+')[0]
-                                # 원격에 있다 — 다른 버전의 기록을 지우고 이 버전의 태그 커밋 sha 만 남긴다(캐시 실패는 삼킨다, 비차단).
-                                try {
-                                    New-Item -ItemType Directory -Path $releasedDir -Force -ErrorAction Stop | Out-Null
-                                    Get-ChildItem -LiteralPath $releasedDir -Filter 'released-*' -File -ErrorAction Stop | Remove-Item -Force -ErrorAction SilentlyContinue
-                                    Set-Content -LiteralPath $releasedMark -Value $tagSha -NoNewline -ErrorAction Stop
-                                } catch {}
-                            }
-                        }
-                    }
-                    # 미배포 — 태그 커밋 뒤 origin/main 의 하니스 런타임 폴더 커밋(다른 플러그인·문서는 세지 않는다).
-                    #   sha 를 못 얻거나 그 커밋이 로컬에 없으면 건너뛴다(폴백 없음).
-                    if ($tagSha) {
-                        & git cat-file -e "$tagSha^{commit}" 2>$null
-                        if ($LASTEXITCODE -eq 0) {
-                            $undeployed = @(& git log --format=%h "$tagSha..origin/main" -- .claude-plugin agents evals hooks scripts skills 2>$null | Where-Object { $_ })
-                            if ($LASTEXITCODE -eq 0 -and $undeployed.Count -gt 0) {
-                                Write-Output "[karina 미배포] 마지막 릴리즈 karina-v${pushedVer}(태그 커밋 $($tagSha.Substring(0,8))) 뒤 origin/main 에 하니스 런타임 폴더 커밋 $($undeployed.Count)건이 버전·릴리즈 없이 올라가 있습니다 — 설치본 사용자에게 가지 않은 변경입니다. 회차 끝 버전 커밋으로 버전을 올린 뒤 릴리즈를 발행하세요(docs/harness-conventions.md 「판정 시점」)."
+                                Write-Output "[karina 미배포] origin/main 의 v${pushedVer} 가 ${instLabel}에 아직 없습니다(하니스 런타임 폴더 커밋 $($undeployed.Count)건) — 사용 PC 에서 /plugin update 로 반영하세요."
                             }
                         }
                     }
                 }
-            }
-        } finally { Pop-Location }
+            } finally { Pop-Location }
+        }
     } catch {}
 
     # ---- 자기(설치본) 버전 ----
