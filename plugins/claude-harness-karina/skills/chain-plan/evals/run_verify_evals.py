@@ -552,6 +552,47 @@ def reuse_docs_rename_counts_both_paths():
 
 
 @case
+def reuse_glob_only_reused():
+    git = FakeGit(refs=['icon.png'])
+    folder = seeded(git)
+    try:
+        git.head = H2
+        git.diff = {H1 + '..' + H2: ['assets/img/icon.png', 'plan.md']}
+        lines, _, calls, _ = stamped(git, ['--reuse-glob', 'assets/**'], folder=folder)
+        assert calls == [] and result(lines).startswith('RESULT: reused — '), lines
+        assert not any(c[0] == 'grep' for c in git.calls), git.calls
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def reuse_glob_with_other_code_runs():
+    git = FakeGit()
+    folder = seeded(git)
+    try:
+        git.head = H2
+        git.diff = {H1 + '..' + H2: ['assets/icon.png', 'src/a.rs']}
+        _, _, calls, _ = stamped(git, ['--reuse-glob', 'assets/**', '--reuse-docs'], folder=folder)
+        assert calls == [1]
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def reuse_glob_relative_to_cwd_prefix():
+    for changed, want in ((['app/assets/x.png'], []), (['assets/x.png'], [1])):
+        git = FakeGit(prefix='app/')
+        folder = seeded(git)
+        try:
+            git.head = H2
+            git.diff = {H1 + '..' + H2: changed}
+            _, _, calls, _ = stamped(git, ['--reuse-glob', 'assets/**'], folder=folder)
+            assert calls == want, (changed, calls)
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
 def reuse_git_failure_runs():
     lines, out, calls, folder = stamped(FakeGit(fail=True))
     try:
@@ -594,6 +635,13 @@ def reuse_docs_needs_stamp():
     p = subprocess.run([sys.executable, SCRIPT, '--reuse-docs', '--cwd', '.', '--', 'bash', 'x.sh'],
                        capture_output=True, encoding='utf-8', errors='replace', timeout=60)
     assert p.returncode == 2 and '--stamp' in p.stderr, (p.returncode, p.stderr[-300:])
+
+
+@case
+def reuse_glob_needs_stamp():
+    p = subprocess.run([sys.executable, SCRIPT, '--reuse-glob', 'assets/**', '--cwd', '.', '--', 'bash', 'x.sh'],
+                       capture_output=True, encoding='utf-8', errors='replace', timeout=60)
+    assert p.returncode == 2 and '--reuse-glob 는 --stamp' in p.stderr, (p.returncode, p.stderr[-300:])
 
 
 def _wrap(args, cwd, env=None, timeout=90):
@@ -834,6 +882,26 @@ def real_git_reuse_docs_bare_mention_vs_literal():
             assert want in out, (name, out[-400:])
     finally:
         _drop_stamp(d)
+        shutil.rmtree(d, ignore_errors=True)
+
+
+@case
+def real_git_reuse_glob_matches_git_pathspec():
+    names = ['top.png', 'res/a.png', 'res/c.txt', 'res/sub/b.png', 'res/sub/deep/d.png', 'other/res/e.png']
+    d = tempfile.mkdtemp()
+    try:
+        for name in names:
+            os.makedirs(os.path.dirname(os.path.join(d, name)) or d, exist_ok=True)
+            with open(os.path.join(d, name), 'w', encoding='utf-8') as f:
+                f.write('x\n')
+        subprocess.run(['git', 'init', '-q', d], check=True)
+        subprocess.run(['git', '-C', d, 'add', '-A'], check=True)
+        for pattern in ('*.png', 'res/*', 'res/**', 'res/**/*.png', '**/res/*.png', 'res/?.png', 'res/[ab].png'):
+            listed = subprocess.run(['git', '-C', d, 'ls-files', '--', ':(glob)' + pattern],
+                                    capture_output=True, encoding='utf-8', check=True).stdout.split()
+            matched = [n for n in names if rv.glob_match(n, pattern)]
+            assert sorted(listed) == sorted(matched), (pattern, listed, matched)
+    finally:
         shutil.rmtree(d, ignore_errors=True)
 
 

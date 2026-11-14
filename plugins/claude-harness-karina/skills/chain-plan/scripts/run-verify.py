@@ -19,6 +19,8 @@
 기록·재사용을 하지 못한 사유는 `STAMP:` 줄로 낸다. 재사용은 미커밋 추적 변경이 없고(같은 제외) 기록 HEAD 가 지금 HEAD 와 같을 때이고,
 --reuse-docs 를 함께 주면 그 사이 바뀐 파일이 전부 .md·.txt 이고 AGENTS.md·CLAUDE.md 가 없으며 그 이름이
 .md·.txt 밖 추적 파일에 따옴표 앞 문자열로 나오지 않을 때도 재사용한다.
+--reuse-glob <g> (여러 번)를 주면 --cwd 폴더 기준으로 그 glob(git `:(glob)` 규칙)에 걸리는 파일도
+재사용 범위로 친다 — 이름 대조는 하지 않고, --reuse-docs 없이 주면 그 밖 변경은 문서여도 재사용하지 않는다.
 
 어느 갈래로 끝나든 명령이 남긴 자손 프로세스를 끝낸다(Windows 는 Job Object, 그 밖은 프로세스 그룹).
 판정 근거는 `../references/run-verify-rationale.md` 가 정본이다.
@@ -27,6 +29,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -71,6 +74,7 @@ def parse_args(argv):
     p.add_argument('--deadline-sec', type=float, default=None)
     p.add_argument('--stamp', action='store_true')
     p.add_argument('--reuse-docs', action='store_true')
+    p.add_argument('--reuse-glob', action='append', default=[])
     p.add_argument('cmd', nargs=argparse.REMAINDER)
     opts = p.parse_args(argv)
     if opts.cmd[:1] == ['--']:
@@ -81,6 +85,8 @@ def parse_args(argv):
         p.error('--max-sec 와 --deadline-sec 은 함께 줄 수 없다 — 사전 단계는 --deadline-sec 하나다')
     if opts.reuse_docs and not opts.stamp:
         p.error('--reuse-docs 는 --stamp 와 함께만 준다')
+    if opts.reuse_glob and not opts.stamp:
+        p.error('--reuse-glob 는 --stamp 와 함께만 준다')
     if opts.max_sec is None and opts.deadline_sec is None:
         opts.max_sec = DEFAULT_MAX_SEC
     return opts
@@ -215,7 +221,39 @@ def _load(path):
         return {}
 
 
-def _docs_only(git, cwd, since, head, prefix):
+def _glob_regex(pattern):
+    out, i = [], 0
+    while i < len(pattern):
+        if pattern.startswith('**/', i) and (i == 0 or pattern[i - 1] == '/'):
+            out.append('(?:.*/)?')
+            i += 3
+        elif pattern.startswith('/**', i) and i + 3 == len(pattern):
+            out.append('/.*')
+            i += 3
+        elif pattern[i] == '*':
+            while i < len(pattern) and pattern[i] == '*':
+                i += 1
+            out.append('[^/]*')
+        elif pattern[i] == '?':
+            out.append('[^/]')
+            i += 1
+        elif pattern[i] == '[' and ']' in pattern[i + 2:]:
+            end = pattern.index(']', i + 2)
+            body = pattern[i + 1:end]
+            out.append('[' + ('^' + body[1:] if body[:1] == '!' else body) + ']')
+            i = end + 1
+        else:
+            out.append(re.escape(pattern[i]))
+            i += 1
+    return re.compile(''.join(out) + r'\Z')
+
+
+def glob_match(path, pattern):
+    """git `:(glob)` pathspec 과 같은 규칙으로 맞춘다 — `**/`·`/**/`·끝 `/**` 는 폴더를 건너고 `*`·`?` 는 `/` 를 넘지 않는다."""
+    return _glob_regex(pattern).match(path) is not None
+
+
+def _changes_reusable(git, cwd, since, head, prefix, docs, globs):
     changed = _git_out(git, cwd, ['diff', '--name-only', '--no-renames', '%s..%s' % (since, head)])
     if changed is None:
         return '바뀐 파일을 읽지 못했다'
@@ -223,9 +261,12 @@ def _docs_only(git, cwd, since, head, prefix):
     for path in changed.splitlines():
         if path in {prefix + n for n in NOTE_FILES}:
             continue
+        rel = path[len(prefix):] if path.startswith(prefix) else None
+        if rel is not None and any(glob_match(rel, g) for g in globs):
+            continue
         name = path.rsplit('/', 1)[-1]
-        if not name.lower().endswith(DOC_EXTS) or name in BLOCKING_DOCS:
-            return '문서 밖 변경 — %s' % path
+        if not docs or not name.lower().endswith(DOC_EXTS) or name in BLOCKING_DOCS:
+            return '재사용 범위 밖 변경 — %s' % path
         code, _ = git(top or cwd, ['grep', '-l', '-F', '-e', name + '"', '-e', name + "'", '--',
                                    '.', ':!*.md', ':!*.txt'])
         if code != 1:
@@ -241,9 +282,9 @@ def _reusable(opts, git, entry, tree):
         return '미커밋 변경 — %s' % dirty[0]
     if entry.get('head') == head:
         return None
-    if not opts.reuse_docs:
+    if not opts.reuse_docs and not opts.reuse_glob:
         return 'HEAD 가 다르다(기록 %s)' % entry.get('head', '')[:7]
-    return _docs_only(git, opts.cwd, entry.get('head', ''), head, prefix)
+    return _changes_reusable(git, opts.cwd, entry.get('head', ''), head, prefix, opts.reuse_docs, opts.reuse_glob)
 
 
 def run_stamped(opts, git, run_fn, emit, folder, now=time.time):
