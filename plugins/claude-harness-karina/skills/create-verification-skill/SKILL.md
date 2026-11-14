@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 > 출처는 Cursor pstack 의 create-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/create-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮기며 생성 위치를 Claude Code 프로젝트 스킬로 바꾸고, Windows 데스크톱 조작·「변경 검증」 절·karina 등록 절차를 더했으며, 체크아웃이 빌드·실행되지 않으면 원문처럼 고치지 않고 보고하고 멈춘다.
 
-실제 앱을 띄우고, 사용자가 쓰는 방식으로 기능을 조작하고, 증거를 남기는 절차를 대상 레포 전용 스킬 `.claude/skills/verify-<app>/` 로 만든다. **생성물의 독자는 사람이 아니라 다음 에이전트다** — 앱을 한 번도 본 적 없는 에이전트가 작업 도중에 처음 읽고 그대로 따라 한다. 그 에이전트는 `karina:implement` 의 화면 확인 전 조작과 `gate-verifier` 의 push 전 검증이다(`AGENTS.md` 의 `Verify (앱 조작)` 줄로 찾는다).
+실제 앱을 띄우고, 사용자가 쓰는 방식으로 기능을 조작하고, 증거를 남기는 절차를 대상 레포 전용 스킬 `.claude/skills/verify-<app>/` 로 만든다. **생성물의 독자는 사람이 아니라 다음 에이전트다** — 앱을 한 번도 본 적 없는 에이전트가 작업 도중에 처음 읽고 그대로 따라 한다. 그 에이전트는 `karina:implement`·`karina:karina-systematic-debugging` 의 화면 확인 전 조작이다(`AGENTS.md` 의 `Verify (앱 조작)` 줄로 찾는다).
 
 ## 1. 사용자가 아니라 레포를 조사한다
 
@@ -29,7 +29,7 @@ disable-model-invocation: true
 - **Launch** — 검증용으로 앱을 띄우는 정확한 명령과 준비 판정(로그 한 줄·프롬프트·기대 창의 출현). 빈 데이터 폴더에서 마이그레이션·시드까지 거쳐 **쓸 수 있는 상태**에 닿아야 한다. 프로세스가 응답하는 것은 준비가 아니다 — DB 헬스 체크는 초기화 스크립트가 도는 중에도 통과한다. 종료 방법을 함께 적는다. 수명이 짧은 CLI·TUI 는 붙잡아 둘 서버가 없다 — Launch 는 바이너리를 한 번 빌드(또는 의존성 설치)하는 것이고, 조작마다 격리된 세션에서 새로 띄운다. **레포 루트를 인자로 받아 다른 worktree 에서도 돌게 쓴다** — 병렬 체인 워커가 자기 worktree 에서 같은 Launch 로 돌린다.
 - **Doctor** — 「이 인스턴스를 조작해도 되는가」에 답하는 읽기 전용 점검 하나: 프로세스가 떠 있는가 · 기대한 버전·빌드인가 · 포트를 우리가 쥐고 있는가 · 인증이 유효한가 · 조작 도구(CLI)를 지금 쓸 수 있는가. 무언가 이상해 보이면 에이전트가 가장 먼저 돌린다.
 - **Drive** — 이 레포의 실제 셀렉터·명령으로 쓴 조작법. 예시가 아니다. 좌표·탭 순서보다 안정된 손잡이(ARIA 이름·data 속성·AutomationId·프롬프트 문자열·라우트 경로)를 쓴다. 실행마다 바뀌는 요소 번호는 적지 않고 그 요소의 이름·역할을 적는다. 접근성 트리가 없는 창은 좌표가 유일한 손잡이다 — 좌표값 대신 스크린샷에서 자리를 찾는 기준을 적는다.
-- **Evidence** — 증명에 무엇을 남기고 어디에 두는가. 증거는 **레포 밖** `%TEMP%/karina-plugin/verify/<app>/<실행 id>/`(`../TEMP-FILES.md`)에 둔다 — `gate-verifier` 는 파일을 고치지 않는 에이전트라 레포 안에 쓰면 그 규칙을 어긴다. 기한이 지난 실행 폴더는 세션 시작 정리가 지우므로 스킬이 앞 실행 증거를 지우지 않는다. 증거 기준을 적는다:
+- **Evidence** — 증명에 무엇을 남기고 어디에 두는가. 증거는 **레포 밖** `%TEMP%/karina-plugin/verify/<app>/<실행 id>/`(`../TEMP-FILES.md`)에 둔다 — 레포 안에 쓰면 증거가 미커밋 변경으로 남아 push 전 확인의 clean 판정을 깬다. 기한이 지난 실행 폴더는 세션 시작 정리가 지우므로 스킬이 앞 실행 증거를 지우지 않는다. 증거 기준을 적는다:
   - 실제 사용자 경로로 조작한다 — 내부 setter·테스트 전용 엔드포인트는 쓰지 않는다
   - 조작과 그 결과 상태를 함께 남긴다 — 마지막 화면만으로는 증명이 아니다
   - 보이는 것과 함께 부수 효과(쓴 파일·추가된 행·보낸 메시지)를 확인한다
@@ -63,7 +63,7 @@ disable-model-invocation: true
 
 증명에 성공했을 때만 한다. 순서가 정해져 있다.
 
-1. **추적되는 경로인지 본다** — `git check-ignore -q .claude/skills/verify-<app>/SKILL.md` 의 종료 코드가 **1** 이어야 한다(0 이면 무시되는 경로다). 무시되는 경로면 `git check-ignore -v` 출력(어느 ignore 파일의 몇째 줄인지)을 보이고 사용자에게 둘 중 하나를 고르게 한다 — 고르지 않으면 등록하지 않고 보고한다. `gate-verifier` 는 push 할 head 의 worktree 에서만 돌아 추적되지 않은 스킬을 보지 못한다(전역 `core.excludesfile` 이 `.claude/` 를 무시하는 PC 가 흔하다).
+1. **추적되는 경로인지 본다** — `git check-ignore -q .claude/skills/verify-<app>/SKILL.md` 의 종료 코드가 **1** 이어야 한다(0 이면 무시되는 경로다). 무시되는 경로면 `git check-ignore -v` 출력(어느 ignore 파일의 몇째 줄인지)을 보이고 사용자에게 둘 중 하나를 고르게 한다 — 고르지 않으면 등록하지 않고 보고한다. 병렬 체인 워커의 worktree 같은 다른 체크아웃은 추적되지 않은 스킬을 보지 못한다(전역 `core.excludesfile` 이 `.claude/` 를 무시하는 PC 가 흔하다).
    - **(권장) 레포 `.gitignore` 에 부정 사슬을 더한다** — 사슬이 없으면 다섯 줄 `!.claude/` · `.claude/*` · `!.claude/skills/` · `.claude/skills/*` · `!.claude/skills/verify-<app>/` 이다. **사슬이 이미 있으면(앞서 `formal-<영역>` 등을 등록한 레포) `!.claude/skills/verify-<app>/` 한 줄만 더한다** — gitignore 는 마지막에 맞는 줄이 이겨, 다섯 줄을 다시 붙이면 뒤의 `.claude/skills/*` 가 앞서 풀어 둔 폴더를 다시 막는다. git 은 제외된 부모 폴더 아래 파일을 되살리지 못해 `!.claude/skills/verify-<app>/` 한 줄로는 풀리지 않는다. 이후 `add` 는 그대로 통하고, 4번 커밋 경로에 `.gitignore` 를 더한다.
    - **`git add -f -- .claude/skills/verify-<app>`** — 폴더 전체를 지정한다. 이 경로를 고르면 4번과 유지 스킬의 `add` 에도 `-f` 가 필요하다 — 없으면 `The following paths are ignored` 로 실패한다.
    - 고른 수단을 적용한 뒤 이 1번을 다시 돌려 종료 코드 1 을 확인한다(2026-10-18 전역 ignore 를 둔 임시 레포 실측: 부정 사슬 rc 0→1·이후 add rc 0 · `add -f` 뒤 일반 add rc 1·`add -f` rc 0).

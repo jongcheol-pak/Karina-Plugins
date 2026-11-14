@@ -10,7 +10,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 19 / 종결 121
+**▶ 현행 잔량(기계 대조 대상)**: 대기 18 / 종결 122
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -51,7 +51,6 @@
 
 
 - [2026-10-15] **chain-plan 후보 라운드에 「설계 결함」 종류가 없다** — `plan/references/interview.md` 「후보 라운드」는 코디네이터도 그 절을 따른다고 하나 `chain-plan/SKILL.md` 후보 라운드 줄·`references/measure.md` 반환 칸에 그 종류가 없다. 코디네이터가 물을지, 워커 몫(`relay-mode.md` 2-3)으로 두고 interview.md 에 예외를 적을지 정해 한쪽 문면을 고친다 (출처: v1.374.0 회차 후보 라운드 ④) (실해: 2026-10-15 prompt-audit 2회차가 interview.md 와 chain-plan 문면이 갈리는 것을 관측)
-- [2026-10-18] **디버깅 재현 BASE 대조** — `karina-systematic-debugging` 재현 단계에서 같은 재현 시나리오를 BASE worktree 에서도 돌려 회귀가 이 변경에서 생겼는지 가른다(절차 선례 `implement/references/report-format.md`「화면 시나리오 실행」의 (BASE 대조)) (출처: 계획 체인 run_60c0ebe3 plan 3 후보 라운드 — 사용자 「보류」) (실해: 2026-10-18 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 디버깅 재현은 현재 HEAD 에서만 돌아 회귀 시점을 가르지 못함)
 - [2026-10-27] **완료 보고 요구 항목별 결과 줄** — `implement/references/report-format.md` 「보고 형식」에 `> 요구:` 항목마다 `완료 | 미검증 | 실패 | 사용자 대기` 와 도중에 고친 결함을 한 줄씩 싣는 줄을 둔다(pstack ketchup *"one short bullet per thing the user asked for"* — HUMAN-VERIFY·수정 내용과 겹치지 않게) (출처: 완료 보고 확인할 파일 회차 후보 라운드 8 — 사용자 「보류」) (실해: 2026-10-27 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 보고 「수정 내용」 이 서술형이라 요구와 결과를 사용자가 직접 대조하지 못함)
 - [2026-10-19] **체인 병렬 그룹의 넘긴 질문 시한 대기** — `chain-plan/scripts/wait-worker.py --answer-by` 는 `--dispatch` 하나에만 받아, 병렬 그룹이 돌 때 사용자에게 넘긴 ②·③ 질문은 상한 없이 기다린다. 병렬 대기와 미답 시한을 함께 재는 갈래를 둔다(`chain-plan/references/user-relay.md`「미답 기본값」·`parallel.md`) (출처: 계획 체인 run_60c0ebe3 plan 6 후보 라운드 — 사용자 「보류」) (실해: 2026-10-19 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 병렬 그룹 중 넘긴 질문은 미답 기본값이 걸리지 않아 체인이 선다)
 - [2026-10-19] **체인 실행 시점 승인·기존 것을 깨는 변경 대기의 재알림** — 사용자 몫 ①·④ 로 넘긴 질문은 상한 없이 기다리고 처음 한 번만 `PushNotification` 으로 알린다. 일정 시간(예: 30분)마다 다시 알리는 장치를 둔다(`chain-plan/references/user-relay.md`「사용자에게 넘기기」) (출처: 계획 체인 run_60c0ebe3 plan 6 후보 라운드 — 사용자 「보류」) (실해: 2026-10-19 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 첫 알림을 놓치면 ①·④ 질문이 열린 채 체인이 선다)
@@ -65,7 +64,7 @@
 ### eval · 측정
 
 - [2026-11-14] **계획 리뷰 소요 효과 측정** — 설치본이 3.19.0(첫 호출 대상별 상한 · 재호출 델타 검사)이 된 뒤 계획 세션이 쌓이면 전사(`subagents/*.meta.json` 의 plan-reviewer)에서 첫 호출·재호출 소요와 도구 호출 수 중앙값을 다시 재 착수값(14일 — 첫 5.0분·36회 · 재호출 2.7분·24회)과 비교하고, 측정 스크립트를 레포에 둘지 정한다 — 넘김 사유 ②(측정 자산 추가 · 사용자 「보류」) (실해: 2026-11-14 14일 리뷰 시간 1101분 중 첫 호출 941분 — 사용자 「계획 검증 리뷰가 너무 오래 걸린다」)
-- [2026-11-14] **「완료 순서」 문면 대조 검사 축** — `implement/references/final-review.md`「완료 순서」 와 `local-gate.md`·`push-flow.md`·`report-format.md` 가 서술하는 회차 끝 순서(리뷰·4번·plan 커밋·게이트·push·NOTES 등재)를 `check-harness-consistency.py` 축으로 대조한다 — 넘김 사유 ②(새 검사 축) (출처: 체인 run_dc17831b plan 2 후보 라운드 — 사용자 「보류」) (실해: 2026-11-14 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 게이트 NOTES 를 local-gate.md:48 은 Deferred 로, :77 은 「남은 이슈」로 보내 순서 서술이 갈렸다 — plan 2 T4 가 문면만 고침)
+- [2026-11-14] **「완료 순서」 문면 대조 검사 축** — `implement/references/final-review.md`「완료 순서」 와 `push-flow.md`·`report-format.md` 가 서술하는 회차 끝 순서(리뷰·4번·plan 커밋·push 전 확인·push)를 `check-harness-consistency.py` 축으로 대조한다 — 넘김 사유 ②(새 검사 축) (출처: 체인 run_dc17831b plan 2 후보 라운드 — 사용자 「보류」) (실해: 2026-11-14 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 게이트 NOTES 를 local-gate.md:48 은 Deferred 로, :77 은 「남은 이슈」로 보내 순서 서술이 갈렸다 — plan 2 T4 가 문면만 고침)
 - [2026-11-13] **참조 깊이 검사 축** — 스킬 문서가 참조 문서를 거쳐 다시 참조 문서를 가리키는 깊이(`skills/BUDGET.md`「나눈 뒤에 지킬 것」)를 `check-harness-consistency.py` 축으로 잰다 — 지금은 문면 규칙뿐이다 — 넘김 사유 ②(새 검사 축) (체인 run_7c21af27 plan 2 보류 — 사용자 지시) (실해: 2026-11-13 plan/SKILL → rare-paths「승인 답 갈래」 → interview「승인 제시」 깊이 2 를 하니스 검토가 사람 눈으로 찾음 — plan 2 T8 이 고침)
 - [2026-11-13] **rationale 차단 경로 수 대조 검사** — `scripts/rules/bash-guard-rationale.md` §2 의 「`Block = $true` 경로는 N」·검사 수 서술을 `hooks/evals/check-block-coverage.py` 출력과 대조하는 검사 — 넘김 사유 ②(새 검사) (체인 run_7c21af27 plan 2 보류 — 사용자 지시) (실해: 2026-11-13 그 문단이 「다섯·10검사 중 4종」 으로 낡아 실제 8경로·12검사와 어긋남 — plan 2 T2 가 고침)
 - [2026-11-13] **사용자 몫 범주 단일 정본 검사기 축** — chain-plan 의 넘김 범주(사용자 몫 다섯 — `chain-plan/SKILL.md`「답하는 기준」·`references/user-relay.md`「사용자 몫」)가 다른 참조 문서에 범주 미지정 넘김으로 새로 생기는지 `check-harness-consistency.py` 축으로 잰다 — 지금은 문면 규칙뿐이다 — 넘김 사유 ②(새 검사 축) (체인 run_7c21af27 plan 3 보류 — 사용자 지시) (실해: 2026-11-13 compaction.md「압축 뒤 복원」 이 범주 없이 「사용자 몫으로 넘긴다」를 둬 여섯째 범주가 된 것을 하니스 검토가 찾음 — plan 3 T3 가 문면만 고침)

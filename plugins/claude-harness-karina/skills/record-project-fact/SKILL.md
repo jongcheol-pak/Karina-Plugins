@@ -1,6 +1,6 @@
 ---
 name: record-project-fact
-description: Records a CONFIRMED project fact (build/run/test command, DB access, artifact location, untested layers) into AGENTS.md — on the suggest-agents-record hook's acceptance or on request ("AGENTS.md에 기록", "빌드 명령 기록해줘", "게이트 필수 경로 기록해줘" (Gate paths), "AGENTS.md에서 이 항목 빼줘", and "기억해둬" for a confirmed command or a work pitfall/convention → docs/conventions.md). Also on injection-limit signals ("AGENTS.md가 너무 커졌어", "주입 상한 임박"), RETROFIT ("AGENTS.md 정리해줘", "새 경계로 맞춰줘"), and creating a missing AGENTS.md when that alone is asked.
+description: Records a CONFIRMED project fact (build/run/test command, DB access, artifact location, untested layers) into AGENTS.md — on the suggest-agents-record hook's acceptance or on request ("AGENTS.md에 기록", "빌드 명령 기록해줘", "AGENTS.md에서 이 항목 빼줘", and "기억해둬" for a confirmed command or a work pitfall/convention → docs/conventions.md). Also on injection-limit signals ("AGENTS.md가 너무 커졌어", "주입 상한 임박"), RETROFIT ("AGENTS.md 정리해줘", "새 경계로 맞춰줘"), and creating a missing AGENTS.md when that alone is asked.
 argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 ---
 
@@ -25,15 +25,14 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 
 | 사실 종류 | 대상 섹션 |
 |---|---|
-| 빌드·실행 명령 · 테스트·검증 명령(task 대상 지정 형식 `Test (task)`·소스 감사 `Test (감사)`·검증 worktree 빌드 캐시 `Build cache` 포함) · 앱 조작 검증 스킬 경로(`Verify (앱 조작)` 항목 — `/karina:create-verification-skill` 이 실행 증명 뒤 넘긴 `.claude/skills/verify-앱이름/`) · 형식 검증 스킬 경로(`Verify (형식 검증)` 항목 — `/karina:create-formal-verification-skill` 이 실행 증명 뒤 넘긴 `.claude/skills/formal-영역/` · 여럿이면 ` · ` 로 잇는다) | `## Build & Test` |
+| 빌드·실행 명령 · 테스트·검증 명령(task 대상 지정 형식 `Test (task)`·소스 감사 `Test (감사)` 포함) · 앱 조작 검증 스킬 경로(`Verify (앱 조작)` 항목 — `/karina:create-verification-skill` 이 실행 증명 뒤 넘긴 `.claude/skills/verify-앱이름/`) · 형식 검증 스킬 경로(`Verify (형식 검증)` 항목 — `/karina:create-formal-verification-skill` 이 실행 증명 뒤 넘긴 `.claude/skills/formal-영역/` · 여럿이면 ` · ` 로 잇는다) | `## Build & Test` |
 | 배포·릴리즈 규약 | `## Build & Test`의 `Release` 항목 (절을 새로 만들지 않는다) |
-| 변경 파일 패턴 → 필수 검증 매핑 | `## Build & Test`의 검증 매핑 표 (**여기 있어야 `karina:implement`의 게이트가 켜진다**) |
+| 변경 파일 패턴 → 필수 검증 매핑 | `## Build & Test`의 검증 매핑 표 (**여기 있어야 `karina:implement`의 task 검증이 켜진다**) |
 | DB 접근 방법 | `## 데이터 접근` |
 | 파일·산출물 관리 | `## 산출물·파일 관리` |
 | 테스트 비대상 계층·의도된 제약 | `## Conventions` |
 | 아키텍처 선언 | `## Conventions` 의 `- **아키텍처**:` 1줄 (형식 `../AGENTS-BOUNDARY.md`「생성물 골격 (정본)」 · 경로 `../plan/references/rare-paths.md`「아키텍처 선언 부재」) |
-| 게이트 필수 경로(작은 변경도 push 전 검증자의 전체 게이트를 거칠 경로 glob) | `## Build & Test` 의 `- **Gate 필수 경로**: …` 한 줄 (판정 정본 `../implement/references/local-gate.md`「경량 면제」 — 줄 머리를 바꾸면 대조가 꺼진다) |
-| 게이트 재사용 경로(테스트 재실행이 필요 없는 경로 glob — 바뀌어도 게이트·체인 검증이 직전 테스트 결과를 재사용) | `## Build & Test` 의 `- **Gate 재사용 경로**: …` 한 줄 (판정 정본 `../implement/references/reuse-scope.md`「재사용 범위 판정」) — **`Gate 필수 경로` 에 같은 glob 문자열이 있으면 기록하지 않고 그 겹침을 알린다** — 필수 경로는 크기와 관계없이 검증자를 거치라는 선언이라 둘이 겹치면 판정이 모순된다 |
+| 체인 검증 재사용 경로(테스트 재실행이 필요 없는 경로 glob — 바뀌어도 체인 코디네이터 검증이 직전 테스트 통과 기록을 재사용) | `## Build & Test` 의 `- **Gate 재사용 경로**: …` 한 줄 (판정 정본 `../chain-plan/references/continuation.md`「코디네이터 검증」 — 줄 머리를 바꾸면 재사용이 꺼진다) — **검증 매핑이 명령을 거는 경로와 겹치면 기록하지 않고 그 겹침을 알린다** — 명령이 걸린 경로의 변경은 다시 돌아야 한다 |
 | 작업 함정·작업 규약(사용자 「기억해둬」 — 명령이 아닌 것) | `AGENTS.md` 가 아니라 레포 `docs/conventions.md` — 항목 형식·절 선택은 `../REPO-CONVENTIONS.md` 「항목 형식」·「쓰기」, 파일이 없으면 만든다 |
 
 **섹션이 없으면 신설한다.** 위치는 `../AGENTS-BOUNDARY.md`의 **「생성물 골격」 뼈대 순서**가 정본이다 — 그 문서가 절 구성과 배치 순서를 함께 정하므로, 새 절은 뼈대 순서 자리(뼈대에서 그 절보다 앞에 오는 절 가운데 파일에 있는 마지막 절 바로 뒤)에 넣는다. 기존 파일의 순서가 뼈대와 달라도 기존 절은 옮기지 않는다 — Step 4 의 「다른 섹션 불변」이다(근거 `references/record-fact-rationale.md` §9). 섹션이 이미 있으면 그 안에 항목을 추가·갱신한다.

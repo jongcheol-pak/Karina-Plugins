@@ -101,9 +101,10 @@ DEAD = [
     'deferred-history.md',
     'pr-mode.md', 'stack-mode.md', 'chain-end-pr.md', 'pr_stage', 'gate-countersign', 'concurrent-sessions',
     'pr-verifier', 'pr-flow.md',
+    'gate-verifier', 'local-gate', 'reuse-scope', 'Gate 필수', '(BASE 대조)', '화면 확인함',
 ]
 
-DEAD_BASELINE = 48
+DEAD_BASELINE = 54
 
 RX = re.compile('|'.join(re.escape(d) for d in DEAD))
 
