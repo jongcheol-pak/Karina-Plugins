@@ -148,32 +148,34 @@ $script:ScopeDefKeyRx = [regex]'\b(?:(?:fn|struct|enum|trait|type|mod|union|clas
 $script:ScopeValueKeyRx = [regex]'^(?:pub(?:\([^)]*\))?\s+)?(?:(?:const|static)\s+)+(?:mut\s+)?([^\W\d]\w*)\s*:'
 $script:ScopeMethodKeyRx = [regex]'(?<![\w.])([\w<>\[\],?]+)\s+([^\W\d]\w*)\s*(?:<[^()]*>)?\s*\('
 $script:ScopeNotTypeWords = @('return', 'await', 'new', 'throw', 'yield', 'else', 'if', 'while', 'for', 'foreach', 'switch', 'using', 'lock', 'case', 'in', 'is', 'as', 'not', 'and', 'or')
+$script:ScopeMethodExts = @('.cs', '.java', '.c', '.h', '.cpp', '.hpp')
 
-function Get-ScopeItemKey([string]$Code) {
+function Get-ScopeItemKey([string]$Rel, [string]$Code) {
     $t = $Code.Trim()
     if ($t -match '^(//|/\*|\*|#)') { return $null }
     $m = $script:ScopeDefKeyRx.Match($t)
     if ($m.Success) { return "item $($m.Groups[1].Value)" }
     $v = $script:ScopeValueKeyRx.Match($t)
     if ($v.Success) { return "item $($v.Groups[1].Value)" }
+    if ($script:ScopeMethodExts -notcontains [System.IO.Path]::GetExtension($Rel).ToLower()) { return $null }
     foreach ($c in $script:ScopeMethodKeyRx.Matches($t)) {
         if ($script:ScopeNotTypeWords -cnotcontains $c.Groups[1].Value) { return "item $($c.Groups[2].Value)" }
     }
     return $null
 }
 
-function Get-ScopeUniqueDocKeys($Targets, [string[]]$HeadLines) {
+function Get-ScopeUniqueDocKeys([string]$Rel, $Targets, [string[]]$HeadLines) {
     $keys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     if ($null -eq $Targets -or $Targets.Count -eq 0 -or $null -eq $HeadLines) { return , $keys }
     $baseCount = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::Ordinal)
     foreach ($code in $Targets.Keys) {
-        $k = Get-ScopeItemKey $code
+        $k = Get-ScopeItemKey $Rel $code
         if ($k) { $n = 0; [void]$baseCount.TryGetValue($k, [ref]$n); $baseCount[$k] = $n + 1 }
     }
     if ($baseCount.Count -eq 0) { return , $keys }
     $headCount = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::Ordinal)
     foreach ($l in $HeadLines) {
-        $k = Get-ScopeItemKey ([string]$l)
+        $k = Get-ScopeItemKey $Rel ([string]$l)
         if ($k -and $baseCount.ContainsKey($k)) { $n = 0; [void]$headCount.TryGetValue($k, [ref]$n); $headCount[$k] = $n + 1 }
     }
     foreach ($k in $baseCount.Keys) {
@@ -189,7 +191,7 @@ function Test-ScopeDocBefore([string]$Rel, [string[]]$Lines, [int]$Index, [bool[
     if (-not $code) { return $false }
     if ($Targets.ContainsKey($code)) { return $true }
     if ($null -eq $Keys -or $Keys.Count -eq 0) { return $false }
-    $k = Get-ScopeItemKey $code
+    $k = Get-ScopeItemKey $Rel $code
     return [bool]($k -and $Keys.Contains($k))
 }
 
@@ -286,7 +288,7 @@ function Invoke-ScopeList([string]$Root, [string]$BaseSha, [string]$OutPath) {
             if ($fresh.Count -gt 0 -and (Test-ScopeDocCandidate $r.Lines)) {
                 $r.DocFlag = Get-CommentDocFlags $r.Lines
                 $docs = Get-CommentDocOwnerSizes $r.OldRel $baseLines
-                $docKeys = Get-ScopeUniqueDocKeys $docs $r.Lines
+                $docKeys = Get-ScopeUniqueDocKeys $r.Rel $docs $r.Lines
                 $fresh = @($fresh | Where-Object { -not (Test-ScopeDocBefore $r.Rel $r.Lines ([int]$_.Line) $r.DocFlag $docs $docKeys) })
             }
             $pre += $r.Cands.Count - $fresh.Count
@@ -398,7 +400,7 @@ function Invoke-ScopeCheck([string]$Root, [string]$BaseSha, [string]$BeforePath,
                 $shown = Get-ScopeFileText $Root 'HEAD' $rel
                 if ($null -ne $shown) { $headLines = $shown }
                 $headFlags = Get-CommentDocFlags $headLines
-                $baseKeys = Get-ScopeUniqueDocKeys $baseDocs $headLines
+                $baseKeys = Get-ScopeUniqueDocKeys $rel $baseDocs $headLines
             }
             $isComment = @{}
             foreach ($c in $comments) { $isComment[[int]$c.Line] = $c.Body }
