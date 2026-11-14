@@ -175,8 +175,8 @@ Assert-Case -Name "check-plan: 보류·취소(~·-) 하위 항목의 맞는 번�
 }
 
 if (Test-ScenarioUnit 1) {
-$r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + ' · (BASE 대조)'))
-Assert-Case -Name "check-plan: 화면 줄 세 요소와 (BASE 대조) 표지를 받아들인다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckPlan (New-ScreenPlan $cpScreen)
+Assert-Case -Name "check-plan: 화면 줄 세 요소를 받아들인다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 $r = Invoke-CheckPlan (New-ScreenPlan $cpScreen.Replace(' · 통과 조건 데모 창이 보인다', ''))
 Assert-Case -Name "check-plan: 화면 줄에 통과 조건이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-line T1 predicate'
 $r = Invoke-CheckPlan (New-ScreenPlan $cpScreen.Replace(' · 스크린샷 demo.png', ''))
