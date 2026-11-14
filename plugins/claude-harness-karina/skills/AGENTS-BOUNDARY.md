@@ -49,6 +49,7 @@
 - **Lint/Format**: `<있으면 — 파일을 고치지 않는 검사 형태(--check · -D warnings 류). karina:implement 는 최종 검증에서 1회만 돌리고, 검사 형태가 아니면 돌리지 않는다>`   - **Clean**: `<있으면>`
 - **Release**: `<버전을 올린 뒤 무엇을 하는가 — 태그·발행·배포 명령. 없으면 "없음">`
 - **Verify (앱 조작)**: `<앱을 사용자처럼 조작해 기능을 증명하는 검증 스킬 경로 — /karina:create-verification-skill 이 만들고 실행 증명을 통과한 .claude/skills/verify-앱이름/ · 없으면 사용자가 /karina:create-verification-skill 을 돌려 만든다 — 그 전에는 "없음">`
+- **UI 경로**: `<선택 — 사용자가 보는 화면을 그리는 파일의 패턴. 백틱으로 감싸 " · " 로 잇고, 패턴은 이 AGENTS.md 폴더 기준 상대 경로에 -like 로 맞춘다(* 는 / 를 넘는다 — src/ui/* 가 하위 전체). 있으면 check-plan 이 이 경로를 고치는데 **화면** 줄도 Files 줄의 [화면 없음 — <사유>] 표지도 없는 task 를 screen-missing 으로 낸다 · 검증 스킬이 있는 레포에서 /karina:create-verification-skill·maintain-verification-skill 이 후보를 보이고 기록한다>`
 - **Verify (형식 검증)**: `<코드의 속성을 형식 검증하는 스킬 경로 — /karina:create-formal-verification-skill 이 만들고 실행 증명을 통과한 .claude/skills/formal-영역/ · 여럿이면 " · " 로 잇는다 · 없으면 "없음">`
 - **Plan check**: `<계획 단계에서 plan 을 재는 읽기 전용 검사 명령 — check-plan 이 승인 전에 Build·Test 처럼 실행하고 실패를 plan-check 위반으로 낸다(plan 경로는 KARINA_PLAN_PATH) · 없으면 이 줄을 두지 않는다>`
 > ⚠️ Build/Test가 비면 `karina:implement`의 검증이 무의미해진다.

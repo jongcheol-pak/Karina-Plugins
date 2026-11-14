@@ -68,7 +68,7 @@ disable-model-invocation: true
    - **`git add -f -- .claude/skills/verify-<app>`** — 폴더 전체를 지정한다. 이 경로를 고르면 4번과 유지 스킬의 `add` 에도 `-f` 가 필요하다 — 없으면 `The following paths are ignored` 로 실패한다.
    - 고른 수단을 적용한 뒤 이 1번을 다시 돌려 종료 코드 1 을 확인한다(2026-10-18 전역 ignore 를 둔 임시 레포 실측: 부정 사슬 rc 0→1·이후 add rc 0 · `add -f` 뒤 일반 add rc 1·`add -f` rc 0).
 2. **`AGENTS.md` 에 이번과 무관한 미커밋 변경이 없는지 먼저 본다** — `git status --porcelain -- AGENTS.md` 가 비어 있지 않으면 등록하지 않고 보고한다. 아래 커밋이 그 파일의 다른 변경까지 담기 때문이다.
-3. **`karina:record-project-fact` 로 `AGENTS.md` 의 `Verify (앱 조작)` 줄에 `.claude/skills/verify-<app>/` 를 적는다** — `AGENTS.md` 쓰기의 정본은 그 스킬이고, 그 스킬이 바꿀 내용을 보이고, 이 줄과 같으면 다시 묻지 않는다(그 스킬 Step 3 의 「호출한 스킬이 지정한 줄」 면제).
+3. **`karina:record-project-fact` 로 `AGENTS.md` 의 `Verify (앱 조작)` 줄에 `.claude/skills/verify-<app>/` 를 적는다** — `AGENTS.md` 쓰기의 정본은 그 스킬이고, 그 스킬이 바꿀 내용을 보이고, 이 줄과 같으면 다시 묻지 않는다(그 스킬 Step 3 의 「호출한 스킬이 지정한 줄」 면제). **같은 호출에서 `UI 경로` 줄도 적는다 — 후보는 `git ls-files` 에서 `.xaml .axaml .razor .tsx .jsx .vue .svelte .html .css .scss` 파일이 든 폴더(폴더 + `/*`)이고, 그 스킬이 바꿀 내용을 보이는 단계에서 사용자가 고르거나 고친 값만 쓴다. 후보가 없으면 줄을 쓰지 않고 보고에 「UI 경로 미기록」 을 싣는다** — 기능 지도는 사용자 경로만 담아 소스 폴더의 근거가 없고, 이 줄이 있어야 계획 검사가 화면 줄 없는 UI 수정을 잡는다(`../AGENTS-BOUNDARY.md` 템플릿).
 4. **생성 폴더와 `AGENTS.md` 를 함께 로컬 커밋한다** — `git add -- .claude/skills/verify-<app> AGENTS.md` 뒤 `git commit -m "설정: 검증 스킬 verify-<app> 생성" -- .claude/skills/verify-<app> AGENTS.md`. 새 폴더는 추적 전이라 `add` 없이 경로를 지정하면 `pathspec … did not match` 로 실패한다. 1번에서 부정 사슬을 골랐으면 `.gitignore` 를, `-f` 를 골랐으면 `add` 에 `-f` 를 더한다. 포인터만 커밋되고 대상이 빠지거나 그 반대면 push 할 head 에서 한쪽이 없다.
 5. **앱이 바뀌면 `/karina:maintain-verification-skill` 로 지도를 다시 맞춘다고 안내한다** — 주기는 사용자가 물을 때만 제안한다.
 

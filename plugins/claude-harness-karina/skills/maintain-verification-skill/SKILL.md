@@ -40,6 +40,7 @@ disable-model-invocation: true
    - 브랜치를 바꾸지 않고 `git add -- .claude/skills/verify-<app>` 뒤 경로 한정 로컬 커밋 `git commit -m "문서: 검증 스킬 verify-<app> 지도 보정" -- .claude/skills/verify-<app>` 를 한다(`add` 가 없으면 색인 정리·하네스 공백 수정이 새로 만든 파일이 커밋에서 빠진다 · `git check-ignore -q --no-index .claude/skills/verify-<app>/SKILL.md` 가 0 이면 그 폴더가 무시 경로인데 `add -f` 로 추적된 것이라 `git add -f --` 를 쓴다 — `--no-index` 가 없으면 추적된 파일은 늘 1 이 나온다(2026-10-18 실측)). 커밋 본문에 덮은 기능 수와 실제로 조작한 기능을 적는다.
    - 그 뒤 `../implement/references/push-flow.md`「기본 브랜치 push」 의 push 만 하고 보고한다 — 진행 중 `plan.md` 가 있으면 push 하지 않고 그 회차 끝에 함께 간다. **`git rev-list --count origin/<기본>..HEAD` 가 1 일 때만 push 하고, 아니면 push 하지 않고 `건너뜀 — 미push 커밋 <N>개` 로 보고한다** — 이 push 는 push 전 확인(`../implement/references/push-flow.md`)을 거치지 않아, 보류된 미push 커밋이 남아 있으면 함께 공개된다.
    - clean·blocked 는 커밋이 없다 — 결과와 덮은 범위를 정직하게 보고한다.
+7. **`AGENTS.md` 에 `UI 경로` 줄이 없으면 결과와 무관하게 `../create-verification-skill/SKILL.md`「5. 등록하고 유지 루프를 안내한다」 3번의 후보·확정 절차로 더하고 `git commit -m "설정: UI 경로 선언" -- AGENTS.md` 로 경로 한정 커밋한다(push 는 6번과 같다)** — 이 줄이 생기기 전에 만든 검증 스킬의 레포는 계획 검사가 화면 줄 없는 UI 수정을 잡지 못한다.
 
 실행 메모(덮은 기능 · 닿지 못한 기능의 전제 · 확인된 드리프트 · 결과)는 레포 밖 임시 위치(`../TEMP-FILES.md` 의 `scratch\`)에 짧게 남기고 커밋하지 않는다.
 
