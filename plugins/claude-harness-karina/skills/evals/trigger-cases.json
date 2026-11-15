@@ -536,12 +536,12 @@
       "why": "작업 규약·함정의 「기억해둬」 — 레포 docs/conventions.md 기록이라 이 스킬 몫이다(REPO-CONVENTIONS.md 「쓰기」 · AGENTS-BOUNDARY 저장처 표). 2026-10-19 전에는 위키 큐([PROJECT-FACT]) 몫이라 음성이었다"
     },
     {
-      "id": "rec-neg-4",
+      "id": "rec-pos-11",
       "skill": "karina:record-project-fact",
-      "expect": "no-trigger",
+      "expect": "trigger",
       "workspace": "no_plan",
-      "query": "결제 모듈에 환불 기능은 이번에 안 넣기로 했어. 이 결정 기록해 둬",
-      "why": "rec-pos-9 의 짝 음성 — 기능의 보류·기각 결정은 사실·함정이 아니라 레포 docs/decisions.md(REPO-DECISIONS.md 「쓰기」의 수동 요청) 몫이다. 「기록해」 어휘만으로 이 스킬이 발동하면 안 된다"
+      "query": "결제 모듈 환불 기능은 이번에 빼기로 했어. 이 판단 이력으로 남겨 줘",
+      "why": "기능·범위 보류 결정의 수동 기록 — 레포 docs/decisions.md 에 쓰는 것도 이 스킬 몫이다(REPO-DECISIONS.md 「쓰기」 · 2026-11-15 사용자 답 「record-project-fact 가 받는다」). 질의는 description 인용과 3어절 연속 일치를 피했다. 2026-11-15 전에는 받는 스킬이 없어 음성이었다"
     },
     {
       "id": "rec-neg-5",
@@ -557,7 +557,7 @@
       "expect": "trigger",
       "workspace": "no_plan",
       "query": "이 레포는 assets 폴더만 바뀌면 체인 검증이 테스트를 다시 안 돌게 Gate 재사용 경로로 기록해줘",
-      "why": "체인 검증 재사용 경로 선언 — 체인 코디네이터 검증의 테스트 재실행을 바꾸는 레포 사실이라 AGENTS.md `## Build & Test`(이 스킬) 몫이다(chain-plan/references/continuation.md「코디네이터 검증」). rec-neg-4 의 기능 결정과 달리 실행 방식을 정한다"
+      "why": "체인 검증 재사용 경로 선언 — 체인 코디네이터 검증의 테스트 재실행을 바꾸는 레포 사실이라 AGENTS.md `## Build & Test`(이 스킬) 몫이다(chain-plan/references/continuation.md「코디네이터 검증」). rec-pos-11 의 기능 결정과 달리 실행 방식을 정한다"
     },
     {
       "id": "chain-pos-1",
@@ -680,6 +680,14 @@
       "workspace": "no_plan",
       "query": "plan 1: 로그인 리팩토링, plan 2: 설정 화면 정리 — 각각 새 세션에서 차례로 돌려줘",
       "why": "**계획 체인 실행은 이 스킬이 아니다** — chain-plan 이 worktree 를 만들어도 정리 요청이 아니다"
+    },
+    {
+      "id": "wt-neg-5",
+      "skill": "karina:worktree-cleanup",
+      "expect": "no-trigger",
+      "workspace": "no_plan",
+      "query": "feature-x worktree 하나만 지워줘",
+      "why": "**병합 감사 없는 단일 지정 삭제는 이 스킬이 아니다** — worktree 하나를 이름으로 지우는 것은 karina-workspace 몫이다(2026-11-15 description 경계). 앱 스킬은 eval 격리 환경에 실리지 않아 route_to 를 두지 않는다"
     }
   ]
 }

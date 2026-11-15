@@ -159,7 +159,7 @@ karina는 코드 작업을 **계획 → 구현 → 검증 → 완료**의 흐름
 | 위키 운영 (`karina:llm-wiki`) | "위키에 등록/업데이트" | 프로젝트 지식을 쌓고 다음 작업 때 참조 |
 | worktree 정리 (`karina:worktree-cleanup`) | "머지된 worktree 정리해줘" · "worktree 가 디스크를 차지해" | 레포의 worktree 마다 병합 여부·미커밋 수정·PR·최근 세션을 표로 보여 주고, 한 번 승인받은 것만 지운다 — 지우기 전에 미추적·gitignore 파일(`plan.md` 등)을 임시 폴더에 백업하고, 미커밋 수정·열린 PR·미병합 체인 worktree 는 지우지 않으며 브랜치는 남긴다 |
 | 시안 비교 (`karina:prototype`) | `/karina:prototype` 직접 호출 | 화면·동작·전례 없는 아키텍처 결정을 버리는 시안 2~3개로 만들어 봅니다. 화면 시안은 한 페이지에서 버튼으로 바꿔 보고, 변형마다 조작해 스크린샷을 남깁니다. 변형·증거·장단점·권장안을 보고하고, 고른 방향으로 `karina:plan` 을 시작할지 묻습니다. 시안은 임시 폴더에 두고 레포는 고치지 않습니다 |
-| 프로젝트 사실 기록 (`karina:record-project-fact`) | "AGENTS.md에 기록" · "AGENTS.md 새로 만들어줘" 또는 hook 제안 수락 | 빌드·DB·테스트 방식을 AGENTS.md에 축적(재확인 줄이기) · 파일이 없으면 최소 골격으로 생성 |
+| 프로젝트 사실 기록 (`karina:record-project-fact`) | "AGENTS.md에 기록" · "AGENTS.md 새로 만들어줘" · "이 결정 기록해" 또는 hook 제안 수락 | 빌드·DB·테스트 방식을 AGENTS.md에 축적(재확인 줄이기) · 파일이 없으면 최소 골격으로 생성 · 기능·범위 보류·기각 결정은 docs/decisions.md 에 기록 |
 | 검증 스킬 만들기 (`karina:create-verification-skill`) | `/karina:create-verification-skill` 직접 호출 | 앱을 사용자처럼 조작해 확인하는 검증 스킬(`.claude/skills/verify-앱이름/`)을 만들고, 실제로 한 번 돌려 성공하면 AGENTS.md 에 등록합니다 · 웹·CLI/TUI·HTTP 서비스·Windows 데스크톱 지원 |
 | 검증 스킬 유지 (`karina:maintain-verification-skill`) | `/karina:maintain-verification-skill` 직접 호출 | 앱이 바뀐 뒤 검증 스킬을 다시 맞추고, 실제로 돌려 확인된 수정만 커밋 하나로 냅니다(고칠 것이 없으면 커밋 없음) |
 | 형식 검증 스킬 만들기 (`karina:create-formal-verification-skill`) | `/karina:create-formal-verification-skill` 직접 호출 | 테스트로 잡기 어려운 핵심 속성 하나(동시성·재시도·상태 기계·파서)를 TLA+ 같은 도구로 형식 검증하는 스킬을 만들어 등록합니다. 이후 그 코드를 건드리면 검사를 다시 돌립니다 · 도구 설치는 승인 후에만 |

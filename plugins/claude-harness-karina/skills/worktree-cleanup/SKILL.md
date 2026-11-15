@@ -1,6 +1,6 @@
 ---
 name: worktree-cleanup
-description: 병합이 끝난 git worktree 를 정리한다 — worktree 마다 병합 여부·미커밋 수정·PR·최근 세션을 감사 표로 보이고, 승인한 것만 미추적 파일을 백업한 뒤 지운다(브랜치는 남긴다). 한국어(worktree 정리/머지된 worktree 지워줘/worktree 가 디스크를 차지해)와 영어(clean up worktrees/prune merged worktrees)에 발동한다. worktree 만들기·브랜치 삭제에는 발동하지 않는다.
+description: 병합이 끝난 git worktree 를 정리한다 — worktree 마다 병합 여부·미커밋 수정·PR·최근 세션을 감사 표로 보이고, 승인한 것만 미추적 파일을 백업한 뒤 지운다(브랜치는 남긴다). 한국어(worktree 정리/머지된 worktree 지워줘/worktree 가 디스크를 차지해)와 영어(clean up worktrees/prune merged worktrees)에 발동한다. worktree 만들기·브랜치 삭제에는 발동하지 않고, 병합 감사 없이 worktree 하나를 지정해 지우는 것은 karina-workspace 다.
 ---
 
 # Worktree 정리

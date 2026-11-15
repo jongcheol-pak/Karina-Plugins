@@ -1,19 +1,19 @@
 ---
 name: record-project-fact
-description: Records a CONFIRMED project fact (build/run/test command, DB access, artifact location, untested layers) into AGENTS.md — on the suggest-agents-record hook's acceptance or on request ("AGENTS.md에 기록", "빌드 명령 기록해줘", "AGENTS.md에서 이 항목 빼줘", and "기억해둬" for a confirmed command or a work pitfall/convention → docs/conventions.md). Also on injection-limit signals ("AGENTS.md가 너무 커졌어", "주입 상한 임박"), RETROFIT ("AGENTS.md 정리해줘", "새 경계로 맞춰줘"), and creating a missing AGENTS.md when that alone is asked.
+description: Records a CONFIRMED project fact (build/run/test command, DB access, artifact location, untested layers) into AGENTS.md — on the suggest-agents-record hook's acceptance or on request ("AGENTS.md에 기록", "빌드 명령 기록해줘", "AGENTS.md에서 이 항목 빼줘", and "기억해둬" for a confirmed command or a work pitfall/convention → docs/conventions.md, and a request to log a feature/scope hold·rejection decision → docs/decisions.md). Also on injection-limit signals ("AGENTS.md가 너무 커졌어", "주입 상한 임박"), RETROFIT ("AGENTS.md 정리해줘", "새 경계로 맞춰줘"), and creating a missing AGENTS.md when that alone is asked.
 argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 ---
 
 # Record Project Fact
 
-작업 중 **확인된 프로젝트 사실**(빌드·실행 명령, DB 접근 방법, 산출물 위치, 검증 명령, 의도적 테스트 비대상 계층)을 **`AGENTS.md`에 추가·갱신·제거**한다(파일이 없으면 규칙 8). 다음 작업이 같은 정보를 재발견하지 않게 하고, 틀려진 정보가 남아 오도하지 않게 하는 것이 목적이다.
+작업 중 **확인된 프로젝트 사실**(빌드·실행 명령, DB 접근 방법, 산출물 위치, 검증 명령, 의도적 테스트 비대상 계층)을 **`AGENTS.md`에 추가·갱신·제거**한다(파일이 없으면 규칙 8). 작업 함정은 레포 `docs/conventions.md`, 기능·범위 보류·기각 결정은 레포 `docs/decisions.md` 에 쓴다(아래 매핑 표). 다음 작업이 같은 정보를 재발견하지 않게 하고, 틀려진 정보가 남아 오도하지 않게 하는 것이 목적이다.
 
 `AGENTS.md`는 세션마다 컨텍스트에 실리므로(CLAUDE.md 가 없으면 Claude Code 가 불러오고, 있으면 SessionStart hook `session-context` 가 전문을 싣는다) **한 번 기록하면 다음 세션부터 재확인이 사라진다.** 이 스킬은 「기록 측」만 담당한다.
 
 ## 절대 규칙
 
 1. **승인 없이 쓰지 않는다** — 어느 섹션에 무엇을 추가/갱신/제거하는지 정확히 보여주고 승인받은 뒤에만 Edit한다. hook 제안은 「기록 제안」일 뿐 자동 위임이 아니다. 삭제도 같다. **예외는 Step 5 와 Step 3 의 재문답 면제(hook 제안 수락 · 승인된 plan task · 호출한 스킬이 지정한 줄 — 모두 이미 받은 승인을 다시 묻지 않는 것)뿐**이다(근거는 `references/record-fact-rationale.md` §1).
-2. **`AGENTS.md` 와 레포 `docs/conventions.md` 만 대상** — `CLAUDE.md`는 수정하지 않는다(지침 파일이라 위험). **예외는 Step 5의 이관처 하나뿐이고, 그 이관처에 `CLAUDE.md`는 들어가지 않는다** — 스크립트가 후보에서 배제한다(`relocate-agents.py` 판정 ⓓ). **새 사실을 이관처에 직접 적는 것도 금지**다(§2).
+2. **`AGENTS.md` 와 레포 `docs/conventions.md`·`docs/decisions.md`(형식 `../REPO-DECISIONS.md`「쓰기」) 만 대상** — `CLAUDE.md`는 수정하지 않는다(지침 파일이라 위험). **예외는 Step 5의 이관처 하나뿐이고, 그 이관처에 `CLAUDE.md`는 들어가지 않는다** — 스크립트가 후보에서 배제한다(`relocate-agents.py` 판정 ⓓ). **새 사실을 이관처에 직접 적는 것도 금지**다(§2).
 3. **실제 시크릿 금지** — DB 연결 문자열·비밀번호·API 키·토큰·내부 IP/호스트를 적지 않는다. **환경변수 이름·설정 키 이름만** 적고 값은 `.env`(gitignore)로.
 4. **확인된 사실만** — 직접 실행·확인한 명령/경로만. 추측("아마 이 명령일 것")은 적지 않는다.
 5. **「의도적 비대상」은 사용자 확인으로만 성립한다** — 테스트가 없는 계층을 발견한 것만으로는 비대상이 아니다(빠뜨린 것일 수도 있다). 사용자가 의도라고 확인해야 적는다.
@@ -34,6 +34,7 @@ argument-hint: "(자동 — hook 제안 수락 또는 사용자 요청)"
 | 아키텍처 선언 | `## Conventions` 의 `- **아키텍처**:` 1줄 (형식 `../AGENTS-BOUNDARY.md`「생성물 골격 (정본)」 · 경로 `../plan/references/rare-paths.md`「아키텍처 선언 부재」) |
 | 체인 검증 재사용 경로(테스트 재실행이 필요 없는 경로 glob — 바뀌어도 체인 코디네이터 검증이 직전 테스트 통과 기록을 재사용) | `## Build & Test` 의 `- **Gate 재사용 경로**: …` 한 줄 (판정 정본 `../chain-plan/references/continuation.md`「코디네이터 검증」 — 줄 머리를 바꾸면 재사용이 꺼진다) — **검증 매핑이 명령을 거는 경로와 겹치면 기록하지 않고 그 겹침을 알린다** — 명령이 걸린 경로의 변경은 다시 돌아야 한다 |
 | 작업 함정·작업 규약(사용자 「기억해둬」 — 명령이 아닌 것) | `AGENTS.md` 가 아니라 레포 `docs/conventions.md` — 항목 형식·절 선택은 `../REPO-CONVENTIONS.md` 「항목 형식」·「쓰기」, 파일이 없으면 만든다 |
+| 기능·범위 보류·기각·번복 결정(사용자 「이 결정 기록해」) | `AGENTS.md` 가 아니라 레포 `docs/decisions.md` — 형식·중복 억제·위치는 `../REPO-DECISIONS.md`「쓰기」, 파일이 없으면 만든다 |
 
 **섹션이 없으면 신설한다.** 위치는 `../AGENTS-BOUNDARY.md`의 **「생성물 골격」 뼈대 순서**가 정본이다 — 그 문서가 절 구성과 배치 순서를 함께 정하므로, 새 절은 뼈대 순서 자리(뼈대에서 그 절보다 앞에 오는 절 가운데 파일에 있는 마지막 절 바로 뒤)에 넣는다. 기존 파일의 순서가 뼈대와 달라도 기존 절은 옮기지 않는다 — Step 4 의 「다른 섹션 불변」이다(근거 `references/record-fact-rationale.md` §9). 섹션이 이미 있으면 그 안에 항목을 추가·갱신한다.
 
