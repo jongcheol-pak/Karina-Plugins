@@ -7,19 +7,31 @@
 출력 줄 머리 — U: 사용자 text · A: 모델 text · T: 도구 호출(이름 + 명령·경로 한 구 — 이미지(IMAGE_EXT) Read 는 모드와 무관하게
 경로를 자르지 않는다) · ERR: 오류 도구 결과(hook 차단 포함)
 · H: hook 첨부(경고 additionalContext · 취소) · BIG: 큰 성공 결과(`BIG: <도구명> <N>자 <앞 120자>` — 본문 길이나
-`<persisted-output>` 미리보기의 `Output too large (<크기>)` 가 BIG_CAP 이상, 도구명은 tool_use_id 로 찾고 못 찾으면 `?`).
+`<persisted-output>` 미리보기의 `Output too large (<크기>)` 가 BIG_CAP 이상, 도구명은 tool_use_id 로 찾고 못 찾으면 `?`)
+· SLOW: 오래 걸린 도구 호출(`SLOW: <도구명> <N>초 <hint 앞 120자>` — 결과 레코드 자리 · tool_use 와 tool_result 의
+`timestamp` 차가 SLOW_SEC 이상 · SLOW_EXCLUDE 도구는 뺀다 · Bash 의 권한 승인 대기는 전사로 가를 수 없어 소요에 든다).
 그 밖(thinking·BIG_CAP 미만의 성공 결과·메타 레코드)은 싣지 않는다.
-머리에 읽은 파일·갈래별 줄 수·총 줄 수를 싣는다 — 리뷰어가 총 줄 수까지 나눠 읽는다.
+머리에 읽은 파일·구간 줄·갈래별 줄 수·총 줄 수를 싣는다 — 리뷰어가 총 줄 수까지 나눠 읽는다.
+구간 줄 — `# 구간 <이름>: 작업 <N>초 · 토큰 입력 <a> · 캐시읽기 <b> · 캐시쓰기 <c> · 출력 <d>`. 본 전사는 `Skill`
+tool_use 와 `<command-name>` 이 든 사용자 레코드(slash command — 앞 `/` 를 뗀다 · 바로 뒤에 같은 명령의
+`type: system`·`subtype: local_command` 레코드가 오는 내장 명령(`/clear` 등)은 앞 구간으로 되돌린다)가 구간을 바꾸고 첫 경계 앞은
+`(스킬 밖)` 이다 · 서브에이전트 전사는 파일마다 `서브에이전트 <meta.json 의 agentType | 파일 이름>` 한 구간이다.
+작업 시간은 같은 전사 안 연속 레코드 `timestamp` 간격의 합이고(간격은 앞 레코드의 구간에 든다), 사용자 text
+레코드(slash command·대기 중 들어온 알림 포함)나 SLOW_EXCLUDE 도구의 결과로 끝나는 간격은 뺀다 — 사용자 대기와
+서브에이전트 대기(그 시간은 서브에이전트 구간이 센다)다. 토큰은 `message.id` 마다 한 번만 센다 — 한 응답이 블록마다
+레코드로 갈려 같은 `usage` 가 반복된다. 반올림한 작업 시간이 0초이고 토큰도 없는 구간은 싣지 않는다.
 `--audit`(implement 완료 리뷰의 전사 대조용) — 서브에이전트 전사를 읽지 않고 A: 줄 · Bash·Skill 의 T: 줄 ·
 이미지(IMAGE_EXT) Read 의 T: 줄 · `<command-name>` 이 든 U: 줄만 남긴다(Skill·slash command 줄은 대조 범위를 가르는 표지
 · 이미지 Read 줄은 완료 리뷰가 화면 판정의 스크린샷을 열어 봤는지 대조하는 재료다). 머리에 `# 모드: audit` 을 싣는다.
   한글 음절(가-힣)이 하나도 없는 A: 줄은 `A: [한글 없음] …` 으로 표지하고 그 수를 머리 `# 한글 없는 A: <N>` 에 싣는다
   — implement·pr 의 「상태 메모도 한글로」 위반을 완료 리뷰가 세는 재료는 대조 범위 안의 표지 줄이고, 머리 수는 세션 전체 값이다.
+  audit 은 SLOW: 줄·구간 줄을 내지 않는다.
 
 종료 코드: 0 정상 · 2 세션 판정 실패(ID 없음·파일 0개·2개 이상) · 3 인식한 레코드 0(전사 형식이 바뀌었을 수 있다).
 전사 형식은 Claude Code 내부 형식이라 문서화돼 있지 않다 — 2.1.306 실측 기준이다.
 """
 import argparse
+import datetime
 import glob
 import json
 import os
@@ -30,6 +42,11 @@ TEXT_CAP = 600
 SHORT_CAP = 300
 BIG_CAP = 20000
 BIG_HEAD = 120
+SLOW_SEC = 60
+SLOW_EXCLUDE = ('AskUserQuestion', 'Agent', 'Task')
+COMMAND_NAME = re.compile(r'<command-name>/?([^<]+)</command-name>')
+OUTSIDE = '(스킬 밖)'
+TOKEN_KEYS = ('input_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens', 'output_tokens')
 HOOK_TYPES = ('hook_additional_context', 'hook_cancelled')
 PERSISTED = re.compile(r'<persisted-output>\s*Output too large \(([\d.]+)(KB|MB)\)')
 AUDIT_KINDS = ('U', 'A', 'T')
@@ -74,22 +91,39 @@ def result_size(text):
     return len(text)
 
 
-def remember_tool_names(d, tool_name_by_id):
+def parse_ts(d):
+    try:
+        return datetime.datetime.fromisoformat(str(d['timestamp']).replace('Z', '+00:00'))
+    except (KeyError, ValueError):
+        return None
+
+
+def remember_tools(d, tools):
     if d.get('type') != 'assistant' or not isinstance(d.get('message'), dict):
         return
     for b in d['message'].get('content') or []:
         if isinstance(b, dict) and b.get('type') == 'tool_use':
-            tool_name_by_id[b.get('id')] = b.get('name')
+            tools[b.get('id')] = (b.get('name'), parse_ts(d), _tool_hint(b.get('input') or {}))
 
 
-def record_lines(d, tool_name_by_id):
+def slow_line(b, tools, ts):
+    name, start, hint = tools.get(b.get('tool_use_id'), ('?', None, ''))
+    if ts is None or start is None or name in SLOW_EXCLUDE:
+        return None
+    sec = (ts - start).total_seconds()
+    if sec < SLOW_SEC:
+        return None
+    return ('SLOW: %s %d초 %s' % (name, round(sec), cut(hint, BIG_HEAD))).rstrip()
+
+
+def record_lines(d, tools):
     t = d.get('type')
     m = d.get('message') if isinstance(d.get('message'), dict) else {}
     c = m.get('content')
     if t == 'user':
         if isinstance(c, str):
             return ['U: ' + cut(c, TEXT_CAP)]
-        out = []
+        out, ts = [], parse_ts(d)
         for b in c or []:
             if b.get('type') == 'text':
                 out.append('U: ' + cut(b.get('text', ''), TEXT_CAP))
@@ -99,8 +133,12 @@ def record_lines(d, tool_name_by_id):
                 text = _result_text(b.get('content'))
                 size = result_size(text)
                 if size >= BIG_CAP:
-                    name = tool_name_by_id.get(b.get('tool_use_id'), '?')
+                    name = tools.get(b.get('tool_use_id'), ('?',))[0]
                     out.append('BIG: %s %d자 %s' % (name, size, cut(text, BIG_HEAD)))
+            if b.get('type') == 'tool_result':
+                slow = slow_line(b, tools, ts)
+                if slow:
+                    out.append(slow)
         return out
     if t == 'assistant':
         out = []
@@ -124,8 +162,76 @@ def record_lines(d, tool_name_by_id):
     return None
 
 
-def digest_file(path, counts):
-    lines, recognized, tool_name_by_id = [], 0, {}
+class Segments:
+    """구간별 작업 시간·토큰 — 규칙은 모듈 docstring 「구간 줄」."""
+
+    def __init__(self, first, split):
+        self.current, self.split = first, split
+        self.totals, self.prev, self.seen, self.before_command = {}, None, set(), None
+
+    def _add(self, name, i, value):
+        self.totals.setdefault(name, [0.0, 0, 0, 0, 0])[i] += value
+
+    def _boundary(self, d, m):
+        if not self.split:
+            return None
+        c = m.get('content')
+        if d.get('type') == 'user':
+            text = c if isinstance(c, str) else ' '.join(
+                b.get('text', '') for b in c or [] if isinstance(b, dict) and b.get('type') == 'text')
+            hit = COMMAND_NAME.search(text)
+            return hit.group(1).strip() if hit else None
+        if d.get('type') == 'assistant':
+            for b in c or []:
+                if isinstance(b, dict) and b.get('type') == 'tool_use' and b.get('name') == 'Skill':
+                    return str((b.get('input') or {}).get('skill') or 'Skill')
+        return None
+
+    def _waits(self, d, m, tools):
+        if d.get('type') != 'user':
+            return False
+        c = m.get('content')
+        if isinstance(c, str):
+            return True
+        for b in c or []:
+            if not isinstance(b, dict):
+                continue
+            if b.get('type') == 'text':
+                return True
+            if b.get('type') == 'tool_result' and tools.get(b.get('tool_use_id'), ('?',))[0] in SLOW_EXCLUDE:
+                return True
+        return False
+
+    def observe(self, d, tools):
+        m = d.get('message') if isinstance(d.get('message'), dict) else {}
+        ts = parse_ts(d)
+        local = d.get('type') == 'system' and d.get('subtype') == 'local_command'
+        if local and self.before_command is not None and (d.get('commandRun') or {}).get('command') == self.current:
+            self.current, self.before_command = self.before_command, None
+            if self.prev is not None:
+                self.prev = (self.prev[0], self.current)
+        if ts is not None and self.prev is not None and not self._waits(d, m, tools):
+            self._add(self.prev[1], 0, max(0.0, (ts - self.prev[0]).total_seconds()))
+        usage = m.get('usage')
+        if d.get('type') == 'assistant' and isinstance(usage, dict) and m.get('id') not in self.seen:
+            self.seen.add(m.get('id'))
+            for i, key in enumerate(TOKEN_KEYS, 1):
+                self._add(self.current, i, int(usage.get(key) or 0))
+        name = self._boundary(d, m)
+        if name:
+            self.before_command = self.current if d.get('type') == 'user' else None
+            self.current = name
+        if ts is not None:
+            self.prev = (ts, self.current)
+
+    def lines(self):
+        return ['# 구간 %s: 작업 %d초 · 토큰 입력 %d · 캐시읽기 %d · 캐시쓰기 %d · 출력 %d'
+                % ((name, round(v[0])) + tuple(v[1:])) for name, v in self.totals.items()
+                if round(v[0]) or any(v[1:])]
+
+
+def digest_file(path, counts, segments):
+    lines, recognized, tools = [], 0, {}
     with open(path, encoding='utf-8', errors='replace') as f:
         for raw in f:
             try:
@@ -134,8 +240,9 @@ def digest_file(path, counts):
                 continue
             if not isinstance(d, dict):
                 continue
-            remember_tool_names(d, tool_name_by_id)
-            got = record_lines(d, tool_name_by_id)
+            remember_tools(d, tools)
+            segments.observe(d, tools)
+            got = record_lines(d, tools)
             if got is None:
                 continue
             recognized += 1
@@ -143,6 +250,15 @@ def digest_file(path, counts):
                 counts[line.split(':', 1)[0]] = counts.get(line.split(':', 1)[0], 0) + 1
                 lines.append(line)
     return lines, recognized
+
+
+def subagent_label(path):
+    try:
+        with open(path[:-len('.jsonl')] + '.meta.json', encoding='utf-8') as f:
+            meta = json.load(f)
+    except (OSError, ValueError):
+        return os.path.basename(path)
+    return str(meta.get('agentType') or os.path.basename(path)) if isinstance(meta, dict) else os.path.basename(path)
 
 
 def find_files(projects, sid):
@@ -175,18 +291,24 @@ def main(argv=None):
               file=sys.stderr)
         return 2
     counts, body, recognized = {}, [], 0
-    lines, n = digest_file(mains[0], counts)
+    main_segments = Segments(OUTSIDE, True)
+    lines, n = digest_file(mains[0], counts, main_segments)
     body += lines
     recognized += n
+    segment_lines = main_segments.lines()
     for sub in subs:
-        lines, n = digest_file(sub, counts)
+        sub_segments = Segments('서브에이전트 ' + subagent_label(sub), False)
+        lines, n = digest_file(sub, counts, sub_segments)
         body += ['## subagent ' + os.path.basename(sub)] + lines
         recognized += n
+        segment_lines += sub_segments.lines()
     if recognized == 0:
         print('인식한 레코드 0 — 전사 형식이 바뀌었을 수 있다: %s' % mains[0], file=sys.stderr)
         return 3
-    kinds = ('U', 'A', 'T', 'ERR', 'H', 'BIG')
+    kinds = ('U', 'A', 'T', 'ERR', 'H', 'BIG', 'SLOW')
     head = ['# reflect 요약 — 세션 %s' % sid, '# 본 전사: %s' % mains[0], '# 서브에이전트 전사: %d개' % len(subs)]
+    if not a.audit:
+        head += segment_lines
     if a.audit:
         body = [line for line in body if audit_keep(line)]
         body = [HANGUL_FREE_MARK + line[3:] if line.startswith('A: ') and not HANGUL.search(line) else line

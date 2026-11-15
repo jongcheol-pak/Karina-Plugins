@@ -338,6 +338,177 @@ def big_error_stays_err():
         t.close()
 
 
+T0 = datetime.datetime(2026, 11, 15, 10, 0, 0, tzinfo=datetime.timezone.utc)
+
+
+def at(rec, sec, mid=None, usage=None):
+    r = json.loads(json.dumps(rec))
+    r['timestamp'] = (T0 + datetime.timedelta(seconds=sec)).isoformat().replace('+00:00', 'Z')
+    if mid is not None:
+        r['message']['id'] = mid
+    if usage is not None:
+        r['message']['usage'] = usage
+    return r
+
+
+def slow_lines(out):
+    return [l for l in out.splitlines() if l.startswith('SLOW: ')]
+
+
+def segment_lines(out):
+    return [l for l in out.splitlines() if l.startswith('# 구간 ')]
+
+
+def run_timed(records, subagents=(), extra=()):
+    t = Tree()
+    try:
+        t.session('proj-a', SID, records)
+        for name, recs, meta in subagents:
+            t.subagent('proj-a', SID, name, recs)
+            if meta is not None:
+                path = os.path.join(t.root, 'proj-a', SID, 'subagents', name.replace('.jsonl', '.meta.json'))
+                with open(path, 'w', encoding='utf-8') as f:
+                    json.dump(meta, f)
+        rc, out, err = digest(t, list(extra))
+        assert rc == 0, (rc, err)
+        return out
+    finally:
+        t.close()
+
+
+def tool_pair(tid, name, start, end, command='x'):
+    return [at(rec_assistant([tool_use(tid, name, command)]), start),
+            at(rec_user_blocks([tool_result(tid, '출력')]), end)]
+
+
+@case
+def slow_line_marked():
+    out = run_timed(tool_pair('t1', 'Bash', 0, 75, 'sleep 75'))
+    assert slow_lines(out) == ['SLOW: Bash 75초 sleep 75'], out
+
+
+@case
+def below_slow_excluded():
+    out = run_timed(tool_pair('t1', 'Bash', 0, 59))
+    assert slow_lines(out) == [], out
+
+
+@case
+def ask_user_not_slow():
+    out = run_timed(tool_pair('q1', 'AskUserQuestion', 0, 600))
+    assert slow_lines(out) == [], out
+
+
+@case
+def agent_not_slow():
+    out = run_timed(tool_pair('a1', 'Agent', 0, 300))
+    assert slow_lines(out) == [], out
+
+
+@case
+def agent_wait_excluded_from_work():
+    recs = [at(rec_user('시작'), 0)] + tool_pair('a1', 'Agent', 5, 305) + \
+        [at(rec_assistant([{'type': 'text', 'text': '받았다'}]), 315)]
+    out = run_timed(recs)
+    assert segment_lines(out)[0].startswith('# 구간 (스킬 밖): 작업 15초 · '), segment_lines(out)
+
+
+@case
+def notification_gap_excluded():
+    recs = [at(rec_assistant([{'type': 'text', 'text': '기다린다'}]), 0),
+            at(rec_user('Another Claude session sent a message: 끝'), 200),
+            at(rec_assistant([{'type': 'text', 'text': '읽었다'}]), 205)]
+    out = run_timed(recs)
+    assert segment_lines(out)[0].startswith('# 구간 (스킬 밖): 작업 5초 · '), segment_lines(out)
+
+
+@case
+def user_text_gap_excluded():
+    recs = [at(rec_assistant([{'type': 'text', 'text': '물었다'}]), 0),
+            at(rec_user('답'), 100),
+            at(rec_assistant([{'type': 'text', 'text': '이어간다'}]), 103)]
+    out = run_timed(recs)
+    assert segment_lines(out)[0].startswith('# 구간 (스킬 밖): 작업 3초 · '), segment_lines(out)
+
+
+@case
+def tokens_counted_once_per_message():
+    u1 = {'input_tokens': 10, 'cache_read_input_tokens': 100, 'cache_creation_input_tokens': 20, 'output_tokens': 5}
+    u2 = {'input_tokens': 1, 'cache_read_input_tokens': 2, 'cache_creation_input_tokens': 3, 'output_tokens': 4}
+    recs = [at(rec_assistant([{'type': 'text', 'text': '앞'}]), 0, 'm1', u1),
+            at(rec_assistant([tool_use('t1', 'Bash')]), 1, 'm1', u1),
+            at(rec_assistant([{'type': 'text', 'text': '뒤'}]), 2, 'm2', u2)]
+    out = run_timed(recs)
+    assert segment_lines(out) == ['# 구간 (스킬 밖): 작업 2초 · 토큰 입력 11 · 캐시읽기 102 · 캐시쓰기 23 · 출력 9'], out
+
+
+@case
+def skill_segment_header():
+    recs = [at(rec_assistant([{'type': 'text', 'text': '시작'}]), 0),
+            at(rec_assistant([{'type': 'tool_use', 'id': 's1', 'name': 'Skill', 'input': {'skill': 'karina:plan'}}]), 10),
+            at(rec_user_blocks([tool_result('s1', '발동')]), 11),
+            at(rec_assistant([{'type': 'text', 'text': '계획'}]), 31)]
+    segs = segment_lines(run_timed(recs))
+    assert [s.split(' · ')[0] for s in segs] == ['# 구간 (스킬 밖): 작업 10초', '# 구간 karina:plan: 작업 21초'], segs
+
+
+@case
+def slash_command_segment_header():
+    recs = [at(rec_user('<command-message>karina:plan-draft</command-message>\n'
+                        '<command-name>/karina:plan-draft</command-name>'), 0),
+            at(rec_assistant([{'type': 'text', 'text': '초안'}]), 4),
+            at(rec_assistant([{'type': 'text', 'text': '끝'}]), 10)]
+    segs = segment_lines(run_timed(recs))
+    assert [s.split(' · ')[0] for s in segs] == ['# 구간 karina:plan-draft: 작업 10초'], segs
+
+
+@case
+def local_command_not_segment():
+    recs = [at(rec_user('<command-name>/clear</command-name>\n<command-message>clear</command-message>'), 0),
+            at({'type': 'system', 'subtype': 'local_command', 'content': '<local-command-stdout></local-command-stdout>',
+                'commandRun': {'command': 'clear', 'args': ''}}, 2),
+            at(rec_user('질문'), 50),
+            at(rec_assistant([{'type': 'text', 'text': '답'}]), 57)]
+    segs = segment_lines(run_timed(recs))
+    assert [s.split(' · ')[0] for s in segs] == ['# 구간 (스킬 밖): 작업 9초'], segs
+
+
+@case
+def zero_segment_dropped():
+    recs = [at(rec_assistant([{'type': 'text', 'text': '곧'}]), 0),
+            at(rec_assistant([{'type': 'tool_use', 'id': 's1', 'name': 'Skill', 'input': {'skill': 'karina:plan'}}]), 0.3),
+            at(rec_user_blocks([tool_result('s1', '발동')]), 1),
+            at(rec_assistant([{'type': 'text', 'text': '계획'}]), 11)]
+    segs = segment_lines(run_timed(recs))
+    assert [s.split(' · ')[0] for s in segs] == ['# 구간 karina:plan: 작업 11초'], segs
+
+
+@case
+def subagent_segment_uses_agent_type():
+    sub = [at(rec_assistant([{'type': 'text', 'text': '검토'}]), 0),
+           at(rec_assistant([{'type': 'text', 'text': '끝'}]), 30)]
+    out = run_timed([at(rec_user('시작'), 0)], [('agent-abc.jsonl', sub, {'agentType': 'karina:plan-reviewer'})])
+    assert '# 구간 서브에이전트 karina:plan-reviewer: 작업 30초' in [s.split(' · ')[0] for s in segment_lines(out)], out
+    assert '## subagent agent-abc.jsonl' in out.splitlines(), out
+
+
+@case
+def subagent_segment_without_meta_uses_file_name():
+    sub = [at(rec_assistant([{'type': 'text', 'text': '검토'}]), 0),
+           at(rec_assistant([{'type': 'text', 'text': '끝'}]), 8)]
+    out = run_timed([at(rec_user('시작'), 0)], [('agent-abc.jsonl', sub, None)])
+    assert '# 구간 서브에이전트 agent-abc.jsonl: 작업 8초' in [s.split(' · ')[0] for s in segment_lines(out)], out
+
+
+@case
+def audit_has_no_timing_lines():
+    recs = [at(rec_user('<command-name>/karina:implement</command-name>'), 0)] + \
+        tool_pair('t1', 'Bash', 1, 100, 'sleep 99')
+    out = run_timed(recs, extra=['--audit'])
+    assert slow_lines(out) == [] and segment_lines(out) == [], out
+    assert 'T: Bash sleep 99' in out.splitlines(), out
+
+
 AUDIT = [
     rec_user('평범한 사용자 말'),
     rec_user('<command-name>/karina:implement</command-name>'),
