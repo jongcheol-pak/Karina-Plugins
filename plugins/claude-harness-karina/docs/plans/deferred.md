@@ -10,7 +10,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 20 / 종결 123
+**▶ 현행 잔량(기계 대조 대상)**: 대기 17 / 종결 123
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -53,9 +53,6 @@
 - [2026-10-19] **체인 실행 시점 승인·기존 것을 깨는 변경 대기의 재알림** — 사용자 몫 ①·④ 로 넘긴 질문은 상한 없이 기다리고 처음 한 번만 `PushNotification` 으로 알린다. 일정 시간(예: 30분)마다 다시 알리는 장치를 둔다(`chain-plan/references/user-relay.md`「사용자에게 넘기기」) (출처: 계획 체인 run_60c0ebe3 plan 6 후보 라운드 — 사용자 「보류」) (실해: 2026-10-19 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 첫 알림을 놓치면 ①·④ 질문이 열린 채 체인이 선다)
 - [2026-10-19] **record-project-fact 의 커밋·PR 단계** — `karina:record-project-fact` 가 AGENTS.md 를 고친 뒤 커밋·PR 단계가 없다(`record-project-fact/SKILL.md` 의 커밋 언급은 사본 폴더 주의 2줄뿐). 디버깅 직접 수정 경로처럼 `implement/references/push-flow.md`「디버깅 단독 경로」 의 커밋을 쓸지, 작업 중간 기록이라 커밋을 미룰지 정한다 (출처: 디버깅 커밋·PR 회차 후보 라운드 — 사용자 「보류」) (실해: 2026-10-19 사용자 보류 결정(deferred-rules 사용자 결정 예외) — AGENTS.md 기록이 커밋 없이 작업 트리에만 남는다)
 - [2026-11-11] **병렬 그룹 조건 완화** — `chain-plan/references/parallel.md`「병렬 그룹」 의 넷(의존 없음·바뀌는 파일 겹침 없음·검증이 새 체크아웃에서 돈다·동시 상한 2) 중 무엇이 실제 체인에서 그룹을 막는지 먼저 재고, 막는 조건만 완화한다(상한 상향 · ignored 파일 복사 — 시크릿 이동 검토 필요) · 넘기는 셋 ②(규칙 문턱 변경) (출처: 2026-11-11 체인 병목 감사 — 사용자 「대장 등재」) (실해: 2026-11-11 미관측 — 사용자 지시 등재(deferred-rules 사용자 결정 예외) · 전사에서 실제 병렬 그룹 형성 사례 0건이라 체인이 계획 합만큼 직렬로 돈다)
-- [2026-11-15] **스킬 점검 빈틈 8건** — 중계 모드의 커밋 시크릿 경고 정지(`relay-mode.md`) · 세션 승인 진행의 자리표시 `> BASE:`(`loop-exceptions.md`「승인 표지 없음」) · 화면 조작 실패 때 check-plan 이 읽는 판정 줄 · 디버깅 4-D 다른 자리 grep 순서 · 초안 진행 중 체인 이관 때 초안 잔존 · maintain-verification 이중 커밋 push·porcelain · B-2 `synced_commit` 폴백 · 소급 정리의 decisions 목적지 · 넘기는 셋 ③ (출처: 2026-11-15 스킬 점검 — 사용자 답 「이번 회차 밖」) (실해: 2026-11-15 문면 대조로 관측 — 사용자 지시 등재(deferred-rules 사용자 결정 예외))
-- [2026-11-15] **스킬 발동 겹침·공백 4건** — 「이 결정 기록해」 를 받는 스킬 없음(`REPO-DECISIONS.md`「쓰기」) · 「plan 1: … / plan 2: …」 에 plan·chain-plan 둘 다 맞음 · worktree-cleanup ↔ karina-workspace 「remove worktrees」 · workspace ↔ orchestration 대기 경계가 한쪽에만 · 넘기는 셋 ②(description 동작 변경) (출처: 2026-11-15 스킬 점검 — 사용자 답 「이번 회차 밖」) (실해: 2026-11-15 description 대조로 관측 — 사용자 지시 등재(deferred-rules 사용자 결정 예외))
-- [2026-11-15] **스킬 점검 낮음 등급 사본·경계 11건** — 하니스 루트 판정 기준 사본(`READONLY-SUBAGENTS.md`↔`reflect/SKILL.md`) · non-git 백업 사본(`wiki-ops-rules.md`) · 방어 코드·되돌림 사본(loop-exceptions↔debugging) · screen-scenarios 읽는 조건 · `WRITING.md` 적용 목록 · reflect 이력 모드 종료 코드 · browser↔computer 경계 · wait-what 체인 대기 · 상대 경로 혼용 · `parallel.md` 의 하니스 AGENTS.md 지목 · `[-]`·`[~]` 정의 · 넘기는 셋 ③ (출처: 2026-11-15 스킬 점검 — 사용자 답 「이번 회차 밖」) (실해: 2026-11-15 문면 대조로 관측 — 사용자 지시 등재(deferred-rules 사용자 결정 예외))
 
 ### llm-wiki · vault
 
