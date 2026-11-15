@@ -325,6 +325,7 @@ def run_claude(query, workspace, config_dir, model):
             for line in proc.stdout:  # blocking readline — watchdog kill이 EOF로 풀어준다
                 lines.append(line)
                 if is_skill_call(line):
+                    timer.cancel()
                     kill_tree(proc)
                     break
         finally:
