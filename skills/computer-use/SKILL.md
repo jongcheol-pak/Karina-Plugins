@@ -3,7 +3,8 @@ name: karina-computer-use
 description: >-
   Drives the GUI of a visible local Windows app window through `karina-cli computer`:
   accessibility tree, clicks, typing, menus, dialogs, and screenshots in native apps
-  and external browser windows (Chrome, Edge) or webviews. Prefer a programmatic path
+  and external browser windows (Chrome, Edge, Firefox) or webviews — including checking a
+  page in a browser the user names. Prefer a programmatic path
   (shell, filesystem, git, HTTP, existing CLIs) whenever it can complete the task.
   Use only when a visible window needs GUI control those cannot reach. Do not use
   for Karina's browser tabs (`karina-browser-use`).

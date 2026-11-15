@@ -8,7 +8,9 @@ description: >-
   tabs, waiting for worker_done or escalation, decision gates, and coordinator
   loops. Use whenever work is split across agent terminals and someone must
   track which task runs where and who reported what. Use plain terminal
-  commands for ordinary shell work that needs no coordination state.
+  commands for ordinary shell work that needs no coordination state. Use
+  karina-workspace for a one-shot handoff that needs no task tracking (spawn
+  an agent in a worktree, then read or wait on its terminal).
 version: 1.6.0
 ---
 
