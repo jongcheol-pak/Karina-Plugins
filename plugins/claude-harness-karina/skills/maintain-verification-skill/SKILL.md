@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Maintain a verification skill
 
-> 출처는 Cursor pstack 의 maintain-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/maintain-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮기며 대상 위치를 Claude Code 프로젝트 스킬로, 원문의 PR 하나를 karina 의 기본 브랜치 커밋·push(`implement/references/push-flow.md`)로 바꿨고, 기능 파일마다 하나씩 띄우던 서브에이전트를 기능이 적으면 하나로 묶는다.
+> 출처는 Cursor pstack 의 maintain-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/maintain-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮기며 대상 위치를 Claude Code 프로젝트 스킬로, 원문의 PR 하나를 karina 의 기본 브랜치 커밋·push(`../implement/references/push-flow.md`)로 바꿨고, 기능 파일마다 하나씩 띄우던 서브에이전트를 기능이 적으면 하나로 묶는다.
 
 기능 지도는 앱이 바뀌는 순간 낡는다(*"A feature map rots the moment the app changes."*). 이 스킬은 `/karina:create-verification-skill` 이 만든 스킬(또는 기능 지도를 가진 다른 프로젝트 검증 스킬)의 유지 루프다. 엄밀함의 단위는 문장이 아니라 **기능**이다 — 모든 기능 파일을 소스로 덮고 모든 기능을 실제로 조작하되, 불릿 하나하나를 터미널로 재지는 않는다.
 
