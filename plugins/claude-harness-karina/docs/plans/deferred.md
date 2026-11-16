@@ -3,14 +3,14 @@
 > 미처리 Deferred의 추적 대장 — **`## 대기`와 파일 끝 `## 1회 실패`(재발 판정용 1회차 기록 — `- [1회 실패 YYYY-MM-DD] <원인> — <해결>` · 날짜 접두가 아니라 대기 계수에 들지 않는다 · 규칙 `skills/REPO-CONVENTIONS.md`「쓰기」)를 담는다**. 기각 종결은 `deferred-closed.md` 이고, 그 파일은 기각 이동 때만 연다.
 > 항목은 `- [등록일] {요지 1줄} (출처) (실해: YYYY-MM-DD {관측 요지})` — **이 형식의 정본은 이 줄이다.** 실해 필드는 필수이고 `check-harness-consistency.py` 의 「등재 근거 실측」 축이 `## 대기` 전건을 잰다.
 > **등재 판정 규칙**(등재 하한선·회차 순증 금지·리뷰 지적의 필터 패스)의 정본은 `plan/references/deferred-rules.md` 다.
-> **항목 상한은 600자다**(정본은 `skills/BUDGET.md`). **종결은 사유로 갈린다 — 반영·해소·병합은 항목을 지우고 근거를 커밋 본문에 남긴다. 기각만 `deferred-closed.md` 로 `- [등록일 → 종결일] **요지** — 기각: 사유` 1줄로 옮긴다.**
+> **항목 상한은 600자다**(정본은 `skills/BUDGET.md`). **종결은 사유로 갈린다 — 반영·해소·병합은 항목을 지우고 근거를 커밋 본문에 남긴다. 기각만 `deferred-closed.md` 로 `- [등록일 → 종결일] **요지** — 기각: 사유` 1줄로 옮기고, 종결일이 90일 넘게 지난 기각은 대장 이관 때 지운다(규칙 `plan/references/deferred-rules.md`).**
 > `karina:plan` Step 1이 계획 때 `## 대기`를 조회하고, `karina:implement`가 완료 때 신규분을, `karina:reflect` 가 사용자가 고른 항목을 append한다.
 
 ## 대기
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 18 / 종결 123
+**▶ 현행 잔량(기계 대조 대상)**: 대기 18 / 종결 89
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
