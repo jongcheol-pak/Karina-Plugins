@@ -8,15 +8,18 @@
 경로를 자르지 않는다) · ERR: 오류 도구 결과(hook 차단 포함)
 · H: hook 첨부(경고 additionalContext · 취소) · BIG: 큰 성공 결과(`BIG: <도구명> <N>자 <앞 120자>` — 본문 길이나
 `<persisted-output>` 미리보기의 `Output too large (<크기>)` 가 BIG_CAP 이상, 도구명은 tool_use_id 로 찾고 못 찾으면 `?`)
-· SLOW: 오래 걸린 도구 호출(`SLOW: <도구명> <N>초 <hint 앞 120자>` — 결과 레코드 자리 · tool_use 와 tool_result 의
-`timestamp` 차가 SLOW_SEC 이상 · SLOW_EXCLUDE 도구는 뺀다 · Bash 의 권한 승인 대기는 전사로 가를 수 없어 소요에 든다).
+· SLOW: 오래 걸린 도구 호출(`SLOW: <도구명> <N>초 <hint 앞 120자>` — 결과 레코드 자리 · 시작과 tool_result 의
+`timestamp` 차가 SLOW_SEC 이상 · 시작은 그 tool_use_id 의 첫 PreToolUse 첨부(`attachment.hookEvent: PreToolUse` ·
+`attachment.toolUseID`) 시각이고 없으면 tool_use 레코드 시각이다 — tool_use 레코드는 블록 입력을 생성하기 시작할 때 찍혀
+생성 시간이 소요에 섞인다 · SLOW_EXCLUDE 도구는 뺀다 · Bash 의 권한 승인 대기는 전사로 가를 수 없어 소요에 든다).
 그 밖(thinking·BIG_CAP 미만의 성공 결과·메타 레코드)은 싣지 않는다.
 머리에 읽은 파일·구간 줄·갈래별 줄 수·총 줄 수를 싣는다 — 리뷰어가 총 줄 수까지 나눠 읽는다.
 구간 줄 — `# 구간 <이름>: 작업 <N>초 · 토큰 입력 <a> · 캐시읽기 <b> · 캐시쓰기 <c> · 출력 <d>`. 본 전사는 `Skill`
 tool_use 와 `<command-name>` 이 든 사용자 레코드(slash command — 앞 `/` 를 뗀다 · 바로 뒤에 같은 명령의
 `type: system`·`subtype: local_command` 레코드가 오는 내장 명령(`/clear` 등)은 앞 구간으로 되돌린다)가 구간을 바꾸고 첫 경계 앞은
 `(스킬 밖)` 이다 · 서브에이전트 전사는 파일마다 `서브에이전트 <meta.json 의 agentType | 파일 이름>` 한 구간이다.
-작업 시간은 같은 전사 안 연속 레코드 `timestamp` 간격의 합이고(간격은 앞 레코드의 구간에 든다), 사용자 text
+작업 시간은 같은 전사 안 연속 레코드 `timestamp` 간격의 합이고(간격은 앞 레코드의 구간에 든다 · 앞 시각은 지금까지 본
+가장 늦은 시각이다 — 첨부 레코드는 앞 레코드보다 이른 시각으로 기록돼 그대로 쓰면 겹친 간격을 두 번 센다), 사용자 text
 레코드(slash command·대기 중 들어온 알림 포함)나 SLOW_EXCLUDE 도구의 결과로 끝나는 간격은 뺀다 — 사용자 대기와
 서브에이전트 대기(그 시간은 서브에이전트 구간이 센다)다. 토큰은 `message.id` 마다 한 번만 센다 — 한 응답이 블록마다
 레코드로 갈려 같은 `usage` 가 반복된다. 반올림한 작업 시간이 0초이고 토큰도 없는 구간은 싣지 않는다.
@@ -99,15 +102,21 @@ def parse_ts(d):
 
 
 def remember_tools(d, tools):
+    a = d.get('attachment') if d.get('type') == 'attachment' else None
+    if isinstance(a, dict) and a.get('hookEvent') == 'PreToolUse':
+        known = tools.get(a.get('toolUseID'))
+        if known and not known[3] and parse_ts(d) is not None:
+            tools[a.get('toolUseID')] = (known[0], parse_ts(d), known[2], True)
+        return
     if d.get('type') != 'assistant' or not isinstance(d.get('message'), dict):
         return
     for b in d['message'].get('content') or []:
         if isinstance(b, dict) and b.get('type') == 'tool_use':
-            tools[b.get('id')] = (b.get('name'), parse_ts(d), _tool_hint(b.get('input') or {}))
+            tools[b.get('id')] = (b.get('name'), parse_ts(d), _tool_hint(b.get('input') or {}), False)
 
 
 def slow_line(b, tools, ts):
-    name, start, hint = tools.get(b.get('tool_use_id'), ('?', None, ''))
+    name, start, hint, _ = tools.get(b.get('tool_use_id'), ('?', None, '', False))
     if ts is None or start is None or name in SLOW_EXCLUDE:
         return None
     sec = (ts - start).total_seconds()
@@ -222,7 +231,7 @@ class Segments:
             self.before_command = self.current if d.get('type') == 'user' else None
             self.current = name
         if ts is not None:
-            self.prev = (ts, self.current)
+            self.prev = (ts if self.prev is None else max(ts, self.prev[0]), self.current)
 
     def lines(self):
         return ['# 구간 %s: 작업 %d초 · 토큰 입력 %d · 캐시읽기 %d · 캐시쓰기 %d · 출력 %d'

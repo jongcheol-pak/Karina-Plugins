@@ -500,6 +500,35 @@ def subagent_segment_without_meta_uses_file_name():
     assert '# 구간 서브에이전트 agent-abc.jsonl: 작업 8초' in [s.split(' · ')[0] for s in segment_lines(out)], out
 
 
+def pre_hook(tid, sec):
+    return at({'type': 'attachment', 'attachment': {
+        'type': 'hook_success', 'hookName': 'PreToolUse:Bash', 'hookEvent': 'PreToolUse',
+        'toolUseID': tid, 'content': '', 'exitCode': 0}}, sec)
+
+
+@case
+def slow_starts_at_pre_tool_use():
+    out = run_timed([at(rec_assistant([tool_use('t1', 'Bash', 'gen')]), 0), pre_hook('t1', 70),
+                     at(rec_user_blocks([tool_result('t1', '출력')]), 75)])
+    assert slow_lines(out) == [], out
+
+
+@case
+def slow_measured_from_pre_tool_use():
+    out = run_timed([at(rec_assistant([tool_use('t1', 'Bash', 'sleep 75')]), 0), pre_hook('t1', 5),
+                     at(rec_user_blocks([tool_result('t1', '출력')]), 80)])
+    assert slow_lines(out) == ['SLOW: Bash 75초 sleep 75'], out
+
+
+@case
+def early_attachment_not_double_counted():
+    recs = [at(rec_assistant([{'type': 'text', 'text': '시작'}]), 0),
+            at(rec_assistant([tool_use('t1', 'Bash')]), 10), pre_hook('t1', 4),
+            at(rec_user_blocks([tool_result('t1', '출력')]), 12)]
+    out = run_timed(recs)
+    assert segment_lines(out)[0].startswith('# 구간 (스킬 밖): 작업 12초 · '), segment_lines(out)
+
+
 @case
 def audit_has_no_timing_lines():
     recs = [at(rec_user('<command-name>/karina:implement</command-name>'), 0)] + \
