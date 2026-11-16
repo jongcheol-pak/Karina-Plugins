@@ -128,13 +128,17 @@ if ($gitOk) {
     $btB = [char]96
     $credLine = '기본 관리자 계정: ' + $btB + 'ad' + 'min' + $btB + ' / ' + $btB + 'Zq7' + '#mK21' + $btB
     $capNames = 1..51 | ForEach-Object { 'f{0:D3}.txt' -f $_ }
-    if (Test-ScenarioUnit 1) {
-    $wcs = Join-Path $work 'wcsrepo'; New-Item -ItemType Directory $wcs -Force | Out-Null
-    Push-Location $wcs
-    git init -q; git config user.email t@t; git config user.name t
-    'v=1' | Set-Content app.js; git add .; git commit -qm init
-    Pop-Location
     $fakeApi = 'api_key = "' + 'ABCDEF1234567890' + '"'
+    function New-WcsRepo([string]$Name) {
+        $p = Join-Path $work $Name; New-Item -ItemType Directory $p -Force | Out-Null
+        Push-Location $p
+        git init -q; git config user.email t@t; git config user.name t
+        'v=1' | Set-Content app.js; git add .; git commit -qm init
+        Pop-Location
+        return $p
+    }
+    if (Test-ScenarioUnit 1) {
+    $wcs = New-WcsRepo 'wcsrepo'
     $wcsJson = @{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m test' } } | ConvertTo-Json -Compress
 
     # 1) staged 시크릿 → 경고
@@ -392,7 +396,7 @@ if ($gitOk) {
     Assert-Case -Name "commit-secrets: ignored 강제 add 자격증명 차단(n3, exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
     }
 
-    if (Test-ScenarioUnit 5) {
+    if (Test-ScenarioUnit 7) {
     $wcsF = Join-Path $work 'wcsautostage'; New-Item -ItemType Directory $wcsF -Force | Out-Null
     Push-Location $wcsF
     git init -q; git config user.email t@t; git config user.name t
@@ -505,7 +509,9 @@ if ($gitOk) {
     Push-Location $wcsB; git rm -q --cached README.md; Remove-Item README.md -Force; Pop-Location
     }
 
-    if (Test-ScenarioUnit 1) {
+    if (Test-ScenarioUnit 2) {
+    $wcs = New-WcsRepo 'wcsrepo-dispatch'
+    $wcsJson = @{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m test' } } | ConvertTo-Json -Compress
     Push-Location $wcs; Set-Content secret2.js $fakeApi; git add secret2.js; Pop-Location
     # (a) commit-secrets 양성 → 디스패처 경유도 경고 유지
     $r = Invoke-Hook 'guard-bash.ps1' $wcsJson
@@ -596,7 +602,7 @@ if ($gitOk) {
     else { $script:results.Add(@{ ok = $true; line = "[PASS] commit-secrets: 저신뢰 검출 시 '없음' 고정 문구 미사용(T1 ⓔ)" }) }
     }
 
-    if (Test-ScenarioUnit 6) {
+    if (Test-ScenarioUnit 9) {
     $wcsCapU = Join-Path $work 'wcscapuntracked'; New-Item -ItemType Directory $wcsCapU -Force | Out-Null
     Push-Location $wcsCapU
     git init -q; git config user.email t@t; git config user.name t

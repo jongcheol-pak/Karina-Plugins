@@ -542,7 +542,7 @@ Assert-Case -Name "eoj: json 부재여도 block-plan-write 차단은 유지 (EOJ
 
 }
 
-if ((Test-HookSelected @('guard-bash')) -and $gitOk -and (Test-ScenarioUnit 4)) {
+if ((Test-HookSelected @('guard-bash')) -and $gitOk) {
 $ccRoot = Join-Path $work 'ccrepos'; New-Item -ItemType Directory $ccRoot -Force | Out-Null
 $ccSeq = 0
 function New-CcRepo {
@@ -562,6 +562,20 @@ function Invoke-CcCommit([string]$Dir, [string]$Command, [string]$Session) {
 }
 function Set-CcFile([string]$Dir, [string]$Name, [string]$Text) { [System.IO.File]::WriteAllText((Join-Path $Dir $Name), $Text) }
 $ccBlock = '[HARNESS] BLOCKED: 커밋에 새 주석이 있습니다 (주석'
+$ccMoveA = "/// 옮겨 갈 시험 설명.`nfn t_moved() {}`n`nfn keep() {}`n"
+$ccRealGit = @(Get-Command git -CommandType Application | ForEach-Object { $_.Source })[0]
+$ccBudgetLine = 'BASE 확인 git 이 예산('
+function New-CcMoveRepo {
+    $m = New-CcRepo
+    Set-CcFile $m 'm.rs' $ccMoveA; Set-CcFile $m 'n.rs' "fn other() {}`n"
+    git -C $m add .; git -C $m commit -qm move-base
+    Set-CcFile $m 'plan.md' "# plan`n`n## Goal`n`n> BASE: $((git -C $m rev-parse --short HEAD).Trim())`n"
+    Set-CcFile $m 'm.rs' "fn keep() {}`n"
+    Set-CcFile $m 'n.rs' "fn other() {}`n`n/// 옮겨 갈 시험 설명.`nfn t_moved() {}`n"
+    return $m
+}
+
+if (Test-ScenarioUnit 4) {
 
 $d = New-CcRepo
 Set-CcFile $d 'a.cs' "// 기존 설명`n// 새 설명`nint a;`n"; git -C $d add a.cs
@@ -767,28 +781,18 @@ git -C $d add .
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-cap'
 Assert-Case -Name "commit-comments: 수집 상한을 넘으면 알리고 통과" -R $r -ExpectExit 0 -ExpectContains '상한'
 
-$d = New-CcRepo
-$ccMoveA = "/// 옮겨 갈 시험 설명.`nfn t_moved() {}`n`nfn keep() {}`n"
-Set-CcFile $d 'm.rs' $ccMoveA; Set-CcFile $d 'n.rs' "fn other() {}`n"
-git -C $d add .; git -C $d commit -qm move-base
-Set-CcFile $d 'plan.md' "# plan`n`n## Goal`n`n> BASE: $((git -C $d rev-parse --short HEAD).Trim())`n"
-Set-CcFile $d 'm.rs' "fn keep() {}`n"
-Set-CcFile $d 'n.rs' "fn other() {}`n`n/// 옮겨 갈 시험 설명.`nfn t_moved() {}`n"
+$d = New-CcMoveRepo
 $r = Invoke-CcCommit $d 'git commit -m x -- n.rs' 'cc-move'
 Assert-Case -Name "commit-comments: 다른 파일 BASE 의 doc 을 그 파일에서 지우고 옮긴 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 Set-CcFile $d 'm.rs' $ccMoveA
 $r = Invoke-CcCommit $d 'git commit -m x -- n.rs' 'cc-copy'
 Assert-Case -Name "commit-comments: 원래 파일에 남은 doc 의 복사 커밋은 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+}
 
+if (Test-ScenarioUnit 8) {
 $ccSlowDir = Join-Path $ccRoot 'slow-base-git'; New-Item -ItemType Directory $ccSlowDir -Force | Out-Null
-$ccRealGit = @(Get-Command git -CommandType Application | ForEach-Object { $_.Source })[0]
 [System.IO.File]::WriteAllText((Join-Path $ccSlowDir 'git.cmd'), "@echo %*| findstr /c:show /c:grep >nul && ping -n 7 127.0.0.1 >nul`r`n@`"$ccRealGit`" %*`r`n")
-$d = New-CcRepo
-Set-CcFile $d 'm.rs' $ccMoveA; Set-CcFile $d 'n.rs' "fn other() {}`n"
-git -C $d add .; git -C $d commit -qm move-base
-Set-CcFile $d 'plan.md' "# plan`n`n## Goal`n`n> BASE: $((git -C $d rev-parse --short HEAD).Trim())`n"
-Set-CcFile $d 'm.rs' "fn keep() {}`n"
-Set-CcFile $d 'n.rs' "fn other() {}`n`n/// 옮겨 갈 시험 설명.`nfn t_moved() {}`n"
+$d = New-CcMoveRepo
 $ccSaved = @{ PATH = $env:PATH; T = $env:KARINA_COMMIT_GIT_TIMEOUT_MS }
 try {
     $env:PATH = $ccSlowDir + [System.IO.Path]::PathSeparator + $env:PATH
@@ -796,13 +800,16 @@ try {
     $r = Invoke-Hook 'guard-bash.ps1' (@{ session_id = 'cc-move-slow'; tool_name = 'Bash'; cwd = $d; tool_input = @{ command = 'git commit -m x -- n.rs' } } | ConvertTo-Json -Compress) -Process
 } finally { $env:PATH = $ccSaved.PATH; $env:KARINA_COMMIT_GIT_TIMEOUT_MS = $ccSaved.T }
 Assert-Case -Name "commit-comments: BASE 복원·이동 판정 git 이 6초씩 늦어도 다른 파일 BASE doc 을 옮긴 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
-$ccBudgetLine = 'BASE 확인 git 이 예산('
 Set-CcFile $d 'm.rs' $ccMoveA
 $r = Invoke-CcCommit $d 'git commit -m x -- n.rs' 'cc-copy-budget'
 Assert-Case -Name "commit-comments: 예산이 남은 커밋 차단에는 BASE 확인 예산 원인 줄이 없다" -R $r -ExpectExit 2 -ExpectNotContains $ccBudgetLine
-Set-CcFile $d 'm.rs' "fn keep() {}`n"
+}
+
+if (Test-ScenarioUnit 7) {
 $ccVerySlowDir = Join-Path $ccRoot 'very-slow-base-git'; New-Item -ItemType Directory $ccVerySlowDir -Force | Out-Null
 [System.IO.File]::WriteAllText((Join-Path $ccVerySlowDir 'git.cmd'), "@echo %*| findstr /c:show /c:grep >nul && ping -n 17 127.0.0.1 >nul`r`n@`"$ccRealGit`" %*`r`n")
+$d = New-CcMoveRepo
+$ccSaved = @{ PATH = $env:PATH; T = $env:KARINA_COMMIT_GIT_TIMEOUT_MS }
 try {
     $env:PATH = $ccVerySlowDir + [System.IO.Path]::PathSeparator + $env:PATH
     $env:KARINA_COMMIT_GIT_TIMEOUT_MS = '60000'
@@ -810,5 +817,6 @@ try {
 } finally { $env:PATH = $ccSaved.PATH; $env:KARINA_COMMIT_GIT_TIMEOUT_MS = $ccSaved.T }
 Assert-Case -Name "commit-comments: BASE 복원·이동 판정 git 이 예산을 넘겨 막으면 원인 줄과 재시도 안내를 낸다" -R $r -ExpectExit 2 -ExpectContains $ccBudgetLine
 Assert-Case -Name "commit-comments: 예산 소진 차단은 '다시 내도 통과하지 않는다' 대신 재시도 안내를 낸다" -R $r -ExpectExit 2 -ExpectContains 'git 이 한가할 때 같은 커밋을 다시 내면 통과할 수 있습니다' -ExpectNotContains '같은 커밋을 다시 내도 통과하지 않습니다'
+}
 }
 
