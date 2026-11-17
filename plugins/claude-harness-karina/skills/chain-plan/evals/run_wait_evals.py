@@ -355,7 +355,7 @@ class FakeGit:
         if args[0] == 'diff':
             self.tree = self.trees.pop(0) if self.trees else ('', '', '')
             return (False, '') if self.tree is None else (True, self.tree[0])
-        if args[0] == 'ls-files':
+        if 'ls-files' in args:
             return (True, self.tree[1]) if self.tree else (False, '')
         if args[0] == 'hash-object':
             return (True, self.tree[2]) if self.tree else (False, '')
@@ -1431,6 +1431,31 @@ def non_ascii_survives_cp949_stdout():
     text = p.stdout.decode('utf-8', errors='strict')
     assert p.returncode == 0, (p.returncode, p.stderr[-400:])
     assert text.startswith('RESULT: error — '), text[:200]
+
+
+@case
+def tree_sig_moves_on_non_ascii_untracked():
+    repo = tempfile.mkdtemp(prefix='ww-qp-')
+    try:
+        def g(*args):
+            subprocess.run(['git', '-C', repo] + list(args), check=True, capture_output=True, timeout=60)
+        g('init', '-q')
+        with open(os.path.join(repo, 'a.txt'), 'w', encoding='utf-8') as f:
+            f.write('a\n')
+        g('add', 'a.txt')
+        g('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'init')
+        p = ww.Progress(ww.make_git(repo), lambda: '', FakeStore({'sha': 'h0', 'shown': []}), 'Plan 1')
+        path = os.path.join(repo, '화면.txt')
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write('1\n')
+        first_sig = p.tree_sig()
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write('2\n')
+        second_sig = p.tree_sig()
+        assert first_sig is not None and second_sig is not None, (first_sig, second_sig)
+        assert first_sig != second_sig, first_sig
+    finally:
+        shutil.rmtree(repo, ignore_errors=True)
 
 
 def main():

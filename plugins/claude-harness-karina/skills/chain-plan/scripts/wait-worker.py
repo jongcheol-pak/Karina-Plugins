@@ -514,7 +514,7 @@ class Progress:
         ok, diff = self.git(['diff', 'HEAD', '--no-color', '--no-ext-diff'])
         if not ok:
             return None
-        ok, untracked = self.git(['ls-files', '--others', '--exclude-standard'])
+        ok, untracked = self.git(['-c', 'core.quotepath=off', 'ls-files', '--others', '--exclude-standard'])
         if not ok:
             return None
         files = [f for f in untracked.splitlines() if f][:TREE_HASH_MAX]
