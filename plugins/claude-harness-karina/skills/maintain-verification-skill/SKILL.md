@@ -1,12 +1,12 @@
 ---
 name: maintain-verification-skill
-description: 프로젝트 검증 스킬의 기능 지도를 앱 변경에 맞춰 다시 맞춘다 — 기능마다 소스를 읽고 모든 기능을 실제로 조작해, 증명된 수정만 커밋 하나로 낸다. 사용자 호출 전용.
+description: 프로젝트 검증 스킬의 기능 지도를 앱 변경에 맞춰 다시 맞춘다 — 기능마다 소스를 읽고 모든 기능을 실제로 조작해, 증명된 수정만 지도 커밋 하나로 낸다. 사용자 호출 전용.
 disable-model-invocation: true
 ---
 
 # Maintain a verification skill
 
-> 출처는 Cursor pstack 의 maintain-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/maintain-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮기며 대상 위치를 Claude Code 프로젝트 스킬로, 원문의 PR 하나를 karina 의 기본 브랜치 커밋·push(`../implement/references/push-flow.md`)로 바꿨고, 기능 파일마다 하나씩 띄우던 서브에이전트를 기능이 적으면 하나로 묶는다.
+> 출처는 Cursor pstack 의 maintain-verification-skill 이다 — 고정 위치 `https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/maintain-verification-skill/SKILL.md`. Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮기며 대상 위치를 Claude Code 프로젝트 스킬로, 원문의 PR 하나를 karina 의 기본 브랜치 커밋·push(`../implement/references/push-flow.md`)로 바꿨고, 기능 파일마다 하나씩 띄우던 서브에이전트를 기능이 적으면 하나로 묶으며, `AGENTS.md` `UI 경로` 줄 선언·점검(7번)을 더했다.
 
 기능 지도는 앱이 바뀌는 순간 낡는다(*"A feature map rots the moment the app changes."*). 이 스킬은 `/karina:create-verification-skill` 이 만든 스킬(또는 기능 지도를 가진 다른 프로젝트 검증 스킬)의 유지 루프다. 엄밀함의 단위는 문장이 아니라 **기능**이다 — 모든 기능 파일을 소스로 덮고 모든 기능을 실제로 조작하되, 불릿 하나하나를 터미널로 재지는 않는다.
 
@@ -14,19 +14,19 @@ disable-model-invocation: true
 
 셋 중 하나를 고르고, 어느 것인지 말한다.
 
-- **clean** — 모든 기능이 소스와 실제 조작으로 덮였고 고칠 것이 없다. 커밋도 없다.
-- **changed** — 증명된 문서·하네스·지도 수정을 커밋 하나로 낸다.
+- **clean** — 모든 기능이 소스와 실제 조작으로 덮였고 고칠 것이 없다. 지도 커밋도 없다(7번 커밋은 별개다).
+- **changed** — 증명된 문서·하네스·지도 수정을 지도 커밋 하나로 낸다.
 - **blocked** — 덮기를 끝내지 못했거나 증명된 수정을 안전하게 내지 못했다. 무엇이 막았는지 정확히 말한다.
 
 ## 편집 범위
 
-**검증 스킬 자기 폴더만 고친다** — 그 SKILL.md · `features/` · 그 스킬이 가진 `helpers/` 스크립트. 실행 중에 제품 코드를 고치지 않는다 — 지도가 적은 동작을 앱이 더는 하지 않으면, 그것은 지도 드리프트(지도를 고친다)이거나 제품 회귀(보고하고, 문서로 덮지 않는다)다.
+**검증 스킬 자기 폴더만 고친다** — 그 SKILL.md · `features/` · 그 스킬이 가진 `helpers/` 스크립트. 예외는 7번의 `AGENTS.md` `UI 경로` 줄 하나다 — 지도 커밋과 따로 경로 한정 커밋으로 낸다. 실행 중에 제품 코드를 고치지 않는다 — 지도가 적은 동작을 앱이 더는 하지 않으면, 그것은 지도 드리프트(지도를 고친다)이거나 제품 회귀(보고하고, 문서로 덮지 않는다)다.
 
 ## 진행
 
 0. **대상을 찾는다** — 본문에 Launch·Drive 절과 기능 지도를 가진 프로젝트 스킬(보통 `.claude/skills/verify-*/`, `AGENTS.md` 의 `Verify (앱 조작)` 줄이 가리키는 것)이다. 후보가 여럿이면 어느 것인지 묻고, 없으면 대상을 지어내지 않고 멈춰 `/karina:create-verification-skill` 을 안내한다.
 1. **색인을 정리한다** — 지도 `features/README.md` 를 읽고 같은 폴더의 파일과 대조해 빠진 항목·남는 항목·중복·죽은 링크를 고친다. 가볍게 — 따로 목록을 생성하지 않는다.
-2. **소스 웨이브** — 기능 파일을 읽기 전용 `Explore` 서브에이전트에 나눠 맡긴다 — 기능이 많을 때만 여러 개를 **한 메시지에서 동시에** 띄우고, 적으면 하나에 묶어 생성 수를 낮게 둔다. 웨이브 전후 작업 트리 확인은 `../READONLY-SUBAGENTS.md`「호출 전후 확인」 대로다. 각자 「이 사용자 기능이 소스에서 어떻게 동작하는가」를 설명하고, 인용과 함께 드리프트로 보이는 곳을 짚고, 실제 조작용 조작법 하나를 돌려준다. **서브에이전트는 앱을 조작하지 않고 파일을 고치지 않는다.** 반환 형태: 기능 요약 / 소스 진입점 / 드리프트 후보 또는 없음 / 조작법 하나.
+2. **소스 웨이브** — 기능 파일을 읽기 전용 `Explore` 서브에이전트에 나눠 맡긴다 — 기능이 많을 때만 여러 개를 **한 메시지에서 동시에** 띄우고, 적으면 하나에 묶어 생성 수를 낮게 둔다. 웨이브 전후 작업 트리 확인은 `../READONLY-SUBAGENTS.md`「호출 전후 확인」 대로다. 각자 「이 사용자 기능이 소스에서 어떻게 동작하는가」를 설명하고, 인용과 함께 드리프트로 보이는 곳을 짚고, 실제 조작용 조작법 하나를 돌려준다. **서브에이전트는 앱을 조작하지 않고 파일을 고치지 않는다.** 반환 형태: 기능 요약 / 소스 진입점 / 화면 파일(그 기능의 화면을 그리는 소스 — 무엇이 그리는지 인용 근거와 함께) 또는 없음 / 드리프트 후보 또는 없음 / 조작법 하나. 화면 파일은 7번의 `UI 경로` 후보와 점검 입력이다 — 소스 진입점은 화면을 그리지 않는 파일일 수 있어 쓰지 않는다.
 3. **대조한다** — 모든 기능 파일에 요약이 돌아왔는지 본다. 겹치는 조작법은 가능한 한 적은 앱 상태로 합친다. 인용된 드리프트는 표본으로 확인하고, 깨끗하다는 주장은 다시 증명하지 않는다. 최근 변경 이력(`git log`)에서 지도에 없는 사용자 표면을 훑되, 빠졌다고 부르려면 구체적인 소스 경로가 있어야 한다.
 4. **실제 조작** — 소스가 깨끗해 보여도 **반드시** 한다. 조작은 이 세션 하나가 맡고, 검증 스킬 자신의 Launch 모델을 따른다 — 서버·UI 는 오래 사는 인스턴스 하나를 차례로, 수명이 짧은 CLI 는 조작마다 격리된 새 세션(어느 쪽인지는 그 스킬의 Launch 절이 정한다). 모든 기능을 적어도 한 번 조작하고, 어떤 실패가 나든 불변식 셋을 지킨다.
    - **놀라운 일이 있은 뒤에는 Doctor 를 다시 돌리기 전까지 그 인스턴스를 조작하지 않는다** — 첫 조작 전, 세션이 단위면 새 세션마다, 조작이 실패한 뒤마다 Doctor 를 돈다. Doctor 가 못 보는 실패(프로세스는 정상인데 UI 가 끼인 상태)면 기대하지 말고 알려진 상태로 되돌리거나 다시 띄운다.
@@ -39,8 +39,9 @@ disable-model-invocation: true
 6. **내거나 멈춘다** — changed 면 고친 파일을 모두 다시 읽은 뒤:
    - 브랜치를 바꾸지 않고 `git add -- .claude/skills/verify-<app>` 뒤 경로 한정 로컬 커밋 `git commit -m "문서: 검증 스킬 verify-<app> 지도 보정" -- .claude/skills/verify-<app>` 를 한다(`add` 가 없으면 색인 정리·하네스 공백 수정이 새로 만든 파일이 커밋에서 빠진다 · `git check-ignore -q --no-index .claude/skills/verify-<app>/SKILL.md` 가 0 이면 그 폴더가 무시 경로인데 `add -f` 로 추적된 것이라 `git add -f --` 를 쓴다 — `--no-index` 가 없으면 추적된 파일은 늘 1 이 나온다(2026-10-18 실측)). 커밋 본문에 덮은 기능 수와 실제로 조작한 기능을 적는다.
    - 그 뒤 `../implement/references/push-flow.md`「기본 브랜치 push」 의 push 만 하고 보고한다 — 진행 중 `plan.md` 가 있으면 push 하지 않고 그 회차 끝에 함께 간다. **`git rev-list --count origin/<기본>..HEAD` 가 이번 실행이 만든 커밋 수(6·7번 합 — 7번이 커밋하면 push 는 7번 뒤 한 번)와 같을 때만 push 하고, 아니면 push 하지 않고 `건너뜀 — 미push 커밋 <N>개` 로 보고한다** — 이 push 는 push 전 확인(`../implement/references/push-flow.md`)을 거치지 않아, 보류된 미push 커밋이 남아 있으면 함께 공개된다.
-   - clean·blocked 는 커밋이 없다 — 결과와 덮은 범위를 정직하게 보고한다.
-7. **`AGENTS.md` 에 `UI 경로` 줄이 없으면 결과와 무관하게 줄을 더하기 전에 `git status --porcelain -- AGENTS.md` 를 보고, 비어 있지 않으면 더하지도 커밋하지도 않고 보고한다. 비어 있으면 `../create-verification-skill/SKILL.md`「5. 등록하고 유지 루프를 안내한다」 의 「`karina:record-project-fact` 로 `AGENTS.md` 의 `Verify (앱 조작)` 줄에 … 적는다」 항목의 `UI 경로` 후보·확정 절차로 더하고 `git commit -m "설정: UI 경로 선언" -- AGENTS.md` 로 경로 한정 커밋한다(push 는 6번과 같다)** — 이 줄이 생기기 전에 만든 검증 스킬의 레포는 계획 검사가 화면 줄 없는 UI 수정을 잡지 못한다.
+   - clean·blocked 는 지도 커밋이 없다 — 결과와 덮은 범위를 정직하게 보고한다.
+7. **`AGENTS.md` 의 `UI 경로` 줄을 결과와 무관하게 맞춘다 — 줄이 있든 없든 먼저 `git status --porcelain -- AGENTS.md` 를 보고, 비어 있지 않으면 고치지도 커밋하지도 않고 보고한다** — 경로 한정 커밋도 그 파일의 다른 미커밋 변경까지 담는다.
+   - **줄이 없으면 2번이 돌려준 화면 파일을 `(진입점)` 후보로, `../create-verification-skill/SKILL.md`「5. 등록하고 유지 루프를 안내한다」 의 「`karina:record-project-fact` 로 `AGENTS.md` 의 `Verify (앱 조작)` 줄에 … 적는다」 항목의 `UI 경로` 후보·확정 절차로 더하고 `git commit -m "설정: UI 경로 선언" -- AGENTS.md` 로 경로 한정 커밋한다(push 는 6번과 같다)** — 이 줄이 생기기 전에 만든 검증 스킬의 레포는 계획 검사가 화면 줄 없는 UI 수정을 잡지 못한다.
 
 실행 메모(덮은 기능 · 닿지 못한 기능의 전제 · 확인된 드리프트 · 결과)는 레포 밖 임시 위치(`../TEMP-FILES.md` 의 `scratch\`)에 짧게 남기고 커밋하지 않는다.
 
