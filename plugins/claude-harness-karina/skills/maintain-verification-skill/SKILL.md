@@ -54,7 +54,7 @@ disable-model-invocation: true
      [Console]::OutputEncoding = [Text.UTF8Encoding]::new()
      $v = (Select-String -LiteralPath AGENTS.md -Pattern '^- \*\*UI 경로\*\*:\s*(.*)$' -Encoding utf8).Matches[0].Groups[1].Value
      $pats = @([regex]::Matches($v, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value.Replace('\', '/') })
-     $files = @(git ls-files)
+     $files = @(git -c core.quotepath=off ls-files)
      $stale = @($pats | Where-Object { $p = $_; -not @($files | Where-Object { $_ -like $p }).Count })
      $stale | ForEach-Object { "stale $_" }
      foreach ($e in $entries) { if (-not @($pats | Where-Object { $e -like $_ }).Count) { "missing $e" } }
