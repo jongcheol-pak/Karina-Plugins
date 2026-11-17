@@ -221,6 +221,18 @@ $r = Invoke-CheckPlan $cpUiPlan
 Assert-Case -Name "check-plan: AGENTS.md 가 없으면 UI 경로 검사를 하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'screen-missing'
 $r = Invoke-CheckPlan $cpUiPlan (New-UiPlanDir "# AGENTS.md`n`n- **UI 경로**: ``app/ui/*```n" 'app' -Git)
 Assert-Case -Name "check-plan: plan 폴더 위의 AGENTS.md 패턴은 그 폴더 기준으로 대조한다" -R $r -ExpectExit 1 -ExpectContains 'screen-missing T1'
+$cpBaseScreen = '- **화면**: 시나리오 메뉴에서 데모 열기 · 스크린샷 demo.png · 통과 조건 기준선 일치'
+$cpVerifyAgents = "# AGENTS.md`n`n- **Verify (앱 조작)**: ``.claude/skills/verify-demo/```n"
+$r = Invoke-CheckPlan (New-ScreenPlan $cpBaseScreen) (New-UiPlanDir $cpVerifyAgents)
+Assert-Case -Name "check-plan: 검증 스킬이 있는 레포의 기준선 일치 task 가 T1-1 에서 기준선을 찍지 않으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-baseline T1'
+$r = Invoke-CheckPlan (New-ScreenPlan ($cpBaseScreen + ' (가림 0,0,10,10)')) (New-UiPlanDir $cpVerifyAgents)
+Assert-Case -Name "check-plan: 가림을 단 기준선 일치도 T1-1 기준선 촬영을 요구한다" -R $r -ExpectExit 1 -ExpectContains 'screen-baseline T1'
+$r = Invoke-CheckPlan ((New-ScreenPlan $cpBaseScreen).Replace('**T1-1** 한다', '**T1-1** 편집 전 기준선 촬영')) (New-UiPlanDir $cpVerifyAgents)
+Assert-Case -Name "check-plan: T1-1 이 기준선 촬영이면 기준선 일치 task 를 통과시킨다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckPlan (New-ScreenPlan $cpBaseScreen) (New-UiPlanDir "# AGENTS.md`n`n- **Verify (앱 조작)**: 없음`n")
+Assert-Case -Name "check-plan: 검증 스킬이 없으면 기준선 촬영 task 를 요구하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'screen-baseline'
+$r = Invoke-CheckPlan (New-ScreenPlan $cpScreen) (New-UiPlanDir $cpVerifyAgents)
+Assert-Case -Name "check-plan: 통과 조건이 기준선 일치가 아니면 기준선 촬영 task 를 요구하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'screen-baseline'
 
 # ---- 펜스 · 입력 오류 ----
 $r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', ("| 크기 | ``wc -c a.ps1`` | 10 |`n`n``````text`n| 가짜 |  | 빈 |`n## 가짜 절`n- [ ] T9-9 가짜`n```````n")))

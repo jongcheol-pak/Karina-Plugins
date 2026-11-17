@@ -34,6 +34,8 @@
 #                                맞는데(-like · 패턴은 그 AGENTS.md 폴더 기준 — plan 폴더가 그 아래면 사이 경로를 붙여 맞춘다)
 #                                「- **화면**:」 줄도 Files 줄의 「[화면 없음 — <사유>]」 표지도 없음(사유가 빈 표지는 표지가 아니다)
 #                                (UI 경로 줄이 없고 Verify (앱 조작) 이 스킬을 가리키면 「check-plan: skip screen-missing no-ui-path」)
+#   screen-baseline T<N>         Verify (앱 조작) 이 스킬을 가리키는데 화면 줄 통과 조건이 「기준선 일치」 로 시작하고
+#                                그 task 첫 하위 항목(T<N>-1) 줄에 「기준선」 이 없음(편집 전 기준선 촬영 자리)
 #   plan-check exit <n> log <파일>  plan 폴더에서 git 최상위까지 올라가며 찾은 AGENTS.md 의 「- **Plan check**: `<명령>`」 이
 #                                exit 0 이 아님 — <줄> 은 AGENTS.md 의 줄 · 출력은 임시 폴더 karina-plugin\scratch\<파일>
 #   plan-check timeout <s> log <파일>  그 명령이 상한(KARINA_PLAN_CHECK_TIMEOUT_SEC, 기본 120초)을 넘음
@@ -375,6 +377,9 @@ if (Find-Section $tasksTitle) {
     } elseif (Test-VerifySkill $uiAgents) {
         Write-Output 'check-plan: skip screen-missing no-ui-path'
     }
+    $uiVerifySkill = Test-VerifySkill $uiAgents
+    $baselineWord = Get-Text @(0xAE30, 0xC900, 0xC120)    # 기준선
+    $baselineMatch = $baselineWord + ' ' + (Get-Text @(0xC77C, 0xCE58))    # 기준선 일치
     $noScreenRx = '\[' + (Get-Text @(0xD654, 0xBA74)) + '\s+' + (Get-Text @(0xC5C6, 0xC74C)) + '\s*' + [char]0x2014 + '\s*[^\]\s]'    # [화면 없음 — <사유>]
     foreach ($b in $blocks) {
         $tag = 'T' + $b.Id
@@ -407,6 +412,11 @@ if (Find-Section $tasksTitle) {
                 if (-not @($pieces | Where-Object { (Test-Prefix $_ $head) -and $_.Substring($head.Length).Trim() }).Count) {
                     Add-Problem $s.N ('screen-line ' + $tag + ' ' + $key)
                 }
+            }
+            $predHead = $screenParts['predicate'] + ' '
+            if ($uiVerifySkill -and @($pieces | Where-Object { (Test-Prefix $_ $predHead) -and (Test-Prefix $_.Substring($predHead.Length).Trim() $baselineMatch) }).Count) {
+                $first = $b.Lines | Where-Object { $_.Text -match '^- \[[ /xX~-]\]' } | Select-Object -First 1
+                if (-not $first -or -not $first.Text.Contains($baselineWord)) { Add-Problem $s.N ('screen-baseline ' + $tag) }
             }
         }
         if ($files -and $uiPatterns.Count -and -not [regex]::IsMatch($files.Text, $noScreenRx) -and
