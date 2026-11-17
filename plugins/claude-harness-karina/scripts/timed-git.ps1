@@ -132,6 +132,7 @@ function Invoke-TimedGit {
                 elseif ($env:OS -eq 'Windows_NT') { $null = & taskkill /T /F /PID $p.Id 2>$null }
                 else { $p.Kill() }
             } catch {}
+            Stop-TimedGitOrphans -ParentId $p.Id -Since $started
             $none.TimedOut = $true
             return $none
         }
