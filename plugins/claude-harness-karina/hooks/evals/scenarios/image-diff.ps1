@@ -35,6 +35,11 @@ $r = Invoke-ImageDiff @('-Base', $idBase, '-Head', $idOne, '-Mask', '2,3,3,3')
 Assert-Case -Name "image-diff: 다른 픽셀이 가림 안에만 있으면 diff 0 px · exit 0" -R $r -ExpectExit 0 -ExpectContains 'diff 0 px of 20x10 masked 1 px'
 $r = Invoke-ImageDiff @('-Base', $idBase, '-Head', $idOne, '-Mask', '10,0,5,5')
 Assert-Case -Name "image-diff: 가림 밖의 다른 픽셀은 센다 · exit 1" -R $r -ExpectExit 1 -ExpectContains 'image-diff: diff 1 px of 20x10'
+$r = Invoke-ImageDiff @('-Base', $idBase, '-Head', $idOne)
+Assert-Case -Name "image-diff: 다른 픽셀을 감싸는 경계 상자를 낸다" -R $r -ExpectExit 1 -ExpectContains 'bbox 3,4,1,1'
+$idMix = New-IdPng 'mix.png' 20 10 @(@(1, 1), @(10, 2), @(14, 7))
+$r = Invoke-ImageDiff @('-Base', $idBase, '-Head', $idMix, '-Mask', '0,0,3,3')
+Assert-Case -Name "image-diff: 경계 상자는 가림 밖 픽셀만 감싼다" -R $r -ExpectExit 1 -ExpectContains 'diff 2 px of 20x10 masked 1 px bbox 10,2,5,6'
 $r = Invoke-ImageDiff @('-Base', $idBase, '-Head', $idWide)
 Assert-Case -Name "image-diff: 크기가 다르면 size · exit 1" -R $r -ExpectExit 1 -ExpectContains 'image-diff: size 20x10 vs 21x10'
 $r = Invoke-ImageDiff @('-Base', $idBase, '-Head', (Join-Path $idDir 'missing.png'))
@@ -67,6 +72,6 @@ $idSw = [System.Diagnostics.Stopwatch]::StartNew()
 $r = Invoke-ImageDiff @('-Base', $idBig1, '-Head', $idBig2)
 $idSw.Stop()
 $idFast = $idSw.Elapsed.TotalSeconds -le 5
-Assert-Case -Name "image-diff: 1920x1080 두 장을 5초 안에 비교한다(기동 포함 — 병렬 전체에서만 실패하면 단독 재실행으로 가른다)" -R @{ code = $r.code; out = ($r.out + " fast=$idFast") } -ExpectExit 1 -ExpectContains 'diff 1 px of 1920x1080 fast=True'
+Assert-Case -Name "image-diff: 1920x1080 두 장을 5초 안에 비교한다(기동 포함 — 병렬 전체에서만 실패하면 단독 재실행으로 가른다)" -R @{ code = $r.code; out = ($r.out + " fast=$idFast") } -ExpectExit 1 -ExpectContains 'diff 1 px of 1920x1080 bbox 1000,500,1,1 fast=True'
 
 }

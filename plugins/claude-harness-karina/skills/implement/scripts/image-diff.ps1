@@ -34,7 +34,7 @@ public static class ImageDiffCore {
     public static long[] Compare(Bitmap a, Bitmap b, bool[] masked, string outPath) {
         int w = a.Width, h = a.Height, sa, sb;
         var xa = Bytes(a, out sa); var xb = Bytes(b, out sb);
-        long diff = 0, hidden = 0;
+        long diff = 0, hidden = 0, minX = w, minY = h, maxX = -1, maxY = -1;
         Bitmap mark = string.IsNullOrEmpty(outPath) ? null : new Bitmap(b);
         try {
             for (int y = 0; y < h; y++) {
@@ -43,12 +43,13 @@ public static class ImageDiffCore {
                     if (xa[i] == xb[j] && xa[i + 1] == xb[j + 1] && xa[i + 2] == xb[j + 2] && xa[i + 3] == xb[j + 3]) continue;
                     if (masked[y * w + x]) { hidden++; continue; }
                     diff++;
+                    minX = Math.Min(minX, x); minY = Math.Min(minY, y); maxX = Math.Max(maxX, x); maxY = Math.Max(maxY, y);
                     if (mark != null) mark.SetPixel(x, y, Color.Red);
                 }
             }
             if (mark != null) mark.Save(outPath, ImageFormat.Png);
         } finally { if (mark != null) mark.Dispose(); }
-        return new long[] { diff, hidden };
+        return new long[] { diff, hidden, minX, minY, maxX, maxY };
     }
 }
 '@
@@ -86,6 +87,7 @@ try {
     try { $r = [ImageDiffCore]::Compare($a, $b, $masked, $outPath) } catch { Stop-ImageDiff ('compare ' + $_.Exception.InnerException.Message) }
     $line = 'image-diff: diff {0} px of {1}x{2}' -f $r[0], $w, $h
     if ($Mask.Trim()) { $line += (' masked {0} px' -f $r[1]) }
+    if ($r[0] -gt 0) { $line += (' bbox {0},{1},{2},{3}' -f $r[2], $r[3], ($r[4] - $r[2] + 1), ($r[5] - $r[3] + 1)) }
     Write-Output $line
     if ($r[0] -eq 0) { exit 0 } else { exit 1 }
 } finally {
