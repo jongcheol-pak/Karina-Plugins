@@ -369,6 +369,11 @@ if ($gitOk) {
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add -A && git commit -m test' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 시크릿 없는 신규 파일 'add -A && commit' 통과(오차단 0)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+    Push-Location $wcsC; Set-Content '설명.md' $credLine; Pop-Location
+    $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsC; tool_input = @{ command = 'git add -A && git commit -m test' } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "commit-secrets: 한글 이름 untracked + 'add -A && commit' 차단(exit 2, core.quotepath)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+    Push-Location $wcsC; Remove-Item '설명.md' -Force; Pop-Location
+
     # ---- [v1.136.0] 경로 나열 Leaf 분기의 추적 인지 (T1 그물) ----
     # HEAD에 고신뢰 픽스처가 '이미' 커밋된 상태가 전제라 기존 repo($wcs·$wcsB·$wcsC — 케이스 순서
     #   의존 공유)와 얽히지 않게 전용 repo를 쓴다(§13 SC 픽스처 분리와 동일 원칙).

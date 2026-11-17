@@ -84,8 +84,7 @@ function Invoke-WarnCommitSecrets {
             $scanned = 0
             $capNotified = $false
             if ($addArgs -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
-                # 전체 스테이징: untracked + 추적 파일 수정분
-                $addTargets = @((Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('ls-files', '--others', '--exclude-standard')).Lines)
+                $addTargets = @((Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('-c', 'core.quotepath=off', 'ls-files', '--others', '--exclude-standard')).Lines)
                 $addedLines += Get-DiffHeadAdded
             } else {
                 # 경로 나열: 플래그를 뺀 인자만 대상으로 본다. — 근거는 `rules/commit-secrets-rationale.md` §9
@@ -110,8 +109,7 @@ function Invoke-WarnCommitSecrets {
                         }
                         continue
                     }
-                    # 디렉터리·글롭·미존재 경로 → git이 해석하게 맡긴다
-                    $addTargets += @((Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('ls-files', '--others', '--exclude-standard', '--', $rt)).Lines)
+                    $addTargets += @((Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('-c', 'core.quotepath=off', 'ls-files', '--others', '--exclude-standard', '--', $rt)).Lines)
                     $addedLines += Get-DiffHeadAdded -PathArgs @($rt)
                     $scanned++
                 }
