@@ -119,6 +119,8 @@
 
 ### 도구·환경 함정
 
+- [2026-11-17] **PowerShell 에서 `Add-Type` C# 메서드의 `string` 인자에 `$null` 을 넘기면 `null` 이 아니라 빈 문자열 `""` 이 간다 — C# 쪽은 `== null` 대신 `string.IsNullOrEmpty` 로 가른다** — `image-diff.ps1` 이 「저장 경로 없음」 을 `$null` 로 넘겼다가 C# 이 `""` 를 경로로 받아 `Bitmap.Save("")` 가 `A generic error occurred in GDI+.` 로 죽었고, 그 예외가 스크립트 밖으로 새 exit 0 이 났다(골든 5/10 FAIL 실측). 메서드 호출을 `try`/`catch` 로 감싸 오류 종료 코드로 바꾸는 것도 같이 한다.
+
 - [2026-11-13] **python `subprocess.run(timeout=…)` 은 Windows 에서 손자를 남기고 상한도 지키지 못한다 — 하니스 스크립트는 `scripts/timed_run.py` 의 `run` 을 쓴다** — 시간 초과면 직계만 kill 한 뒤 `communicate()` 를 시한 없이 기다려, 손자가 출력 파이프를 쥐면 그 손자가 끝날 때까지 선다(`timeout=2` 가 11.2초). PowerShell 의 `git` 은 `C:\Program Files\Git\cmd\git.exe` 래퍼라 그것을 kill 하면 진짜 `git.exe` 가 고아로 남는다. 같은 이유로 이 기계에서는 `taskkill` 이 없는 PID 에도 5~11초, CIM `Win32_Process` 조회가 6~9초 걸린 적이 있다 — 시간 초과 경로의 트리 종료를 이 둘에 기대면 상한을 넘긴다(Toolhelp 스냅샷 + `TerminateProcess` 를 쓴다). (실측)
 - [2026-11-11] **PowerShell 에서 큰 텍스트의 줄마다 `foreach ($m in $rx.Matches($t)) { $h[...] = ... }` 로 해시를 채우면 정규식이 아니라 그 루프가 시간을 먹는다 — 필요한 줄만 `MatchCollection` 을 색인(`$ms[$i]`)해 읽는다.** `comment-scope.ps1` 의 blame 파싱이 Karina 에서 프로파일 1위였고, 경계 탐지를 정규식에서 `IndexOf` 로 바꿔도 줄었다 늘었다 할 뿐 루프 비용은 그대로였다. 프로파일 없이 정규식부터 의심하면 시간을 잃는다.
 - [2026-11-11] **골든에서 「예산이 바닥나면 차단」을 1ms 같은 작은 양수 예산으로 재면 흔들린다 — `Process.Start` 가 자식이 끝난 뒤 돌아오면 예산 안에 끝난 것으로 보여 통과한다. 예산 0 으로 잰다.** `guard-comment` 「BASE 예산」 케이스가 전량 실행에서만 간헐 FAIL 했다.
