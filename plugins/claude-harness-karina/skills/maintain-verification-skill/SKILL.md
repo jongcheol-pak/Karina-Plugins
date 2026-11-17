@@ -40,11 +40,29 @@ disable-model-invocation: true
    - 브랜치를 바꾸지 않고 `git add -- .claude/skills/verify-<app>` 뒤 경로 한정 로컬 커밋 `git commit -m "문서: 검증 스킬 verify-<app> 지도 보정" -- .claude/skills/verify-<app>` 를 한다(`add` 가 없으면 색인 정리·하네스 공백 수정이 새로 만든 파일이 커밋에서 빠진다 · `git check-ignore -q --no-index .claude/skills/verify-<app>/SKILL.md` 가 0 이면 그 폴더가 무시 경로인데 `add -f` 로 추적된 것이라 `git add -f --` 를 쓴다 — `--no-index` 가 없으면 추적된 파일은 늘 1 이 나온다(2026-10-18 실측)). 커밋 본문에 덮은 기능 수와 실제로 조작한 기능을 적는다.
    - 그 뒤 `../implement/references/push-flow.md`「기본 브랜치 push」 의 push 만 하고 보고한다 — 진행 중 `plan.md` 가 있으면 push 하지 않고 그 회차 끝에 함께 간다. **`git rev-list --count origin/<기본>..HEAD` 가 이번 실행이 만든 커밋 수(6·7번 합 — 7번이 커밋하면 push 는 7번 뒤 한 번)와 같을 때만 push 하고, 아니면 push 하지 않고 `건너뜀 — 미push 커밋 <N>개` 로 보고한다** — 이 push 는 push 전 확인(`../implement/references/push-flow.md`)을 거치지 않아, 보류된 미push 커밋이 남아 있으면 함께 공개된다.
    - clean·blocked 는 지도 커밋이 없다 — 결과와 덮은 범위를 정직하게 보고한다.
-7. **`AGENTS.md` 의 `UI 경로` 줄을 결과와 무관하게 맞춘다 — 줄이 있든 없든 먼저 `git status --porcelain -- AGENTS.md` 를 보고, 비어 있지 않으면 고치지도 커밋하지도 않고 보고한다** — 경로 한정 커밋도 그 파일의 다른 미커밋 변경까지 담는다.
+7. **`AGENTS.md` 의 `UI 경로` 줄을 결과와 무관하게 맞춘다 — 줄이 있든 없든 먼저 `git status --porcelain -- AGENTS.md` 를 보고, 비어 있지 않으면 고치지도 커밋하지도 않고 보고한다** — 경로 한정 커밋도 그 파일의 다른 미커밋 변경까지 담는다. **보고에는 그 미커밋 변경이 지운 등록 줄을 아래 블록(`AGENTS.md` 폴더에서 돌린다)으로 재서 싣는다 — HEAD 에만 있는 `- **라벨**:` 마다 `removed <라벨>` 이다** — 등록 줄이 말없이 사라지면 계획 검사·검증 경로가 꺼진 것을 아무도 모른다(2026-11-17 Karina — 미커밋 변경이 `UI 경로`·`Test (감사)` 를 지웠다).
+     ```powershell
+     [Console]::OutputEncoding = [Text.UTF8Encoding]::new()
+     $rx = '^- \*\*(.+?)\*\*:'
+     $head = @(git show HEAD:./AGENTS.md | ForEach-Object { if ($_ -match $rx) { $Matches[1] } }) | Sort-Object -Unique
+     $now = @(Get-Content -LiteralPath AGENTS.md -Encoding utf8 | ForEach-Object { if ($_ -match $rx) { $Matches[1] } }) | Sort-Object -Unique
+     $head | Where-Object { $_ -notin $now } | ForEach-Object { "removed $_" }
+     ```
    - **줄이 없으면 2번이 돌려준 화면 파일을 `(진입점)` 후보로, `../create-verification-skill/SKILL.md`「5. 등록하고 유지 루프를 안내한다」 의 「`karina:record-project-fact` 로 `AGENTS.md` 의 `Verify (앱 조작)` 줄에 … 적는다」 항목의 `UI 경로` 후보·확정 절차로 더하고 `git commit -m "설정: UI 경로 선언" -- AGENTS.md` 로 경로 한정 커밋한다(push 는 6번과 같다)** — 이 줄이 생기기 전에 만든 검증 스킬의 레포는 계획 검사가 화면 줄 없는 UI 수정을 잡지 못한다.
+   - **줄이 있으면 `$entries` 에 2번이 돌려준 화면 파일 경로(`AGENTS.md` 폴더 기준)를 담고 아래 블록을 `AGENTS.md` 폴더에서 돌린다 — `stale <패턴>` 은 맞는 파일이 없는 패턴, `missing <경로>` 는 어느 패턴에도 안 걸리는 화면 파일, `unbacked <패턴>` 은 화면 파일이 하나도 안 걸리는 패턴이다(`$entries` 가 비면 내지 않고, `stale` 과 겹쳐 내지 않는다). 출력이 있으면 create 의 같은 후보·확정 절차로 넘기되 `stale`·`missing` 은 고칠 후보로, `unbacked` 는 「화면 코드인지 · 지도에 없는 화면인지」 확인만 받아 자동으로 빼지 않는다. 사용자가 확정한 값으로 줄을 고쳐 `git commit -m "설정: UI 경로 갱신" -- AGENTS.md` 로 경로 한정 커밋하고, 출력이 없거나 고치지 않기로 하면 손대지 않는다** — 확정 뒤 아무도 줄을 다시 재지 않으면 정적 자산 패턴이 남고 새 화면 폴더가 빠진다(Karina 2026-11-16 `assets/character/*` 확정 · 화면 파일 10개 미포함). `missing` 이 잡는 범위는 지도에 있는 기능의 화면 파일이고, 지도가 덮지 않는 화면 폴더는 `unbacked` 로만 드러난다. 판정은 `-like` 로 계획 검사(`../plan/scripts/check-plan.ps1`)와 같다.
+     ```powershell
+     [Console]::OutputEncoding = [Text.UTF8Encoding]::new()
+     $v = (Select-String -LiteralPath AGENTS.md -Pattern '^- \*\*UI 경로\*\*:\s*(.*)$' -Encoding utf8).Matches[0].Groups[1].Value
+     $pats = @([regex]::Matches($v, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value.Replace('\', '/') })
+     $files = @(git ls-files)
+     $stale = @($pats | Where-Object { $p = $_; -not @($files | Where-Object { $_ -like $p }).Count })
+     $stale | ForEach-Object { "stale $_" }
+     foreach ($e in $entries) { if (-not @($pats | Where-Object { $e -like $_ }).Count) { "missing $e" } }
+     if (@($entries).Count) { $pats | Where-Object { $p = $_; $p -notin $stale -and -not @($entries | Where-Object { $_ -like $p }).Count } | ForEach-Object { "unbacked $_" } }
+     ```
 
 실행 메모(덮은 기능 · 닿지 못한 기능의 전제 · 확인된 드리프트 · 결과)는 레포 밖 임시 위치(`../TEMP-FILES.md` 의 `scratch\`)에 짧게 남기고 커밋하지 않는다.
 
 ## 보고
 
-결과(clean · changed · blocked — blocked 면 막은 것) · 대상 스킬 경로 · 기능 수와 실제로 조작한 기능 · `verified-unreachable` 과 그 전제 · 고친 드리프트·하네스 공백 · 사용자에게 넘기는 제품 공백 · 커밋 sha 와 push 결과(또는 건너뛴 사유). 문장은 `../WRITING.md` 를 따른다.
+결과(clean · changed · blocked — blocked 면 막은 것) · 대상 스킬 경로 · 기능 수와 실제로 조작한 기능 · `verified-unreachable` 과 그 전제 · 고친 드리프트·하네스 공백 · 사용자에게 넘기는 제품 공백 · 7번 결과(`UI 경로` 커밋 sha · 점검 출력과 사용자 결정 · 미커밋으로 멈췄으면 `removed` 줄) · 커밋 sha 와 push 결과(또는 건너뛴 사유). 문장은 `../WRITING.md` 를 따른다.
