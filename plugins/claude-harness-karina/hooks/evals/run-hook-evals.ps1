@@ -506,10 +506,11 @@ Write-Host ("결과: {0}/{1} OK (FAIL {2}){3}" -f ($total - $failCount), $total,
 Write-TimingLine -Total $total
 
 $GoldenTotalBaseline = 1957
-if (-not $deadGroups.Count -and -not $Filter -and $total -ne $GoldenTotalBaseline) {
+$totalDrift = -not $deadGroups.Count -and -not $Filter -and $total -ne $GoldenTotalBaseline
+if ($totalDrift) {
     Write-Host ("[WARN] 총계가 기준선과 다릅니다: {0} != {1} (`$GoldenTotalBaseline`)." -f $total, $GoldenTotalBaseline)
     Write-Host '        합산 규칙: 선언형(hook-cases.json) + 러너 내장 시나리오. guard-bash 무상태 케이스는 dispatch 에코를 함께 돌아 1건이 2로 셉니다.'
     Write-Host '        정당한 증감이면 이 상수와 docs/harness-conventions.md·docs/golden-runner.md 의 기준선을 함께 갱신하세요(그 diff 가 증감의 기록입니다).'
 }
 
-exit $(if ($failCount) { 1 } else { 0 })
+exit $(if ($failCount -or $totalDrift) { 1 } else { 0 })
