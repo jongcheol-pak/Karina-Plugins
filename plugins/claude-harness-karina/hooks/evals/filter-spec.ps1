@@ -16,7 +16,7 @@ $script:GoldenFilterNames = @(
     'block-destructive', 'guard-harness', 'guard-write', 'guard-bash',
     'post-write-checks', 'suggest-agents-record', 'warn-commit-secrets', 'warn-version-drift',
     'session-context', 'hook-event-log', 'session-end-cleanup',
-    'guard-harness-installed', 'guard-stale-docs', 'guard-task-audit', 'loop-continue', 'work-clock', 'screen-cover', 'check-plan', 'record-work-start',
+    'guard-harness-installed', 'guard-stale-docs', 'guard-task-audit', 'loop-continue', 'work-clock', 'image-diff', 'screen-cover', 'check-plan', 'record-work-start',
     'inject-reply-language', 'guard-comment', 'comment-scope', 'hook-dispatch'
 )
 
