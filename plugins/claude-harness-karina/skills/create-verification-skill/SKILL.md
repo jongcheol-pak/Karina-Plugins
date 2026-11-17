@@ -14,7 +14,7 @@ disable-model-invocation: true
 
 아래를 코드베이스에서 답하고, 볼 수 없는 것만 사용자에게 묻는다.
 
-- **Surface** — 사용자가 실제로 만지는 것: 웹 UI · CLI/TUI · Windows 데스크톱 앱(WinUI·WPF·WinForms · gpui 처럼 접근성 트리가 없는 앱) · API · 모바일 앱 · 라이브러리. 여럿이면 주된 하나를 고르고 나머지는 적어 둔다.
+- **Surface** — 사용자가 실제로 만지는 것: 웹 UI · CLI/TUI · Windows 데스크톱 앱(WinUI·WPF·WinForms · gpui 처럼 접근성 트리가 없는 앱) · API · 모바일 앱 · 라이브러리. 여럿이면 주된 하나를 고르고 나머지는 적어 둔다. 주된 표면을 그리는 소스 파일(화면 코드 — 무엇이 그리는지 인용 근거와 함께)도 적어 둔다 — 5단계 3번의 `UI 경로` 후보가 여기서 나온다.
 - **Run** — 로컬에서 어떻게 뜨는가. 레포가 문서로 정한 개발 명령(package scripts·Makefile·`dotnet run`·README 빠른 시작)을 먼저 쓴다. 포트·환경변수(이름만 — 값은 적지 않는다)·시드 데이터·인증을 적는다.
 - **Drive** — 에이전트가 프로그램으로 조작할 수단. 레포에 이미 있는 하네스(Playwright·Cypress 스펙, FlaUI·WinAppDriver·Appium 테스트, expect 스크립트, curl 로 부를 엔드포인트, 디버그 포트)가 먼저다. 없을 때만 `references/drive-recipes.md` 의 일반 방식을 고른다.
 - **Observe** — 남길 수 있는 증거: 스크린샷·접근성 트리·터미널 기록·응답 본문·로그·종료 코드·DB 상태.
@@ -67,8 +67,8 @@ disable-model-invocation: true
    - **(권장) 레포 `.gitignore` 에 부정 사슬을 더한다** — 사슬이 없으면 다섯 줄 `!.claude/` · `.claude/*` · `!.claude/skills/` · `.claude/skills/*` · `!.claude/skills/verify-<app>/` 이다. **사슬이 이미 있으면(앞서 `formal-<영역>` 등을 등록한 레포) `!.claude/skills/verify-<app>/` 한 줄만 더한다** — gitignore 는 마지막에 맞는 줄이 이겨, 다섯 줄을 다시 붙이면 뒤의 `.claude/skills/*` 가 앞서 풀어 둔 폴더를 다시 막는다. git 은 제외된 부모 폴더 아래 파일을 되살리지 못해 `!.claude/skills/verify-<app>/` 한 줄로는 풀리지 않는다. 이후 `add` 는 그대로 통하고, 4번 커밋 경로에 `.gitignore` 를 더한다.
    - **`git add -f -- .claude/skills/verify-<app>`** — 폴더 전체를 지정한다. 이 경로를 고르면 4번과 유지 스킬의 `add` 에도 `-f` 가 필요하다 — 없으면 `The following paths are ignored` 로 실패한다.
    - 고른 수단을 적용한 뒤 이 1번을 다시 돌려 종료 코드 1 을 확인한다(2026-10-18 전역 ignore 를 둔 임시 레포 실측: 부정 사슬 rc 0→1·이후 add rc 0 · `add -f` 뒤 일반 add rc 1·`add -f` rc 0).
-2. **`AGENTS.md` 에 이번과 무관한 미커밋 변경이 없는지 먼저 본다** — `git status --porcelain -- AGENTS.md` 가 비어 있지 않으면 등록하지 않고 보고한다. 아래 커밋이 그 파일의 다른 변경까지 담기 때문이다.
-3. **`karina:record-project-fact` 로 `AGENTS.md` 의 `Verify (앱 조작)` 줄에 `.claude/skills/verify-<app>/` 를 적는다** — `AGENTS.md` 쓰기의 정본은 그 스킬이고, 그 스킬이 바꿀 내용을 보이고, 이 줄과 같으면 다시 묻지 않는다(그 스킬 Step 3 의 「호출한 스킬이 지정한 줄」 면제). **같은 호출에서 `UI 경로` 줄도 적는다 — 후보는 `git ls-files` 에서 `.xaml .axaml .razor .tsx .jsx .vue .svelte .html .css .scss` 파일이 든 폴더(폴더 + `/*`)이고, 그 스킬이 바꿀 내용을 보이는 단계에서 사용자가 고르거나 고친 값만 쓴다. 후보가 없으면 줄을 쓰지 않고 보고에 「UI 경로 미기록」 을 싣는다** — 기능 지도는 사용자 경로만 담아 소스 폴더의 근거가 없고, 이 줄이 있어야 계획 검사가 화면 줄 없는 UI 수정을 잡는다(`../AGENTS-BOUNDARY.md` 템플릿).
+2. **`AGENTS.md` 에 이번과 무관한 미커밋 변경이 없는지 먼저 본다** — `git status --porcelain -- AGENTS.md` 가 비어 있지 않으면 등록하지 않고 보고한다. 아래 커밋이 그 파일의 다른 변경까지 담기 때문이다. 그 미커밋 변경이 지운 등록 줄은 `../maintain-verification-skill/SKILL.md`「진행」 7번의 둘째 블록으로 재서 보고에 싣는다 — 등록 줄이 말없이 사라진 것을 사용자가 보게 한다.
+3. **`karina:record-project-fact` 로 `AGENTS.md` 의 `Verify (앱 조작)` 줄에 `.claude/skills/verify-<app>/` 를 적는다** — `AGENTS.md` 쓰기의 정본은 그 스킬이고, 그 스킬이 바꿀 내용을 보이고, 이 줄과 같으면 다시 묻지 않는다(그 스킬 Step 3 의 「호출한 스킬이 지정한 줄」 면제). **같은 호출에서 `UI 경로` 줄도 적는다 — 후보는 둘이고 후보마다 출처를 붙여 보인다: 1순위 `(진입점)` 은 화면을 그리는 파일이 든 폴더(폴더 + `/*` · 생성 때는 1단계 Surface 에 적은 화면 파일, 유지 때는 `/karina:maintain-verification-skill` 2번이 돌려준 「화면 파일」), 2순위 `(확장자)` 는 `git ls-files` 에서 `.xaml .axaml .razor .tsx .jsx .vue .svelte .html .css .scss` 파일이 든 폴더다. `(진입점)` 에 없이 `(확장자)` 에만 걸린 폴더는 「화면 코드인지 확인」 을 붙인다. 그 스킬이 바꿀 내용을 보이는 단계에서 사용자가 고르거나 고친 값만 쓴다. 후보가 없으면 줄을 쓰지 않고 보고에 「UI 경로 미기록」 을 싣는다** — 확장자만 보면 화면을 코드로 그리는 앱(Rust·Dart·Swift·Kotlin 등)은 후보가 없고 정적 자산 폴더만 후보가 된다. 이 줄이 있어야 계획 검사가 화면 줄 없는 UI 수정을 잡는다(`../AGENTS-BOUNDARY.md` 템플릿).
 4. **생성 폴더와 `AGENTS.md` 를 함께 로컬 커밋한다** — `git add -- .claude/skills/verify-<app> AGENTS.md` 뒤 `git commit -m "설정: 검증 스킬 verify-<app> 생성" -- .claude/skills/verify-<app> AGENTS.md`. 새 폴더는 추적 전이라 `add` 없이 경로를 지정하면 `pathspec … did not match` 로 실패한다. 1번에서 부정 사슬을 골랐으면 `.gitignore` 를, `-f` 를 골랐으면 `add` 에 `-f` 를 더한다. 포인터만 커밋되고 대상이 빠지거나 그 반대면 push 할 head 에서 한쪽이 없다.
 5. **앱이 바뀌면 `/karina:maintain-verification-skill` 로 지도를 다시 맞춘다고 안내한다** — 주기는 사용자가 물을 때만 제안한다.
 
