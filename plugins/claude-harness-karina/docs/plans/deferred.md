@@ -1,6 +1,6 @@
 # Deferred 대장
 
-> 미처리 Deferred의 추적 대장 — **`## 대기`와 파일 끝 `## 1회 실패`(재발 판정용 1회차 기록 — `- [1회 실패 YYYY-MM-DD] <원인> — <해결>` · 날짜 접두가 아니라 대기 계수에 들지 않는다 · 규칙 `skills/REPO-CONVENTIONS.md`「쓰기」)를 담는다**. 기각 종결은 `deferred-closed.md` 이고, 그 파일은 기각 이동 때만 연다.
+> 미처리 Deferred의 추적 대장 — **`## 대기`와 파일 끝 `## 1회 실패`(재발 판정용 1회차 기록 — `- [1회 실패 YYYY-MM-DD] <원인> — <해결>` · 날짜 접두가 아니라 대기 계수에 들지 않는다 · 규칙 `skills/REPO-CONVENTIONS.md`「쓰기」)를 담는다**. 기각 종결은 `deferred-closed.md` 이고, 그 파일은 기각 이동과 대장 이관 때의 90일 정리 때만 연다.
 > 항목은 `- [등록일] {요지 1줄} (출처) (실해: YYYY-MM-DD {관측 요지})` — **이 형식의 정본은 이 줄이다.** 실해 필드는 필수이고 `check-harness-consistency.py` 의 「등재 근거 실측」 축이 `## 대기` 전건을 잰다.
 > **등재 판정 규칙**(등재 하한선·회차 순증 금지·리뷰 지적의 필터 패스)의 정본은 `plan/references/deferred-rules.md` 다.
 > **항목 상한은 600자다**(정본은 `skills/BUDGET.md`). **종결은 사유로 갈린다 — 반영·해소·병합은 항목을 지우고 근거를 커밋 본문에 남긴다. 기각만 `deferred-closed.md` 로 `- [등록일 → 종결일] **요지** — 기각: 사유` 1줄로 옮기고, 종결일이 90일 넘게 지난 기각은 대장 이관 때 지운다(규칙 `plan/references/deferred-rules.md`).**
