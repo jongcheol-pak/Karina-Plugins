@@ -365,11 +365,11 @@ $pidFile = Join-Path $Dir 'gc.pid'
 [System.IO.File]::Delete($pidFile)
 $pw = (Get-Process -Id $PID).Path
 $fake = Join-Path $Dir 'git.cmd'
-[System.IO.File]::WriteAllText($fake, "@start `"`" /b `"$pw`" -NoProfile -Command `"Set-Content -LiteralPath '$pidFile' `$PID; Start-Sleep 60`"`r`n@exit /b 0`r`n")
+[System.IO.File]::WriteAllText($fake, "@start `"`" /b `"$pw`" -NoProfile -Command `"Set-Content -LiteralPath '$pidFile' `$PID; Start-Sleep 60`"`r`n:w`r`n@if not exist `"$pidFile`" (ping -n 2 127.0.0.1 >nul & goto w)`r`n@exit /b 0`r`n")
 $script:TimedGitExe = $fake
 $null = Import-TimedGitTree
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
-$run = Invoke-TimedGit -GitArgs @('status') -WorkDir $Dir -TimeoutMs 2000
+$run = Invoke-TimedGit -GitArgs @('status') -WorkDir $Dir -TimeoutMs 8000
 $ms = $sw.ElapsedMilliseconds
 $gcPid = 0
 $until = [DateTime]::UtcNow.AddMilliseconds(5000)
