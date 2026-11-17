@@ -24,7 +24,7 @@
 - **Comment (보존)**: `.` · 경로: `skills/plan/scripts/check-plan.ps1 evals/check-harness-consistency.py evals/run-evals.py skills/llm-wiki/evals/check_consistency.py skills/chain-plan/scripts/run-verify.py skills/chain-plan/scripts/wait-worker.py skills/record-project-fact/scripts/relocate-agents.py skills/temp-cleanup/scripts/temp_cleanup.py skills/worktree-cleanup/scripts/worktree_cleanup.py`
 - **조건부 검증**: 변경 파일 패턴별 명령(합집합)과 `[면제 ⑤]` 대상은 `docs/verification-mapping.md` 「검증 매핑 (task 검증 선택)」 — 「줄바꿈 정합」 축은 모든 task. 골든 부분 실행 규칙은 `docs/harness-conventions.md` 「골든 부분 실행의 판정 자격」 절만 읽는다(`awk '/^(```|~~~)/{g=!g} !g&&/^## /{if(f)exit; if(index($0,"## 골든 부분 실행의 판정 자격")==1)f=1} f' docs/harness-conventions.md` — 펜스 안 `## ` 를 세지 않고 다음 절 헤딩을 딸려 내지 않는다 · `skills/WIKI.md`「절 단위 읽기」).
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 보므로 재설치 후에만 반영된다.
-- **Release**: 버전 정본은 `plugin.json`(`README.md` 상단 `**버전**:` 은 파생) · 회차 끝 버전 커밋 → push 전 확인 → push → 사용 PC 에서 `/plugin update` · 버전 대상 여부는 마지막 `plugin.json` 변경 커밋 뒤 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`) 변경으로 판정 · 태그·릴리즈는 만들지 않는다. 정본은 `docs/harness-conventions.md` 「Release (버전 커밋)」.
+- **Release**: 버전 정본은 `plugin.json`(`README.md` 상단 `**버전**:` 은 파생) · 회차 끝 버전 커밋 → push 전 확인 → push → 사용 PC 에서 `/plugin update` · 버전 대상 여부는 마지막 `plugin.json` 변경 커밋 뒤 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`) 변경으로 판정 · 태그·GitHub 릴리즈는 회차 끝에 자동으로 만들지 않고 사용자가 요청할 때만 만든다(`karina-v{버전}` · push 된 버전 커밋 대상). 정본은 `docs/harness-conventions.md` 「Release (버전 커밋)」.
 - **⚠ 검증 배치에 `Remove-Item` 인라인 금지** — 도구 경로 보호가 오차단한다(회피법은 정본).
 
 ## 데이터 접근
