@@ -20,11 +20,11 @@
 | `worktree-backup\` | `karina:worktree-cleanup` 이 지우기 전에 복사한 미추적·ignore 파일 | `<레포 이름>\<worktree 이름>-<시각>\`(스크립트가 정한다) |
 | `cover\` | 앱 검증 동안 걷은 화면 가리기 모니터와 보유자 기록·잠금(`implement/scripts/screen-cover.ps1` — 규칙 `SCREEN-COVER.md`) | `cover-state.json` · `cover.lock` — 세션 시작 정리 대상이 아니고, 보유 중에는 지우지 않는다(지우면 걷은 모니터를 다시 덮지 못한다) |
 | `cache\` | hook 이 다시 만들 수 있는 컴파일 산출물 — `scripts/timed-git.ps1` 의 손자 정리 C# 형식 DLL | `timed-git-tree-<PSEdition>-<주>.<부>-<소스 해시>.dll` — 세션 시작 정리 대상이 아니다(지워지면 다음 호출이 다시 컴파일할 뿐이고, 판별·판·소스마다 하나다 — 처음 컴파일이 동시에 겹치면 덮어 옮기지 못한 `timed-git-tree-<guid>.tmp.dll` 이 남을 수 있고, 한 시간이 지난 것은 다음 손자 정리가 지운다) |
-| `scratch\` | 실험·실행용 일회성 스크립트 · `karina:prototype` 의 동작·아키텍처 스케치 · `check-plan` 의 Plan check 실패·시간 초과 로그(`check-plan-<시각>.log` — 위반 줄이 파일 이름을 가리킨다 · 통과하면 남기지 않는다) · 디버깅 push 전 확인 기록(`push-check-<레포 폴더명>.txt` — `4-D 검증:` 줄을 덧붙이고, 기한이 지나 지워지면 push 직전에 Build·Test 를 다시 돈다 — `implement/references/push-flow.md`「push 전 확인」) · 계획 리뷰 스냅숏(`plan-review-<레포 폴더명>.md` — 다음 리뷰 재호출의 diff 기준 · 지워지면 재호출이 전체 검사로 돈다 — `plan/references/review-rounds.md`「리뷰 라운드」) · 완료 보고 「확인할 것」 의 수정 전 문서(`before\<레포 폴더명>-<YYYYMMDD-HHmm>\<원래 경로>` — 작업 시작 커밋에서 꺼낸 사본 · 지워지면 같은 커밋에서 다시 꺼낸다 — `implement/references/report-format.md`「보고 형식」) | 자유 — 다시 가리키지 않는 파일만(위 넷의 이름은 예외) |
+| `scratch\` | 실험·실행용 일회성 스크립트 · `karina:prototype` 의 동작·아키텍처 스케치 · `check-plan` 의 Plan check 실패·시간 초과 로그(`check-plan-<시각>.log` — 위반 줄이 파일 이름을 가리킨다 · 통과하면 남기지 않는다) · 디버깅 push 전 확인 기록(`push-check-<레포 폴더명>.txt` — `4-D 검증:` 줄을 덧붙이고, 기한이 지나 지워지면 push 직전에 Build·Test 를 다시 돈다 — `implement/references/push-flow.md`「push 전 확인」) · 계획 리뷰 스냅숏(`plan-review-<레포 폴더명>.md` — 다음 리뷰 재호출의 diff 기준 · 지워지면 재호출이 전체 검사로 돈다 — `plan/references/review-rounds.md`「리뷰 라운드」) · 완료 보고 「확인할 것」 의 수정 전 문서(`before-<레포 폴더명>-<YYYYMMDD-HHmm>\<원래 경로>` — 작업 시작 커밋에서 꺼낸 사본 · 추출마다 `scratch\` 바로 아래 폴더 하나라 세션 시작 정리가 그 폴더 단위로 기한을 잰다 · 지워지면 같은 커밋에서 다시 꺼낸다 — `implement/references/report-format.md`「보고 형식」) | 자유 — 다시 가리키지 않는 파일만(위 넷의 이름은 예외) |
 
 ## 누가 지우는가
 
 - **직접 지우지 않는다.** 기한이 지난 것은 아래 두 곳이 지우고, 그 밖은 사용자가 `/karina:temp-cleanup` 으로 고른 것만 지운다.
-- **세션 시작 정리** — `scripts/session-context.ps1` 이 `plan-variants\`·`verify\`·`scratch\` 와 `chain\` 의 결정 파일을 기한(값은 그 스크립트의 표가 정본이다)이 지나면 지운다. 화면 변형·증거는 최종 보고와 체인 보고의 화면 증거가 경로를 다시 보이므로 쓴 직후에 지우지 않는다.
+- **세션 시작 정리** — `scripts/session-context.ps1` 이 `plan-variants\`·`verify\`·`scratch\` 와 `chain\` 의 결정 파일을 기한(값은 그 스크립트의 표가 정본이다)이 지나면 지운다. 화면 변형·증거는 최종 보고와 체인 보고의 「확인할 것」 표가 경로를 다시 보이므로 쓴 직후에 지우지 않는다.
 - **체인 스크립트** — `wait-worker.py`·`run-verify.py` 가 시작할 때 `chain\` 의 자기 접두 파일만 기한이 지나면 지운다. `run-verify.py --stamp` 의 검증 기록(`karina-chain-verify-stamp-*.json`)도 그 접두라 함께 걷힌다.
 - **백업 두 폴더(`backup\`·`worktree-backup\`)는 자동으로 지우지 않는다** — 원본이 사라진 뒤의 유일한 사본일 수 있다.
