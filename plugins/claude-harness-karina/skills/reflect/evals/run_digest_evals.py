@@ -990,6 +990,24 @@ def history_drops_commits_outside_window():
 
 
 @case
+def history_lists_non_ascii_file_names():
+    d = git_repo([('수정: 하나', '', 3)])
+    try:
+        with open(os.path.join(d, '화면.md'), 'w', encoding='utf-8') as f:
+            f.write('x')
+        when = (HIST_NOW - datetime.timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%S')
+        env = dict(os.environ, GIT_AUTHOR_NAME='t', GIT_AUTHOR_EMAIL='t@t', GIT_COMMITTER_NAME='t',
+                   GIT_COMMITTER_EMAIL='t@t', GIT_AUTHOR_DATE=when, GIT_COMMITTER_DATE=when)
+        subprocess.run(['git', '-C', d, 'add', '.'], check=True, env=env)
+        subprocess.run(['git', '-C', d, 'commit', '-q', '-m', '수정: 한글 파일'], check=True, env=env)
+        rc, out, text = history(d)
+        assert rc == 0, (rc, out)
+        assert 'FILE 화면.md' in text, text
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+@case
 def history_not_a_repo_exit2():
     d = tempfile.mkdtemp(prefix='reflect-hist-norepo-')
     try:

@@ -167,8 +167,8 @@ def run(opts, launch, clock, sleep, lock, emit):
 
 def git_call(cwd, args):
     try:
-        p = timed_run.run(['git', '-C', cwd] + list(args), stdin=subprocess.DEVNULL, capture_output=True,
-                          timeout=GIT_TIMEOUT_SEC)
+        p = timed_run.run(['git', '-C', cwd, '-c', 'core.quotepath=off'] + list(args), stdin=subprocess.DEVNULL,
+                          capture_output=True, timeout=GIT_TIMEOUT_SEC)
     except (OSError, subprocess.SubprocessError):
         return 128, ''
     return p.returncode, p.stdout.decode('utf-8', errors='replace').rstrip('\r\n')

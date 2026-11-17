@@ -1717,6 +1717,24 @@
       "rationale": "**같은 가드가 `--fix`에도 선다** — `apply_fixes`가 같은 체크포인트 커밋을 쓰므로 삼킴의 형태가 같다. **종료 코드를 함께 재는 것이 이 케이스의 두 번째 축이다**: `main()`이 종전에 `apply_fixes`의 반환값을 버리고 본 lint로 흘러갔고, `--fix` 대상(§7-23·§7-19)은 전부 `warn()`이라 **미수행인데도 rc 0으로 나갔다.** `expect_lint_output: false`는 거부가 본 lint를 이어 돌리지 않는 계약을 잡는다 — 이어 돌리면 「수정 후 상태」로 읽혀 고쳐지지 않았다는 사실이 흐려진다."
     },
     {
+      "fixture": "fix-mode",
+      "fix_mode": true,
+      "git_vault": true,
+      "git_vault_dirty": [
+        "메모.md"
+      ],
+      "expect_rc": 1,
+      "expect_lint_output": false,
+      "expect_keywords": [
+        "[FIX-FAIL] 미커밋 변경 1건 — 절차 커밋을 먼저 하라",
+        "메모.md"
+      ],
+      "expect_unchanged": [
+        "index.md"
+      ],
+      "rationale": "**미커밋 목록은 사용자가 그대로 읽는 경로다** — vault 는 한글 파일 이름이 대부분인데 `git status --porcelain` 은 `core.quotepath` 기본값에서 한글 경로를 `\"\\353\\251\\224…\"` 처럼 따옴표·8진수로 내, 어느 파일을 커밋하라는지 읽히지 않았다(2026-11-17 실측 — 이 케이스가 그 출력으로 RED). `_git` 이 `-c core.quotepath=off` 를 붙이는 것을 이름 그대로의 출력으로 잰다."
+    },
+    {
       "fixture": "prose-split",
       "fix_mode": true,
       "git_vault": true,

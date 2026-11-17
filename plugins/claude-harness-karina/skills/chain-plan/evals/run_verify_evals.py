@@ -486,6 +486,31 @@ def reuse_other_head_runs():
 
 
 @case
+def reuse_docs_real_git_non_ascii_doc():
+    repo = tempfile.mkdtemp(prefix='rv-qp-')
+    try:
+        def g(*args):
+            p = subprocess.run(['git', '-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t'] + list(args),
+                               check=True, capture_output=True, timeout=60)
+            return p.stdout.decode('utf-8').strip()
+        g('init', '-q')
+        with open(os.path.join(repo, 'a.txt'), 'w', encoding='utf-8') as f:
+            f.write('a\n')
+        g('add', '.')
+        g('commit', '-qm', 'init')
+        h1 = g('rev-parse', 'HEAD')
+        with open(os.path.join(repo, '설명.md'), 'w', encoding='utf-8') as f:
+            f.write('doc\n')
+        g('add', '.')
+        g('commit', '-qm', 'doc')
+        h2 = g('rev-parse', 'HEAD')
+        got = rv._changes_reusable(rv.git_call, repo, h1, h2, '', True, [])
+        assert got is None, got
+    finally:
+        shutil.rmtree(repo, ignore_errors=True)
+
+
+@case
 def reuse_docs_only_with_flag():
     git = FakeGit()
     folder = seeded(git)

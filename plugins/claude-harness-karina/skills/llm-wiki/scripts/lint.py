@@ -1224,7 +1224,7 @@ def _git(repo_root, *args):
     `errors="replace"` 로 **디코딩 단계에서** 막는 것이 유일한 자리다."""
     try:
         proc = timed_run.run(
-            ["git", "-C", repo_root] + list(args),
+            ["git", "-C", repo_root, "-c", "core.quotepath=off"] + list(args),
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
             stdin=subprocess.DEVNULL,
         )

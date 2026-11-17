@@ -27,7 +27,7 @@ END = '\x1f'
 
 def git(repo, args):
     try:
-        p = timed_run.run(['git', '-C', repo] + args, capture_output=True, stdin=subprocess.DEVNULL,
+        p = timed_run.run(['git', '-C', repo, '-c', 'core.quotepath=off'] + args, capture_output=True, stdin=subprocess.DEVNULL,
                           timeout=GIT_TIMEOUT_SEC)
     except subprocess.TimeoutExpired:
         return 128, ''
