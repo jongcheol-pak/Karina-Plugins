@@ -5,9 +5,10 @@
 ## 닫기
 
 - **병렬 그룹의 워커는 `parallel.md`「병합」 의 병합 커밋이 끝난 뒤에 닫고, 그 탭의 마지막 dispatch(병합 준비를 재배정했으면 그 dispatch)로 닫는다** — 충돌을 그 탭에 되돌려야 할 수 있고, 앞 dispatch 의 release 도 같은 탭을 닫는다(`parallel.md`「닫기」).
-- **먼저 `worker-release --dispatch <id>` 를 보내고 `outcome` 이 `released`·`already_released` 면 끝이다** — 입력창이 빈 탭은 여기서 닫힌다.
-- **`retained` 면 `worker-stop --dispatch <id>` 로 닫는다 — 입력창에 문구가 남아 있어도 닫고, 그 문구는 탭과 함께 사라진다** — Karina 앱은 사람이 입력한 워커 탭(입력창에 남은 문구 포함)을 `retained` 로 올려 release 가 닫지 않게 하고, 그 워커는 같은 폴더 자리를 계속 쥐어 다음 `worker-start` 를 `duplicate_worker` 로 막는다. stop 은 그 표식과 무관하게 탭을 닫고, 배정이 이미 정산된 워커라 Task 는 바뀌지 않는다(Karina 앱 `close_worker`). 사용자가 「문구가 있어도 종료」를 지시했다(2026-10-08).
-- **stop 응답이 `ok: false`(`cli-errors.md`「오류 응답」 의 복구 뒤에도)이거나 `outcome` 이 `release_unknown` 이면 `worker-release --dispatch <id>` 를 한 번 더 보낸다** — `release_unknown` 은 다시 불러도 안전하고(Karina 앱 가이드), 탭이 이미 없으면 `already_released` 로 자리가 풀린다.
+- **먼저 `worker-release --dispatch <id>` 를 보내고 응답 `state` 가 `released`·`already_released` 면 끝이다** — 응답은 `{"dispatchId", "state"}` 이고 `outcome` 필드는 없다(2026-11-18 실측).
+- **`retained` 면 `worker-stop --dispatch <id>` 로 닫는다 — 입력창에 문구가 남아 있어도 닫고, 그 문구는 탭과 함께 사라진다** — `retained` 인 워커는 같은 폴더 자리를 계속 쥐어 다음 `worker-start` 를 `duplicate_worker` 로 막는다(2026-11-18 실측). stop 은 배정이 이미 정산된 워커라 Task 를 바꾸지 않는다(Karina 앱 `close_worker`). 사용자가 「문구가 있어도 종료」를 지시했다(2026-10-08).
+- **stop 이 `ok: false` · `code: "terminal_kept_open"` 이면 `cli-errors.md` 로 가지 않고 곧바로 아래 abandon 갈래로 간다** — 사용자가 작업 중인 탭에서 「열어 두기」를 눌렀다는 뜻이고, 그 탭은 사용자가 「자동 닫기 허용」 으로 풀기 전에는 release·stop 어느 것으로도 닫히지 않는다(Karina 앱 가이드 「Do not work around it」). abandon 은 탭을 닫지 않고 정산된 배정만 닫아 자리를 풀므로 사용자의 열어 두기를 거스르지 않는다 — 2026-11-18 실측: 열어 둔 탭은 `worker-start` 를 `duplicate_worker` 로 막았고, abandon 뒤 같은 폴더의 `worker-start` 는 새 탭으로 떴으며 앞 Task 는 `completed` 그대로였다. 이 갈래가 없을 때는 「그 밖의 코드」 로 멈추거나 자리 대기에서 사용자가 탭을 닫을 때까지 섰다.
+- **stop 응답이 그 밖의 `ok: false`(`cli-errors.md`「오류 응답」 의 복구 뒤에도)이거나 `state` 가 `release_unknown` 이면 `worker-release --dispatch <id>` 를 한 번 더 보낸다** — `release_unknown` 은 다시 불러도 안전하고(Karina 앱 가이드), 탭이 이미 없으면 `already_released` 로 자리가 풀린다.
 - **그래도 `released`·`already_released` 가 아니면 멈추지 않고 `worker-abandon --dispatch <id>` 로 자리만 푼 뒤 `../SKILL.md` 「워커 루프」 의 succeeded 이후 순서(병렬 밖이면 `continuation.md`「코디네이터 검증」 부터)를 거쳐 다음 계획의 `worker-start` 로 간다 — 새 워커는 같은 폴더에 새 탭으로 뜨고 옛 탭은 남는다** — Karina 앱은 보고를 마친 워커도 state 를 `ready` 로 두어 abandon 이 정산 워커로 튕기지 않고, abandoned 워커는 자리를 쥐지 않는다. 다른 워크트리에 띄우면 브랜치가 갈려 뒤 계획이 앞 계획 커밋을 못 본다.
-  - 남긴 탭은 보고의 남은 탭 줄에 「입력하지 말고 닫을 것 — 같은 폴더에서 다음 워커가 돈다」와 함께 싣는다 — 옛 세션은 입력창 문구를 가진 채 같은 워킹트리에 살아 있어, 그 문구를 제출하면 두 세션이 한 폴더를 함께 고친다.
+  - 남긴 탭은 보고의 남은 탭 줄에 「입력하지 말고 닫을 것 — 같은 폴더에서 다음 워커가 돈다」와 함께 싣는다(`terminal_kept_open` 이었으면 앞에 「열어 두기로 남음 —」을 붙인다) — 옛 세션은 같은 워킹트리에 살아 있어, 거기에 입력하면 두 세션이 한 폴더를 함께 고친다.
 - **abandon 뒤의 `worker-start` 가 또 같은 dispatch 로 `duplicate_worker` 면 `cli-errors.md`「오류 응답」 을 따른다** — 정지 판정의 정본은 그쪽 이 Run 갈래 하나다.
