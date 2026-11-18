@@ -130,7 +130,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/loop-continue.ps1\"; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" loop-continue.ps1 inject-reply-language.ps1; exit $LASTEXITCODE",
             "timeout": 10
           }
         ]

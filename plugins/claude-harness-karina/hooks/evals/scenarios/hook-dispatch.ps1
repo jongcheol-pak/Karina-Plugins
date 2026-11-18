@@ -194,6 +194,7 @@ foreach ($t in 'Bash', 'PowerShell') { $hdExpect["PreToolUse|$t"] = 'block-destr
 foreach ($t in 'Write', 'Edit', 'MultiEdit', 'NotebookEdit') { $hdExpect["PreToolUse|$t"] = 'guard-harness,guard-write,inject-reply-language'; $hdExpect["PostToolUse|$t"] = 'post-write-checks' }
 $hdExpect['PreToolUse|Skill'] = 'inject-reply-language,loop-continue,record-work-start'
 $hdExpect['PostToolUse|Skill'] = ''
+$hdExpect['Stop|'] = 'inject-reply-language,loop-continue'
 foreach ($s in 'startup', 'resume', 'clear') { $hdExpect["SessionStart|$s"] = 'session-context,warn-version-drift' }
 foreach ($s in 'compact', 'fork') { $hdExpect["SessionStart|$s"] = 'session-context' }
 foreach ($c in 'plan', 'karina:plan') { $hdExpect["UserPromptExpansion|$c"] = 'loop-continue,record-work-start' }
