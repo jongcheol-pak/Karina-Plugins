@@ -82,6 +82,11 @@ Assert-Case -Name "inject-reply-language: Stop 라틴 낱말 4개 이하의 짧�
 Assert-Case -Name "inject-reply-language: Stop last_assistant_message 가 없으면 무출력" -R (Invoke-RlStop 'rl-st7' $null) -ExpectExit 0 -ExpectSilent $true
 $null = Invoke-RlStop 'rl-st8' $rlEn
 Assert-Case -Name "inject-reply-language: Stop 이 hook 이 이은 turn 은 다시 걸지 않는다" -R (Invoke-RlStop 'rl-st8' $rlEn $true) -ExpectExit 0 -ExpectSilent $true
+$rlStateDir = Join-Path $env:USERPROFILE '.claude/.state/reply-language'
+Assert-Case -Name "inject-reply-language: Stop 재진입 뒤 재작성 표시를 지운다" -R @{ code = 0; out = 'mark=' + (Test-Path -LiteralPath (Join-Path $rlStateDir "rl-st8-$rlRun.stop")) } -ExpectContains 'mark=False'
+New-Item -Force -ItemType Directory -Path $rlStateDir | Out-Null
+Set-Content -LiteralPath (Join-Path $rlStateDir "rl-st11-$rlRun.stop") -Value '1' -NoNewline
+Assert-Case -Name "inject-reply-language: Stop 새 turn(stop_hook_active 거짓)은 남은 표시가 있어도 판정한다" -R (Get-RlContext (Invoke-RlStop 'rl-st11' $rlEn)) -ExpectContains 'event=Stop ctx=[karina 응답 언어]'
 Assert-Case -Name "inject-reply-language: Stop 다른 hook 이 이은 turn(stop_hook_active 참·자기 표시 없음)의 영문은 잡는다" -R (Get-RlContext (Invoke-RlStop 'rl-st9' $rlEn $true)) -ExpectContains 'event=Stop ctx=[karina 응답 언어]'
 $rlCounter = Join-Path $env:USERPROFILE ".claude/.state/reply-language/rl-st10-$rlRun.txt"
 New-Item -Force -ItemType Directory -Path (Split-Path -Parent $rlCounter) | Out-Null
