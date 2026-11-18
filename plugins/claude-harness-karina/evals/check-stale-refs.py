@@ -86,6 +86,7 @@ DEAD = [
     'migrate-index-labels',
     # 구 회차 기록 1 (2026-10-12 감사) — 위키 사용 기록 파일. 읽는 코드·절차가 없어 기록과 규칙을 함께 걷었다.
     'wiki-usage',
+    'WIKI.md', 'session-wiki-signals', 'lookup-rules', 'wiki-record',
     # 구 chain-plan 참조 2 (2026-10-12 감사 2회차) — 이웃 파일의 절로 합쳤다(cli-errors 「시작 이상 응답」·user-relay 「봉투 밖 승인 요청」).
     'references/delegation.md', 'worker-start.md',
     # 구 plan 참조 1 (2026-10-18 체인 plan 3) — intent 산출물 폐지. 요구·BASE 는 plan-template 「Goal」 로 옮겼다.
@@ -104,7 +105,7 @@ DEAD = [
     'gate-verifier', 'local-gate', 'reuse-scope', 'Gate 필수', '(BASE 대조)', '화면 확인함',
 ]
 
-DEAD_BASELINE = 54
+DEAD_BASELINE = 58
 
 RX = re.compile('|'.join(re.escape(d) for d in DEAD))
 
@@ -159,7 +160,6 @@ PROSE_TARGETS = (
     'skills/DESIGN.md',
     'skills/AUTHORING.md',
     'skills/BUDGET.md',
-    'skills/WIKI.md',
     'evals/harness-consistency-rationale.md',
     'evals/harness-consistency-pointer-rationale.md',
 )
