@@ -81,7 +81,7 @@ def golden_text():
 
 HELPER_ENTRY = {'guard-commit-secrets': 'guard-bash', 'guard-commit-comments': 'guard-bash', 'write-gate-trivial': 'guard-write',
                 'secret-patterns': 'guard-bash', 'session-end-cleanup-lib': 'session-end-cleanup',
-                'session-wiki-signals': 'session-context', 'session-ledger-signal': 'session-context',
+                'session-ledger-signal': 'session-context',
                 'harness-root': 'guard-bash'}
 
 

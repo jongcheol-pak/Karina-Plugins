@@ -27,7 +27,6 @@
     "session-end-cleanup",
     "session-end-cleanup-lib",
     "session-ledger-signal",
-    "session-wiki-signals",
     "suggest-agents-record",
     "timed-git",
     "warn-version-drift",

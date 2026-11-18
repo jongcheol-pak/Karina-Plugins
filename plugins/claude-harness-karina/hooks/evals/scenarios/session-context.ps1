@@ -1,4 +1,4 @@
-﻿# scenarios/session-context.ps1 — session-context 시나리오 (§13 — plan 요약·AGENTS 주입·vault 라인) (dot-source 전용, 단독 실행 금지)
+﻿# scenarios/session-context.ps1 — session-context 시나리오 (§13 — plan 요약·AGENTS 주입) (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook·New-WriteJson·New-CommitJson)와 공유 변수($work·$iso·$gitOk·$pw·$vdCache)를 그대로 쓴다.
 # 파일명은 검증 대상 hook 기준이고, Invoke-Hook에 넘기는 문자열은 scripts/ 아래 hook 파일명이다.
 # ==== 아래는 본체에서 원문 그대로 옮긴 구간 (순수 이동 — 재조립 등가 검사의 경계) ====
@@ -29,7 +29,7 @@ if (Test-HookSelected @('session-context')) {
 
     # SC2b: fork → startup과 같은 경로를 탄다(plan 카운트 주입), compact 전용 리마인더는 나오지 않는다.
     #   공식 SessionStart matcher 값은 startup|resume|clear|compact|fork인데 fork만 배선에서 빠져 있어
-    #   fork 세션에는 plan 상태·vault·AGENTS.md가 통째로 주입되지 않았다. hooks.json에 fork를 넣은 뒤
+    #   fork 세션에는 plan 상태·AGENTS.md가 통째로 주입되지 않았다. hooks.json에 fork를 넣은 뒤
     #   이 두 케이스가 그 경로를 고정한다 — 스크립트는 무수정이다($source가 'compact'가 아니면 동일 경로).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'fork'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: fork도 plan 카운트 주입 (SC2b)" -R $r -ExpectExit 0 -ExpectContains '미완료 2'
@@ -269,12 +269,10 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: 미완료 task 세션엔 계획 규칙 미주입 (SC41d)" -R $r -ExpectExit 0 -ExpectNotContains '모든 사실 주장은 명령을 실행해 얻는다'
     $r = & $scCompact $scPlanless 'sc41f'
     Assert-Case -Name "session-context: 발동 기록 없는 compact 엔 계획 규칙 미주입 (SC41f)" -R $r -ExpectExit 0 -ExpectContains 'plan/SKILL.md' -ExpectNotContains '모든 사실 주장은 명령을 실행해 얻는다'
-    Assert-Case -Name "session-context: 발동 기록 없는 compact 엔 조회 절차 미주입 (SC43j)" -R $r -ExpectExit 0 -ExpectNotContains '위키 조회 절차:'
     & $scFire 'sc41g' 'karina:plan'
     & $scFire 'sc41g' 'karina:implement'
     $r = & $scCompact $scPlanless 'sc41g'
     Assert-Case -Name "session-context: plan 뒤 implement 발동 compact 엔 계획 규칙 미주입 (SC41g)" -R $r -ExpectExit 0 -ExpectNotContains '모든 사실 주장은 명령을 실행해 얻는다'
-    Assert-Case -Name "session-context: implement 발동 compact 엔 조회 절차 주입 (SC43i)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:'
 
     & $scFire 'sc42' 'karina:implement'
     $r = & $scCompact $scPlanless 'sc42'
@@ -301,31 +299,6 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: implement 뒤 plan 재발동 compact 엔 계획 규칙 주입 (SC41h)" -R $r -ExpectExit 0 -ExpectContains '모든 사실 주장은 명령을 실행해 얻는다'
     Assert-Case -Name "session-context: implement 뒤 plan 재발동 compact 엔 결정 기록 규약 미주입 (SC42j)" -R $r -ExpectExit 0 -ExpectNotContains '트리거는 둘이다'
 
-    & $scFire 'sc43' 'karina:plan'
-    $r = & $scCompact $scPlanless 'sc43'
-    Assert-Case -Name "session-context: compact 조회 절차 경로 지시 (SC43)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:'
-    # SC43b (**경로 정확성**): 라인이 있는 것만으로는 부족하다 — 경로가 틀리면 세션이 그 파일을
-    #   못 읽어 조회 절차가 통째로 사라지는데, SC43은 접두 라벨만 보므로 그 회귀를 못 잡는다.
-    #   ⚠ 슬래시 표기를 그대로 잰다 — **`Join-Path`는 단일 인자여도 구분자를 백슬래시로
-    #   정규화한다**(2026-09-02 실측 — 이 어서션이 첫 실행에서 그것을 FAIL로 잡았다). 그래서 hook은
-    #   보간("$skillsDir/llm-wiki/...")으로 뒤쪽 세그먼트를 슬래시로 고정한다 — 그것이 계약이다.
-    Assert-Case -Name "session-context: 조회 절차 경로가 정확한가 (SC43b)" -R $r -ExpectExit 0 -ExpectContains 'skills/WIKI.md'
-    Assert-Case -Name "session-context: 조회 절차 지시에 행동 문구 (SC43f)" -R $r -ExpectExit 0 -ExpectContains '호출측 스킬이 지목한 절만 읽으세요' -ExpectNotContains 'vault 판정 게이트'
-    # SC43g (**절 지목**): 파일째 Read 지시는 계획 세션에 쓰지 않는 절(§3 이하)까지 싣는다 — 호출측 스킬이
-    #   지목한 절만 읽으라는 문구가 이 줄의 계약이다(2026-09-29 — 읽을 절을 SKILL 포인터가 지목하게 바꿨다).
-    Assert-Case -Name "session-context: 조회 절차 지시가 지목한 절만 읽게 한다 (SC43g)" -R $r -ExpectExit 0 -ExpectContains '지목한 절만'
-    # SC43h (**추출 수단 동봉**): 절만 읽으라면서 수단을 주지 않으면 세션이 펜스 없는 grep 으로 흐른다 — PS 문자열의
-    #   백틱 여섯 겹이 출력에서 세 개로 풀렸는지를 이 문자열로 잰다(겹이 틀리면 펜스 토글이 사라진다).
-    Assert-Case -Name "session-context: 조회 절차 지시에 절 추출 awk 동봉 (SC43h)" -R $r -ExpectExit 0 -ExpectContains '/^(```|~~~)/{f=!f} !f&&/^## /{c++} c==n'
-    # SC43c (델타 음성): startup엔 넣지 않는다 — 압축 전용 보완이라 매 세션 얹으면 예산 낭비다.
-    #   ⚠ 대조 문자열은 **새 라인의 것**이어야 한다 — 옛 문자열(K 1 본문)로 두면 주입이 사라진
-    #   지금은 어떤 출력에도 없어 이 케이스가 항상 통과하고 델타 음성 축이 조용히 죽는다.
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scPlanless } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: startup엔 조회 절차 미주입 (SC43c)" -R $r -ExpectExit 0 -ExpectNotContains '위키 조회 절차:'
-    # SC43d (델타 음성): compact + 미완료 task 세션엔 새지 않는다.
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 미완료 task 세션엔 조회 절차 미주입 (SC43d)" -R $r -ExpectExit 0 -ExpectNotContains '위키 조회 절차:'
-
     # SC30 (델타 음성): compact + plan도 AGENTS.md도 없는 비 karina 폴더 → 계획 지시 미발화.
     #   리마인더 대상이 karina 워크플로라 무관한 폴더에 뜨면 노이즈다(`:16` 무출력 규칙과 같은 취지).
     #   기존 SC15·SC23이 같은 빈 픽스처를 쓰지만 각각 다른 문자열만 assert해 이 회귀를 못 잡는다.
@@ -341,8 +314,6 @@ if (Test-HookSelected @('session-context')) {
     #   ⚠ v1.208.0부터 이 상태에도 **계획 재읽기 지시**(plan/SKILL.md)는 나간다 — 완료된 plan이
     #   남은 채 새 계획을 세우는 세션이 두 분기 사이로 빠지던 사각을 닫았다(아래 SC38). assert가
     #   구현 경로 부재만 보므로 이 케이스는 그대로 유효하다.
-    #   ⚠ 이 상태에도 조회 절차 줄(SC43)이 나가며 §3 완료 기록 절을 **스킬 이름**(karina:implement)으로 지목한다 —
-    #   경로 문자열이 아니라 구현 경로 주입이 아니다(2026-09-29 회차 D5). 이 어서션을 스킬 이름까지 넓히지 않는다.
     $scDone = Join-Path $work 'sc-done'; New-Item -ItemType Directory $scDone -Force | Out-Null
     @('# Plan', '- [x] T1: done', '- [x] T2: done') | Set-Content -Encoding UTF8 (Join-Path $scDone 'plan.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scDone } | ConvertTo-Json -Compress)
@@ -353,82 +324,30 @@ if (Test-HookSelected @('session-context')) {
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = (Join-Path $work 'sc-nonexistent') } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact 무효 cwd 기본 문구 유지 (SC17)" -R $r -ExpectExit 0 -ExpectContains '요약 직후'
 
-    # SC18~SC23: 위키 vault 설정 상태 주입 (v1.146.0) — 절차 K의 "미설정" 오판정을 기계로 차단.
-    #   전용 격리 홈에 llm-wiki-config.json을 심는다($iso에는 config가 없어 미설정 상태이며 SC20이 그것을 쓴다).
-    #   무회귀 1건(SC20) + 델타 3건(SC21 과다 주입·SC22 과억제·SC23 리마인더 오신호) 구성 —
-    #   통과만 확인하는 케이스는 게이팅을 고정하지 못한다.
     $isoV = Join-Path $EvalRunTemp ("karina-hook-evals-vault-" + $suffix)
     $isoVault = Join-Path $isoV 'my-wiki'
     New-Item -ItemType Directory -Path (Join-Path $isoV '.claude') -Force | Out-Null
     New-Item -ItemType Directory -Path $isoVault -Force | Out-Null
     (@{ vault_path = ($isoVault -replace '\\', '/') } | ConvertTo-Json) | Set-Content -Encoding UTF8 (Join-Path $isoV '.claude/llm-wiki-config.json')
 
-    # SC18: 설정+실재 → 경로와 "단정 금지" 문구가 함께 주입된다 (문구 리터럴 고정)
     $env:USERPROFILE = $isoV
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: vault 설정됨 상태 주입 (SC18)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
-    Assert-Case -Name "session-context: vault 단정 금지 문구 (SC18b)" -R $r -ExpectExit 0 -ExpectContains '단정하지 마세요'
-    Assert-Case -Name "session-context: vault 라인의 허브 조건부 지시 (SC18c)" -R $r -ExpectExit 0 -ExpectContains '코드를 읽는 것보다 빠르면'
-    Assert-Case -Name "session-context: vault 라인의 글로벌 절 포인터 (SC18d)" -R $r -ExpectExit 0 -ExpectContains '「프로젝트 맥락」'
-    # SC18e (**조회 정본 포인터**): 회차 46이 이 라인의 「절차 K 참조 가능」을 `skills/WIKI.md`
-    #   지목으로 바꿨다 — 계획·구현 세션은 절차 K를 로드하지 않아 그 안내가 손에 없는 규약을
-    #   가리켰다. ⚠ **그 문면을 재는 어서션이 없어 잘못된 지시가 두 커밋을 살아남았고**
-    #   골든 812/812는 그것을 잡지 못했다(사람 리뷰가 잡았다). 이 케이스가 그 자리를 메운다.
-    Assert-Case -Name "session-context: vault 라인이 조회 정본을 지목 (SC18e)" -R $r -ExpectExit 0 -ExpectContains 'skills/WIKI.md'
-    # SC18f (**경로 실재**): SC14c 와 같은 축 — vault 라인의 조회 정본도 실재하는 절대 경로를 준다.
-    Assert-Case -Name "session-context: vault 라인 조회 정본이 절대 경로 (SC18f)" -R $r -ExpectExit 0 -ExpectContains "$scSkillsAbs/WIKI.md"
+    Assert-Case -Name "session-context: vault 설정 홈 startup 에도 위키 줄 없음 (SC18n)" -R $r -ExpectExit 0 -ExpectContains '미완료 2' -ExpectNotContains '위키'
+    & $scFire 'sc18m' 'karina:implement'
+    $rNw = & $scCompact $scPlanless 'sc18m'
+    Assert-Case -Name "session-context: vault 설정 홈 implement compact 에도 위키 줄 없음 (SC18m)" -R $rNw -ExpectExit 0 -ExpectContains '트리거는 둘이다' -ExpectNotContains '위키'
 
-    # SC21 (델타): 설정+실재인데 비 karina cwd(plan·AGENTS 전무) → 게이팅으로 미주입.
-    #   vault는 cwd와 무관한 사용자 홈 자원이라, 게이팅이 없으면 위키를 쓰는 사용자의 모든 세션에 라인이 붙는다.
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scEmpty } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 비 karina cwd는 vault 라인 미주입 (SC21)" -R $r -ExpectExit 0 -ExpectSilent $true
-
-    # SC23 (델타): compact + 빈 cwd → 리마인더는 나오되 vault 라인은 미주입.
-    #   리마인더는 cwd 블록 밖에서 append되므로 게이팅 신호가 아니다 — $lines.Count -gt 0 판정을 이 케이스가 검출한다.
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scEmpty } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: compact 리마인더는 vault 게이팅 신호 아님 (SC23)" -R $r -ExpectExit 0 -ExpectContains '요약 직후' -ExpectNotContains '위키 vault'
-
-    # ⚠ 대조 문자열은 `위키 vault: 설정`이다 — `위키 vault`만 쓰면 **주입 본문**이 문다.
-    #   절차 K 1(SKILL.md:108)이 `[karina 세션 컨텍스트] 위키 vault: …` 라인을 **예시로 인용**하는데,
-    #   v1.218.0 후속이 그 구간을 주입 대상으로 만들면서 세 케이스가 한꺼번에 FAIL했다(실측).
-    # SC41e (회귀 고정 — v1.217.0): 계획 규칙 **주입**의 `$cwdBaseCount` 짝 증가.
-    #   이 분기는 「$lines.Add 1회 = $cwdBaseCount++ 1회」가 짝인데, 주입을 넣고 기준선을 올리지
-    #   않으면 `$lines.Count -gt $cwdBaseCount`가 참이 되어 **vault 라인이 새로 붙는다**.
-    #   ⚠ 픽스처의 AGENTS.md는 **0바이트여야 한다** — 분기 조건은 `Test-Path`로 존재만 보지만
-    #   주입 블록은 `$agentsInfo.Length -gt 0`이라(session-context.ps1:474) 내용이 있으면
-    #   AGENTS 라인이 먼저 들어가 그 자체가 정당한 vault 신호가 되고 델타가 0이 된다.
-    #   (v1.217.0이 내용 있는 픽스처로 시도해 FAIL을 보고 「원리상 불가」로 오판했다가 F-7이 잡았다.)
-    #   SC23은 계획 분기가 아예 발화하지 않는 빈 cwd이고 SC31b는 plan 라인이 이미 정당한 신호라,
-    #   **둘 다 이 짝 증가를 잡지 못한다**.
-    $scEmptyAg = Join-Path $work 'sc-empty-agents'; New-Item -ItemType Directory $scEmptyAg -Force | Out-Null
-    New-Item -ItemType File -Path (Join-Path $scEmptyAg 'AGENTS.md') -Force | Out-Null
-    & $scFire 'sc41e' 'karina:plan'
-    $r = & $scCompact $scEmptyAg 'sc41e'
-    Assert-Case -Name "session-context: 계획 규칙 주입도 vault 게이팅 신호 아님 (SC41e)" -R $r -ExpectExit 0 -ExpectContains '모든 사실 주장은 명령을 실행해 얻는다' -ExpectNotContains '위키 vault: 설정'
-    Assert-Case -Name "session-context: 조회 절차 지시도 vault 게이팅 신호 아님 (SC43e)" -R $r -ExpectExit 0 -ExpectContains '위키 조회 절차:' -ExpectNotContains '위키 vault: 설정'
-    & $scFire 'sc42e' 'karina:implement'
-    $r = & $scCompact $scEmptyAg 'sc42e'
-    Assert-Case -Name "session-context: 결정 기록 규약 주입도 vault 게이팅 신호 아님 (SC42e)" -R $r -ExpectExit 0 -ExpectContains '트리거는 둘이다' -ExpectNotContains '위키 vault: 설정'
-
-    # SC31b: 계획 지시 줄이 $cwdBaseCount를 전체 재설정하면(`= $lines.Count`) 그 앞의 「plan 존재」 신호까지
-    #   흡수돼 vault가 조용히 빠진다 — `++`여야 하는 이유를 SC31b가 고정한다.
-    #   ⚠ 이 두 케이스를 vault 설정($env:USERPROFILE = $isoV) **앞**에 두면 $vaultLine이 $null이라
-    #     게이팅 로직 자체가 안 돌아 회귀를 못 잡는다(초안이 그 자리에 있었고 리뷰 2종이 각각 잡았다).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scNoT } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact + task 0개 plan에도 계획 지시 (SC31)" -R $r -ExpectExit 0 -ExpectContains 'plan/SKILL.md'
-    Assert-Case -Name "session-context: 계획 지시가 vault 신호를 삼키지 않음 (SC31b)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
 
     # SC38/SC38b (v1.208.0 — 완료 plan 사각): compact + task가 **전부 완료**된 plan. 종전에는
     #   위 `$open -gt 0` 분기(구현 경로 지시)에도, 아래 계획 리마인더(`-not $planPath -or $all -eq 0`)
     #   에도 걸리지 않아 **아무 재읽기 지시도 나가지 않았다.** 회차를 마치면 plan.md는 task가 전부 [x]인
     #   채 남고 다음 계획 세션이 그 위에서 시작하므로 이 상태가 오히려 흔하다.
-    #   ⚠ SC16이 같은 상태를 쓰지만 **vault 설정 구간 밖**이라 SC38b(vault 신호 유지)를 잴 수 없다 —
-    #     SC31b와 같은 배치 제약이며, 여기 두어야 $cwdBaseCount 회귀가 실제로 검사된다.
     $scDone2 = Join-Path $work 'sc-done2'; New-Item -ItemType Directory $scDone2 -Force | Out-Null
     @('# Plan', '- [x] T1: done', '- [x] T2: done') | Set-Content -Encoding UTF8 (Join-Path $scDone2 'plan.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scDone2 } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact + 전 task 완료 plan에도 계획 지시 (SC38)" -R $r -ExpectExit 0 -ExpectContains 'plan/SKILL.md'
-    Assert-Case -Name "session-context: 완료 plan 계획 지시가 vault 신호를 삼키지 않음 (SC38b)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
     Assert-Case -Name "session-context: 완료 plan엔 구현 경로 미주입 (SC38c)" -R $r -ExpectExit 0 -ExpectNotContains 'implement/SKILL.md'
 
     # SC40~SC40i: plan `## Deferred / Follow-up`의 **미판정 건수 주입** (v1.214.0 T3).
@@ -583,62 +502,12 @@ if (Test-HookSelected @('session-context')) {
 
     Remove-Item -Recurse -Force $scDefBase -ErrorAction SilentlyContinue
 
-    # SC22 (델타): AGENTS.md만 있고 plan 없는 cwd → vault 라인이 주입되고 AGENTS 라인보다 **앞**에 온다.
-    #   ① 게이팅을 AGENTS 진입 전 시점에 판정하면 이 케이스가 억제된다(과억제 검출).
-    #   ② 순서 단정은 Assert-Case로 불가하다 — ExpectContains가 [regex]::Escape를 거쳐 전후 관계를 비교할 수단이 없으므로
-    #      IndexOf 비교 후 결과를 직접 push한다(§11 (b) 패턴과 동일).
-    #   마커는 헤딩에 둔다 — hook 이 목차만 실으므로 본문 줄 마커는 출력에 나오지 않는다.
     $scVOnly = Join-Path $work 'sc-agents-only'; New-Item -ItemType Directory $scVOnly -Force | Out-Null
     @('# SC_VAULT_ORDER_MARKER Guide', '본문') | Set-Content -Encoding UTF8 (Join-Path $scVOnly 'AGENTS.md')
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scVOnly } | ConvertTo-Json -Compress)
-    $iVault  = $r.out.IndexOf('위키 vault: 설정됨')
-    $iAgents = $r.out.IndexOf('SC_VAULT_ORDER_MARKER')
-    if (($r.code -eq 0) -and ($iVault -ge 0) -and ($iAgents -gt $iVault)) {
-        $script:results.Add(@{ ok = $true; line = "[PASS] session-context: AGENTS 단독 cwd vault 주입 + AGENTS보다 앞 (SC22)" })
-    } else {
-        $script:results.Add(@{ ok = $false; line = "[FAIL] session-context: SC22 주입·순서 위반 (exit=$($r.code), vault=$iVault, agents=$iAgents)" })
-    }
-
-    # SC22b/SC22c: 위 SC22와 **같은 조건을 source=fork로** 한 번 더 — fork 경로에서 vault 라인과
-    #   AGENTS.md 목차가 함께 주입되는지 고정한다. 앞의 SC2b는 plan 축만 보는데, fork matcher를 넣은
-    #   목적은 그 세션에 plan·vault·AGENTS 셋이 다 들어가게 하는 것이라 나머지 두 축도 골든에 박아 둔다
-    #   ($source는 이 두 블록을 게이팅하지 않으므로 startup과 결과가 같아야 한다 — 그 사실 자체가 검증 대상).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'fork'; cwd = $scVOnly } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: fork도 vault 라인 주입 (SC22b)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨'
     Assert-Case -Name "session-context: fork도 AGENTS 목차 주입 (SC22c)" -R $r -ExpectExit 0 -ExpectContains 'SC_VAULT_ORDER_MARKER'
 
-    # SC19: 설정됐으나 폴더 부재(이동·삭제) → 부재 문구 주입 (경로 재확인 신호)
-    $isoV2 = Join-Path $EvalRunTemp ("karina-hook-evals-vault-gone-" + $suffix)
-    New-Item -ItemType Directory -Path (Join-Path $isoV2 '.claude') -Force | Out-Null
-    (@{ vault_path = ((Join-Path $isoV2 'moved-away') -replace '\\', '/') } | ConvertTo-Json) | Set-Content -Encoding UTF8 (Join-Path $isoV2 '.claude/llm-wiki-config.json')
-    $env:USERPROFILE = $isoV2
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: vault 설정 경로 부재 주입 (SC19)" -R $r -ExpectExit 0 -ExpectContains '설정 경로 부재'
-    Assert-Case -Name "session-context: 부재 라인이 기록을 요구하지 않는다 (SC19d)" -R $r -ExpectExit 0 -ExpectNotContains '1줄 기록'
-    Assert-Case -Name "session-context: 부재 라인이 위키 연동 정본을 지목 (SC19b)" -R $r -ExpectExit 0 -ExpectContains 'skills/WIKI.md'
-    Assert-Case -Name "session-context: 부재 라인 위키 연동 정본이 절대 경로 (SC19c)" -R $r -ExpectExit 0 -ExpectContains "$scSkillsAbs/WIKI.md"
-
-    # SC20 (무회귀): config 없는 홈 → vault 라인 미주입. 미설정은 무출력이 설계다(노이즈 방지).
     $env:USERPROFILE = $iso
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 미설정 홈은 vault 라인 미주입 (SC20)" -R $r -ExpectExit 0 -ExpectContains '미완료 2' -ExpectNotContains '위키 vault'
-
-
-
-    $scStaleCwd = Join-Path $work ("sc-wiki-nostale-" + $suffix)
-    New-Item -ItemType Directory $scStaleCwd -Force | Out-Null
-    @('# Guide', 'SC_NOSTALE_MARKER') | Set-Content -Encoding UTF8 (Join-Path $scStaleCwd 'AGENTS.md')
-    $scStaleHubDir = Join-Path $isoVault '20_projects/personal'
-    New-Item -ItemType Directory $scStaleHubDir -Force | Out-Null
-    $scStaleHub = Join-Path $scStaleHubDir 'scnostale.md'
-    @('---', 'type: project', 'project: SCNoStale', ('updated: ' + (Get-Date).AddDays(-30).ToString('yyyy-MM-dd')),
-      'synced_commit: 0000000000000000000000000000000000000000', '---', '', '# SCNoStale', '', '## 레포 정보',
-      ('- **경로**: `' + ($scStaleCwd -replace '\\', '/') + '`')) | Set-Content -Encoding UTF8 $scStaleHub
-    $env:USERPROFILE = $isoV
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scStaleCwd } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: 오래된 허브도 뒤처짐 줄 미주입 (SC32)" -R $r -ExpectExit 0 -ExpectContains '위키 vault: 설정됨' -ExpectNotContains '위키 뒤처짐'
-    Remove-Item -Force $scStaleHub -ErrorAction SilentlyContinue
-    Remove-Item -Recurse -Force $scStaleCwd -ErrorAction SilentlyContinue
 
     # SC44~SC44n: Deferred 대장(docs/plans/deferred.md) 최고령 「마지막 판정일」 주입 (v1.221.0 T1).
     #   ⚠ **기대는 날짜부로 잰다** — 일수는 매일 늘어 픽스처 골든이 다음 날 깨진다.
@@ -743,13 +612,6 @@ if (Test-HookSelected @('session-context')) {
     $r = & $scLedInvoke
     Assert-Case -Name "session-context: 대장 부재 시 미주입 (SC44j)" -R $r -ExpectExit 0 -ExpectNotContains 'Deferred 대장'
 
-    # SC44k (짝 계약): 이 라인은 vault 게이팅 신호가 아니다 — plan·AGENTS.md가 **둘 다 없는**
-    #   픽스처에서 대장 라인만 나와도 vault 라인이 새면 안 된다($cwdBaseCount++ 누락 검출).
-    @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A**') | Set-Content -Encoding UTF8 $scLedFile
-    $env:USERPROFILE = $isoV
-    $r = & $scLedInvoke
-    Assert-Case -Name "session-context: 대장 라인은 vault 게이팅 신호 아님 (SC44k)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 대장' -ExpectNotContains '위키 vault: 설정'
-
     # SC44l (방어 경로 — 무효 날짜): 형식은 맞지만 의미가 무효인 문자열이 섞여도 **그 날짜만**
     #   건너뛰고 항목은 살아남는다. 항목째로 버리면 그 항목이 최고령 후보에서 통째로 빠진다.
     @('# Deferred 대장', '', '## 대기', '', '- [2026-05-01] **A** (2026-13-45 무효)', '- [2026-06-01] **B**') |
@@ -803,7 +665,7 @@ if (Test-HookSelected @('session-context')) {
     #   SC45b 는 이 축의 절반만 잰다 — 목차(`$convHeads`)는 펜스를 거르는데 같은 줄이
     #   안내하는 추출 명령이 펜스를 세면, 세션이 받은 순번 n 과 그 명령이 뽑는 절이
     #   어긋난다. 절반만 재는 축은 나머지 절반이 깨져도 green 이다.
-    #   ⚠ 앵커는 「펜스 토글 형태가 있다」가 아니라 **정본(`skills/WIKI.md`)과 바이트
+    #   ⚠ 앵커는 「펜스 토글 형태가 있다」가 아니라 **정본(`skills/REPO-CONVENTIONS.md` 「읽기」)과 바이트
     #   동일한 구간**이다 — 느슨하게 잡으면 사본이 *여전히 토글하면서* 정본과 다른
     #   정규식으로 갈릴 때 그 드리프트를 못 잡는다. 그 드리프트가 곧 우회 경로다.
     Assert-Case -Name "session-context: 추출 명령도 코드펜스를 센다 (SC45f)" -R $r -ExpectExit 0 -ExpectContains "/^(``````|~~~)/{f=!f} !f&&/^## /{c++} c==n"
@@ -833,14 +695,12 @@ if (Test-HookSelected @('session-context')) {
 
     Remove-Item -Recurse -Force $scToc -ErrorAction SilentlyContinue
 
-    Remove-Item -Recurse -Force $isoV, $isoV2 -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $isoV -ErrorAction SilentlyContinue
 
     # ---- [회차 3 T5] 세션 시작 1회 30일 마커 정리 ----
     # 호출마다 돌던 정리(post-write-checks · suggest-agents-record · loop-continue)를 세션 시작으로
     #   옮겼다. 폴더마다 「31일 마커는 지워지고 3일 마커는 남는다」를 따로 잰다 — 한 케이스에 묶으면
     #   어느 폴더가 빠졌는지 갈리지 않는다. 격리 홈($iso)의 .claude/.state 아래에 직접 심는다.
-    #   ⚠ 이 자리에서는 앞 케이스들이 USERPROFILE 을 vault 홈($isoV)으로 바꿔 둔 채다 — hook 이
-    #   $iso 를 보도록 이 블록 동안만 되돌린다(:164 과 같은 형태).
     $scMkProj = Join-Path $work 'sc-marker-proj'
     New-Item -ItemType Directory $scMkProj -Force | Out-Null
     $scMkDirs = @('post-write-warn', 'suggest-agents-record', 'loop-continue', 'trivial-tally', 'work-start', 'reply-language')
@@ -963,7 +823,6 @@ if (Test-HookSelected @('session-context')) {
     # guard-write 와 같은 후보(plan.md·PLAN.md·docs/plan.md)를 위로 찾되 `.git`(폴더·파일)에서 멈춘다 — 근거는
     #   `scripts/rules/session-context-rationale.md` 의 「§5 ---- plan 탐색: 상위 탐색과 레포 경계」. 부모 plan 에는
     #   그 케이스에만 있는 task 수를 심어, 경계에서 멈췄는지가 아니라 「부모 plan 의 고유 수가 안 나오는가」로 잰다.
-    #   USERPROFILE 은 위 30일 정리 블록과 같은 이유로 $iso 에 고정한다(vault 홈이면 출력이 vault 줄로 갈린다).
     $scUpSaved = $env:USERPROFILE
     try {
         $env:USERPROFILE = $iso

@@ -60,7 +60,6 @@ function Get-LedgerSignal {
                             $ledgerAge = [int][math]::Floor(($ledgerToday - $ledgerOldest).TotalDays)
                             $ledgerVnNote = if ($ledgerVnCount -gt 0) { " (단 vN 부기 ${ledgerVnCount}건은 릴리즈 날짜를 반영하지 않았습니다 — 손계산 확인 필요.)" } else { "" }
                             $ledgerLine = ("[karina 세션 컨텍스트] Deferred 대장: 대기 $($ledgerItems.Count)건 / 최고령 ${ledgerAge}일($($ledgerOldest.ToString('yyyy-MM-dd'))) — 축 ② 임계 30일.${ledgerVnNote}")
-                            # 이 라인은 **vault 게이팅 신호가 아니다** — 근거는 `rules/session-context-rationale-plan.md` §16
                             }
                     }
                 }

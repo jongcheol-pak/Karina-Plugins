@@ -39,7 +39,7 @@ $cpBase = @'
 
 | 주장 | 실행한 명령 | 출력 요지 |
 |---|---|---|
-| 위키 참조 — decisions | `grep x decisions.md` | 0 |
+| 규약 조회 — decisions | `grep x decisions.md` | 0 |
 | 크기 | `wc -c a.ps1` | 10 |
 
 ## 작업 단계
@@ -92,9 +92,6 @@ $r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', ('| �
 Assert-Case -Name "check-plan: A1 명령 칸이 줄표뿐인 행도 빈 칸으로 본다" -R $r -ExpectExit 1 -ExpectContains 'empty-command'
 $r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', '| a \| b |  | 10 |'))
 Assert-Case -Name "check-plan: A1 주장 칸의 이스케이프 파이프에 칸이 밀리지 않는다" -R $r -ExpectExit 1 -ExpectContains 'empty-command'
-
-$r = Invoke-CheckPlan ($cpBase.Replace('| 위키 참조 — decisions |', '| 규약 조회 |'))
-Assert-Case -Name "check-plan: 위키 참조 행이 없는 plan 은 통과한다" -R $r -ExpectExit 0 -ExpectContains '0 problems'
 
 # ---- A3 종결 대장 조회 흔적 (git 임시 레포) ----
 $cpGit = Join-Path $cpRoot 'git-repo'

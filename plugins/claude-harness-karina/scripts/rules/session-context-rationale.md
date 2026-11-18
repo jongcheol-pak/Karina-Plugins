@@ -8,9 +8,9 @@
 
 §12~§22(Deferred 대장 최고령 판정 · 계획 세션 압축 리마인더)의 근거는 `session-context-rationale-plan.md`「계획 세션 신호 판정 근거」가 정본이다.
 
-## 위키·주입 신호 — 별도 문서
+## AGENTS.md 주입 — 별도 문서
 
-§23~§36(vault 설정 판정 · AGENTS.md 목차 주입 · vault 라인)의 근거는 `session-context-rationale-wiki.md`「위키·AGENTS.md 주입 판정 근거」가 정본이다.
+§31~§36(AGENTS.md 목차 주입 · 이관처 목차)의 근거는 `session-context-rationale-agents.md`「AGENTS.md 주입 판정 근거」가 정본이다.
 
 ## §1 session-context.ps1 — SessionStart: 로컬 plan 상태 요약 + AGENTS.md 전문 컨텍스트 주입 (비차단)
 
@@ -56,15 +56,6 @@
 #   반환: 절 텍스트 / 실패(파일 부재·시작 앵커 미발견·과대)면 $null → 호출부는 종전 Read 지시로 폴백.
 ```
 
-## §4 cwd 수집으로 라인이 늘었는지 판정하는 기준 개수 — vault 라인 게이팅에 쓴다.
-
-```
-        # cwd 수집으로 라인이 늘었는지 판정하는 기준 개수 — vault 라인 게이팅에 쓴다.
-        #   compact 리마인더는 이 블록 밖에서 append되므로, 이 기준과 비교하면 리마인더가
-        #   자연히 게이팅 신호에서 제외된다($lines.Count -gt 0으로 판정하면 비 karina 프로젝트의
-        #   요약 직후 세션에도 vault 라인이 붙는다).
-```
-
 ## §5 ---- plan 탐색: 상위 탐색과 레포 경계
 
 **`guard-write` 와 같은 plan 을 본다** — 후보는 `plan.md` → `PLAN.md` → `docs/plan.md` 이고, `cwd` 부터 8단계 위까지 각 단계에서 후보를 먼저 찾은 뒤 경계를 본다. 종전에는 `cwd` 의 `plan.md` 하나만 봐서, 하위 폴더에서 연 세션은 `guard-write` 가 plan 이 있다고 쓰기를 통과시키는 동안 「plan 없음」으로 안내했다(회차 4 — 감사 결과 정리).
@@ -77,7 +68,7 @@
 
 **라벨** — `cwd` 에서 찾으면 후보 이름 그대로(`plan.md` · `docs/plan.md`), 위에서 찾으면 전체 경로다. 함수 안에서 계산해 두 hook 이 같은 라벨을 쓴다. `[System.IO.Path]::GetRelativePath` 는 PowerShell 5.1(.NET Framework)에 없어 쓰지 않는다 — hook 은 pwsh 7 이 없으면 5.1 로 돈다.
 
-**찾은 plan 을 따르는 판정은 셋 더 있다** — Deferred 미판정 계수(§7) · 압축 리마인더 조건(`-not $planPath`) · vault 줄 게이팅(§4 — plan 요약 줄도 cwd 수집 라인으로 센다). 하위 폴더 세션에서도 vault 줄이 나오는 것은 의도된 변화다. AGENTS.md 목차는 계속 `cwd` 기준이다.
+**찾은 plan 을 따르는 판정은 둘 더 있다** — Deferred 미판정 계수(§7) · 압축 리마인더 조건(`-not $planPath`). AGENTS.md 목차는 계속 `cwd` 기준이다.
 
 **의도적 사본이다** — `Find-PlanFileUpwards`·`$planBulletRx`·`$planFenceRx` 는 `loop-continue.ps1` 에 같은 글자로 있다. 공용 `.ps1` 로 빼면 `rules/harness-hooks.json`(목록 = 스크립트 전량)에 올라 차단 hook `guard-harness` 의 보호 범위가 바뀐다. 사본의 일치는 `evals/check-harness-consistency.py` 의 「복제 사본 동기」 축이 잰다(`skills/DESIGN.md` 2절의 복제 예외).
 
@@ -193,7 +184,7 @@
 
 **왜 세지 않는 것이 맞는가** — `[1회 실패]`가 존재하는 이유는 *"어디에도 안 남기면 2회차가
 1회차로 보여 재발 판정 자체가 불가능하다"*(`REPO-CONVENTIONS.md` 「쓰기」)이고, 그 판정은 **다음 회차의
-위키 기록 판정**이 쓴다. 2회가 되면 그때 레포 `docs/conventions.md` 로 간다.
+함정 기록 판정**이 쓴다. 2회가 되면 그때 레포 `docs/conventions.md` 로 간다.
 
 **2026-11-14 부터 대장이 있는 레포의 1회차는 `plan.md` 가 아니라 대장 끝 `## 1회 실패` 절에 남는다**
 (`REPO-CONVENTIONS.md` 「쓰기」 — 체인 run_dc17831b plan 2 판정 원칙). `plan.md` 는 회차마다
