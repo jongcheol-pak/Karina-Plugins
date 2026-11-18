@@ -958,7 +958,7 @@ def build_index(vault, dry_run, report=None):
 
     # 기능별 인덱스: 본체에는 sub-index 목록만 두고 실제 행은 전부 sub-index로 낸다.
     #  project feature는 category별(§4 2단계)로, guide 전 종류는 index-guides로 간다 --
-    #  본체가 얇아야 절차 K가 매 코드 세션에서 이 파일을 여는 비용이 낮다(실측 39,747자였다).
+    #  본체가 얇아야 조회마다 이 파일을 여는 비용이 낮다(실측 39,747자였다).
     sub_links = []
 
     for cat, title in (("personal", "개인"), ("work", "업무")):
@@ -3005,7 +3005,7 @@ def main():
         for sp in sub_files:
             stem = os.path.basename(sp)[:-3]  # 예: 'index-personal'
             if stem not in mentioned:
-                warn(f"sub-index 미등록: {stem}.md가 index.md 목록에 없음(절차 K·검색 누락 위험)")
+                warn(f"sub-index 미등록: {stem}.md가 index.md 목록에 없음(검색 누락 위험)")
 
         # 인덱스가 sub-index로 분할된 경우 그 내용도 합쳐서 동기화 검사 (분할 시 누락 오탐 방지)
         for sub in sub_files:

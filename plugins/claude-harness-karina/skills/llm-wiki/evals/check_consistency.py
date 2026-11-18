@@ -111,11 +111,8 @@ SCHEMA_TYPES_MD = os.path.join(SKILL_DIR, "references", "schema-types.md")
 SCHEMA_BUDGET_MD = os.path.join(SKILL_DIR, "references", "schema-budget.md")
 SCHEMA_LINT_MD = os.path.join(SKILL_DIR, "references", "schema-lint.md")
 OPS_MD = os.path.join(SKILL_DIR, "references", "procedures-ops.md")
-# 절차 K 1~5(조회)는 v1.220.0에서 SKILL.md에서 이 파일로 이관됐다 — 아래 화이트리스트 1건의 귀속이 함께 옮겨간다.
-#  축 ⑪ 스캔 대상은 `_trigger_scan_scope()`의 `references/*.md` 글롭이 자동으로 잡으므로 경로를 손으로 더하지 않는다.
-LOOKUP_RULES_MD = os.path.join(SKILL_DIR, "references", "lookup-rules.md")
 # 쓰기 세션 전용 규칙(파일 예산·예산 단계 신호·네이밍·J 부트스트랩)이 SKILL.md에서 분리된 자리(v1.180.0 T8).
-#  코드 세션(절차 K)이 로드하지 않도록 뺀 것이라 예산 표·예산 단계 파싱도 이 파일을 본다.
+#  조회만 하는 세션이 로드하지 않도록 뺀 것이라 예산 표·예산 단계 파싱도 이 파일을 본다.
 OPS_RULES_MD = os.path.join(SKILL_DIR, "references", "wiki-ops-rules.md")
 TEMPLATES_MD = os.path.join(SKILL_DIR, "references", "templates.md")
 LINT_PY = os.path.join(SKILL_DIR, "scripts", "lint.py")
@@ -246,7 +243,7 @@ def parse_routing_table(text):
             letters.setdefault(lm.group(1), []).append(loc)
         else:
             named.append((label, loc))
-    missing = [c for c in "ABCDEFGHIJKL" if c not in letters]
+    missing = [c for c in "ABCDEFGHIJL" if c not in letters]
     if missing:
         die(f"라우팅 표에서 절차 {','.join(missing)} 행을 찾지 못함 (발견: {sorted(letters)})")
     return letters, named
@@ -445,11 +442,9 @@ def build_letter_file_map():
     ⑤(check_procedure_placement)의 지역변수 found 대신 절차 문면이 사는 파일 전부를 직접
     스캔한다(독립 재계산 — 지역변수 공유 대신). PROC_HEADING_RX(### X. )를 ⑤와 동일하게 사용.
 
-    **스캔 대상은 절차가 이관된 자리를 따라간다** — 절차 K가
-    `lookup-rules.md`로 옮겨졌는데(이 파일 위쪽 주석이 그 이관을 적는다)
-    목록은 4파일에 멈춰 있었다. 그러면 그 파일의 절차 헤딩이 **어느 축에도 안 잡혀**,
-    중복·이동이 조용히 통과한다. 이 함수가 「어디에 있는가」의 유일한 근거이므로 목록이
-    좁으면 그 밖은 존재하지 않는 것과 같다."""
+    **스캔 대상은 절차가 이관된 자리를 따라간다** — 목록이 이관을 따라가지 못하면 그 파일의
+    절차 헤딩이 **어느 축에도 안 잡혀**, 중복·이동이 조용히 통과한다. 이 함수가 「어디에 있는가」의
+    유일한 근거이므로 목록이 좁으면 그 밖은 존재하지 않는 것과 같다."""
     result = {}
     sources = {
         "SKILL.md": read(SKILL_MD),
@@ -457,7 +452,6 @@ def build_letter_file_map():
         "references/procedures-content.md": read(
             os.path.join(SKILL_DIR, "references", "procedures-content.md")),
         "references/procedures-ops.md": read(OPS_MD),
-        "references/lookup-rules.md": read(LOOKUP_RULES_MD),
     }
     for fname, text in sources.items():
         for hm in PROC_HEADING_RX.finditer(text):
@@ -474,9 +468,8 @@ def check_prose_pointers(skill_text, schema_text):
     안 걸려 차기 재분할 시 조용히 재발한다(회귀 가드 공백).
 
     보수적 스코프(오탐 방지): 파일명 AND 라벨이 '인접'(의·따옴표·괄호·대시로 직접 연결)할 때만
-    검사한다. 한 줄에 여러 (라벨→파일)이 있어도 각 인접쌍만 대조하므로, `K 2(references/lookup-rules.md)·
-    B-1 1(references/procedures-content.md)`처럼 서로 다른 귀속이 한 줄에 있어도 B만 content로
-    대조하고 K는 (procedures-*.md가 아니라 references/lookup-rules.md 귀속이라) 건드리지 않는다. base 문자 단위 대조
+    검사한다. 한 줄에 여러 (라벨→파일)이 있어도 각 인접쌍만 대조하므로, 서로 다른 귀속이 한 줄에
+    있어도 procedures-*.md 에 인접한 라벨만 대조한다. base 문자 단위 대조
     — 하위라벨(B-1 1의 '1 1')까지 검증하진 않는다(재분할 파일 오귀속 포착이 목적).
     반환: (불일치 목록, 대조 항목 수)."""
     letter_file = build_letter_file_map()
@@ -908,7 +901,6 @@ TRIGGER_ALLOWLIST = [
     (SCHEMA_BUDGET_MD, ["7. **기록**: `log.md`에", "(사유: 임계 초과)`"], "log 기록 형식의 `(사유: 임계 초과)` 예시 문자열"),
     (SCHEMA_LINT_MD, ["19. **log 아카이브 인덱스 정합**", "영영 아카이브로 넘어가지 않고"], "§7-19 검사 항목 본문 — 오배치 항목이 아카이브로 「넘어가지 않는다」는 결과 서술이지 예산 조건이 아니다"),
     (CONTENT_MD, ["5. **델타 신뢰도 점검**", "30일 초과면"], "허브 `updated` 30일 초과 = ingest 델타 신뢰도 축"),
-    (LOOKUP_RULES_MD, ['**"범용 패턴"(`30_knowledge/patterns/`)을 먼저 보고**', "프로젝트 경계를 넘는 지식이라"], "절차 K 조회 순서 — 「경계를 넘는 지식」"),
     (LINT_PY, "#   기존 `[^\\n]*`는 줄바꿈을 못 넘어", "펜스 정규식 구현 주석 — 예산 무관"),
     (LINT_PY, ["#  「최근 변경」 절만 훑으므로 여기 놓인 항목은", "영영 아카이브로 넘어가지 않고"],
      "아카이브 인덱스 오배치 검사 주석 — 롤오버가 훑는 절 범위 서술이지 예산 조건이 아니다"),
@@ -980,7 +972,7 @@ TRIGGER_ALLOWLIST = [
 #  ⚠ 정당한 추가면 여기를 올리는 것이 정답이다. 숫자를 맞추려고 면제를 지우면 안 된다 —
 #   그 자리는 다시 위반으로 잡혀 결국 조건어 문면을 피해 쓰게 되고, 그것이 T11이 금지한
 #   "회피"다(면제는 기록이 남지만 회피는 아무 흔적도 남기지 않는다).
-TRIGGER_ALLOWLIST_BASELINE = 74   # 결정 큐·결정 이력 타입 폐지로 면제 6건이 소멸했다(2026-11-11 — 큐 기록 규약의 입도·잔량 임계 2 · lint.py 큐 형식 접두 주석 1 · rollover_target 결정 목표 근거 1 · 결정 항목 구간 docstring 1 · dec-fenced 골든 서술 1). 그 전은 80 — 작업 규약 타입 폐지로 그 예산 계층·초과 케이스·스택 공통 지식 라우팅 면제 8건이 소멸했다(2026-10-20). 그 전은 88 — B-1a 의 「14일·5파일」 축소 조건을 파일 추가·삭제·이름변경 트리거로 바꾸며 그 개수 조건 면제 1건이
+TRIGGER_ALLOWLIST_BASELINE = 73   # 코드 세션 자동 조회 절차 폐지로 그 조회 순서 면제 1건이 소멸했다(2026-11-19). 그 전은 74 — 결정 큐·결정 이력 타입 폐지로 면제 6건이 소멸했다(2026-11-11 — 큐 기록 규약의 입도·잔량 임계 2 · lint.py 큐 형식 접두 주석 1 · rollover_target 결정 목표 근거 1 · 결정 항목 구간 docstring 1 · dec-fenced 골든 서술 1). 그 전은 80 — 작업 규약 타입 폐지로 그 예산 계층·초과 케이스·스택 공통 지식 라우팅 면제 8건이 소멸했다(2026-10-20). 그 전은 88 — B-1a 의 「14일·5파일」 축소 조건을 파일 추가·삭제·이름변경 트리거로 바꾸며 그 개수 조건 면제 1건이
                                   #  소멸했다(2026-10-18 위키 경량화). 그 전은 89 — F-1 번호 목록이 schema-lint §7 로 합쳐지며 F-1 라벨 면제 2건(§7-14·§7-32)이
                                   #  소멸했다(v1.319.0 — 같은 조건어는 §7 본문 쪽 면제가 계속 덮는다).
                                   #  그 전은 91(schema §5 2b 를 절차 B-1 5 포인터로 줄이며 -1, v1.317.0), 그 전은 92(convention을 예산 신호 계층에서 빼며 -4 +6), 그 전은 90(큐 4종 폐기 직후).
