@@ -71,7 +71,7 @@ def main() -> int:
     impl = read(SKILLS / "implement/SKILL.md")
     plan = read(SKILLS / "plan/SKILL.md")
     rules = read(SKILLS / RULES)
-    lookup = read(SKILLS / "llm-wiki/references/lookup-rules.md")
+    debug = read(SKILLS / "karina-systematic-debugging/SKILL.md")
     reviewer = read(AGENTS / "completion-reviewer.md")
     write_sec = section(rules, "쓰기")
     read_sec = section(rules, "읽기")
@@ -94,8 +94,8 @@ def main() -> int:
          "karina:plan" in read_sec and SINK in read_sec),
         (f"5. plan 이 {RULES} 와 {SINK} 를 가리킨다",
          any_line(plan, RULES, SINK)),
-        (f"6. 디버깅 조회(lookup-rules)가 {SINK} 를 본다",
-         any_line(lookup, SINK, RULES)),
+        (f"6. 디버깅 2-A 가 {SINK} 를 {RULES} 대로 본다",
+         any_line(debug, SINK, RULES)),
         (f"7. 완료 리뷰가 2회 기록을 {SINK} 와 대조",
          any_line(reviewer, SINK, "2회")),
         (f"8. implement 가 완료 시 {DRULES} 를 따르라고 지시",
