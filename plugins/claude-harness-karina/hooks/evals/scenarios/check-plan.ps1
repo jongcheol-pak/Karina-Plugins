@@ -410,6 +410,26 @@ $ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY)" + $cpScrTai
 Set-EvidenceAgents $ev.dir "# AGENTS.md`n`n- **Build**: ``run```n"
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: Verify 줄이 없는 레포의 미촬영은 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$cpBatch = "문서: 화면 일괄 판정 — T1`n`n"
+$ev = New-EvidenceRepo @($cpOk, ($cpBatch + "화면: T1 HEAD 참" + $cpScrTail))
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 일괄 커밋의 화면: T1 HEAD 참 지목 줄을 T1 판정으로 받는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$ev = New-EvidenceRepo @($cpOk, ($cpBatch + "화면: T1 HEAD 거짓" + $cpScrTail))
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 일괄 커밋의 지목 거짓뿐이면 screen-false 로 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-false T1'
+$ev = New-EvidenceRepo @($cpOk, ($cpBatch + "화면: T1 미촬영(HUMAN-VERIFY) · 사유 Launch 가 세 번 실패" + $cpScrTail))
+Set-EvidenceAgents $ev.dir $cpVerifyOn
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 일괄 커밋의 사유 단 지목 미촬영은 note 로 낸다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note screen-unshot-reason T1'
+$ev = New-EvidenceRepo @($cpOk + "`n화면: T2 HEAD 참" + $cpScrTail)
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: T1 커밋 안의 화면: T2 지목 줄은 T1 판정이 아니다" -R $r -ExpectExit 1 -ExpectContains 'no-screen-verdict T1'
+$ev = New-EvidenceRepo @($cpOk, ($cpBatch + "화면: T10 HEAD 참" + $cpScrTail))
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 화면: T10 지목 줄은 T1 판정이 아니다" -R $r -ExpectExit 1 -ExpectContains 'no-screen-verdict T1'
+$ev = New-EvidenceRepo @(($cpBatch + "화면: T1 HEAD 참" + $cpScrTail))
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 지목 줄은 T1 완료 커밋을 대신하지 않는다" -R $r -ExpectExit 1 -ExpectContains 'no-task-commit T1'
 }
 
 if (Test-ScenarioUnit 4) {

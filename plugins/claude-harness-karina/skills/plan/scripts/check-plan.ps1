@@ -48,6 +48,8 @@
 #   no-red-evidence T<N>         Files 줄에 (RED) 가 있는데 어느 본문에도 「RED:」·「RED(구현 전):」·「RED(사후 …):」 줄이 없음
 #                                (「RED: 미확인 — <사유>」 만 있으면 위반 대신 note red-unverified T<N>)
 #   no-screen-verdict T<N>       「- **화면**:」 줄이 있는 task 인데 어느 본문에도 「화면: HEAD 참|거짓」·「화면: 미촬영(HUMAN-VERIFY)」 줄이 없음
+#                                (그 task 의 커밋 본문 · 또는 BASE..HEAD 어느 커밋이든 본문의 지목 줄 「화면: T<N> HEAD …」·「화면: T<N> 미촬영…」 —
+#                                지목 줄은 아래 화면 셋에만 쓰이고 no-task-commit·no-commit-evidence 를 대신하지 않는다)
 #   screen-false T<N>            화면 판정이 「HEAD 거짓」 뿐임(「HEAD 참」 이 하나라도 있으면 통과)
 #   screen-unshot T<N>           판정이 미촬영뿐이고 AGENTS.md(위 Plan check 와 같은 탐색)의 「- **Verify (앱 조작)**:」 값이
 #                                「없음」 이 아님 — 미촬영 줄에 「· 사유 <…>」 칸이 있으면 위반 대신 note screen-unshot-reason T<N>
@@ -206,12 +208,23 @@ if ($Base) {
     $versionRx = '^\s*' + (Get-Text @(0xC124, 0xC815)) + '\s*:\s*v(\d+\.\d+\.\d+)\s*' + [char]0x2014    # 설정: v<버전> —
     $taskBlocks = @(Get-TaskBlocks)
     $lastText = if ($taskBlocks.Count) { (@($taskBlocks[-1].Lines | ForEach-Object { $_.Text }) -join "`n") } else { '' }
+    $taggedRx = $screenHead + 'T(\d+)\s+(.*)$'
+    $screenWord = (Get-Text @(0xD654, 0xBA74)) + ': '
     $commits = @()
     foreach ($msg in ($logText -split "`0")) {
         $msg = $msg.Trim()
         if (-not $msg) { continue }
         $parts = $msg -split "`n", 2
         $body = if ($parts.Count -gt 1) { $parts[1] } else { '' }
+        foreach ($tm in [regex]::Matches($body, $taggedRx)) {
+            $line = $screenWord + $tm.Groups[2].Value.TrimEnd()
+            $tagUnshot = [regex]::Match($line, $unshotRx)
+            $commits += [pscustomobject]@{
+                Id = [int]$tm.Groups[1].Value; Evidence = $false; Red = $false; RedUnverified = $false; Tagged = $true
+                ScreenTrue = [regex]::IsMatch($line, $screenTrueRx); ScreenFalse = [regex]::IsMatch($line, $screenFalseRx)
+                Unshot = $tagUnshot.Success; UnshotReason = ($tagUnshot.Success -and $tagUnshot.Groups[1].Value -match $reasonRx)
+            }
+        }
         $m = [regex]::Match($parts[0], $titleRx)
         $v = [regex]::Match($parts[0], $versionRx)
         if ($m.Success) { $id = [int]$m.Groups[1].Value }
@@ -219,7 +232,7 @@ if ($Base) {
         else { continue }
         $unshots = @([regex]::Matches($body, $unshotRx) | ForEach-Object { $_.Groups[1].Value })
         $commits += [pscustomobject]@{
-            Id = $id; Evidence = [regex]::IsMatch($body, $evidenceRx)
+            Id = $id; Evidence = [regex]::IsMatch($body, $evidenceRx); Tagged = $false
             Red = [regex]::IsMatch($body, $redRx); RedUnverified = [regex]::IsMatch($body, $redUnRx)
             ScreenTrue = [regex]::IsMatch($body, $screenTrueRx); ScreenFalse = [regex]::IsMatch($body, $screenFalseRx)
             Unshot = [bool]$unshots.Count; UnshotReason = [bool]@($unshots | Where-Object { $_ -match $reasonRx }).Count
@@ -234,7 +247,8 @@ if ($Base) {
         if (-not $items.Count) { continue }
         if (@($items | Where-Object { $_.Text -notmatch '^- \[[xX]\]' }).Count) { continue }
         if (-not @($items | Where-Object { -not $_.Text.Contains($unneeded) }).Count) { continue }
-        $mine = @($commits | Where-Object { $_.Id -eq $b.Id })
+        $screens = @($commits | Where-Object { $_.Id -eq $b.Id })
+        $mine = @($screens | Where-Object { -not $_.Tagged })
         if (-not $mine.Count) { Add-Problem $b.N ('no-task-commit T' + $b.Id) }
         elseif (-not @($mine | Where-Object { $_.Evidence }).Count) { Add-Problem $b.N ('no-commit-evidence T' + $b.Id) }
         else {
@@ -245,11 +259,11 @@ if ($Base) {
                 else { Add-Problem $b.N ('no-red-evidence ' + $tag) }
             }
             $hasScreen = [bool]@($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabelBase }).Count
-            if ($hasScreen -and -not @($mine | Where-Object { $_.ScreenTrue }).Count) {
-                if (@($mine | Where-Object { $_.ScreenFalse }).Count) { Add-Problem $b.N ('screen-false ' + $tag) }
-                elseif (-not @($mine | Where-Object { $_.Unshot }).Count) { Add-Problem $b.N ('no-screen-verdict ' + $tag) }
+            if ($hasScreen -and -not @($screens | Where-Object { $_.ScreenTrue }).Count) {
+                if (@($screens | Where-Object { $_.ScreenFalse }).Count) { Add-Problem $b.N ('screen-false ' + $tag) }
+                elseif (-not @($screens | Where-Object { $_.Unshot }).Count) { Add-Problem $b.N ('no-screen-verdict ' + $tag) }
                 elseif ($verifySkill) {
-                    if (@($mine | Where-Object { $_.UnshotReason }).Count) { $notes.Add('screen-unshot-reason ' + $tag) }
+                    if (@($screens | Where-Object { $_.UnshotReason }).Count) { $notes.Add('screen-unshot-reason ' + $tag) }
                     else { Add-Problem $b.N ('screen-unshot ' + $tag) }
                 }
             }
