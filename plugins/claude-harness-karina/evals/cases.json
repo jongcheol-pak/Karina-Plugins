@@ -38,6 +38,18 @@
     ]
   },
   {
+    "id": "harness-plan-draft-excluded",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "plans/drafts/"
+    ]
+  },
+  {
     "id": "pointer-dead-section",
     "checker": "harness",
     "fixture": "minimal-repo",
