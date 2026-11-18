@@ -2,6 +2,9 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-18] 응답 언어 Stop 재작성(v3.34.0) — 기각: Stop 에서 `decision:"block"` 으로 막기 — `additionalContext` 도 대화를 이어 같은 turn 에 다시 쓰게 하고, 디스패처가 그 밖 필드를 버린다(사용자 답 「additionalContext」)
+  - 범위 밖: 서브에이전트 응답(SubagentStop) 언어 검사 — 사용자에게 가는 것은 메인이 다시 쓴 응답이다 · 영어로 대화하는 세션의 끄는 스위치 — 응답 언어는 한글 고정(`reply-language-rationale.md` §1)
+
 - [2026-11-17] 기준선 촬영 시점 보장(v3.33.1) — 기각: `implement/SKILL.md` 에 기준선 촬영 문장 추가 — 11,943/12,000자이고, 계획의 첫 하위 항목(`T<N>-1`)과 `check-plan` `screen-baseline` 이 같은 시점을 더 강하게 보장한다
   - 보류: `agents/plan-reviewer.md` 의 기준선 일치 점검 보강 — 5,994/6,000자 · 계획 리뷰가 실제로 놓치는지 관측한 뒤 판단한다
 
