@@ -2,12 +2,6 @@
 
 > karina 하니스 플러그인 — 모노레포 jongcheol-pak/Karina-Plugins 의 plugins/claude-harness-karina/ 가 **하니스 루트**다(세션도 이 폴더에서 연다 — 레포 루트에서 열면 하니스 판정 hook 이 꺼진다). 아래 **워킹트리 정적 검증**이 `karina:implement` 의 빌드·테스트 단계다.
 
-## 위키
-
-- **프로젝트 페이지**: 20_projects/personal/claude-harness-karina.md (LLM WIKI vault)
-- 프로젝트 성격·기술 스택·구조 개요·기능 목록은 **위키가 정본**이다.
-- 작업 함정: 레포 `docs/conventions.md` (규약 `skills/REPO-CONVENTIONS.md`)
-
 ## Build & Test
 
 모든 명령은 **하니스 루트(plugins/claude-harness-karina/)에서** 실행한다 — 무엇을 대조하는지·함정·기준선은 `docs/harness-conventions.md` 「검증 명령 상세」.
@@ -22,7 +16,7 @@
   ```
 - **Plan check**: `python evals/check-harness-consistency.py --plan` — 계획 단계 검사(`karina:plan` Step 6 의 `check-plan` 이 승인 전에 돌린다)
 - **Comment (보존)**: `.` · 경로: `skills/plan/scripts/check-plan.ps1 evals/check-harness-consistency.py evals/run-evals.py skills/llm-wiki/evals/check_consistency.py skills/chain-plan/scripts/run-verify.py skills/chain-plan/scripts/wait-worker.py skills/record-project-fact/scripts/relocate-agents.py skills/temp-cleanup/scripts/temp_cleanup.py skills/worktree-cleanup/scripts/worktree_cleanup.py`
-- **조건부 검증**: 변경 파일 패턴별 명령(합집합)과 `[면제 ⑤]` 대상은 `docs/verification-mapping.md` 「검증 매핑 (task 검증 선택)」 — 「줄바꿈 정합」 축은 모든 task. 골든 부분 실행 규칙은 `docs/harness-conventions.md` 「골든 부분 실행의 판정 자격」 절만 읽는다(`awk '/^(```|~~~)/{g=!g} !g&&/^## /{if(f)exit; if(index($0,"## 골든 부분 실행의 판정 자격")==1)f=1} f' docs/harness-conventions.md` — 펜스 안 `## ` 를 세지 않고 다음 절 헤딩을 딸려 내지 않는다 · `skills/WIKI.md`「절 단위 읽기」).
+- **조건부 검증**: 변경 파일 패턴별 명령(합집합)과 `[면제 ⑤]` 대상은 `docs/verification-mapping.md` 「검증 매핑 (task 검증 선택)」 — 「줄바꿈 정합」 축은 모든 task. 골든 부분 실행 규칙은 `docs/harness-conventions.md` 「골든 부분 실행의 판정 자격」 절만 읽는다(`awk '/^(```|~~~)/{g=!g} !g&&/^## /{if(f)exit; if(index($0,"## 골든 부분 실행의 판정 자격")==1)f=1} f' docs/harness-conventions.md` — 펜스 안 `## ` 를 세지 않고 다음 절 헤딩을 딸려 내지 않는다 · `skills/REPO-CONVENTIONS.md`「읽기」).
 - **통합 검증**: `pwsh ./validate.ps1` — ⚠ **설치 캐시**를 보므로 재설치 후에만 반영된다.
 - **Release**: 버전 정본은 `plugin.json`(`README.md` 상단 `**버전**:` 은 파생) · 회차 끝 버전 커밋 → push 전 확인 → push → 사용 PC 에서 `/plugin update` · 버전 대상 여부는 마지막 `plugin.json` 변경 커밋 뒤 런타임 폴더(`.claude-plugin agents evals hooks scripts skills`) 변경으로 판정 · 태그·GitHub 릴리즈는 회차 끝에 자동으로 만들지 않고 사용자가 요청할 때만 만든다(`karina-v{버전}` · push 된 버전 커밋 대상). 정본은 `docs/harness-conventions.md` 「Release (버전 커밋)」.
 - **⚠ 검증 배치에 `Remove-Item` 인라인 금지** — 도구 경로 보호가 오차단한다(회피법은 정본).
@@ -48,7 +42,7 @@
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext, **차단은 `exit 2` 하나**(hook 넷) · 우회 변수 둘 · `guard-write` 게이트 2종의 정규식 공유 — hook 수정 전 `docs/harness-conventions.md` 「자격증명 취급」·「`guard-write`의 PLAN-EXEMPT 면제 경로」와 `scripts/rules/write-gate-rationale.md` 를 읽는다.
 - **⚠ `llm-wiki` 의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md` 「절대 금지」 의 「기록의 해석 기준」 조항(스킬 자기 큐·지식베이스 기록 면제)과 함께 확인**한다(검사기 밖 — 정본 `docs/harness-conventions.md` 「llm-wiki ↔ 글로벌 지침 결합」).
 - **SKILL 문서**: 형식은 `skills/AUTHORING.md`, **설계 원칙은 `skills/DESIGN.md` 가 정본**이다.
-- **위키 연동**: `skills/WIKI.md` 가 정본.
+- **작업 함정**: 레포 `docs/conventions.md` (규약 `skills/REPO-CONVENTIONS.md`).
 - **README.md 갱신 규약**: changelog 기재 **금지**(현재 기능 설명만) · 버전 표기는 상단 1곳. 정본은 `docs/harness-conventions.md` 「README.md 갱신 규약」.
 - **규약 개정**: hook·스킬·규약 수정 전 `docs/harness-conventions.md` 「개정·개선 전 영향 검토 (3축)」·「규약 개정 요청의 취급」을 따른다.
 

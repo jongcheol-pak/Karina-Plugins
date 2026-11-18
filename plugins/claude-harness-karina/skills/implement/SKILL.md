@@ -125,5 +125,4 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 - `references/final-review.md` — 회차 끝 리뷰 절차
 - `references/report-format.md` — 회차 끝 보고 서식
 - `references/screen-scenarios.md` — 화면 시나리오 실행
-- `../WIKI.md` — 위키를 언제 읽고 언제 쓰는가
 - `../DESIGN.md` — 이 스킬의 문면이 따르는 설계 원칙

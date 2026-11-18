@@ -688,7 +688,7 @@ BUDGET_TARGETS = [
     ("`SKILL.md`", ["skills/*/SKILL.md"]),
     ("단일 `references/*.md`", ["skills/*/references/*.md"]),
     ("에이전트 정의 `agents/*.md`", ["agents/*.md"]),
-    # 글롭 하나로 잡는다 — 파일을 이름으로 열거하면 `WIKI.md` 처럼 나중에 온 것이
+    # 글롭 하나로 잡는다 — 파일을 이름으로 열거하면 나중에 온 것이
     #  어느 행에도 안 걸린 채 상한 없이 자란다.
     ("스킬 트리 최상위 `skills/*.md`", ["skills/*.md"]),
 ]
