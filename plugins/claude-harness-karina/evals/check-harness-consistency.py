@@ -115,13 +115,13 @@ def _md_files():
 _POINTER_RX = re.compile(r"`([A-Za-z0-9_./-]+\.md)`(?:[^「\n]{0,12})「([^」\n]{2,120})」")
 # 제외 정책 — 「고칠 수 없는 기록 문서」 술어 하나와 축 전용 셋. 근거는 `harness-consistency-rationale.md` §6
 #   기록 문서(이력 plan·아카이브·결정 이력·로컬 전용)는 세 사용처(포인터 출처·문서 표기 축·폐기 식별자)가 같은 술어를 쓴다.
-_ARCHIVED_RX = re.compile(r"^docs/(plans/\d{4}-\d{2}-\d{2}-|\.agents-presplit/)")
+_ARCHIVED_RX = re.compile(r"^(docs/(plans/\d{4}-\d{2}-\d{2}-|\.agents-presplit/)|plans/drafts/)")
 _LOCAL_ONLY = {"plan.md", "notes.md"}
 _DECISION_LOGS = {"docs/decisions.md", "docs/decisions-archive.md"}
 
 
 def _is_record_doc(rel):
-    """그 시점의 기록이라 갱신 대상이 아닌 문서인가 — 과거 plan·문서 아카이브·결정 이력·로컬 노트."""
+    """그 시점의 기록이라 갱신 대상이 아닌 문서인가 — 과거 plan·문서 아카이브·결정 이력·로컬 노트·계획 초안."""
     return bool(_ARCHIVED_RX.match(rel)) or rel in _LOCAL_ONLY or rel in _DECISION_LOGS
 
 
