@@ -542,6 +542,7 @@ if ($gitOk) {
         Assert-Case -Name "commit-git 상한: 새 주석 검사는 git 이 끝나기를 기다리지 않고 상한에서 끊는다" -R $r -ExpectExit 2 -ExpectContains 'waited=False'
         $r = Invoke-HookSlowGit $wcsJson @{} 0
         Assert-Case -Name "commit-git 상한: git 이 멈추면 기본 상한(20초)에서 끊어 hook timeout(60초) 전에 차단한다" -R $r -ExpectExit 2 -ExpectContains 'waited=False'
+        Assert-Case -Name "commit-git 상한: 기본 상한은 20초다(hook timeout 60초 안에 git 이전 구간·기동이 들어갈 여유)" -R $r -ExpectExit 2 -ExpectContains '시간 상한(20000ms)'
         Assert-Case -Name "commit-git 상한: 한 hook 에서 git 이 한 번 멈추면 다른 검사는 git 을 다시 띄우지 않는다(멈춘 git 1회)" -R $r -ExpectExit 2 -ExpectContains 'gitcalls=1'
     }
     $wcsNoRepo = Join-Path $work 'wcs-norepo'; New-Item -ItemType Directory $wcsNoRepo -Force | Out-Null
