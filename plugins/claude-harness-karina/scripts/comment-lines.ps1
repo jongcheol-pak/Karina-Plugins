@@ -88,6 +88,7 @@ function Get-CommentStringLineFlags([string]$Path, [string[]]$Lines) {
                 if ($line.StartsWith($open)) { $open = $null }
                 continue
             }
+            if ($line.Contains('\' + $open[0])) { $lost = $true; break }
             $close = $line.IndexOf($open)
             if ($close -lt 0) { continue }
             $pos = $close + 3
@@ -109,6 +110,7 @@ function Get-CommentStringLineFlags([string]$Path, [string[]]$Lines) {
             if ($ch -ne "'" -and $ch -ne '"') { $pos++; continue }
             if ($isPy -and $pos + 2 -lt $line.Length -and $line[$pos + 1] -eq $ch -and $line[$pos + 2] -eq $ch) {
                 $triple = [string]$ch * 3
+                if ($line.IndexOf('\' + $ch, $pos + 3) -ge 0) { $lost = $true; break }
                 $close = $line.IndexOf($triple, $pos + 3)
                 if ($close -lt 0) { $open = $triple; break }
                 $pos = $close + 3
