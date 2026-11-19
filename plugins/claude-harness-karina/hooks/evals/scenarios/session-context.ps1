@@ -328,12 +328,14 @@ if (Test-HookSelected @('session-context')) {
     New-Item -ItemType Directory -Path $isoVault -Force | Out-Null
     (@{ vault_path = ($isoVault -replace '\\', '/') } | ConvertTo-Json) | Set-Content -Encoding UTF8 (Join-Path $isoV '.claude/llm-wiki-config.json')
 
-    $env:USERPROFILE = $isoV
-    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
-    Assert-Case -Name "session-context: vault 설정 홈 startup 에도 위키 줄 없음 (SC18n)" -R $r -ExpectExit 0 -ExpectContains '미완료 2' -ExpectNotContains '위키'
-    & $scFire 'sc18m' 'karina:implement'
-    $rNw = & $scCompact $scPlanless 'sc18m'
-    Assert-Case -Name "session-context: vault 설정 홈 implement compact 에도 위키 줄 없음 (SC18m)" -R $rNw -ExpectExit 0 -ExpectContains '트리거는 둘이다' -ExpectNotContains '위키'
+    try {
+        $env:USERPROFILE = $isoV
+        $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scProj } | ConvertTo-Json -Compress)
+        Assert-Case -Name "session-context: vault 설정 홈 startup 에도 위키 줄 없음 (SC18n)" -R $r -ExpectExit 0 -ExpectContains '미완료 2' -ExpectNotContains '위키'
+        & $scFire 'sc18m' 'karina:implement'
+        $rNw = & $scCompact $scPlanless 'sc18m'
+        Assert-Case -Name "session-context: vault 설정 홈 implement compact 에도 위키 줄 없음 (SC18m)" -R $rNw -ExpectExit 0 -ExpectContains '트리거는 둘이다' -ExpectNotContains '위키'
+    } finally { $env:USERPROFILE = $iso }
 
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scNoT } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact + task 0개 plan에도 계획 지시 (SC31)" -R $r -ExpectExit 0 -ExpectContains 'plan/SKILL.md'
@@ -504,8 +506,6 @@ if (Test-HookSelected @('session-context')) {
     @('# SC_VAULT_ORDER_MARKER Guide', '본문') | Set-Content -Encoding UTF8 (Join-Path $scVOnly 'AGENTS.md')
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'fork'; cwd = $scVOnly } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: fork도 AGENTS 목차 주입 (SC22c)" -R $r -ExpectExit 0 -ExpectContains 'SC_VAULT_ORDER_MARKER'
-
-    $env:USERPROFILE = $iso
 
     # SC44~SC44n: Deferred 대장(docs/plans/deferred.md) 최고령 「마지막 판정일」 주입 (v1.221.0 T1).
     #   ⚠ **기대는 날짜부로 잰다** — 일수는 매일 늘어 픽스처 골든이 다음 날 깨진다.
@@ -709,11 +709,7 @@ if (Test-HookSelected @('session-context')) {
         Set-Content -LiteralPath (Join-Path $md 'sc-ttl-new') -Value ''
         (Get-Item (Join-Path $md 'sc-ttl-new')).LastWriteTime = (Get-Date).AddDays(-3)
     }
-    $scMkSaved = $env:USERPROFILE
-    try {
-        $env:USERPROFILE = $iso
-        $null = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scMkProj } | ConvertTo-Json -Compress)
-    } finally { $env:USERPROFILE = $scMkSaved }
+    $null = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scMkProj } | ConvertTo-Json -Compress)
     foreach ($d in $scMkDirs) {
         $md = Join-Path $iso ('.claude/.state/' + $d)
         $oldGone = -not (Test-Path -LiteralPath (Join-Path $md 'sc-ttl-old'))
@@ -759,9 +755,9 @@ if (Test-HookSelected @('session-context')) {
     foreach ($c in $scTsCases) { $c.Path = New-ScTsItem -Rel $c.Rel -DaysAgo $c.Days -Dir:$c.Dir }
     # 하위 폴더를 만든 뒤 앱 폴더의 시각이 갱신되므로 verify\notes 자체는 오래된 것으로 되돌려도 깊이 2 만 재는지 본다.
     (Get-Item -LiteralPath (Join-Path $scTsRoot 'verify\notes')).LastWriteTime = (Get-Date).AddDays(-60)
-    $scTsSaved = @{ TEMP = $env:TEMP; TMP = $env:TMP; TMPDIR = $env:TMPDIR; P = $env:USERPROFILE; B = $env:KARINA_TEMP_SWEEP_BUDGET_MS }
+    $scTsSaved = @{ TEMP = $env:TEMP; TMP = $env:TMP; TMPDIR = $env:TMPDIR; B = $env:KARINA_TEMP_SWEEP_BUDGET_MS }
     try {
-        $env:TEMP = $scTsTmp; $env:TMP = $scTsTmp; $env:TMPDIR = $null; $env:USERPROFILE = $iso; $env:KARINA_TEMP_SWEEP_BUDGET_MS = $null
+        $env:TEMP = $scTsTmp; $env:TMP = $scTsTmp; $env:TMPDIR = $null; $env:KARINA_TEMP_SWEEP_BUDGET_MS = $null
         $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scTsProj } | ConvertTo-Json -Compress)
         Assert-Case -Name "session-context: 임시 폴더 정리가 있어도 컨텍스트 출력은 그대로" -R $r -ExpectExit 0 -ExpectContains '미완료 1'
         foreach ($c in $scTsCases) {
@@ -786,13 +782,13 @@ if (Test-HookSelected @('session-context')) {
         Assert-Case -Name "session-context: karina-plugin 임시 정리 — TMPDIR 가 TEMP 와 다르면 TMPDIR 아래를 걷고 TEMP 아래는 둔다" -R @{ code = 0; out = "alt=$(Test-Path -LiteralPath $scTsAltOld) temp=$(Test-Path -LiteralPath $scTsTempOld)" } -ExpectExit 0 -ExpectContains 'alt=False temp=True'
         Remove-Item -Recurse -Force $scTsAlt -ErrorAction SilentlyContinue
     } finally {
-        $env:TEMP = $scTsSaved.TEMP; $env:TMP = $scTsSaved.TMP; $env:TMPDIR = $scTsSaved.TMPDIR; $env:USERPROFILE = $scTsSaved.P; $env:KARINA_TEMP_SWEEP_BUDGET_MS = $scTsSaved.B
+        $env:TEMP = $scTsSaved.TEMP; $env:TMP = $scTsSaved.TMP; $env:TMPDIR = $scTsSaved.TMPDIR; $env:KARINA_TEMP_SWEEP_BUDGET_MS = $scTsSaved.B
     }
     Remove-Item -Recurse -Force $scTsProj, $scTsTmp -ErrorAction SilentlyContinue
 
     # ---- compact 직후 작업 시작 시각 재주입 (record-work-start 의 상태 파일) ----
     # 상태 파일은 record-work-start 가 sid 를 [^A-Za-z0-9._-] → _ 로 바꿔 쓴다 — 같은 식으로 찾는지
-    #   특수문자 sid 로 잰다. 위 블록과 같은 이유로 USERPROFILE 을 $iso 로 되돌린다.
+    #   특수문자 sid 로 잰다.
     $scWsProj = Join-Path $work 'sc-ws-proj'
     New-Item -ItemType Directory $scWsProj -Force | Out-Null
     $scWsDir = Join-Path $iso '.claude/.state/work-start'
@@ -800,79 +796,71 @@ if (Test-HookSelected @('session-context')) {
     '{"plan":"2026-10-16 09:00","chain-plan":"2026-10-16 09:30"}' | Set-Content -LiteralPath (Join-Path $scWsDir 'sc-ws1.json') -Encoding UTF8
     '{"plan":"2026-10-16 08:15"}' | Set-Content -LiteralPath (Join-Path $scWsDir 'sc-ws2.json') -Encoding UTF8
     '{"plan":"2026-10-16 07:45"}' | Set-Content -LiteralPath (Join-Path $scWsDir 'sc_ws3_x.json') -Encoding UTF8
-    $scWsSaved = $env:USERPROFILE
-    try {
-        $env:USERPROFILE = $iso
-        $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scWsProj; session_id = 'sc-ws1' } | ConvertTo-Json -Compress)
-        Assert-Case -Name "session-context: compact 직후 plan·chain-plan 시작 시각을 다시 주입한다" -R $r -ExpectExit 0 -ExpectContains '[karina 작업 시작] (압축 전 기록) karina:plan 2026-10-16 09:00 · karina:chain-plan 2026-10-16 09:30'
-        $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scWsProj; session_id = 'sc-ws2' } | ConvertTo-Json -Compress)
-        Assert-Case -Name "session-context: compact 재주입은 있는 키만 싣는다" -R $r -ExpectExit 0 -ExpectContains '[karina 작업 시작] (압축 전 기록) karina:plan 2026-10-16 08:15' -ExpectNotContains 'karina:chain-plan 20'
-        $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scWsProj; session_id = 'sc/ws3:x' } | ConvertTo-Json -Compress)
-        Assert-Case -Name "session-context: compact 재주입이 특수문자 sid 를 record-work-start 와 같은 식으로 찾는다" -R $r -ExpectExit 0 -ExpectContains 'karina:plan 2026-10-16 07:45'
-        $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scWsProj; session_id = 'sc-ws1' } | ConvertTo-Json -Compress)
-        Assert-Case -Name "session-context: startup 에는 작업 시작 줄을 싣지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[karina 작업 시작]'
-        $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scWsProj; session_id = 'sc-ws-none' } | ConvertTo-Json -Compress)
-        Assert-Case -Name "session-context: 상태 파일이 없으면 compact 에도 작업 시작 줄이 없다" -R $r -ExpectExit 0 -ExpectNotContains '[karina 작업 시작]'
-    } finally { $env:USERPROFILE = $scWsSaved }
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scWsProj; session_id = 'sc-ws1' } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact 직후 plan·chain-plan 시작 시각을 다시 주입한다" -R $r -ExpectExit 0 -ExpectContains '[karina 작업 시작] (압축 전 기록) karina:plan 2026-10-16 09:00 · karina:chain-plan 2026-10-16 09:30'
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scWsProj; session_id = 'sc-ws2' } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact 재주입은 있는 키만 싣는다" -R $r -ExpectExit 0 -ExpectContains '[karina 작업 시작] (압축 전 기록) karina:plan 2026-10-16 08:15' -ExpectNotContains 'karina:chain-plan 20'
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scWsProj; session_id = 'sc/ws3:x' } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: compact 재주입이 특수문자 sid 를 record-work-start 와 같은 식으로 찾는다" -R $r -ExpectExit 0 -ExpectContains 'karina:plan 2026-10-16 07:45'
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $scWsProj; session_id = 'sc-ws1' } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: startup 에는 작업 시작 줄을 싣지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[karina 작업 시작]'
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = $scWsProj; session_id = 'sc-ws-none' } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: 상태 파일이 없으면 compact 에도 작업 시작 줄이 없다" -R $r -ExpectExit 0 -ExpectNotContains '[karina 작업 시작]'
     Remove-Item -Recurse -Force $scWsProj, $scWsDir -ErrorAction SilentlyContinue
 
     # ---- [회차 4 T1] plan 상위 탐색 · 체크박스 불릿 집합 ----
     # guard-write 와 같은 후보(plan.md·PLAN.md·docs/plan.md)를 위로 찾되 `.git`(폴더·파일)에서 멈춘다 — 근거는
     #   `scripts/rules/session-context-rationale.md` 의 「§5 ---- plan 탐색: 상위 탐색과 레포 경계」. 부모 plan 에는
     #   그 케이스에만 있는 task 수를 심어, 경계에서 멈췄는지가 아니라 「부모 plan 의 고유 수가 안 나오는가」로 잰다.
-    $scUpSaved = $env:USERPROFILE
-    try {
-        $env:USERPROFILE = $iso
-        $scPlanOf = { param([int]$n) @('# Plan') + @(1..$n | ForEach-Object { "- [ ] **T$_-1** todo" }) }
-        $scStart = { param([string]$cwd) Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $cwd } | ConvertTo-Json -Compress) }
+    $scPlanOf = { param([int]$n) @('# Plan') + @(1..$n | ForEach-Object { "- [ ] **T$_-1** todo" }) }
+    $scStart = { param([string]$cwd) Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = $cwd } | ConvertTo-Json -Compress) }
 
-        $scUp = Join-Path $work 'sc-up-repo'
-        New-Item -ItemType Directory (Join-Path $scUp '.git'), (Join-Path $scUp 'src/sub') -Force | Out-Null
-        & $scPlanOf 7 | Set-Content -Encoding UTF8 (Join-Path $scUp 'plan.md')
-        $r = & $scStart (Join-Path $scUp 'src/sub')
-        Assert-Case -Name "session-context: 하위 폴더 cwd 는 레포 루트 plan 을 전체 경로로 알린다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectContains ((Join-Path $scUp 'plan.md') + ': task 7개')
+    $scUp = Join-Path $work 'sc-up-repo'
+    New-Item -ItemType Directory (Join-Path $scUp '.git'), (Join-Path $scUp 'src/sub') -Force | Out-Null
+    & $scPlanOf 7 | Set-Content -Encoding UTF8 (Join-Path $scUp 'plan.md')
+    $r = & $scStart (Join-Path $scUp 'src/sub')
+    Assert-Case -Name "session-context: 하위 폴더 cwd 는 레포 루트 plan 을 전체 경로로 알린다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectContains ((Join-Path $scUp 'plan.md') + ': task 7개')
 
-        $scDp = Join-Path $work 'sc-docs-plan'
-        New-Item -ItemType Directory (Join-Path $scDp 'docs') -Force | Out-Null
-        & $scPlanOf 6 | Set-Content -Encoding UTF8 (Join-Path $scDp 'docs/plan.md')
-        $r = & $scStart $scDp
-        Assert-Case -Name "session-context: docs/plan.md 를 찾아 상대 경로로 알린다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectContains 'docs/plan.md: task 6개'
+    $scDp = Join-Path $work 'sc-docs-plan'
+    New-Item -ItemType Directory (Join-Path $scDp 'docs') -Force | Out-Null
+    & $scPlanOf 6 | Set-Content -Encoding UTF8 (Join-Path $scDp 'docs/plan.md')
+    $r = & $scStart $scDp
+    Assert-Case -Name "session-context: docs/plan.md 를 찾아 상대 경로로 알린다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectContains 'docs/plan.md: task 6개'
 
-        $scNest = Join-Path $work 'sc-nest'
-        New-Item -ItemType Directory (Join-Path $scNest 'child/.git') -Force | Out-Null
-        & $scPlanOf 8 | Set-Content -Encoding UTF8 (Join-Path $scNest 'plan.md')
-        $r = & $scStart (Join-Path $scNest 'child')
-        Assert-Case -Name "session-context: 중첩 레포(.git 폴더)는 부모 plan 을 잡지 않는다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectNotContains 'task 8개'
+    $scNest = Join-Path $work 'sc-nest'
+    New-Item -ItemType Directory (Join-Path $scNest 'child/.git') -Force | Out-Null
+    & $scPlanOf 8 | Set-Content -Encoding UTF8 (Join-Path $scNest 'plan.md')
+    $r = & $scStart (Join-Path $scNest 'child')
+    Assert-Case -Name "session-context: 중첩 레포(.git 폴더)는 부모 plan 을 잡지 않는다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectNotContains 'task 8개'
 
-        $scWt = Join-Path $work 'sc-wt-parent'
-        $scWtChild = Join-Path $scWt '.claude/worktrees/wt1'
-        New-Item -ItemType Directory (Join-Path $scWt '.git'), $scWtChild -Force | Out-Null
-        & $scPlanOf 9 | Set-Content -Encoding UTF8 (Join-Path $scWt 'plan.md')
-        'gitdir: ../../../.git/worktrees/wt1' | Set-Content -Encoding UTF8 (Join-Path $scWtChild '.git')
-        $r = & $scStart $scWtChild
-        Assert-Case -Name "session-context: worktree(.git 파일)는 부모 레포 plan 을 잡지 않는다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectNotContains 'task 9개'
+    $scWt = Join-Path $work 'sc-wt-parent'
+    $scWtChild = Join-Path $scWt '.claude/worktrees/wt1'
+    New-Item -ItemType Directory (Join-Path $scWt '.git'), $scWtChild -Force | Out-Null
+    & $scPlanOf 9 | Set-Content -Encoding UTF8 (Join-Path $scWt 'plan.md')
+    'gitdir: ../../../.git/worktrees/wt1' | Set-Content -Encoding UTF8 (Join-Path $scWtChild '.git')
+    $r = & $scStart $scWtChild
+    Assert-Case -Name "session-context: worktree(.git 파일)는 부모 레포 plan 을 잡지 않는다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectNotContains 'task 9개'
 
-        $scBul = Join-Path $work 'sc-bullets'
-        New-Item -ItemType Directory $scBul -Force | Out-Null
-        @('# Plan', '+ [ ] **T1-1** a', '1. [ ] T2: b', '  - [/] T3: c', '- [X] T4: d', '- [ ] 통과 체크(ID 없음)') |
-            Set-Content -Encoding UTF8 (Join-Path $scBul 'plan.md')
-        $r = & $scStart $scBul
-        Assert-Case -Name "session-context: guard-write 불릿 집합·[X] 로 task 를 센다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectContains 'task 4개 중 미완료 3개'
+    $scBul = Join-Path $work 'sc-bullets'
+    New-Item -ItemType Directory $scBul -Force | Out-Null
+    @('# Plan', '+ [ ] **T1-1** a', '1. [ ] T2: b', '  - [/] T3: c', '- [X] T4: d', '- [ ] 통과 체크(ID 없음)') |
+        Set-Content -Encoding UTF8 (Join-Path $scBul 'plan.md')
+    $r = & $scStart $scBul
+    Assert-Case -Name "session-context: guard-write 불릿 집합·[X] 로 task 를 센다 (회차 4 T1)" -R $r -ExpectExit 0 -ExpectContains 'task 4개 중 미완료 3개'
 
-        $scMk = Join-Path $work 'sc-markers'
-        New-Item -ItemType Directory $scMk -Force | Out-Null
-        @('# Plan', '- [x] **T1-1** a', '- [-] **T1-2** b', '- [~] **T1-3** c') | Set-Content -Encoding UTF8 (Join-Path $scMk 'plan.md')
-        $r = & $scStart $scMk
-        Assert-Case -Name "session-context: [-]·[~] 를 미완료로 센다" -R $r -ExpectExit 0 -ExpectContains 'task 3개 중 미완료 2개'
-        $scBt = '```'
-        @('# Plan', '- [ ] **T1-1** a', $scBt, '- [ ] **T9-1** x', $scBt, '~~~', '- [x] **T9-2** y', '~~~', ($scBt + 'text'), '- [ ] **T9-3** z') |
-            Set-Content -Encoding UTF8 (Join-Path $scMk 'plan.md')
-        $r = & $scStart $scMk
-        Assert-Case -Name "session-context: 백틱·~~~·닫히지 않은 펜스 안 체크박스는 세지 않는다" -R $r -ExpectExit 0 -ExpectContains 'task 1개 중 미완료 1개'
-        @('# Plan', '- [x] **T1-1** a', '- [X] **T1-2** b') | Set-Content -Encoding UTF8 (Join-Path $scMk 'plan.md')
-        $r = & $scStart $scMk
-        Assert-Case -Name "session-context: [x]·[X] 뿐이면 미완료로 세지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '중 미완료'
-    } finally { $env:USERPROFILE = $scUpSaved }
+    $scMk = Join-Path $work 'sc-markers'
+    New-Item -ItemType Directory $scMk -Force | Out-Null
+    @('# Plan', '- [x] **T1-1** a', '- [-] **T1-2** b', '- [~] **T1-3** c') | Set-Content -Encoding UTF8 (Join-Path $scMk 'plan.md')
+    $r = & $scStart $scMk
+    Assert-Case -Name "session-context: [-]·[~] 를 미완료로 센다" -R $r -ExpectExit 0 -ExpectContains 'task 3개 중 미완료 2개'
+    $scBt = '```'
+    @('# Plan', '- [ ] **T1-1** a', $scBt, '- [ ] **T9-1** x', $scBt, '~~~', '- [x] **T9-2** y', '~~~', ($scBt + 'text'), '- [ ] **T9-3** z') |
+        Set-Content -Encoding UTF8 (Join-Path $scMk 'plan.md')
+    $r = & $scStart $scMk
+    Assert-Case -Name "session-context: 백틱·~~~·닫히지 않은 펜스 안 체크박스는 세지 않는다" -R $r -ExpectExit 0 -ExpectContains 'task 1개 중 미완료 1개'
+    @('# Plan', '- [x] **T1-1** a', '- [X] **T1-2** b') | Set-Content -Encoding UTF8 (Join-Path $scMk 'plan.md')
+    $r = & $scStart $scMk
+    Assert-Case -Name "session-context: [x]·[X] 뿐이면 미완료로 세지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '중 미완료'
     Remove-Item -Recurse -Force $scUp, $scDp, $scNest, $scWt, $scBul, $scMk -ErrorAction SilentlyContinue
 }
 
