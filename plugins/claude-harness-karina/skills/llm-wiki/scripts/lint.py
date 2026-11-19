@@ -957,8 +957,7 @@ def build_index(vault, dry_run, report=None):
         groups["projects"].append("")
 
     # 기능별 인덱스: 본체에는 sub-index 목록만 두고 실제 행은 전부 sub-index로 낸다.
-    #  project feature는 category별(§4 2단계)로, guide 전 종류는 index-guides로 간다 --
-    #  본체가 얇아야 조회마다 이 파일을 여는 비용이 낮다(실측 39,747자였다).
+    #  project feature는 category별(§4 2단계)로, guide 전 종류는 index-guides로 간다.
     sub_links = []
 
     for cat, title in (("personal", "개인"), ("work", "업무")):

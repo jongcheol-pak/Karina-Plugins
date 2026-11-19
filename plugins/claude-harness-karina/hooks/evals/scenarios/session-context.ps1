@@ -1,5 +1,4 @@
-﻿# scenarios/session-context.ps1 — session-context 시나리오 (§13 — plan 요약·AGENTS 주입) (dot-source 전용, 단독 실행 금지)
-# 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook·New-WriteJson·New-CommitJson)와 공유 변수($work·$iso·$gitOk·$pw·$vdCache)를 그대로 쓴다.
+﻿# 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case·Invoke-Hook·New-WriteJson·New-CommitJson)와 공유 변수($work·$iso·$gitOk·$pw·$vdCache)를 그대로 쓴다.
 # 파일명은 검증 대상 hook 기준이고, Invoke-Hook에 넘기는 문자열은 scripts/ 아래 hook 파일명이다.
 # ==== 아래는 본체에서 원문 그대로 옮긴 구간 (순수 이동 — 재조립 등가 검사의 경계) ====
 # =====================================================================
@@ -28,8 +27,7 @@ if (Test-HookSelected @('session-context')) {
     Assert-Case -Name "session-context: compact 재확인 리마인더 (SC2)" -R $r -ExpectExit 0 -ExpectContains '요약 직후'
 
     # SC2b: fork → startup과 같은 경로를 탄다(plan 카운트 주입), compact 전용 리마인더는 나오지 않는다.
-    #   공식 SessionStart matcher 값은 startup|resume|clear|compact|fork인데 fork만 배선에서 빠져 있어
-    #   fork 세션에는 plan 상태·AGENTS.md가 통째로 주입되지 않았다. hooks.json에 fork를 넣은 뒤
+    #   공식 SessionStart matcher 값은 startup|resume|clear|compact|fork이고, hooks.json에 fork를 넣은 뒤
     #   이 두 케이스가 그 경로를 고정한다 — 스크립트는 무수정이다($source가 'compact'가 아니면 동일 경로).
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'fork'; cwd = $scProj } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: fork도 plan 카운트 주입 (SC2b)" -R $r -ExpectExit 0 -ExpectContains '미완료 2'
@@ -665,8 +663,7 @@ if (Test-HookSelected @('session-context')) {
     #   SC45b 는 이 축의 절반만 잰다 — 목차(`$convHeads`)는 펜스를 거르는데 같은 줄이
     #   안내하는 추출 명령이 펜스를 세면, 세션이 받은 순번 n 과 그 명령이 뽑는 절이
     #   어긋난다. 절반만 재는 축은 나머지 절반이 깨져도 green 이다.
-    #   ⚠ 앵커는 「펜스 토글 형태가 있다」가 아니라 **정본(`skills/REPO-CONVENTIONS.md` 「읽기」)과 바이트
-    #   동일한 구간**이다 — 느슨하게 잡으면 사본이 *여전히 토글하면서* 정본과 다른
+    #   ⚠ 앵커는 정본과 바이트 동일한 구간이다 — 느슨하게 잡으면 사본이 *여전히 토글하면서* 정본과 다른
     #   정규식으로 갈릴 때 그 드리프트를 못 잡는다. 그 드리프트가 곧 우회 경로다.
     Assert-Case -Name "session-context: 추출 명령도 코드펜스를 센다 (SC45f)" -R $r -ExpectExit 0 -ExpectContains "/^(``````|~~~)/{f=!f} !f&&/^## /{c++} c==n"
 
