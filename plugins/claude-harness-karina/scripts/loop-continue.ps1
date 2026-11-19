@@ -1,4 +1,4 @@
-﻿# loop-continue.ps1 — 자율 루프가 plan 미완 task 를 남기고 멈추면 계속을 주입한다 — 근거는 `rules/loop-continue-rationale.md` §1
+﻿# loop-continue.ps1 — 자율 루프가 plan 미완 task 나 회차 끝 4번 검증을 남기고 멈추면 계속을 주입한다 — 근거는 `rules/loop-continue-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -60,6 +60,33 @@ function Get-OpenTaskIds([string]$planText) {
     return @($ms | ForEach-Object { $_.Groups['id'].Value })
 }
 
+# 회차 끝 판정 — 근거는 `rules/loop-continue-rationale.md` §7
+function Get-FinalCheckGap([string]$PlanPath, [string]$PlanText) {
+    $body = [regex]::Replace($PlanText, $planFenceRx, '')
+    if ($body -notmatch '(?m)^> 승인: [0-9]{4}-') { return $null }
+    if ($body -notmatch ($planBulletRx + '\[[xX]\][ \t]*\**T\d+')) { return $null }
+    $req = [regex]::Match($body, '(?m)^> 요구:.*$')
+    if ($req.Success -and $req.Value.Contains('코디네이터 인터뷰 경유')) { return $null }
+    try { . (Join-Path $PSScriptRoot 'timed-git.ps1') } catch { return $null }
+    if (-not (Get-Command Invoke-TimedGit -ErrorAction SilentlyContinue)) { return $null }
+    $dir = Split-Path -Parent $PlanPath
+    $rp = Invoke-TimedGit -GitArgs @('rev-parse', 'HEAD', '--show-prefix') -WorkDir $dir -TimeoutMs 3000
+    if ($rp.Code -ne 0 -or $rp.Lines.Count -lt 1 -or $rp.Lines[0] -notmatch '^[0-9a-f]{40}$') { return $null }
+    $head = [string]$rp.Lines[0]
+    $prefix = if ($rp.Lines.Count -gt 1) { [string]$rp.Lines[1] } else { '' }
+    $log = [regex]::Match($body, '(?ms)^## Progress Log[^\n]*\n(.*?)(?=^## |\z)')
+    $shas = @()
+    if ($log.Success) { $shas = @([regex]::Matches($log.Groups[1].Value, '4번 검증: ([0-9a-f]{40})') | ForEach-Object { $_.Groups[1].Value }) }
+    if ($shas.Count -eq 0) { return @{ Head = $head; Files = @() } }
+    if ($shas[-1] -eq $head) { return $null }
+    $df = Invoke-TimedGit -GitArgs @('-c', 'core.quotepath=off', 'diff', '--name-only', ($shas[-1] + '..HEAD')) -WorkDir $dir -TimeoutMs 3000
+    if ($df.Code -ne 0) { return $null }
+    $planRel = $prefix + (Split-Path -Leaf $PlanPath)
+    $files = @($df.Lines | Where-Object { $_ -and $_ -ne $planRel })
+    if ($files.Count -eq 0) { return $null }
+    return @{ Head = $head; Files = $files }
+}
+
 function Get-SetKey([string[]]$ids) {
     $sha = [System.Security.Cryptography.SHA1]::Create()
     $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes(($ids -join ',')))
@@ -95,19 +122,35 @@ $planHit = Find-PlanFileUpwards -StartDir $cwd
 if (-not $planHit) { exit 0 }
 try { $planText = Get-Content -LiteralPath $planHit.Path -Raw -Encoding UTF8 -ErrorAction Stop } catch { exit 0 }
 $ids = @(Get-OpenTaskIds $planText)
-if ($ids.Count -eq 0) { exit 0 }
+$gap = $null
+if ($ids.Count -eq 0) {
+    $gap = Get-FinalCheckGap $planHit.Path $planText
+    if (-not $gap) { exit 0 }
+}
 
-$counter = Join-Path $stateDir ($sidSafe + '.' + (Get-SetKey $ids) + '.count')
+$setKey = if ($gap) { Get-SetKey @('final', $gap.Head) } else { Get-SetKey $ids }
+$counter = Join-Path $stateDir ($sidSafe + '.' + $setKey + '.count')
 $n = 0
 try { $n = [int](Get-Content -LiteralPath $counter -Raw -ErrorAction Stop).Trim() } catch { $n = 0 }
 if ($n -ge $MaxPerSet) { exit 0 }
 try { Set-Content -LiteralPath $counter -Value ($n + 1) -Encoding UTF8 -ErrorAction Stop } catch { exit 0 }
 
-$shown = ($ids | Select-Object -First 5) -join ', '
-$more = if ($ids.Count -gt 5) { " 외 $($ids.Count - 5)개" } else { '' }
-$msg = "[karina loop-continue] $($planHit.Label) 에 미완 task 가 남은 채 turn 이 끝났습니다: ${shown}${more}. " +
-    "사용자 답에 의존하지 않는 다음 task 를 이어서 진행하십시오. 막혔다면 무엇이 막는지 한 줄로 말하십시오 — " +
-    "implement 「멈추는 넷」·「목록 밖의 넷」에 해당하는 정지(승인 대기 등)이거나 사용자가 중단을 지시한 경우라면 그 정지를 유지합니다."
+$keep = "implement 「멈추는 넷」·「목록 밖의 넷」에 해당하는 정지(승인 대기 등)이거나 사용자가 중단을 지시한 경우라면 그 정지를 유지합니다."
+if ($gap) {
+    $what = if ($gap.Files.Count -eq 0) {
+        "Progress Log 에 「4번 검증: <full SHA> · clean」 줄이 없습니다. 회차 끝 단계(implement references/final-review.md 「완료 순서」 — 리뷰·4번 검증·push 전 확인·최종 보고)가 남았으면 이어서 진행하십시오."
+    } else {
+        $shownFiles = ($gap.Files | Select-Object -First 5) -join ', '
+        $moreFiles = if ($gap.Files.Count -gt 5) { " 외 $($gap.Files.Count - 5)개" } else { '' }
+        "Progress Log 의 「4번 검증」 줄 뒤에 plan 파일 밖 변경이 커밋됐습니다: ${shownFiles}${moreFiles}. 4번 검증을 최종 HEAD 에서 다시 돌리고 그 줄을 새 SHA 로 남기십시오(문서만 바꾼 커밋도 같습니다)."
+    }
+    $msg = "[karina loop-continue] $($planHit.Label) 의 task 는 모두 닫혔는데 $what $keep 회차가 이미 끝났고 이 커밋이 회차 밖이면 이 안내를 무시합니다."
+} else {
+    $shown = ($ids | Select-Object -First 5) -join ', '
+    $more = if ($ids.Count -gt 5) { " 외 $($ids.Count - 5)개" } else { '' }
+    $msg = "[karina loop-continue] $($planHit.Label) 에 미완 task 가 남은 채 turn 이 끝났습니다: ${shown}${more}. " +
+        "사용자 답에 의존하지 않는 다음 task 를 이어서 진행하십시오. 막혔다면 무엇이 막는지 한 줄로 말하십시오 — " + $keep
+}
 $out = @{ hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $msg } }
 [Console]::Out.Write(($out | ConvertTo-Json -Compress -Depth 4))
 exit 0

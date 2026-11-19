@@ -148,6 +148,70 @@ $r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-f5' $lcMk)
 Assert-Case -Name "loop-continue: [x]·[X] 뿐이면 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
 Remove-Item -Recurse -Force $lcMk -ErrorAction SilentlyContinue
 
+if ($gitOk) {
+function New-LcFinalRepo([string]$Name) {
+    $d = Join-Path $work $Name
+    New-Item -ItemType Directory (Join-Path $d 'src') -Force | Out-Null
+    git -C $d init -q; git -C $d config user.email t@t; git -C $d config user.name t; git -C $d config core.autocrlf false
+    'a' | Set-Content -LiteralPath (Join-Path $d 'src/a.txt') -Encoding UTF8
+    git -C $d add src; git -C $d commit -qm base
+    return $d
+}
+function Set-LcFinalPlan([string]$Dir, [string]$LogLine, [string]$Request = '직접 요청') {
+    $lcF = '```'
+    $text = "# plan`n`n> 요구: $Request`n`n## Goal`n`n> BASE: 0000000`n> 승인: 2026-11-19 · 화면 Y`n`n서식 예시 — 4번 검증: <SHA>`n`n## Investigation Log`n`n| 4번 줄 서식 | grep | 4번 검증: <full SHA> · clean |`n`n## 작업 단계`n`n- [x] **T1-1** 끝`n`n## Progress Log`n`n$lcF`n- 4번 검증: 1111111111111111111111111111111111111111 · clean`n$lcF`n$LogLine`n"
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'plan.md'), $text, [System.Text.UTF8Encoding]::new($false))
+}
+function Invoke-LcFinalStop([string]$Sid, [string]$Dir, [hashtable]$Extra = @{}) {
+    $null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson $Sid 'karina:implement')
+    return Invoke-Hook 'loop-continue.ps1' (New-LcStopJson $Sid $Dir $Extra)
+}
+
+$lcFin = New-LcFinalRepo 'lc-final'
+Set-LcFinalPlan $lcFin ''
+$r = Invoke-LcFinalStop 'lc-e1' $lcFin
+Assert-Case -Name "loop-continue: 전 task 완료·승인 plan 에 4번 검증 줄이 없으면 회차 끝 안내를 주입" -R $r -ExpectExit 0 -ExpectContains '4번 검증'
+Assert-Case -Name "loop-continue: 서식 예시·펜스 안 줄은 4번 검증 줄로 세지 않는다" -R $r -ExpectExit 0 -ExpectContains '"additionalContext"'
+Assert-Case -Name "loop-continue: 회차 끝 안내가 정지 유지와 회차 밖 커밋을 적는다" -R $r -ExpectExit 0 -ExpectContains '회차 밖'
+Assert-Case -Name "loop-continue: 회차 끝 안내가 사용자 중단을 유지할 정지로 적는다" -R $r -ExpectExit 0 -ExpectContains '사용자가 중단을 지시'
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-e1' $lcFin)
+Assert-Case -Name "loop-continue: 같은 HEAD 2회째 회차 끝 안내는 주입" -R $r -ExpectExit 0 -ExpectContains '"additionalContext"'
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-e1' $lcFin)
+Assert-Case -Name "loop-continue: 같은 HEAD 3회째 회차 끝 안내는 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+
+$lcHead = (git -C $lcFin rev-parse HEAD).Trim()
+Set-LcFinalPlan $lcFin "- 4번 검증: $lcHead · clean"
+$r = Invoke-LcFinalStop 'lc-e2' $lcFin
+Assert-Case -Name "loop-continue: 4번 검증 SHA 가 HEAD 면 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+
+'b' | Set-Content -LiteralPath (Join-Path $lcFin 'src/a.txt') -Encoding UTF8
+git -C $lcFin commit -qam review-fix
+$r = Invoke-LcFinalStop 'lc-e3' $lcFin
+Assert-Case -Name "loop-continue: 4번 검증 뒤 plan 밖 파일이 커밋됐으면 재실행 안내를 주입" -R $r -ExpectExit 0 -ExpectContains 'src/a.txt'
+
+$lcHead = (git -C $lcFin rev-parse HEAD).Trim()
+Set-LcFinalPlan $lcFin "- 4번 검증: $lcHead · clean"
+git -C $lcFin add plan.md; git -C $lcFin commit -qm plan-file
+$r = Invoke-LcFinalStop 'lc-e4' $lcFin
+Assert-Case -Name "loop-continue: 4번 검증 뒤 커밋이 plan 파일뿐이면 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+
+Set-LcFinalPlan $lcFin '' '코디네이터 인터뷰 경유 — spec 원문'
+$r = Invoke-LcFinalStop 'lc-e5' $lcFin
+Assert-Case -Name "loop-continue: 중계 plan 은 회차 끝 안내 대상이 아니다" -R $r -ExpectExit 0 -ExpectSilent $true
+
+Set-LcFinalPlan $lcFin ''
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-e6' $lcFin)
+Assert-Case -Name "loop-continue: 마커 없으면 회차 끝 안내도 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-LcFinalStop 'lc-e7' $lcFin @{ background_tasks = @(@{ id = 't1'; type = 'shell'; status = 'running' }) }
+Assert-Case -Name "loop-continue: background_tasks 가 있으면 회차 끝 안내도 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+
+$lcNoGit = Join-Path $work 'lc-final-nogit'; New-Item -ItemType Directory $lcNoGit -Force | Out-Null
+Set-LcFinalPlan $lcNoGit ''
+$r = Invoke-LcFinalStop 'lc-e8' $lcNoGit
+Assert-Case -Name "loop-continue: git 밖 폴더의 완료 plan 은 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+Remove-Item -Recurse -Force $lcFin, $lcNoGit -ErrorAction SilentlyContinue
+}
+
 $lcHooks = Get-Content -LiteralPath (Join-Path $pluginRoot 'hooks/hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $lcUpeMatchers = @($lcHooks.hooks.UserPromptExpansion | Where-Object { ($_.hooks.command -join ' ') -match 'loop-continue' } | ForEach-Object { [string]$_.matcher })
 $lcHit = @('karina:implement', 'implement', 'karina:plan', 'plan' | Where-Object {

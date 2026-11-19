@@ -18,7 +18,7 @@
 
 - **clean 줄이 근거다 — 회차는 4번(`../SKILL.md`「검증」)이 `AGENTS.md` Build·Test 전체를 통과한 직후 clean 이면 Progress Log 에 `4번 검증: <full SHA> · clean` 을, 디버깅 단독은 아래 「커밋」 이 `../../TEMP-FILES.md` 의 `scratch\push-check-<레포 폴더명>.txt` 에 `4-D 검증: <full SHA> · clean` 을 남긴다. clean 은 ⓐ `git status --porcelain --untracked-files=no` 에 `plan.md` 밖 줄이 없고 ⓑ `git ls-files --others --exclude-standard` 에서 착수 스냅숏(`../SKILL.md`「작업 범위」 의 `untracked-start-` 파일 — 디버깅은 아래 「갈래」 의 같은 파일) 줄과 `plan.md` 를 뺀 것이 빈 것이다(스냅숏 파일이 없으면 ⓑ 는 `plan.md` 만 뺀다)** — clean 이 아니면 미커밋·untracked 입력으로 통과했을 수 있다. 회차 전부터 있던 untracked 는 뺀다(Karina 2026-11-13 — 빌드 입력이 아닌 사용자 파일 하나로 전체 재검증 48분).
 - **push 해도 되는 것은 그 줄의 SHA 가 HEAD 이거나, SHA..HEAD 의 커밋이 전부 plan 파일 커밋(`report-format.md`「plan 파일 커밋」)이나 그 레포 Release 의 버전 파일 집합만 바꾼 커밋일 때다(`git diff --name-only <SHA>..HEAD` 로 잰다)** — 그 밖의 커밋은 아무도 빌드·테스트하지 않은 코드다.
-- **줄이 없거나 위가 거짓이면 그 자리에서 `AGENTS.md` Build·Test 를 다시 돌리고, 통과·clean 이면 push 한다. 실패하면 push 하지 않고 `보류(Build·Test 실패)` 로 출력 원문과 함께 보고한다** — 고치는 것은 그 회차·디버깅의 실패 처리다. 재검증을 끝없이 미루지 않도록 이 확인은 push 한 번에 한 번이다.
+- **줄이 없거나 위가 거짓이면 그 자리에서 `AGENTS.md` Build·Test 를 다시 돌리고, 통과·clean 이면 회차는 Progress Log 에 `4번 검증: <full SHA> · clean` 줄을 남긴 뒤 push 한다. 실패하면 push 하지 않고 `보류(Build·Test 실패)` 로 출력 원문과 함께 보고한다** — 고치는 것은 그 회차·디버깅의 실패 처리다. 재검증을 끝없이 미루지 않도록 이 확인은 push 한 번에 한 번이다.
 - **push 가 거부되면 오류 원문을 보고하고 멈추지 않는다 — `pull --rebase`·rebase·force 로 맞추지 않는다. 보고에 「사용자가 합친 뒤 4번 검증을 다시 돌려 push」 를 적는다** — 미push 커밋 rebase 는 history rewrite 라 별도 승인이고, 맞추기는 사용자다.
 
 ## 디버깅 단독 경로

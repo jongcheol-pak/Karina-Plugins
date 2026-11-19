@@ -1058,7 +1058,7 @@ def check_close_reasons():
 CRITICAL_POINTERS = [
     ("skills/implement/SKILL.md",
      "skills/implement/references/loop-stop-patterns.md",
-     "자율 루프 정지 형태 판정의 정본(1차 방어선) — loop-continue hook 은 plan 미완만 보고 형태를 가르지 않는다"),
+     "자율 루프 정지 형태 판정의 정본(1차 방어선) — loop-continue hook 은 plan 미완과 4번 검증 기록만 보고 형태를 가르지 않는다"),
 ]
 
 # 핵심 포인터 총량 기준선(= 목록 길이) — 근거는 `harness-consistency-rationale.md` §9
