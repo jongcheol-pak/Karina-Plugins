@@ -59,8 +59,7 @@ jobs:
       - name: second
         run: python f.py --flag
       - uses: actions/setup-node@v4
-        with:
-          working-directory: wrong
+        working-directory: wrong
       - name: rooted
         working-directory: .
         run: python g.py
