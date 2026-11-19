@@ -236,6 +236,7 @@ $rtcBoldOk = Join-Path $work 'rtc-bold-ok'; New-Item -ItemType Directory $rtcBol
 "# plan`n### T3. 검색`n- [x] **T3-1** 검색 요약`n- [x] **T3-2** 인덱스" | Set-Content (Join-Path $rtcBoldOk 'plan.md')
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcBold '기능: T3 — 검색 요약')
 Assert-Case -Name "rtc: 신형 제목 기능: T3 — + 볼드 하위 항목 미완료 → 차단 (회차 44 T4)" -R $r -ExpectExit 2 -ExpectContains '완료 커밋인데 plan의 T'
+Assert-Case -Name "rtc: 차단 안내가 중간 커밋 제목에서 T<N> — 를 빼라고 알린다" -R $r -ExpectExit 2 -ExpectContains '(T3 진행)'
 $heredocMsg = [string]::Join("`n", @('$(cat <<''EOF''', '기능: T3 — 검색 요약', '', '본문', 'EOF', ')'))
 $r = Invoke-Hook 'guard-bash.ps1' (New-CommitJson $rtcBold $heredocMsg)
 Assert-Case -Name "rtc: heredoc 제목(-m 뒤 cat heredoc 본문) 도 둘째 줄을 제목으로 읽어 차단 (회차 44 T4)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'

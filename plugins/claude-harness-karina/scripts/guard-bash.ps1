@@ -507,7 +507,8 @@ function Invoke-RequireTaskCheckbox {
         "",
         "해결 방법:",
         "  Edit 도구로 plan의 위 줄을 '[x]' 로 고친 뒤, 별도 호출로 다시 commit 하세요.",
-        "  편집과 commit 을 한 명령에 묶으면 이 검사는 편집 전 plan 을 봅니다."
+        "  편집과 commit 을 한 명령에 묶으면 이 검사는 편집 전 plan 을 봅니다.",
+        "  하위 항목 일부만 끝낸 중간 커밋이면 제목에서 T$taskNum — · T${taskNum}: 를 빼세요(예: {유형}: <무엇을> (T$taskNum 진행))."
     )
     return New-HookResult -Block $true -Stderr $lines
 }
