@@ -754,6 +754,15 @@ $r = Invoke-CcCommit $d 'git commit -m x' 'cc-move'
 Assert-Case -Name "commit-comments: 주석을 파일 사이로 옮긴 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 $d = New-CcRepo
+Set-CcFile $d 's.py' ('Y = """' + "`n# 안쪽 줄`njobs:`n" + '"""' + "`nx = 1`n"); git -C $d add s.py
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-pystr'
+Assert-Case -Name "commit-comments: .py 문자열 안의 # 줄만 더한 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$d = New-CcRepo
+Set-CcFile $d 's.py' ('Y = """' + "`njobs:`n" + '"""' + "`n# 닫힌 뒤 주석`nx = 1`n"); git -C $d add s.py
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-pystr-neg'
+Assert-Case -Name "commit-comments: .py 문자열이 닫힌 뒤의 # 주석을 더한 커밋은 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+
+$d = New-CcRepo
 Set-CcFile $d 'q.rs' "/// 화면에 보이는 줄 범위를 센다.`nfn rows() {}`n`n/// 보이는 칸 수를 센다.`n/// 접힌 칸은 빼지 않는다.`nfn span() {}`n"; git -C $d add q.rs; git -C $d commit -qm doc
 $ccBase = (git -C $d rev-parse --short HEAD).Trim()
 Set-CcFile $d 'q.rs' "fn rows() {}`n`nfn span() {}`n"; git -C $d commit -qam drop

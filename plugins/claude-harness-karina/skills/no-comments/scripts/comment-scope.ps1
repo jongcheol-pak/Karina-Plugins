@@ -266,6 +266,8 @@ function Invoke-ScopeList([string]$Root, [string]$BaseSha, [string]$OutPath) {
             if ($null -eq $lines) { continue }
             $rel = $chunk[$i].Rel
             $comments = Get-CommentBodyLines $rel $lines -KeepDirectives
+            $inString = Get-CommentStringLineFlags $rel $lines
+            if ($inString) { $comments = @($comments | Where-Object { -not $inString[[int]$_.Line] }) }
             if ($comments.Count -eq 0) { continue }
             $addedLines = $addedByFile[$rel]
             $cands = New-Object System.Collections.Generic.List[object]

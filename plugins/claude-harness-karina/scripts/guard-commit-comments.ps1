@@ -183,7 +183,7 @@ function Invoke-BlockCommitComments {
                 $post = @($entry.Plus)
                 foreach ($a in $added) { $a.Indexes = @($entry.Hunks[$a.Pair].PlusStart + $a.Line) }
             }
-            $blocked = Get-BlockedCommentBodies $full $added $post $baseBudget
+            $blocked = Get-BlockedCommentBodies $full $added $post $baseBudget ($null -ne $text)
             foreach ($c in $blocked) { $found.Add($c) }
             if ($blocked.Count -gt 0) { $perFile.Add("  $k : 주석 $($blocked.Count)줄") }
         }

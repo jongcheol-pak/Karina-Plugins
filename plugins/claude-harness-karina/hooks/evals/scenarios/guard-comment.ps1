@@ -527,4 +527,31 @@ $r = Invoke-GcEditAt $mvB 'fn other() {}' "fn other() {}`n`n/// BASE 어디에�
 Assert-Case -Name "guard-comment: BASE 어디에도 없던 doc 은 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 }
 
+$gcQ = '"""'
+$r = Invoke-GcWrite (Join-Path $gc 'fx_dq.py') "Y = $gcQ`n# yaml 주석 줄`njobs:`n$gcQ`nx = 1"
+Assert-Case -Name "guard-comment: .py 삼중 큰따옴표 문자열 안의 # 줄은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-GcWrite (Join-Path $gc 'fx_sq.py') "Y = '''`n# yaml 주석 줄`njobs:`n'''`nx = 1"
+Assert-Case -Name "guard-comment: .py 삼중 작은따옴표 문자열 안의 # 줄은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+[System.IO.File]::WriteAllText((Join-Path $gc 'fx_edit.py'), "Y = $gcQ`njobs:`n$gcQ`nx = 1`n", [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-GcEdit 'fx_edit.py' 'jobs:' "# 안쪽 줄`njobs:"
+Assert-Case -Name "guard-comment: 기존 .py 문자열 안에 # 줄을 더하는 Edit 는 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-GcWrite (Join-Path $gc 'fx_here.ps1') "`$t = @'`n# 안쪽 줄`n'@`n`$a = 1"
+Assert-Case -Name "guard-comment: .ps1 작은따옴표 here-string 안의 # 줄은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-GcWrite (Join-Path $gc 'fx_here2.ps1') "`$t = @`"`n# 안쪽 줄`n`"@`n`$a = 1"
+Assert-Case -Name "guard-comment: .ps1 큰따옴표 here-string 안의 # 줄은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-GcWrite (Join-Path $gc 'fx_closed.py') "Y = $gcQ`njobs:`n$gcQ`n# 닫힌 뒤 주석`nx = 1"
+Assert-Case -Name "guard-comment: .py 문자열이 닫힌 뒤의 # 주석은 차단" -R $r -ExpectExit 2 -ExpectContains '주석 1줄'
+$r = Invoke-GcWrite (Join-Path $gc 'fx_one.py') "Y = ${gcQ}x$gcQ`n# 다음 줄 주석`nx = 1"
+Assert-Case -Name "guard-comment: .py 한 줄에서 열고 닫은 삼중 따옴표 다음 줄의 # 주석은 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcWrite (Join-Path $gc 'fx_cmt.py') "# 예: $gcQ`n# 다음 줄 주석`nx = 1"
+Assert-Case -Name "guard-comment: .py 주석 안의 삼중 따옴표는 문자열을 열지 않는다" -R $r -ExpectExit 2 -ExpectContains '주석 2줄'
+$r = Invoke-GcWrite (Join-Path $gc 'fx_sl.py') "Y = '$gcQ'`n# 다음 줄 주석`nx = 1"
+Assert-Case -Name "guard-comment: .py 한 줄 문자열 안의 삼중 따옴표는 문자열을 열지 않는다" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcWrite (Join-Path $gc 'fx_split.ps1') "`$p = `$s -split `"@`"`n# 다음 줄 주석`n`$a = 1"
+Assert-Case -Name "guard-comment: .ps1 의 -split `"@`" 는 here-string 을 열지 않는다" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcWrite (Join-Path $gc 'fx_user.ps1') "`$u = 'user@'`n# 다음 줄 주석`n`$a = 1"
+Assert-Case -Name "guard-comment: .ps1 의 'user@' 는 here-string 을 열지 않는다" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcEdit 'fx_missing.py' 'jobs:' "Y = $gcQ`n# 안쪽 줄`njobs:"
+Assert-Case -Name "guard-comment: 전체 텍스트를 못 얻은 Edit 조각의 # 줄은 문자열 안으로 보지 않고 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+
 }

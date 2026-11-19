@@ -28,7 +28,7 @@ function Invoke-GuardComment($Data, [string]$File) {
     $budget = New-CommentBaseBudget
     if ($added.Count -gt 0) {
         $post = Get-CommentPostImage $File $Data $added
-        $blocked = Get-BlockedCommentBodies $File $added $post $budget
+        $blocked = Get-BlockedCommentBodies $File $added $post $budget ([bool]$script:CommentPostImageFull)
         if ($blocked.Count -gt 0) {
             Write-GuardCommentEvent 'block' $File
             $lines = @("$File : 주석 $($blocked.Count)줄") + @(Format-CommentGatePreview $blocked) + @($script:CommentGateRule) + @(
@@ -44,7 +44,7 @@ function Invoke-GuardComment($Data, [string]$File) {
     $rew = Get-AddedCommentBodies $File $pairs -RewordedOnly
     if ($rew.Count -eq 0) { return $pass }
     $rewPost = Get-CommentPostImage $File $Data $rew
-    $rewBlocked = Get-BlockedCommentBodies $File $rew $rewPost $budget
+    $rewBlocked = Get-BlockedCommentBodies $File $rew $rewPost $budget ([bool]$script:CommentPostImageFull)
     if ($rewBlocked.Count -eq 0) { return $pass }
 
     Write-GuardCommentEvent 'block' $File

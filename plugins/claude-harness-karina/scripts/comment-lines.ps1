@@ -64,6 +64,54 @@ function Get-CommentBodyLines([string]$Path, [string[]]$Lines, [switch]$KeepDire
     return , $bodies
 }
 
+function Get-CommentStringLineFlags([string]$Path, [string[]]$Lines) {
+    $ext = [System.IO.Path]::GetExtension($Path).ToLower()
+    $isPy = $ext -eq '.py'
+    $isPs = $script:CommentPsExts -contains $ext
+    if (-not ($isPy -or $isPs) -or $null -eq $Lines) { return $null }
+    $flags = New-Object bool[] $Lines.Count
+    $open = $null
+    for ($n = 0; $n -lt $Lines.Count; $n++) {
+        $line = [string]$Lines[$n]
+        $pos = 0
+        if ($open) {
+            $flags[$n] = $true
+            if ($isPs) {
+                if ($line.StartsWith($open)) { $open = $null }
+                continue
+            }
+            $close = $line.IndexOf($open)
+            if ($close -lt 0) { continue }
+            $pos = $close + 3
+            $open = $null
+        }
+        while ($pos -lt $line.Length) {
+            $ch = $line[$pos]
+            if ($ch -eq '#') { break }
+            if ($isPs -and $ch -eq '@' -and $pos + 1 -lt $line.Length -and ($line[$pos + 1] -eq "'" -or $line[$pos + 1] -eq '"') -and $line.Substring($pos + 2).Trim() -eq '') {
+                $open = [string]$line[$pos + 1] + '@'
+                break
+            }
+            if ($ch -ne "'" -and $ch -ne '"') { $pos++; continue }
+            if ($isPy -and $pos + 2 -lt $line.Length -and $line[$pos + 1] -eq $ch -and $line[$pos + 2] -eq $ch) {
+                $triple = [string]$ch * 3
+                $close = $line.IndexOf($triple, $pos + 3)
+                if ($close -lt 0) { $open = $triple; break }
+                $pos = $close + 3
+                continue
+            }
+            $escape = if ($isPy) { '\' } elseif ($ch -eq '"') { '`' } else { $null }
+            $pos++
+            while ($pos -lt $line.Length -and $line[$pos] -ne $ch) {
+                if ($escape -and [string]$line[$pos] -eq $escape) { $pos++ }
+                $pos++
+            }
+            $pos++
+        }
+    }
+    return , $flags
+}
+
 function Get-CommentMarkerIndexes([string[]]$Lines, [regex]$Rx) {
     $hits = New-Object System.Collections.Generic.List[int]
     if ($Lines.Count -eq 0) { return , $hits }
@@ -395,7 +443,7 @@ function Get-CommentBaseLines([string]$File, [string]$Dir, [string]$Root, $Budge
     } catch { return @() }
 }
 
-function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines, $Budget = $null) {
+function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines, $Budget = $null, [bool]$PostIsFull = $false) {
     $blocked = New-Object System.Collections.Generic.List[string]
     $blockedDocs = New-Object System.Collections.Generic.List[object]
     if ($Added.Count -eq 0) { return , $blocked }
@@ -403,8 +451,10 @@ function Get-BlockedCommentBodies([string]$Path, $Added, [string[]]$PostLines, $
     $ext = [System.IO.Path]::GetExtension($Path).ToLower()
     $base = if ($ctx.Agents) { Split-Path -Parent $ctx.Agents } else { $ctx.Dir }
     $docFlag = $null
+    $inString = if ($PostIsFull) { Get-CommentStringLineFlags $Path $PostLines } else { $null }
     foreach ($a in $Added) {
         $c = [string]$a.Body
+        if ($inString -and @($a.Indexes).Count -gt 0 -and @($a.Indexes | Where-Object { $_ -lt 0 -or $_ -ge $inString.Count -or -not $inString[$_] }).Count -eq 0) { continue }
         if (Test-CommentLineExempt $c $Path $ctx.Dir $ctx.Root) { continue }
         $kept = $false
         foreach ($k in $ctx.KeepRules) {
@@ -517,6 +567,7 @@ function Get-CommentPostImage([string]$File, $Data, $Added) {
     $ti = $Data.tool_input
     if ([string]$Data.tool_name -eq 'Write') {
         foreach ($a in $Added) { $a.Indexes = @($a.Line) }
+        $script:CommentPostImageFull = $true
         return ([string]$ti.content -split '\r?\n')
     }
     $edits = if ([string]$Data.tool_name -eq 'MultiEdit') { @($ti.edits) } else { @($ti) }
@@ -535,6 +586,7 @@ function Get-CommentPostImage([string]$File, $Data, $Added) {
         if ($edits[$p].replace_all) { $text = $text.Replace($old, $marked[$p]) }
         else { $i = $text.IndexOf($old); $text = $text.Substring(0, $i) + $marked[$p] + $text.Substring($i + $old.Length) }
     }
+    $script:CommentPostImageFull = $null -ne $text
     if ($null -eq $text) { $text = ($marked -join "`n") }
     $post = @($text -split "`n")
     $hits = @{}

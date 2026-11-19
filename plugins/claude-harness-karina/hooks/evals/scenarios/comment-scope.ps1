@@ -35,6 +35,7 @@ git -C $sr mv src/old.rs src/new_name.rs
 Set-CsFile $sr 'src/a.rs' "// 짧은 주석.`nfn moved() {}`n// 회차 전 설명.`n// 회차 새 설명.`nfn keep() {}`nfn target() {}`n/// 고친 문구.`nfn reword() {}`n/// 감사 대상 doc.`npub fn audited() {}`n/// 감사 밖 doc.`nfn private_doc() {}`n// 보존 표식 줄`nfn kept() {}`n"
 Set-CsFile $sr 'src/b.ts' "// eslint-disable-next-line no-console`nconsole.log(1);`n"
 Set-CsFile $sr 'doc.md' "# doc`n<!-- 문서 주석 -->`n"
+Set-CsFile $sr 'src/p.py' ('Y = """' + "`n# 문자열 안 줄`n" + '"""' + "`n# 회차 파이썬 주석`nx = 1`n")
 git -C $sr add .; git -C $sr commit -qm round
 Set-CsFile $sr 'src/c.rs' "// 미추적 주석.`nfn c() {}`n"
 $srA = Get-Content -LiteralPath (Join-Path $sr 'src/a.rs') -Raw
@@ -46,6 +47,8 @@ $listed = if (Test-Path -LiteralPath $srOut) { [System.IO.File]::ReadAllText($sr
 $sl = @{ code = $r.code; out = ($r.out + "`n" + $listed) }
 Assert-Case -Name "comment-scope: 회차 커밋이 더한 주석은 목록에 든다" -R $sl -ExpectExit 0 -ExpectContains "src/a.rs:4`t// 회차 새 설명."
 Assert-Case -Name "comment-scope: 같은 hunk 문맥의 회차 전 주석은 뺀다" -R $sl -ExpectExit 0 -ExpectNotContains '// 회차 전 설명.'
+Assert-Case -Name "comment-scope: .py 문자열 안의 # 줄은 후보에서 뺀다" -R $sl -ExpectExit 0 -ExpectNotContains '# 문자열 안 줄'
+Assert-Case -Name "comment-scope: .py 문자열 밖의 회차 주석은 목록에 든다" -R $sl -ExpectExit 0 -ExpectContains "src/p.py:4`t# 회차 파이썬 주석"
 Assert-Case -Name "comment-scope: 파일 안에서 옮기기만 한 짧은 한글 회차 전 주석은 뺀다" -R $sl -ExpectExit 0 -ExpectNotContains '// 짧은 주석.'
 Assert-Case -Name "comment-scope: 이름을 바꾼 파일의 회차 전 주석은 뺀다" -R $sl -ExpectExit 0 -ExpectNotContains '// 옮긴 파일 주석.'
 Assert-Case -Name "comment-scope: 회차가 문구만 고친 회차 전 doc 은 doc 대상이 BASE 에 doc 을 가졌으면 뺀다" -R $sl -ExpectExit 0 -ExpectNotContains '/// 고친 문구.'
@@ -62,7 +65,7 @@ try {
 } finally { $env:KARINA_SCOPE_GIT_TIMEOUT_MS = $csSavedLimit }
 Assert-Case -Name "comment-scope: git 이 상한 안에 답하지 않으면 정상 결과 대신 실패 종료한다" -R $r -ExpectExit 2 -ExpectContains '시간 상한'
 Assert-Case -Name "comment-scope: 미추적 파일의 주석도 보지 않는다" -R $sl -ExpectExit 0 -ExpectNotContains '미추적 주석'
-Assert-Case -Name "comment-scope: 끝 줄에 대상·회차 전·감사·보존 수를 낸다" -R $sl -ExpectExit 0 -ExpectContains 'RESULT: 대상 3 · 회차 전 4 · 감사 1 · 보존 1'
+Assert-Case -Name "comment-scope: 끝 줄에 대상·회차 전·감사·보존 수를 낸다" -R $sl -ExpectExit 0 -ExpectContains 'RESULT: 대상 4 · 회차 전 4 · 감사 1 · 보존 1'
 
 $st = New-CsRepo 'scope-testdoc'
 Set-CsFile $st 'AGENTS.md' "# AGENTS`n`n- **Test (감사)**: ``cargo test --lib -- test_doc_audit`` · 증가: ``^\s*#\[(tokio::)?test\]`` · 경로: ``*.rs```n"
