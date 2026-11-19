@@ -6,7 +6,7 @@
 
 ## 계획 세션·대장 신호 — 별도 문서
 
-§12~§22(Deferred 대장 최고령 판정 · 계획 세션 압축 리마인더)의 근거는 `session-context-rationale-plan.md`「계획 세션 신호 판정 근거」가 정본이다.
+§12~§21(Deferred 대장 최고령 판정 · 계획 세션 압축 리마인더)의 근거는 `session-context-rationale-plan.md`「계획 세션 신호 판정 근거」가 정본이다.
 
 ## AGENTS.md 주입 — 별도 문서
 

@@ -1,6 +1,6 @@
 # session-context — 계획 세션 신호 판정 근거
 
-> `session-context-rationale.md`「계획 세션·대장 신호 — 별도 문서」에서 갈라져 나왔다. §12~§22 — Deferred 대장 최고령 판정과 계획 세션 압축 리마인더의 근거를 담는다.
+> `session-context-rationale.md`「계획 세션·대장 신호 — 별도 문서」에서 갈라져 나왔다. §12~§21 — Deferred 대장 최고령 판정과 계획 세션 압축 리마인더의 근거를 담는다.
 
 ## 계획 세션 신호 판정 근거
 
