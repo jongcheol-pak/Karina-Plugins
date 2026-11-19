@@ -227,3 +227,7 @@
 **시간 상한 2초 · 항목 하나를 지우기 전마다 확인한다.** 열거는 표의 깊이까지만 하고 나이는 그 항목 자신의 `LastWriteTime` 이다. 상한에 닿으면 남은 것은 다음 세션이 걷는다. `KARINA_TEMP_SWEEP_BUDGET_MS` 로 상한을 넣을 수 있게 한 것은 골든이 「상한 0 이면 아무것도 지우지 않음」을 재기 위해서다.
 
 **루트는 `TMPDIR`→`TEMP`→`TMP` 중 있는 폴더다.** `[IO.Path]::GetTempPath()` 는 Windows 에서 `TMP` 를 먼저 읽고 Python `tempfile.gettempdir()` 는 `TEMP` 를 먼저 읽는다(2026-10-24 실측). 두 값이 다른 환경에서 스크립트가 쓰는 폴더와 이 정리가 보는 폴더가 갈리지 않게 Python 순서를 따른다. 골든은 `TEMP`·`TMP` 를 함께 `$work` 아래로 돌려 실제 사용자 임시 폴더를 건드리지 않는다.
+
+## §41 compact 직후 응답 언어 줄
+
+**compact 분기는 응답 언어 줄(`[karina 응답 언어] …`)도 싣는다.** 압축은 그때까지 실린 응답 언어 주입을 요약 속으로 지우는데, 그 줄은 스킬 발동 때와 셸·쓰기 도구 20회마다만 다시 실려(`reply-language-rationale.md` §2) 압축 직후 첫 보고가 영문으로 섞였다(2026-11-18 · reflect 0dbc67aa). **문구는 `inject-reply-language.ps1` 의 `$Line = '…'` 한 줄을 텍스트로 읽어 쓴다** — 두 벌을 두면 한쪽만 고쳐진다(`python-newcode.ps1` 이 `comment-lines.ps1` 두 줄을 같은 방식으로 읽는 선례). 읽지 못하면 침묵한다 — 다른 compact 줄의 출력을 막지 않는다. `inject-reply-language.ps1` 을 SessionStart 에도 거는 안은 hook 이벤트 배선 하나와 그 스크립트의 판정 갈래를 늘려 기각했다.

@@ -119,6 +119,11 @@ try {
     # ---- compact 리마인더 (plan 유무 무관) ----
     if ($source -eq 'compact') {
         $lines.Add("[karina 세션 컨텍스트] 컨텍스트 요약 직후입니다 — 진행 중이던 작업이 있으면 plan.md의 현재 task와 활성 스킬(karina:implement 등)의 중단 조건·승인 게이트·커밋 프로토콜을 요약 기억에 의존하지 말고 SKILL 문서·plan.md 원문에서 재확인하세요. 그리고 **아직 plan.md에 적지 않은** 발견(이연할 항목·확인된 사실)이 요약 전에 있었다면 지금 plan.md에 적으세요 — 대화에만 있던 것은 요약을 지나면 근거 없이 사라집니다.")
+        # 응답 언어 줄 — 문구 정본은 inject-reply-language.ps1 의 $Line 한 줄 — 근거는 `rules/session-context-rationale.md` §41
+        try {
+            $rl = [regex]::Match([System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'inject-reply-language.ps1')), "(?m)^\`$Line = '((?:[^']|'')*)'")
+            if ($rl.Success) { $lines.Add($rl.Groups[1].Value.Replace("''", "'")) }
+        } catch {}
     }
 
     # ---- compact 직후 작업 시작 시각 재주입 — 근거는 `rules/session-context-rationale.md` §39 ----

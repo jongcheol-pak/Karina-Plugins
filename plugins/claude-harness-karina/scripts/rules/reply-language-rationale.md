@@ -22,6 +22,7 @@
   - **`agent_id` 가 실린 입력(서브에이전트 안)은 세지 않는다** — 서브에이전트의 도구 호출도 같은 hook 을 거치고 입력에 `agent_id` 가 실린다(공식 hooks 문서). 세면 주입이 서브에이전트 컨텍스트로 새고 메인 간격이 늘 수 있다. 서브에이전트 안 Skill 은 주입만 하고 메인 카운터를 쓰지 않는다. `agent_type` 은 `--agent` 메인 세션에도 실려 거름 필드로 쓰지 않는다.
   - **`session_id` 가 없으면** Skill 은 주입만 하고 셸·쓰기 호출은 무출력이다.
 - **`record-work-start` 와 파일을 나눈다** — 같은 이벤트를 받지만 변경 이유가 다르다. 같은 묶음의 스크립트는 `hook-dispatch.ps1` 이 차례로 부르고, 각자 낸 `additionalContext` 를 하나로 합쳐 넘긴다(`hook-dispatch-rationale.md` §3).
+- **compact 직후에는 `session-context.ps1` 이 이 스크립트의 `$Line` 을 읽어 같은 줄을 싣는다** — 근거는 `session-context-rationale.md` §41.
 
 ## §3 판정 불가는 침묵
 

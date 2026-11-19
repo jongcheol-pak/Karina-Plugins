@@ -321,6 +321,9 @@ if (Test-HookSelected @('session-context')) {
     #   이 라인이 cwd 검사 블록 밖에 있어야 성립하므로, 블록 안으로 옮기는 회귀를 골든이 막는다.
     $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'compact'; cwd = (Join-Path $work 'sc-nonexistent') } | ConvertTo-Json -Compress)
     Assert-Case -Name "session-context: compact 무효 cwd 기본 문구 유지 (SC17)" -R $r -ExpectExit 0 -ExpectContains '요약 직후'
+    Assert-Case -Name "session-context: compact 직후 응답 언어 줄을 싣는다" -R $r -ExpectExit 0 -ExpectContains '[karina 응답 언어] 사용자에게 하는 답'
+    $r = Invoke-Hook 'session-context.ps1' (@{ hook_event_name = 'SessionStart'; source = 'startup'; cwd = (Join-Path $work 'sc-nonexistent') } | ConvertTo-Json -Compress)
+    Assert-Case -Name "session-context: startup 에는 응답 언어 줄을 싣지 않는다" -R $r -ExpectExit 0 -ExpectNotContains '[karina 응답 언어]'
 
     $isoV = Join-Path $EvalRunTemp ("karina-hook-evals-vault-" + $suffix)
     $isoVault = Join-Path $isoV 'my-wiki'
