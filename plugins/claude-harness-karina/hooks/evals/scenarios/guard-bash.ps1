@@ -524,6 +524,11 @@ $r = Invoke-BwCase $bwRepo '(git worktree add ../b HEAD)'
 Assert-Case -Name "base-worktree: 괄호로 감싼 worktree add 도 경고" -R $r -ExpectExit 0 -ExpectContains $bwMark
 $r = Invoke-BwCase $bwRepo 'git worktree add ../base -b chain-parent-x'
 Assert-Case -Name "base-worktree: 브랜치 이름이 chain-parent- 여도 경로가 아니면 경고" -R $r -ExpectExit 0 -ExpectContains $bwMark
+$bwMsys = '/' + $bwRepo.Substring(0, 1).ToLower() + ($bwRepo.Substring(2) -replace '\\', '/')
+$r = Invoke-BwCase $work ('cd "' + $bwMsys + '" && git worktree add ../b HEAD')
+Assert-Case -Name "base-worktree: cd 대상이 Git Bash 꼴(/c/…)이어도 경고" -R $r -ExpectExit 0 -ExpectContains $bwMark
+$r = Invoke-BwCase $bwRepo 'cd /no/such/dir-xyz; git worktree add ../b HEAD'
+Assert-Case -Name "base-worktree: cd 대상이 폴더가 아니면 직전 기준 폴더로 판정해 경고" -R $r -ExpectExit 0 -ExpectContains $bwMark
 $r = Invoke-BwCase $bwRepo ('cd "' + $bwNone + '"; git worktree add ../b HEAD')
 Assert-Case -Name "base-worktree: cd 로 Verify 없는 레포에 옮겨 가면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $bwMark
 $r = Invoke-BwCase $bwRepo ('git worktree add --detach "' + $work + '/sp ace/chain-parent-3" abc1234')

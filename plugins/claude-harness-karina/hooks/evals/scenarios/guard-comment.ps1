@@ -551,6 +551,10 @@ $r = Invoke-GcWrite (Join-Path $gc 'fx_split.ps1') "`$p = `$s -split `"@`"`n# �
 Assert-Case -Name "guard-comment: .ps1 의 -split `"@`" 는 here-string 을 열지 않는다" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 $r = Invoke-GcWrite (Join-Path $gc 'fx_user.ps1') "`$u = 'user@'`n# 다음 줄 주석`n`$a = 1"
 Assert-Case -Name "guard-comment: .ps1 의 'user@' 는 here-string 을 열지 않는다" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$r = Invoke-GcWrite (Join-Path $gc 'fx_help.ps1') "<#`n.EXAMPLE`n    `$x = @'`n    본문`n    '@`n#>`nfunction F {}`n# 다음 줄 주석"
+Assert-Case -Name "guard-comment: .ps1 블록 주석 안의 @' 는 here-string 을 열지 않는다" -R $r -ExpectExit 2 -ExpectContains '주석 5줄'
+$r = Invoke-GcWrite (Join-Path $gc 'fx_open.ps1') "`$s = `"여러 줄`n@'`n`"`n# 다음 줄 주석`n`$a = 1"
+Assert-Case -Name "guard-comment: .ps1 닫히지 않은 한 줄 문자열 뒤로는 문자열 판정을 멈추고 차단" -R $r -ExpectExit 2 -ExpectContains '다음 줄 주석'
 $r = Invoke-GcEdit 'fx_missing.py' 'jobs:' "Y = $gcQ`n# 안쪽 줄`njobs:"
 Assert-Case -Name "guard-comment: 전체 텍스트를 못 얻은 Edit 조각의 # 줄은 문자열 안으로 보지 않고 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 

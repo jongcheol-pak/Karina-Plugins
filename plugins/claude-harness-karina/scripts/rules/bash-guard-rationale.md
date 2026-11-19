@@ -358,4 +358,6 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 
 **`chain-parent-` 로 시작하는 추가 경로는 제외한다** — `karina:chain-plan` 코디네이터가 계획마다 처방하는 감사 worktree(`chain-plan/references/continuation.md`「코디네이터 검증」)라, 경고하면 체인 계획 수만큼 거짓 경고가 난다. 보는 것은 `worktree add` 뒤에서 값을 받는 옵션(`-b`·`-B`·`--reason`)의 값이 아닌 첫 위치 인자의 마지막 구성 요소뿐이다 — 브랜치 이름이 `chain-parent-` 로 시작하는 것(`-b chain-parent-x`)은 제외하지 않는다.
 
+`cd` 대상이 Git Bash 꼴(`/c/…`)이면 드라이브 경로로 바꿔 읽고, 폴더가 아니면 그 `cd` 를 무시해 직전 기준 폴더로 판정한다 — 바꾸지 않으면 cwd 로 뜨던 경고가 `cd` 한 번에 사라진다.
+
 **한계.** 경로를 변수로 넘기는 `cd "$R"`·`-C "$R"` 는 그 문자열 그대로 찾아 대개 AGENTS.md 를 못 찾고 침묵한다(fail-open — 경고 전용). 앞선 도구 호출에서 옮긴 폴더는 hook 입력의 cwd 로만 안다.

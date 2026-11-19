@@ -71,9 +71,17 @@ function Get-CommentStringLineFlags([string]$Path, [string[]]$Lines) {
     if (-not ($isPy -or $isPs) -or $null -eq $Lines) { return $null }
     $flags = New-Object bool[] $Lines.Count
     $open = $null
-    for ($n = 0; $n -lt $Lines.Count; $n++) {
+    $inBlock = $false
+    $lost = $false
+    for ($n = 0; $n -lt $Lines.Count -and -not $lost; $n++) {
         $line = [string]$Lines[$n]
         $pos = 0
+        if ($inBlock) {
+            $end = $line.IndexOf('#>')
+            if ($end -lt 0) { continue }
+            $pos = $end + 2
+            $inBlock = $false
+        }
         if ($open) {
             $flags[$n] = $true
             if ($isPs) {
@@ -87,6 +95,12 @@ function Get-CommentStringLineFlags([string]$Path, [string[]]$Lines) {
         }
         while ($pos -lt $line.Length) {
             $ch = $line[$pos]
+            if ($isPs -and $ch -eq '<' -and $pos + 1 -lt $line.Length -and $line[$pos + 1] -eq '#') {
+                $end = $line.IndexOf('#>', $pos + 2)
+                if ($end -lt 0) { $inBlock = $true; break }
+                $pos = $end + 2
+                continue
+            }
             if ($ch -eq '#') { break }
             if ($isPs -and $ch -eq '@' -and $pos + 1 -lt $line.Length -and ($line[$pos + 1] -eq "'" -or $line[$pos + 1] -eq '"') -and $line.Substring($pos + 2).Trim() -eq '') {
                 $open = [string]$line[$pos + 1] + '@'
@@ -106,6 +120,7 @@ function Get-CommentStringLineFlags([string]$Path, [string[]]$Lines) {
                 if ($escape -and [string]$line[$pos] -eq $escape) { $pos++ }
                 $pos++
             }
+            if ($pos -ge $line.Length) { $lost = $true; break }
             $pos++
         }
     }

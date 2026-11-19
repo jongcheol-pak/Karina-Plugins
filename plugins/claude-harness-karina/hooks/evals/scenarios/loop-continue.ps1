@@ -199,6 +199,17 @@ Set-LcFinalPlan $lcFin '' '코디네이터 인터뷰 경유 — spec 원문'
 $r = Invoke-LcFinalStop 'lc-e5' $lcFin
 Assert-Case -Name "loop-continue: 중계 plan 은 회차 끝 안내 대상이 아니다" -R $r -ExpectExit 0 -ExpectSilent $true
 
+$lcPlanFile = Join-Path $lcFin 'plan.md'
+$lcHead = (git -C $lcFin rev-parse HEAD).Trim()
+Set-LcFinalPlan $lcFin ''
+[System.IO.File]::WriteAllText($lcPlanFile, ([System.IO.File]::ReadAllText($lcPlanFile) -replace '서식 예시 — 4번 검증: <SHA>', "- 4번 검증: $lcHead · clean"), [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-LcFinalStop 'lc-e9' $lcFin
+Assert-Case -Name "loop-continue: Progress Log 밖(Goal)의 4번 검증 줄은 세지 않고 주입" -R $r -ExpectExit 0 -ExpectContains '"additionalContext"'
+Set-LcFinalPlan $lcFin ''
+[System.IO.File]::WriteAllText($lcPlanFile, ([System.IO.File]::ReadAllText($lcPlanFile) -replace '> 승인: 2026-11-19 · 화면 Y', '> 승인: <승인일 YYYY-MM-DD>'), [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-LcFinalStop 'lc-e10' $lcFin
+Assert-Case -Name "loop-continue: 승인 표지 없는 완료 plan 은 git 레포 안에서도 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+
 Set-LcFinalPlan $lcFin ''
 $r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-e6' $lcFin)
 Assert-Case -Name "loop-continue: 마커 없으면 회차 끝 안내도 침묵" -R $r -ExpectExit 0 -ExpectSilent $true

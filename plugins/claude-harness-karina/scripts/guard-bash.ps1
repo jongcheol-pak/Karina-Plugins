@@ -420,8 +420,9 @@ function Invoke-WarnBaseWorktree {
         if ($i -ge $toks.Count) { continue }
         if ($toks[$i] -match '^(?i)(cd|chdir|pushd|sl|Set-Location)$') {
             if ($i + 1 -lt $toks.Count) {
-                $c = $toks[$i + 1].Trim('"', "'")
-                $here = if ([System.IO.Path]::IsPathRooted($c)) { $c } else { Join-Path $here $c }
+                $c = $toks[$i + 1].Trim('"', "'") -replace '^/([A-Za-z])/', '$1:/'
+                $next = if ([System.IO.Path]::IsPathRooted($c)) { $c } else { Join-Path $here $c }
+                if (Test-Path -LiteralPath $next -PathType Container) { $here = $next }
             }
             continue
         }
