@@ -61,7 +61,7 @@ tools: Read, Grep, Glob
 
 ### 실행 중 정지의 사전 해소
 
-- **task 의 검증 명령(빌드·테스트)이 `AGENTS.md`(또는 그것이 지목하는 문서)에 없으면 MAJOR 로 지적한다 — `Test (task)` 형식에 대상을 채운 명령은 있는 것으로 본다** — `karina:implement` 는 그 파일만 보고, 없으면 실행 중에 묻느라 선다(처방 `skills/plan/references/plan-template.md`「검증 방법」).
+- **task 의 검증 명령이 `AGENTS.md`(또는 그것이 지목하는 문서)에 없거나, 그 검증 매핑 표가 task Files 패턴에 요구하는 명령이 검증 줄에 빠졌으면 MAJOR 다 — `Test (task)` 에 대상을 채운 명령은 있는 것으로 본다** — 없으면 실행 중에 선다(처방 `skills/plan/references/plan-template.md`「검증 방법」).
 - **파일을 삭제하는 task 에 복구 경로 실측 행(Investigation Log)이 없으면 지적한다** — 판정 명령은 `skills/plan/references/deletion-recoverability.md` 「삭제 복구 경로 판정」. 복구 경로 없는 대상에 회피 설계가 없는데 `## 승인 필요 항목` 에 없으면 지적한다 — 빠지면 그 삭제에서 실행 중 루프가 선다.
 
 ### 범위
