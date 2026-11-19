@@ -47,15 +47,40 @@ function Get-TaskAuditTargetKey([string]$Flags) {
     return ($set -join ' ')
 }
 
-function Test-TaskAuditFilterCovered([string]$Message, [string]$Command) {
+function Get-TaskAuditTaskTemplate([string]$AgentsPath) {
+    foreach ($l in @(Get-Content -LiteralPath $AgentsPath -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+        $m = [regex]::Match([string]$l, '^- \*\*Test \(task\)\*\*: `(?<cmd>[^`]+)`')
+        if (-not $m.Success) { continue }
+        $parts = @([regex]::Matches($m.Groups['cmd'].Value, '<[^>]*>|\S+') | ForEach-Object { $_.Value })
+        $first = -1
+        for ($i = 0; $i -lt $parts.Count; $i++) { if ($parts[$i].StartsWith('<')) { $first = $i; break } }
+        if ($first -lt 1) { return $null }
+        for ($i = $first; $i -lt $parts.Count -and $parts[$i].StartsWith('<'); $i++) {
+            if ($parts[$i].StartsWith('<대상')) { return @{ Prefix = ($parts[0..($first - 1)] -join ' '); Skip = $i - $first } }
+        }
+        return $null
+    }
+    return $null
+}
+
+function Test-TaskAuditFilterCovered([string]$Message, [string]$Command, $Template) {
     $cm = [regex]::Match(($Command -replace '\s+', ' ').Trim(), '^cargo test(?<pre>(?: \S+)*?) -- (?<f>[^\s-]\S*)$')
     if (-not $cm.Success) { return $false }
     $want = Get-TaskAuditTargetKey $cm.Groups['pre'].Value
     $msg = ($Message -replace '\r', '') -replace '[ \t]+', ' '
+    $opt = [System.Text.RegularExpressions.RegexOptions]::Multiline
     $rx = 'cargo test(?<pre>(?: (?!--(?: |$))(?![&|;>→]|\d>)[^\s`"'']+)*) -- (?<g>[^\s`"'']+)(?=$|[`"'']| (?:\d?>|\||;|&&|→))'
-    foreach ($m in [regex]::Matches($msg, $rx, [System.Text.RegularExpressions.RegexOptions]::Multiline)) {
+    foreach ($m in [regex]::Matches($msg, $rx, $opt)) {
         if ((Get-TaskAuditTargetKey $m.Groups['pre'].Value) -cne $want) { continue }
         if ($cm.Groups['f'].Value.Contains($m.Groups['g'].Value)) { return $true }
+    }
+    if (-not $Template) { return $false }
+    $trx = [regex]::Escape($Template.Prefix) + '(?<a>(?: (?![&|;>→]|\d>)[^\s`"'']+)*)(?=$|[`"'']| (?:\d?>|\||;|&&|→))'
+    foreach ($m in [regex]::Matches($msg, $trx, $opt)) {
+        $toks = @($m.Groups['a'].Value -split ' ' | Where-Object { $_ })
+        for ($i = $Template.Skip; $i -lt $toks.Count; $i++) {
+            if (-not $toks[$i].StartsWith('-') -and $cm.Groups['f'].Value.Contains($toks[$i])) { return $true }
+        }
     }
     return $false
 }
@@ -118,6 +143,7 @@ function Invoke-WarnTaskAudit {
     $preAdd = [regex]::IsMatch($judge.Substring(0, $cm.Index), $script:GitAddRx)
 
     $lines = New-Object System.Collections.Generic.List[string]
+    $taskTemplate = Get-TaskAuditTaskTemplate $agents
     foreach ($rule in $rules) {
         if ($rule.Error) {
             $lines.Add("  - 규칙을 읽지 못함: AGENTS.md:$($rule.Line) ($($rule.Error)) — 이 줄은 검사되지 않습니다")
@@ -127,7 +153,7 @@ function Invoke-WarnTaskAudit {
         if ($g.Net -le 0) { continue }
         $accepted = @($rule.Command) + @($rule.Alternatives)
         if (@($accepted | Where-Object { Test-TaskAuditCommandInMessage $message $_ }).Count) { continue }
-        if (Test-TaskAuditFilterCovered $message $rule.Command) { continue }
+        if (Test-TaskAuditFilterCovered $message $rule.Command $taskTemplate) { continue }
         $note = if ($g.Capped) { ' (미추적 파일 상한에 걸려 일부만 셈)' } else { '' }
         $lines.Add("  - ``$($rule.Command)`` — 증가 $($g.Net)줄$note (AGENTS.md:$($rule.Line))")
     }

@@ -141,6 +141,28 @@ try {
     Assert-Case -Name 'task-audit: 실행 플래그만 있고 --lib 이 없는 부분 필터 → 경고' -R $r -ExpectExit 0 -ExpectContains $taSubCmd
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- cargo test --lib && cargo test -- doc_audit → ok')
     Assert-Case -Name 'task-audit: 명령 구분자 앞의 --lib 은 뒤 실행의 대상 선택이 아니다 → 경고' -R $r -ExpectExit 0 -ExpectContains $taSubCmd
+
+    $ttTemplate = '- **Test (task)**: `python docs/test-task.py <출력 파일> <대상…> _audit every_child_process_hides_its_console` (빌드 포함)'
+    ('# AGENTS.md' + $nl + $taRule + $nl + $ttTemplate + $nl) | Set-Content (Join-Path $taRoot 'AGENTS.md')
+    & git -C $taRoot add src/lib.rs 2>$null
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- python docs/test-task.py target/fix-zoom-msg.txt zoom_badge _audit every_child_process_hides_its_console → exit 0')
+    Assert-Case -Name 'task-audit: Test (task) 실행의 _audit 필터가 감사 필터에 들면 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle 'GREEN: python docs/test-task.py target/fix.txt session_cookies _audit every_child_process_hides_its_console → 실행 1077건 · cargo exit 0')
+    Assert-Case -Name 'task-audit: 줄 머리 GREEN: 이 붙은 Test (task) 실행 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- python docs/test-task.py target/t.txt other_audit → ok')
+    Assert-Case -Name 'task-audit: Test (task) 필터가 감사 필터에 들지 않으면 → 경고' -R $r -ExpectExit 0 -ExpectContains $taCmd
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- python docs/test-task.py doc_audit zoom_badge → ok')
+    Assert-Case -Name 'task-audit: Test (task) 출력 파일 자리만 감사 필터와 같으면 → 경고' -R $r -ExpectExit 0 -ExpectContains $taCmd
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- python docs/test-task.py target/t.txt zoom_badge && echo _audit → ok')
+    Assert-Case -Name 'task-audit: Test (task) 의 명령 구분자 뒤 토큰은 필터가 아니다 → 경고' -R $r -ExpectExit 0 -ExpectContains $taCmd
+    ('# AGENTS.md' + $nl + $taRule + $nl + '- **Test (task)**: `python t.py <대상>`' + $nl) | Set-Content (Join-Path $taRoot 'AGENTS.md')
+    & git -C $taRoot add src/lib.rs 2>$null
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- python t.py _audit → ok')
+    Assert-Case -Name 'task-audit: 정본 서식 <대상> 템플릿의 Test (task) 실행 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+    ('# AGENTS.md' + $nl + $taRule + $nl) | Set-Content (Join-Path $taRoot 'AGENTS.md')
+    & git -C $taRoot add src/lib.rs 2>$null
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- python docs/test-task.py target/fix-zoom-msg.txt zoom_badge _audit every_child_process_hides_its_console → exit 0')
+    Assert-Case -Name 'task-audit: Test (task) 줄이 없는 레포의 같은 본문 → 경고' -R $r -ExpectExit 0 -ExpectContains $taCmd
 } finally {
     if (Test-Path $taRoot) { Remove-Item $taRoot -Recurse -Force -ErrorAction SilentlyContinue }
 }
