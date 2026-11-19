@@ -1761,12 +1761,12 @@
     "mutate": [
       {
         "file": "evals/check-stale-refs.py",
-        "find": "DEAD_BASELINE = 54",
-        "replace": "DEAD_BASELINE = 55"
+        "find": "DEAD_BASELINE = 58",
+        "replace": "DEAD_BASELINE = 59"
       }
     ],
     "expect_keywords": [
-      "[FAIL] DEAD 총량이 기준선과 다르다: 54 != 55",
+      "[FAIL] DEAD 총량이 기준선과 다르다: 58 != 59",
       "DEAD_BASELINE"
     ]
   },
@@ -1930,7 +1930,7 @@
     "expect_rc": 0,
     "expect_keywords": [
       "== 산문 경로 실존 ==",
-      "대상 11문서",
+      "대상 10문서",
       "docs/harness-conventions.md — 후보 4건 · 미실존 0건",
       "결과: 후보 5건 전부 실재"
     ],
@@ -2017,7 +2017,7 @@
     "expect_rc": 0,
     "expect_keywords": [
       "== 산문 심볼 실존 ==",
-      "대상 11문서",
+      "대상 10문서",
       "docs/harness-conventions.md — 후보 3건 · 미실존 0건",
       "결과: 후보 5건 전부 실재"
     ],
