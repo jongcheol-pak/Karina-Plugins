@@ -172,6 +172,24 @@ function Invoke-BashBackslash {
             '  - 역슬래시가 든 스크립트는 Write 도구로 파일을 만들어 python <파일> 로 실행하거나, PowerShell 도구로 보내세요(PowerShell 도구는 그대로 넘깁니다).',
             '  - 같은 명령을 다시 내도 통과하지 않습니다.')
     }
+    $inPlace = $false
+    try {
+        foreach ($seg in ($rest -split '&&|\|\||[;|\r\n]')) {
+            $bare = $seg -replace '''[^'']*''', "''" -replace '"(?:[^"\\]|\\.)*"', '""'
+            if ($bare -notmatch '(?:^|[\s(])(?:sed|perl)(?:\.exe)?\s' -or $bare -notmatch '\s(?:-[A-Za-z]*i\S*|--in-place\S*)(?=\s|$)') { continue }
+            foreach ($sq in [regex]::Matches($seg, '''[^'']*''')) {
+                if ($sq.Value.Contains('\\')) { $inPlace = $true; break }
+            }
+            if ($inPlace) { break }
+        }
+    } catch { $inPlace = $false }
+    if ($inPlace) {
+        return New-HookResult -Block $true -Stderr @(
+            '[HARNESS] BLOCKED: 역슬래시 둘이 bash 에 하나로 넘어갑니다 — 쓰기형 sed·perl(-i)의 작은따옴표 문자열',
+            "  - Windows 의 Bash 도구가 역슬래시 둘을 하나로 줄여, 's/\\r\\n/…/' 같은 치환이 의도와 다른 패턴으로 돌아 조용히 적용되지 않거나 다른 곳을 고칩니다.",
+            '  - 치환은 PowerShell 도구(-replace)나 Edit 도구로 하세요(PowerShell 도구는 그대로 넘깁니다).',
+            '  - 같은 명령을 다시 내도 통과하지 않습니다.')
+    }
     foreach ($sq in [regex]::Matches($rest, '''[^'']*''')) {
         if ($sq.Value.Contains('\\')) { $where.Add('작은따옴표 문자열'); break }
     }

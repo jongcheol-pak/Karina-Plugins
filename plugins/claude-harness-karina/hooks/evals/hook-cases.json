@@ -1394,6 +1394,55 @@
     },
     {
       "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: sed -i 의 작은따옴표 안 역슬래시 둘 차단 (2026-11-14 이후 실해 12회 꼴)",
+      "command": "sed -i 's/\\\\r\\\\n/\\\\r?\\\\n/g' src/a.rs",
+      "expect_exit": 2,
+      "expect_contains": "쓰기형 sed·perl"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: sed -i -E 와 묶음 -Ei 의 작은따옴표 역슬래시 둘 차단",
+      "command": "sed -i -E 's/a\\\\.b/c/' f.txt && sed -Ei 's/x\\\\.y/z/' g.txt",
+      "expect_exit": 2,
+      "expect_contains": "쓰기형 sed·perl"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: sed --in-place 의 작은따옴표 역슬래시 둘 차단",
+      "command": "sed --in-place 's/a\\\\.b/c/' f.txt",
+      "expect_exit": 2,
+      "expect_contains": "쓰기형 sed·perl"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: perl -i -pe 의 작은따옴표 역슬래시 둘 차단",
+      "command": "perl -i -pe 's/a\\\\.b/c/' f.txt",
+      "expect_exit": 2,
+      "expect_contains": "쓰기형 sed·perl"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소 (델타 음성): sed -n 의 작은따옴표 역슬래시 둘은 경고만",
+      "command": "sed -n '/a\\\\.b/p' f.txt",
+      "expect_exit": 0,
+      "expect_contains": "BASH BACKSLASH WARNING"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소 (델타 음성): sed -i 의 큰따옴표 역슬래시 둘은 통과",
+      "command": "sed -i \"s/a\\\\.b/c/\" f.txt",
+      "expect_exit": 0,
+      "expect_not_contains": "BLOCKED"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소 (델타 음성): 역슬래시 없는 sed -i 는 통과",
+      "command": "sed -i 's/a/b/' f.txt && grep 'x\\\\.y' g.txt",
+      "expect_exit": 0,
+      "expect_not_contains": "BLOCKED"
+    },
+    {
+      "hook": "guard-bash.ps1",
       "name": "역슬래시 축소 (델타 음성): python -c 의 역슬래시 하나는 경고도 차단도 없다",
       "command": "python -c 'print(\"a\\nb\")'",
       "expect_exit": 0,
