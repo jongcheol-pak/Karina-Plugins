@@ -2,6 +2,9 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-19] 위키 자동 참조 전면 삭제(v3.35.0) — 번복: 2026-11-04 「위키 범위」·2026-11-12 계획 Step 1 의 「허브 개요가 코드보다 빠를 때 위키를 읽는다」 를 뒤집어, 하니스는 위키를 사용자가 요청할 때만 `karina:llm-wiki` 로 쓴다 — 세션 vault 줄·계획 허브 읽기·디버깅 교차 검색(절차 K)·기록 제안·AGENTS.md `## 위키` 절 생성·`skills/WIKI.md` 를 지웠고, 프로젝트 정보 정본은 코드·`README.md` 다(사용자 요청)
+  - 범위 밖: 다른 레포 `AGENTS.md` 에 남은 옛 `## 위키` 절(사용자 답 「하니스 것만 삭제」 — `relocate-agents.py` 도 잔류 절로 둔다) · `llm-wiki` 를 고칠 때의 실 vault lint 개발 검증
+
 - [2026-11-18] 응답 언어 Stop 재작성(v3.34.0) — 기각: Stop 에서 `decision:"block"` 으로 막기 — `additionalContext` 도 대화를 이어 같은 turn 에 다시 쓰게 하고, 디스패처가 그 밖 필드를 버린다(사용자 답 「additionalContext」)
   - 범위 밖: 서브에이전트 응답(SubagentStop) 언어 검사 — 사용자에게 가는 것은 메인이 다시 쓴 응답이다 · 영어로 대화하는 세션의 끄는 스위치 — 응답 언어는 한글 고정(`reply-language-rationale.md` §1)
 
