@@ -510,6 +510,24 @@ $r = Invoke-BwCase $bwRepo 'git worktree list'
 Assert-Case -Name "base-worktree: worktree list 는 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $bwMark
 $r = Invoke-BwCase $bwRepo "grep -n 'git worktree add' notes.md"
 Assert-Case -Name "base-worktree: 검색 명령의 따옴표 문자열 속 worktree add 는 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $bwMark
+$r = Invoke-BwCase $work ('cd "' + $bwRepo + '"; git worktree add ../b HEAD')
+Assert-Case -Name "base-worktree: 다른 cwd 에서 cd <레포>; 뒤의 worktree add 도 경고" -R $r -ExpectExit 0 -ExpectContains $bwMark
+$r = Invoke-BwCase $work ('cd "' + $bwRepo + '" && git worktree add ../b HEAD')
+Assert-Case -Name "base-worktree: 다른 cwd 에서 cd <레포> && 뒤의 worktree add 도 경고" -R $r -ExpectExit 0 -ExpectContains $bwMark
+$r = Invoke-BwCase $bwRepo 'git.exe worktree add ../b HEAD'
+Assert-Case -Name "base-worktree: git.exe worktree add 도 경고" -R $r -ExpectExit 0 -ExpectContains $bwMark
+$r = Invoke-BwCase $bwRepo 'git --no-pager worktree add ../b HEAD'
+Assert-Case -Name "base-worktree: 전역 옵션(--no-pager) 뒤의 worktree add 도 경고" -R $r -ExpectExit 0 -ExpectContains $bwMark
+$r = Invoke-BwCase $bwRepo 'GIT_TRACE=0 git worktree add ../b HEAD'
+Assert-Case -Name "base-worktree: 환경변수 대입 접두 뒤의 worktree add 도 경고" -R $r -ExpectExit 0 -ExpectContains $bwMark
+$r = Invoke-BwCase $bwRepo '(git worktree add ../b HEAD)'
+Assert-Case -Name "base-worktree: 괄호로 감싼 worktree add 도 경고" -R $r -ExpectExit 0 -ExpectContains $bwMark
+$r = Invoke-BwCase $bwRepo 'git worktree add ../base -b chain-parent-x'
+Assert-Case -Name "base-worktree: 브랜치 이름이 chain-parent- 여도 경로가 아니면 경고" -R $r -ExpectExit 0 -ExpectContains $bwMark
+$r = Invoke-BwCase $bwRepo ('cd "' + $bwNone + '"; git worktree add ../b HEAD')
+Assert-Case -Name "base-worktree: cd 로 Verify 없는 레포에 옮겨 가면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $bwMark
+$r = Invoke-BwCase $bwRepo ('git worktree add --detach "' + $work + '/sp ace/chain-parent-3" abc1234')
+Assert-Case -Name "base-worktree: 공백 든 따옴표 경로의 chain-parent-* 도 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $bwMark
 }
 
 if (Test-ScenarioUnit 1) {

@@ -412,17 +412,40 @@ function Invoke-WarnBaseWorktree {
     $cmd = [string]$data.tool_input.command
     if ($cmd -notmatch '(?i)\bworktree\s+add\b') { return New-HookResult }
     $cwd = if ($data.cwd) { [string]$data.cwd } else { (Get-Location).Path }
-    $rx = '^\s*git((?:\s+-[cC]\s+(?:"[^"]*"|''[^'']*''|\S+))*)\s+worktree\s+add\b(?<args>.*)$'
+    $here = $cwd
     foreach ($seg in Get-TopLevelSegments (Get-HeredocSinkStripped $cmd)) {
-        $m = [regex]::Match($seg, $rx)
-        if (-not $m.Success) { continue }
-        if ($m.Groups['args'].Value -match '(^|[\\/"''\s])chain-parent-') { continue }
-        $dir = $cwd
-        $cm = [regex]::Matches($m.Groups[1].Value, '-C\s+("[^"]*"|''[^'']*''|\S+)')
-        if ($cm.Count) {
-            $c = $cm[$cm.Count - 1].Groups[1].Value.Trim('"', "'")
-            $dir = if ([System.IO.Path]::IsPathRooted($c)) { $c } else { Join-Path $cwd $c }
+        $toks = @([regex]::Matches(($seg -replace '^[\s(&]+', ''), '"[^"]*"|''[^'']*''|\S+') | ForEach-Object { $_.Value })
+        $i = 0
+        while ($i -lt $toks.Count -and $toks[$i] -match '^[A-Za-z_]\w*=') { $i++ }
+        if ($i -ge $toks.Count) { continue }
+        if ($toks[$i] -match '^(?i)(cd|chdir|pushd|sl|Set-Location)$') {
+            if ($i + 1 -lt $toks.Count) {
+                $c = $toks[$i + 1].Trim('"', "'")
+                $here = if ([System.IO.Path]::IsPathRooted($c)) { $c } else { Join-Path $here $c }
+            }
+            continue
         }
+        if ($toks[$i] -notmatch '^(?i)git(\.exe)?$') { continue }
+        $i++
+        $dir = $here
+        while ($i -lt $toks.Count -and $toks[$i].StartsWith('-')) {
+            if ($toks[$i] -cmatch '^-[cC]$') {
+                if ($toks[$i] -ceq '-C' -and $i + 1 -lt $toks.Count) {
+                    $c = $toks[$i + 1].Trim('"', "'")
+                    $dir = if ([System.IO.Path]::IsPathRooted($c)) { $c } else { Join-Path $dir $c }
+                }
+                $i += 2
+            } else { $i++ }
+        }
+        if ($i + 1 -ge $toks.Count -or $toks[$i] -cne 'worktree' -or $toks[$i + 1] -cne 'add') { continue }
+        $i += 2
+        $added = $null
+        while ($i -lt $toks.Count -and $null -eq $added) {
+            if ($toks[$i] -cmatch '^(-b|-B|--reason)$') { $i += 2 }
+            elseif ($toks[$i].StartsWith('-')) { $i++ }
+            else { $added = $toks[$i].Trim('"', "'") }
+        }
+        if ($added -and ((($added -replace '[\\/]+$', '') -replace '^.*[\\/]', '') -like 'chain-parent-*')) { continue }
         $agents = $null
         $cur = $dir
         while ($cur -and (Test-Path -LiteralPath $cur -PathType Container)) {
