@@ -14,7 +14,9 @@ $script:PyWriteRx = [regex]::new('write_text|write_bytes|\.write\(|\bopen\s*\([^
 $script:PyLiteralRx = [regex]::new('(?s)(?<![A-Za-z0-9_])[rRbBfFuU]{0,2}(''''''.*?''''''|""".*?"""|''(?:[^''\\\r\n]|\\.)*''|"(?:[^"\\\r\n]|\\.)*")')
 $script:PyDeclRx = [regex]::new('^\s*(?:pub\b|public\b|private\b|internal\b|protected\b|export\b|(?:async\s+|unsafe\s+)?(?:fn|struct|enum|impl|trait|mod|const|static|class|interface|function|def|func)\b)')
 $script:PyDeclNameRx = [regex]::new('(?:\b(?:fn|struct|enum|trait|mod|const|static|class|interface|function|def|func|type)\s+|^\s*(?:pub(?:\([^)]*\))?|public|private|internal|protected)\s+(?=[A-Za-z_]\w*\s*:))(?<n>[A-Za-z_]\w*)')
-$script:PyPatternArgRx = [regex]::new('(?:\bre\.(?:sub|subn|compile|search|match|fullmatch|findall|finditer|split)|\.replace)\s*\(\s*$')
+$script:PyLocalDeclRx = [regex]::new('^\s*(?:(?:var|let(?:\s+mut)?)\s+(?<n>(?!_\b)[A-Za-z_]\w*)\s*[:=](?!:)|(?!(?:let|var|return|else|await|yield|throw|case|in|is|not|and|or|if|elif|while|for|new|print)\b)[A-Za-z_][\w.]*(?:<[\w<>,\s.?\[\]]*>)?(?:\[\])?\??\s+(?<n>[A-Za-z_]\w*)\s*=(?!=))')
+$script:PyAttrRx = [regex]::new('^\s*(?:\[[A-Z]\w*(?:\(.*\))?(?:\s*,\s*[A-Z]\w*(?:\(.*\))?)*\]|#!?\[[A-Za-z_][\w:]*(?:\(.*\))?\])\s*$')
+$script:PyPatternArgRx =[regex]::new('(?:\bre\.(?:sub|subn|compile|search|match|fullmatch|findall|finditer|split)|\.replace)\s*\(\s*$')
 $script:PySlashCommentRx =[regex]::new('^\s*(?://|/\*)')
 $script:PyHashCommentRx = [regex]::new('^\s*#(?![\[!])')
 
@@ -104,16 +106,28 @@ function Test-PythonNewCodeScript([string]$Script, [string]$Baseline = $null) {
     for ($i = 0; $i -lt $lits.Count; $i++) {
         $head = $Script.Substring([Math]::Max(0, $litMatches[$i].Index - 40), [Math]::Min(40, $litMatches[$i].Index))
         if ($script:PyPatternArgRx.IsMatch($head)) { continue }
+        $var = [regex]::Match($head, '(?<![\w.])([A-Za-z_]\w*)\s*=\s*$')
+        if ($var.Success -and [regex]::IsMatch($Script, '(?:\bre\.(?:sub|subn|search|match|fullmatch|findall|finditer|split)|\.replace)\s*\(\s*' + $var.Groups[1].Value + '\s*,')) { continue }
         $ls = Get-PythonLiteralLines $lits[$i]
         if ($null -eq $ls) { continue }
         foreach ($line in $ls) {
             $t = $line.Trim()
             if ($t -eq '' -or $known.Contains($t)) { continue }
-            $hit = $script:PyDeclRx.IsMatch($line) -or ($slash -and $script:PySlashCommentRx.IsMatch($line)) -or ($hash -and $script:PyHashCommentRx.IsMatch($line))
+            $hit = $script:PyDeclRx.IsMatch($line) -or $script:PyLocalDeclRx.IsMatch($line) -or $script:PyAttrRx.IsMatch($line) -or ($slash -and $script:PySlashCommentRx.IsMatch($line)) -or ($hash -and $script:PyHashCommentRx.IsMatch($line))
             if (-not $hit) { continue }
             $seen = $false
             for ($j = 0; $j -lt $lineSets.Count; $j++) {
                 if ($j -ne $i -and $lineSets[$j].Contains($t)) { $seen = $true; break }
+            }
+            $local = $script:PyLocalDeclRx.Match($line)
+            if (-not $seen -and $local.Success -and -not $script:PyDeclRx.IsMatch($line)) {
+                for ($j = 0; $j -lt $lineSets.Count -and -not $seen; $j++) {
+                    if ($j -eq $i) { continue }
+                    foreach ($o in $lineSets[$j]) {
+                        $om = $script:PyLocalDeclRx.Match($o)
+                        if ($om.Success -and $om.Groups['n'].Value -ceq $local.Groups['n'].Value) { $seen = $true; break }
+                    }
+                }
             }
             $name = $script:PyDeclNameRx.Match($line)
             if (-not $seen -and $name.Success) {

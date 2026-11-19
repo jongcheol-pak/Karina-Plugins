@@ -1549,6 +1549,83 @@
     },
     {
       "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (미탐 보완): C# 지역 선언 새 줄은 차단",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('src/A.cs')\ns = p.read_text(encoding='utf-8')\ns = s.replace('        Run();', '''        Run();\n        int total = 0;\n''')\np.write_text(s, encoding='utf-8')\nPY",
+      "expect_exit": 2,
+      "expect_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (미탐 보완): C# attribute 새 줄은 차단",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('Tests/ATests.cs')\ns = p.read_text(encoding='utf-8')\ns = s.replace('        [TestCase(1, false)]', '''        [TestCase(1, false)]\n        [TestCase(2, true)]\n''')\np.write_text(s, encoding='utf-8')\nPY",
+      "expect_exit": 2,
+      "expect_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (미탐 보완): Rust let 새 줄은 차단",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('src/a.rs')\ns = p.read_text()\ns = s.replace('    run();', '''    run();\n    let mut total = 0;\n''')\np.write_text(s)\nPY",
+      "expect_exit": 2,
+      "expect_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (미탐 보완): Rust #[test] 새 줄은 차단",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('src/a.rs')\ns = p.read_text()\ns = s.replace('mod tests {', '''mod tests {\n    #[test]\n''')\np.write_text(s)\nPY",
+      "expect_exit": 2,
+      "expect_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (델타 음성): 멤버 대입 새 줄은 통과",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('src/A.cs')\ns = p.read_text(encoding='utf-8')\ns = s.replace('        Run();', '''        Run();\n        state.Count = next;\n''')\np.write_text(s, encoding='utf-8')\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (델타 음성): return 비교 새 줄은 통과",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('src/A.cs')\ns = p.read_text(encoding='utf-8')\ns = s.replace('        Run();', '''        Run();\n        return a == b;\n''')\np.write_text(s, encoding='utf-8')\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (델타 음성): .py 대상의 python 대입 새 줄은 통과",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('tools/gen.py')\ns = p.read_text(encoding='utf-8')\ns = s.replace('    run()', '''    run()\n    total = count + 1\n''')\np.write_text(s, encoding='utf-8')\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (델타 음성): 리스트 리터럴 새 줄은 통과",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('src/A.cs')\ns = p.read_text(encoding='utf-8')\ns = s.replace('            [1, 2],', '''            [1, 2],\n            [3, 4],\n''')\np.write_text(s, encoding='utf-8')\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (오탐 수정): .replace 첫 인자로 쓰인 변수의 지울 클래스는 판정하지 않는다",
+      "command": "python - <<'PY'\np = 'src/A.cs'\ns = open(p, encoding='utf-8').read()\nold = '''    public class Old\n    {\n    }\n'''\nnew = ''\ns = s.replace(old, new)\nopen(p, 'w', encoding='utf-8').write(s)\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (델타 음성): 같은 이름 지역 선언을 다른 줄 모양으로 다시 쓰면 통과",
+      "command": "python - <<'PY'\np = 'src/view.rs'\ns = open(p, encoding='utf-8').read()\npairs = [(\"        let rows = picker_rows(&ids, f);\", \"\"\"        let rows = picker_rows(\n            &ids,\n            f,\n        );\"\"\")]\nfor a, b in pairs:\n    s = s.replace(a, b)\nopen(p, 'w', encoding='utf-8').write(s)\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (델타 음성): let _ 와 경로 패턴 let 은 지역 선언으로 세지 않는다",
+      "command": "python - <<'PY'\np = 'src/a.rs'\ns = open(p, encoding='utf-8').read()\npairs = [('        cx.update(|cx| {', '''        let _ = cx.update(|cx| {\n            let super::store::Source::Market { id } = item else { return };''')]\nfor a, b in pairs:\n    s = s.replace(a, b)\nopen(p, 'w', encoding='utf-8').write(s)\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
       "name": "python 새 코드 (델타 음성): re.sub 둘째 인자의 새 /// 는 차단 유지",
       "command": "python - <<'PY'\nimport re\nfrom pathlib import Path\np = Path('src/a.rs')\ns = p.read_text()\ns = re.sub(r'fn a', '''fn a() {}\n\n/// b 설명\nfn b''', s)\np.write_text(s)\nPY",
       "expect_exit": 2,
