@@ -1521,6 +1521,41 @@
     },
     {
       "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (오탐 수정): re.subn 패턴의 클래스 선언 줄을 지우고 이름만 바꾸는 치환은 통과 (2026-11-18 Tiny Swords 원문)",
+      "command": "cd \"D:/Personal Project/Unity/Project/Tiny Swords/Assets/_Project/Tests/EditMode\"; python - <<'EOF'\nimport re\nfor f in [\"ClearRewardTests.cs\",\"LevelProgressTests.cs\",\"StarRecordTests.cs\",\"UpgradeShopTests.cs\"]:\n    b=open(f,'rb').read(); crlf=b'\\r\\n' in b; t=b.decode('utf-8')\n    n0=len(t)\n    t,k=re.subn(r'        private sealed class MemoryStore : IProgressStore\\r?\\n        \\{\\r?\\n(?:.*\\r?\\n)*?        \\}\\r?\\n\\r?\\n','',t,count=1)\n    t=re.sub(r'\\bMemoryStore\\b','MemoryProgressStore',t)\n    open(f,'wb').write(t.encode('utf-8'))\n    print(f,k,crlf)\nEOF\ngrep -rn \"class MemoryStore\\|_values\\b\" ClearRewardTests.cs LevelProgressTests.cs StarRecordTests.cs UpgradeShopTests.cs; git diff --stat -- .; grep -n \"^using\" ClearRewardTests.cs LevelProgressTests.cs StarRecordTests.cs UpgradeShopTests.cs | grep Generic",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (오탐 수정): re.search 첫 인자의 선언 줄은 판정하지 않는다",
+      "command": "python - <<'PY'\nimport re\np = 'src/A.cs'\nt = open(p, encoding='utf-8').read()\nif re.search(r'public class Foo\\n', t):\n    open(p, 'w', encoding='utf-8').write(t.replace('Foo', 'Bar'))\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (오탐 수정): .replace 의 old 에만 있는 선언 줄은 판정하지 않는다",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('src/A.cs')\ns = p.read_text(encoding='utf-8')\ns = s.replace('''public class Old\n{\n}\n''', '')\np.write_text(s, encoding='utf-8')\nPY",
+      "expect_exit": 0,
+      "expect_not_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (델타 음성): .replace 의 new 에만 있는 새 선언은 차단 유지",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np = Path('src/A.cs')\ns = p.read_text(encoding='utf-8')\ns = s.replace('// anchor', '''// anchor\npublic class Added {}\n''')\np.write_text(s, encoding='utf-8')\nPY",
+      "expect_exit": 2,
+      "expect_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "python 새 코드 (델타 음성): re.sub 둘째 인자의 새 /// 는 차단 유지",
+      "command": "python - <<'PY'\nimport re\nfrom pathlib import Path\np = Path('src/a.rs')\ns = p.read_text()\ns = re.sub(r'fn a', '''fn a() {}\n\n/// b 설명\nfn b''', s)\np.write_text(s)\nPY",
+      "expect_exit": 2,
+      "expect_contains": "python 스크립트로 소스 파일에 새 코드·주석을 씁니다"
+    },
+    {
+      "hook": "guard-bash.ps1",
       "name": "전역 탐색: && 뒤 세그먼트 경고",
       "command": "cd /tmp && find / -name x",
       "expect_exit": 0,

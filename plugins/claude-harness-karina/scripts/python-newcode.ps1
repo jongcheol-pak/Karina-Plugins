@@ -14,6 +14,7 @@ $script:PyWriteRx = [regex]::new('write_text|write_bytes|\.write\(|\bopen\s*\([^
 $script:PyLiteralRx = [regex]::new('(?s)(?<![A-Za-z0-9_])[rRbBfFuU]{0,2}(''''''.*?''''''|""".*?"""|''(?:[^''\\\r\n]|\\.)*''|"(?:[^"\\\r\n]|\\.)*")')
 $script:PyDeclRx = [regex]::new('^\s*(?:pub\b|public\b|private\b|internal\b|protected\b|export\b|(?:async\s+|unsafe\s+)?(?:fn|struct|enum|impl|trait|mod|const|static|class|interface|function|def|func)\b)')
 $script:PyDeclNameRx = [regex]::new('(?:\b(?:fn|struct|enum|trait|mod|const|static|class|interface|function|def|func|type)\s+|^\s*(?:pub(?:\([^)]*\))?|public|private|internal|protected)\s+(?=[A-Za-z_]\w*\s*:))(?<n>[A-Za-z_]\w*)')
+$script:PyPatternArgRx = [regex]::new('(?:\bre\.(?:sub|subn|compile|search|match|fullmatch|findall|finditer|split)|\.replace)\s*\(\s*$')
 $script:PySlashCommentRx =[regex]::new('^\s*(?://|/\*)')
 $script:PyHashCommentRx = [regex]::new('^\s*#(?![\[!])')
 
@@ -75,7 +76,8 @@ function Test-PythonNewCodeScript([string]$Script, [string]$Baseline = $null) {
     if (-not ($Script.Contains("'''") -or $Script.Contains('"""') -or $Script.Contains('\n'))) { return $pass }
     if (-not $script:PyTargetExts['Slash'] -or -not $script:PyTargetExts['Hash']) { return $pass }
 
-    $lits = @($script:PyLiteralRx.Matches($Script) | ForEach-Object { $_.Groups[1].Value })
+    $litMatches = @($script:PyLiteralRx.Matches($Script))
+    $lits = @($litMatches | ForEach-Object { $_.Groups[1].Value })
     $targets = @()
     foreach ($l in $lits) {
         if ($l.StartsWith("'''") -or $l.StartsWith('"""')) { continue }
@@ -100,6 +102,8 @@ function Test-PythonNewCodeScript([string]$Script, [string]$Baseline = $null) {
     }
     $known = Get-PythonLiteralLineSet $Baseline
     for ($i = 0; $i -lt $lits.Count; $i++) {
+        $head = $Script.Substring([Math]::Max(0, $litMatches[$i].Index - 40), [Math]::Min(40, $litMatches[$i].Index))
+        if ($script:PyPatternArgRx.IsMatch($head)) { continue }
         $ls = Get-PythonLiteralLines $lits[$i]
         if ($null -eq $ls) { continue }
         foreach ($line in $ls) {
