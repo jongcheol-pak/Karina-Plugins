@@ -202,7 +202,7 @@ Assert-Case -Name "guard-comment: Write 의 새 pub doc(앞) + 다른 자리 doc
 $r = Invoke-GcWrite (Join-Path $gcLib 'src/rw_b.rs') ("/// 내부 도우미 설명.`nfn helper() {}`n" + $gcRwFixed)
 Assert-Case -Name "guard-comment: Write 의 새 비공개 doc(앞) + 문구 수정(뒤)은 새 doc 을 막는다" -R $r -ExpectExit 2 -ExpectContains '내부 도우미 설명' -ExpectNotContains '직접 내리지'
 $r = Invoke-GcEditAt (Join-Path $gcLib 'src/rw_c.rs') "fn c() {`n    /// 아틀라스에서 그림을 내리지 않는다." "/// 썸네일을 칠하는 설정 창.`npub fn bind() {}`nfn c() {`n    /// 아틀라스에서 그림을 직접 내리지 않는다."
-Assert-Case -Name "guard-comment: Edit 한 쌍의 새 pub doc(앞) + 문구 수정(뒤)은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+Assert-Case -Name "guard-comment: Edit 한 쌍의 새 pub doc(앞)은 새 주석으로 막지 않고, 코드와 함께 고친 문구 수정(뒤)만 막는다" -R $r -ExpectExit 2 -ExpectContains '기존 주석의 문구만 고쳤습니다' -ExpectNotContains '썸네일을 칠하는'
 [System.IO.File]::WriteAllText((Join-Path $gcLib 'src/rw_f.rs'), "/// 공개 진입점을 연다.`npub fn open() {}`n", [System.Text.UTF8Encoding]::new($false))
 $r = Invoke-GcWrite (Join-Path $gcLib 'src/rw_f.rs') "/// 내부 도우미 설명.`nfn helper() {}`n/// 공개 진입점을 바로 연다.`npub fn open() {}`n"
 Assert-Case -Name "guard-comment: Write 의 새 비공개 doc(앞) + pub 위 doc 문구 수정(뒤)은 새 doc 을 막는다" -R $r -ExpectExit 2 -ExpectContains '내부 도우미 설명' -ExpectNotContains '바로 연다'
@@ -219,6 +219,25 @@ $r = Invoke-GcWrite (Join-Path $gc 'rw_h.cs') $gcBigNew
 Assert-Case -Name "guard-comment: 유사도 예산을 넘는 전면 재작성은 순서대로 봐주고 마지막 줄을 막는다" -R $r -ExpectExit 2 -ExpectContains '#45 렌더러' -ExpectNotContains 'qqq xxx'
 $r = Invoke-GcEditAt (Join-Path $gcKeep 'scripts/head.ps1') '$h = 1' "# 정본 머리 표`n`$h = 1"
 Assert-Case -Name "guard-comment: AGENTS.md Comment (보존) 경로·정규식에 맞는 주석 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+
+$gcRw = '기존 주석의 문구만 고쳤습니다'
+$r = Invoke-GcEdit 'rw1.cs' "// 합계를 센다`nint s = 0;" "// 합계를 다시 센다`nint s = 1;"
+Assert-Case -Name "guard-comment: 코드와 같은 Edit 에서 예외 밖 주석 문구만 고치면 차단" -R $r -ExpectExit 2 -ExpectContains $gcRw
+$rwEdits = @(@{ old_string = 'int b = 2;'; new_string = 'int b = 3;' }, @{ old_string = "// 값 초기화`nint a = 0;"; new_string = "// 값을 새로 초기화`nint a = 1;" })
+$r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'gc-rw-multi'; tool_name = 'MultiEdit'; cwd = $gc; tool_input = @{ file_path = (Join-Path $gc 'rw2.cs'); edits = $rwEdits } } | ConvertTo-Json -Compress -Depth 5)
+Assert-Case -Name "guard-comment: MultiEdit 짝 안에서 코드와 주석 문구를 함께 고치면 차단" -R $r -ExpectExit 2 -ExpectContains $gcRw
+$r = Invoke-GcEdit 'rw3.cs' "// 합계를 센다`nint t = 0;" "// 합계를 다시 센다`nint t = 0;"
+Assert-Case -Name "guard-comment: 주석 문구만 고친 Edit 는 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+[System.IO.File]::WriteAllText((Join-Path $gc 'gcrule.md'), '규칙', [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-GcEdit 'rw4.cs' "// 근거는 gcrule.md 1절`nint u = 0;" "// 근거는 gcrule.md 2절`nint u = 1;"
+Assert-Case -Name "guard-comment: 문구를 고친 주석이 실재 .md 경로를 담으면 코드와 함께여도 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-GcEditAt (Join-Path $gcKeep 'scripts/head.ps1') "# 정본 머리 표`n`$h = 1" "# 정본 머리 표 둘째 판`n`$h = 2"
+Assert-Case -Name "guard-comment: Comment (보존) 에 맞는 주석 문구 수정은 코드와 함께여도 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-GcEdit 'rw5.cs' 'int v = 0;' 'int v = 1;'
+Assert-Case -Name "guard-comment: 코드만 고친 Edit 는 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+[System.IO.File]::WriteAllText((Join-Path $gc 'rw6.cs'), "// 합계`nint w = 0;`n", [System.Text.UTF8Encoding]::new($false))
+$r = Invoke-GcWrite (Join-Path $gc 'rw6.cs') "// 합계를 새로`nint w = 1;`n"
+Assert-Case -Name "guard-comment: Write 의 주석 문구 수정은 코드와 함께여도 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 $r = Invoke-GcEdit 'src.ts' 'h();' "// 출처 https://example.com/blog/post`nh();"
 Assert-Case -Name "guard-comment: 출처 URL 만 든 줄 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock

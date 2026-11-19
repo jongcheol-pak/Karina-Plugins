@@ -163,7 +163,17 @@ function Get-RewordedCandidateIndexes($Gone, $Candidates, $Budget) {
     return , $picked
 }
 
-function Get-AddedCommentBodies([string]$Path, $Pairs, $Budget = $null) {
+function Test-CommentPairCodeChanged([string]$Path, $Pair) {
+    $code = foreach ($side in 0, 1) {
+        $lines = [string]$Pair[$side] -split '\r?\n'
+        $skip = @{}
+        foreach ($c in (Get-CommentBodyLines $Path $lines)) { $skip[$c.Line] = $true }
+        , ((@(for ($i = 0; $i -lt $lines.Count; $i++) { if (-not $skip.ContainsKey($i) -and $lines[$i].Trim()) { $lines[$i].Trim() } })) -join "`n")
+    }
+    return $code[0] -ne $code[1]
+}
+
+function Get-AddedCommentBodies([string]$Path, $Pairs, $Budget = $null, [switch]$RewordedOnly) {
     if ($null -eq $Budget) { $Budget = New-CommentRewriteBudget }
     $added = New-Object System.Collections.Generic.List[object]
     for ($p = 0; $p -lt @($Pairs).Count; $p++) {
@@ -177,6 +187,12 @@ function Get-AddedCommentBodies([string]$Path, $Pairs, $Budget = $null) {
         $gone = @($oldBodies | Where-Object { -not $newSet.Contains($_) })
         $candidates = @($newLines | Where-Object { -not $oldSet.Contains($_.Body) })
         $reworded = Get-RewordedCandidateIndexes $gone $candidates $Budget
+        if ($RewordedOnly) {
+            if ($reworded.Count -and (Test-CommentPairCodeChanged $Path $pair)) {
+                foreach ($i in $reworded) { $added.Add(@{ Body = $candidates[$i].Body; Pair = $p; Line = $candidates[$i].Line; Indexes = @() }) }
+            }
+            continue
+        }
         for ($i = 0; $i -lt $candidates.Count; $i++) {
             if ($reworded.Contains($i)) { continue }
             $added.Add(@{ Body = $candidates[$i].Body; Pair = $p; Line = $candidates[$i].Line; Indexes = @() })
