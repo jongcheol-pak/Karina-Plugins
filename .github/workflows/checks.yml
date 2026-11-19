@@ -4,9 +4,9 @@
 #   pwsh 로 골든을 돌린다. 검증 환경은 Windows 이고(`AGENTS.md` 「OS/플랫폼」)
 #   macOS/Linux 는 실험적이라 CI 를 그쪽에 맞추면 재는 것과 쓰는 것이 갈린다.
 #
-# **검사기 명령은 `AGENTS.md` 「Build & Test」에서 그대로 옮긴다** — 문자열을 여기서 고쳐 쓰면
-#   정본이 둘이 되고 한쪽만 갱신된다. 경로 판정 두 단계의 명령은
-#   `docs/harness-conventions.md` 「검증 매핑」 의 `.github/**` 행이 정본이다.
+# **python 단계 목록은 이 파일이 정본이다** — 로컬 전체 검증은 `.github/scripts/run_ci_checks.py` 가 한 줄 `run: python …` 단계를 읽어 돈다(단계를 더하면 로컬에도 더해진다).
+#   인라인 pwsh 2종의 명령은 `AGENTS.md` 「Build & Test」에서 그대로 옮긴다. git 루트에서 도는 세 단계의 명령은
+#   `docs/verification-mapping.md` 「검증 매핑」 의 `.github/**` 행이 정본이다.
 #
 # **Hook 골든은 PR 에서 입력 경로가 바뀌었을 때만 돈다** — job 시간의 85% 안팎(약 540초)이다.
 #   입력 경로와 판정 규칙의 정본은 `.github/scripts/hook_golden_needed.py` 다. main push 는
@@ -40,7 +40,7 @@ on:
 jobs:
   checks:
     runs-on: windows-latest
-    # 명령은 AGENTS.md 「Build & Test」 그대로 하니스 루트에서 돈다(경로 판정 두 단계만 git 루트).
+    # 명령은 AGENTS.md 「Build & Test」 그대로 하니스 루트에서 돈다(working-directory 를 따로 적은 세 단계만 git 루트).
     defaults:
       run:
         working-directory: plugins/claude-harness-karina
@@ -131,6 +131,10 @@ jobs:
       - name: CI 경로 판정 테스트
         working-directory: .
         run: python .github/scripts/test_hook_golden_needed.py
+
+      - name: 로컬 러너 테스트
+        working-directory: .
+        run: python .github/scripts/test_run_ci_checks.py
 
       - name: Hook 골든 경로 판정
         id: paths
