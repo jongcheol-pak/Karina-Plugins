@@ -111,12 +111,12 @@ function New-CommitJson([string]$cwd, [string]$msg) {
     return (@{ tool_name = 'Bash'; cwd = $cwd; tool_input = @{ command = "git commit -m `"$msg`"" } } | ConvertTo-Json -Compress)
 }
 
-function Invoke-HookSlowGit([string]$InputJson, [hashtable]$ExtraEnv = @{}, [int]$LimitMs = 2000, [int]$FastMs = 25000) {
+function Invoke-HookSlowGit([string]$InputJson, [hashtable]$ExtraEnv = @{}, [int]$LimitMs = 2000) {
     $slowDir = Join-Path $work 'slow-git'
     $slowLog = Join-Path $slowDir 'calls.log'
     if (-not (Test-Path -LiteralPath (Join-Path $slowDir 'git.cmd'))) {
         New-Item -ItemType Directory $slowDir -Force | Out-Null
-        [System.IO.File]::WriteAllText((Join-Path $slowDir 'git.cmd'), "@echo x>>`"$slowLog`"`r`n@ping -n 30 127.0.0.1 >nul`r`n@exit /b 0`r`n")
+        [System.IO.File]::WriteAllText((Join-Path $slowDir 'git.cmd'), "@echo x>>`"$slowLog`"`r`n@ping -n 60 127.0.0.1 >nul`r`n@exit /b 0`r`n")
     }
     [System.IO.File]::WriteAllText($slowLog, '')
     $saved = @{ PATH = $env:PATH; KARINA_COMMIT_GIT_TIMEOUT_MS = $env:KARINA_COMMIT_GIT_TIMEOUT_MS }
@@ -125,9 +125,10 @@ function Invoke-HookSlowGit([string]$InputJson, [hashtable]$ExtraEnv = @{}, [int
         $env:PATH = $slowDir + [System.IO.Path]::PathSeparator + $env:PATH
         if ($LimitMs -gt 0) { $env:KARINA_COMMIT_GIT_TIMEOUT_MS = [string]$LimitMs } else { $env:KARINA_COMMIT_GIT_TIMEOUT_MS = $null }
         foreach ($k in $ExtraEnv.Keys) { [Environment]::SetEnvironmentVariable($k, [string]$ExtraEnv[$k]) }
-        $sw = [System.Diagnostics.Stopwatch]::StartNew()
         $r = Invoke-Hook 'guard-bash.ps1' $InputJson -Process
-        $r.out = [string]$r.out + "`nfast=$($sw.ElapsedMilliseconds -lt $FastMs) gitcalls=$(@([System.IO.File]::ReadAllLines($slowLog) | Where-Object { $_ }).Count)"
+        $calls = @([System.IO.File]::ReadAllLines($slowLog) | Where-Object { $_ }).Count
+        $waited = $calls -gt 0 -and ([DateTime]::UtcNow - [System.IO.File]::GetLastWriteTimeUtc($slowLog)).TotalSeconds -ge 58
+        $r.out = [string]$r.out + "`nwaited=$waited gitcalls=$calls"
         return $r
     } finally {
         foreach ($k in $saved.Keys) { [Environment]::SetEnvironmentVariable($k, $saved[$k]) }

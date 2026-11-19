@@ -536,12 +536,12 @@ if ($gitOk) {
     if ($IsWindows) {
         $r = Invoke-HookSlowGit $wcsJson
         Assert-Case -Name "commit-git 상한: git 이 상한 안에 답하지 않으면 시크릿 검사가 재시도 안내로 차단" -R $r -ExpectExit 2 -ExpectContains '커밋 시크릿 검사'
-        Assert-Case -Name "commit-git 상한: 시크릿 검사는 git 대기를 상한에서 끊는다" -R $r -ExpectExit 2 -ExpectContains 'fast=True'
+        Assert-Case -Name "commit-git 상한: 시크릿 검사는 git 이 끝나기를 기다리지 않고 상한에서 끊는다" -R $r -ExpectExit 2 -ExpectContains 'waited=False'
         $r = Invoke-HookSlowGit $wcsJson @{ CLAUDE_HARNESS_ALLOW_SECRET = '1' }
         Assert-Case -Name "commit-git 상한: git 이 상한 안에 답하지 않으면 새 주석 검사가 재시도 안내로 차단" -R $r -ExpectExit 2 -ExpectContains '커밋 새 주석 검사'
-        Assert-Case -Name "commit-git 상한: 새 주석 검사는 git 대기를 상한에서 끊는다" -R $r -ExpectExit 2 -ExpectContains 'fast=True'
-        $r = Invoke-HookSlowGit $wcsJson @{} 0 45000
-        Assert-Case -Name "commit-git 상한: 기본 상한에서 git 이 멈춰도 hook timeout(60초) 전에 차단한다" -R $r -ExpectExit 2 -ExpectContains 'fast=True'
+        Assert-Case -Name "commit-git 상한: 새 주석 검사는 git 이 끝나기를 기다리지 않고 상한에서 끊는다" -R $r -ExpectExit 2 -ExpectContains 'waited=False'
+        $r = Invoke-HookSlowGit $wcsJson @{} 0
+        Assert-Case -Name "commit-git 상한: git 이 멈추면 기본 상한(20초)에서 끊어 hook timeout(60초) 전에 차단한다" -R $r -ExpectExit 2 -ExpectContains 'waited=False'
         Assert-Case -Name "commit-git 상한: 한 hook 에서 git 이 한 번 멈추면 다른 검사는 git 을 다시 띄우지 않는다(멈춘 git 1회)" -R $r -ExpectExit 2 -ExpectContains 'gitcalls=1'
     }
     $wcsNoRepo = Join-Path $work 'wcs-norepo'; New-Item -ItemType Directory $wcsNoRepo -Force | Out-Null

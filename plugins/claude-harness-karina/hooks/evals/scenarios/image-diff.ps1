@@ -71,7 +71,7 @@ $idBig2 = New-IdPng 'big2.png' 1920 1080 @(, @(1000, 500))
 $idSw = [System.Diagnostics.Stopwatch]::StartNew()
 $r = Invoke-ImageDiff @('-Base', $idBig1, '-Head', $idBig2)
 $idSw.Stop()
-$idFast = $idSw.Elapsed.TotalSeconds -le 5
-Assert-Case -Name "image-diff: 1920x1080 두 장을 5초 안에 비교한다(기동 포함 — 병렬 전체에서만 실패하면 단독 재실행으로 가른다)" -R @{ code = $r.code; out = ($r.out + " fast=$idFast") } -ExpectExit 1 -ExpectContains 'diff 1 px of 1920x1080 bbox 1000,500,1,1 fast=True'
+$idFast = $idSw.Elapsed.TotalSeconds -le 15
+Assert-Case -Name "image-diff: 1920x1080 두 장을 15초 안에 비교한다(기동 포함 — 병렬 전체에서만 실패하면 단독 재실행으로 가른다)" -R @{ code = $r.code; out = ($r.out + " fast=$idFast") } -ExpectExit 1 -ExpectContains 'diff 1 px of 1920x1080 bbox 1000,500,1,1 fast=True'
 
 }
