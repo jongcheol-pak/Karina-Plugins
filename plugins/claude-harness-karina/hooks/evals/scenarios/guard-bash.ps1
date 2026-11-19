@@ -480,6 +480,38 @@ $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $pyRepo; tool_in
 Assert-Case -Name "python 새 코드: 커밋 뒤 수정으로 새 /// 문자열을 더한 .py 실행은 차단 (PN-modified-newcode)" -R $r -ExpectExit 2 -ExpectContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
 }
 
+if (Test-ScenarioUnit 3) {
+$bwMark = '[SCREEN BASELINE WARNING]'
+function New-BwRepo([string]$Name, [string]$VerifyLine) {
+    $d = Join-Path $work $Name
+    New-Item -ItemType Directory (Join-Path $d '.git') -Force | Out-Null
+    $body = '# AGENTS.md' + [Environment]::NewLine + [Environment]::NewLine + '- **Build**: `cargo build`' + [Environment]::NewLine
+    if ($VerifyLine) { $body += $VerifyLine + [Environment]::NewLine }
+    $body | Set-Content (Join-Path $d 'AGENTS.md')
+    return $d
+}
+function Invoke-BwCase([string]$Cwd, [string]$Command) {
+    return Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $Cwd; tool_input = @{ command = $Command } } | ConvertTo-Json -Compress)
+}
+$bwRepo = New-BwRepo 'bw-verify' '- **Verify (앱 조작)**: `.claude/skills/verify-app/`'
+$bwNone = New-BwRepo 'bw-verify-none' '- **Verify (앱 조작)**: 없음'
+$bwBare = New-BwRepo 'bw-verify-absent' ''
+$r = Invoke-BwCase $bwRepo ('cd "' + $bwRepo + '"; B="' + $work + '/base-a84d4b8"; git worktree add --detach "$B" a84d4b8 2>&1 | tail -1')
+Assert-Case -Name "base-worktree: Verify (앱 조작) 레포의 BASE worktree add 는 화면 기준선 경고 + exit 0" -R $r -ExpectExit 0 -ExpectContains $bwMark
+$r = Invoke-BwCase $work ('git -C "' + $bwRepo + '" worktree add ../b HEAD')
+Assert-Case -Name "base-worktree: 다른 cwd 에서 -C 로 그 레포에 worktree add 해도 경고" -R $r -ExpectExit 0 -ExpectContains $bwMark
+$r = Invoke-BwCase $bwRepo ('git -C "' + $bwRepo + '" worktree add --detach "' + $work + '/scratch/chain-parent-3" abc1234')
+Assert-Case -Name "base-worktree: 체인 감사 worktree(chain-parent-*)는 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $bwMark
+$r = Invoke-BwCase $bwNone 'git worktree add ../b HEAD'
+Assert-Case -Name "base-worktree: Verify (앱 조작) 이 없음이면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $bwMark
+$r = Invoke-BwCase $bwBare 'git worktree add ../b HEAD'
+Assert-Case -Name "base-worktree: Verify 줄 없는 AGENTS.md 레포는 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $bwMark
+$r = Invoke-BwCase $bwRepo 'git worktree list'
+Assert-Case -Name "base-worktree: worktree list 는 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $bwMark
+$r = Invoke-BwCase $bwRepo "grep -n 'git worktree add' notes.md"
+Assert-Case -Name "base-worktree: 검색 명령의 따옴표 문자열 속 worktree add 는 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $bwMark
+}
+
 if (Test-ScenarioUnit 1) {
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > a.txt <<'EOF'`necho x > plan.md`nEOF")
 Assert-Case -Name "hd: cat > a.txt 데이터 싱크 본문의 > plan.md 는 통과 (HD1 오탐 수정)" -R $r -ExpectExit 0 -ExpectNotContains '스크립트로 쓰려 합니다'

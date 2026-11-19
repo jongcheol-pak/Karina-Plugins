@@ -3,13 +3,13 @@
 > `guard-bash.ps1`의 주석에서 옮긴 판정 근거다. 스크립트에는 각 자리에 이 문서의 절을 가리키는 1줄만 남겼다.
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 
-## §1 검사 12종을 한 프로세스에서 수행하는 이유
+## §1 검사 13종을 한 프로세스에서 수행하는 이유
 
 ```
-# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 12종 검사를 한 프로세스에서 수행
+# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 13종 검사를 한 프로세스에서 수행
 #
 # 담당 조항(정본: `skills/DESIGN.md`의 hook 담당 조항 표):
-#   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신 · E18 Windows Bash 도구 역슬래시 축소(heredoc·python -c 차단 · 그 밖 경고) · E19 task 완료 커밋의 소스 감사 누락 경고 · E21 python 으로 소스에 새 코드·주석 쓰기 차단.
+#   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신 · E18 Windows Bash 도구 역슬래시 축소(heredoc·python -c 차단 · 그 밖 경고) · E19 task 완료 커밋의 소스 감사 누락 경고 · E21 python 으로 소스에 새 코드·주석 쓰기 차단 · E22 앱 조작 검증 레포의 BASE worktree 경고.
 #   부수 경고 둘(전역 탐색·위험값 대입)은 대응하는 독립 hook이 없고 이 파일이 유일한 실행 경로다.
 #
 # block-destructive는 여기 합치지 않는다 — 끌 수 없는 마지막 방어선이라 이 파일의 로드 실패가
@@ -26,7 +26,7 @@
 
 **코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 아래 검사 함수 8종(2026-11-02 에 더한 `Invoke-WarnTaskAudit` 은 `task-audit-rationale.md`, `Invoke-BashBackslash` 는 이 문서 §21)의 판정 근거는 이 문서가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
-## §2 검사 12종을 한 프로세스에 담는 구조
+## §2 검사 13종을 한 프로세스에 담는 구조
 
 v1.225.0이 Bash 계열 hook 을 `guard-bash.ps1` 하나로 통폐합하며 공유 모듈 `bash-hook-lib.ps1` 을 삭제했다.
 종전에는 검사 로직을 그 모듈에 두고 ① 검사마다 standalone 래퍼 ② 단일 디스패처
@@ -35,8 +35,8 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 
 현행 구조:
 
-- **검사 12종 중 8종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
-  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-BlockInstalledAssetWrite`(§23) · `Invoke-WarnGlobalFind` · `Invoke-BashBackslash` · `Invoke-WarnDangerousAssignment` · `Invoke-BlockPythonNewCode`(I/O — 인자 `.py` 파일 읽기 — 만 여기 있고 판정은 `python-newcode.ps1` 의 순수 함수다, §22).
+- **검사 13종 중 9종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
+  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-BlockInstalledAssetWrite`(§23) · `Invoke-WarnGlobalFind` · `Invoke-BashBackslash` · `Invoke-WarnDangerousAssignment` · `Invoke-BlockPythonNewCode`(I/O — 인자 `.py` 파일 읽기 — 만 여기 있고 판정은 `python-newcode.ps1` 의 순수 함수다, §22) · `Invoke-WarnBaseWorktree`(§24).
   **나머지 넷 — `Invoke-WarnCommitSecrets`(`guard-commit-secrets.ps1`) · `Invoke-WarnStaleDocs`
   (`guard-stale-docs.ps1`) · `Invoke-WarnTaskAudit`(`guard-task-audit.ps1`) · `Invoke-BlockCommitComments`(`guard-commit-comments.ps1` — 근거는 `comment-gate-rationale.md` §4) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
   우회 변수·시크릿 패턴 연동을 담아 크기가 따로 놀고, 분리해 두어야 골든이 그 파일만 단독
@@ -54,10 +54,10 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
   `require-task-checkbox` · `block-python-newcode`) + `warn-commit-secrets` 2곳(`guard-commit-secrets.ps1`
   의 시크릿 검출·스캔 캡 초과) + `block-commit-comments` 1곳(`guard-commit-comments.ps1` 의 새 주석 차단).
   `check-block-coverage.py` 가 세는 「guard-bash 경로 5 · guard-commit-secrets 경로 2 · guard-commit-comments 경로 1」이
-  그 여덟이다. 12검사 중 차단하는 것은 이 7종이고, 나머지 경고 전용 5종은 `Block` 을 세우지 않는다.
+  그 여덟이다. 13검사 중 차단하는 것은 이 7종이고, 나머지 경고 전용 6종은 `Block` 을 세우지 않는다.
   출력·exit 번역은 파일 하단의 단일 caller 가 하고, 각 함수는 「판정 → 결과」만 낸다.
 - **한 검사의 예외는 나머지를 막지 않는다** — `foreach` 안에서 `try/catch` 로 격리하고
-  안전측으로 통과시킨다. 열둘 중 하나가 깨져 전체가 침묵하는 것을 막는다.
+  안전측으로 통과시킨다. 열셋 중 하나가 깨져 전체가 침묵하는 것을 막는다.
 - **`New-HookResult` 생성기는 `guard-bash.ps1` 에 있다** — 커밋 판정 라이브러리는 커밋 명령에서만
   불러오므로 거기 두면 나머지 여덟 검사가 돌 수 없다. 라이브러리를 단독 dot-source 하는 골든
   프로브는 같은 정의를 직접 둔다.
@@ -179,7 +179,7 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 
 **의도적 복제** — 이 함수는 `block-destructive.ps1` 과 `guard-bash.ps1` 두 곳에 같은 본문으로 있고, `guard-bash.ps1` 쪽 정의 위에는 그 사실을 적은 주석이 없다(여기가 정본이다). `block-destructive` 는 `AGENTS.md` 「DO NOT」의 마지막 방어선이라 **외부 파일 의존을 만들지 않는다** — 공유 모듈로 빼면 dot-source 실패 시 차단이 통째로 사라지고 그 경로를 재는 것이 없다. 복제의 드리프트는 `check-harness-consistency.py` 의 「복제 사본 동기」 축이 잡는다.
 
-**분해·스트립 결과는 한 명령 안에서 캐시한다(`Get-TopLevelSegments`·`Get-HeredocSinkStripped`)** — 검사 열둘 중 넷 이상이 같은 명령을 `Remove-HeredocDataSink` 뒤 `Split-TopLevel` 로 다시 나눠, 데이터 싱크가 아닌 12KB heredoc(`python - <<EOF`) 하나에 큰 입력 분해가 다섯 번 돌았다. 캐시 뒤 한 번이고, 콜드 첫 실행 중앙값이 851→790ms 다(2026-11-14 교대 9회 — 체인 run_dc17831b plan 1). 키는 (모드, 입력) 이고 비교는 서수(대소문자 구분)다 — PowerShell `@{}` 는 대소문자를 무시해 `Rm` 과 `rm` 이 한 칸이 된다. 캐시 값은 파이프라인으로 펼쳐 돌려주므로 호출자는 새 배열을 받는다 — `Remove-DataQuotes` 가 `$segs[$i]` 를 제자리에서 덮어도 다음 검사의 입력은 바뀌지 않는다. **함수 본문이 아니라 호출부를 바꾼 이유** — 본문을 고치면 위 복제 사본 축이 block-destructive 까지 번진다.
+**분해·스트립 결과는 한 명령 안에서 캐시한다(`Get-TopLevelSegments`·`Get-HeredocSinkStripped`)** — 검사 열셋 중 넷 이상이 같은 명령을 `Remove-HeredocDataSink` 뒤 `Split-TopLevel` 로 다시 나눠, 데이터 싱크가 아닌 12KB heredoc(`python - <<EOF`) 하나에 큰 입력 분해가 다섯 번 돌았다. 캐시 뒤 한 번이고, 콜드 첫 실행 중앙값이 851→790ms 다(2026-11-14 교대 9회 — 체인 run_dc17831b plan 1). 키는 (모드, 입력) 이고 비교는 서수(대소문자 구분)다 — PowerShell `@{}` 는 대소문자를 무시해 `Rm` 과 `rm` 이 한 칸이 된다. 캐시 값은 파이프라인으로 펼쳐 돌려주므로 호출자는 새 배열을 받는다 — `Remove-DataQuotes` 가 `$segs[$i]` 를 제자리에서 덮어도 다음 검사의 입력은 바뀌지 않는다. **함수 본문이 아니라 호출부를 바꾼 이유** — 본문을 고치면 위 복제 사본 축이 block-destructive 까지 번진다.
 
 ## §12 셸 접두어를 벗긴 토큰 배열
 
@@ -349,3 +349,13 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 **원본 쪽 이동은 여기가 아니다** — 설치본 자산을 `mv`·`Move-Item`·`Rename-Item` 의 원본으로 옮기는 것은 삭제와 결과가 같아 `block-destructive` 가 막는다. 이 검사는 목적지(마지막 인자·`-Destination`)만 본다.
 
 **한계.** `Get-ShellWriteHits` 의 구문 집합 밖(다른 인터프리터의 쓰기·변수 두 겹 경유·경로 문자열 연결)은 보지 않는다. 읽기(`cat`·`cp` 원본 쪽)는 막지 않는다.
+
+## §24 warn-base-worktree: 앱 조작 검증 레포의 `git worktree add` 에 화면 기준선 안내
+
+**왜 경고인가.** `implement/references/screen-scenarios.md`「화면 시나리오 실행」 은 `기준선 일치` 화면의 기준선을 같은 작업 트리에서 편집 전에 찍고 BASE 빌드·worktree 를 쓰지 않게 한다. 그런데도 Karina 체인 run_c5849ef7 plan 9 가 T4·T5·T15 기준선을 BASE worktree(같은 빌드 산출물 폴더)로 찍었고, 그 뒤 HEAD 판이 BASE 쪽 lib 를 물어 거짓 실패(우클릭 메뉴 안 뜸)를 쫓았다 — BASE 빌드 368초와 진단·재빌드 약 480초. Karina `docs/conventions.md` 기록 기준 3회째 재발이라 `DESIGN.md` §5 의 재발 예외(E22)로 hook 에 올렸다. 등가 검증·성능 측정(`PERF-MEASUREMENT.md`)의 worktree 는 정당하므로 막지 않고 경고만 낸다.
+
+**판정.** 최상위 세그먼트(heredoc 본문 제외)가 `git (-c|-C <값>)* worktree add` 로 시작하고, 기준 폴더에서 위로 `.git` 경계까지 처음 만난 `AGENTS.md` 의 `- **Verify (앱 조작)**:` 값이 있고 「없음」 으로 시작하지 않으면 경고한다(`check-plan.ps1` `Test-VerifySkill` 과 같은 판정). 기준 폴더는 `-C <값>` 이 있으면 그 폴더(상대 경로는 cwd 기준), 없으면 cwd 다 — 해석하지 않으면 같은 명령이 cwd 에 따라 경고·무출력으로 갈린다. 세그먼트 머리가 `git` 이어야 하므로 `grep 'git worktree add'` 같은 데이터 문자열은 걸리지 않는다. AGENTS.md 는 명령에 `worktree add` 가 있을 때만 읽는다.
+
+**`chain-parent-` 로 시작하는 추가 경로는 제외한다** — `karina:chain-plan` 코디네이터가 계획마다 처방하는 감사 worktree(`chain-plan/references/continuation.md`「코디네이터 검증」)라, 경고하면 체인 계획 수만큼 거짓 경고가 난다.
+
+**한계.** `cd <다른 레포>; git worktree add …` 처럼 같은 명령 안에서 폴더를 옮기면 cwd 기준이라 놓칠 수 있다. 경로를 변수로 넘기는 `-C "$R"` 는 그 문자열 그대로 찾아 대개 AGENTS.md 를 못 찾고 침묵한다(fail-open — 경고 전용).

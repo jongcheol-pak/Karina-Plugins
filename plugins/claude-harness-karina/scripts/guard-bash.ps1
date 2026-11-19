@@ -1,4 +1,4 @@
-﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 12종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
+﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 13종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
 
 # 공용 헬퍼 New-HookResult·Remove-HeredocBodyForJudge 는 여기 둔다 — 근거는 `rules/bash-guard-rationale.md` §2
 function New-HookResult {
@@ -406,6 +406,50 @@ function Invoke-WarnExternalOps {
     return New-HookResult -Block $false -Stderr @($msg) -Context $msg
 }
 
+# warn-base-worktree: 화면 기준선 worktree 경고 — 근거는 `rules/bash-guard-rationale.md` §24
+function Invoke-WarnBaseWorktree {
+    param($data)
+    $cmd = [string]$data.tool_input.command
+    if ($cmd -notmatch '(?i)\bworktree\s+add\b') { return New-HookResult }
+    $cwd = if ($data.cwd) { [string]$data.cwd } else { (Get-Location).Path }
+    $rx = '^\s*git((?:\s+-[cC]\s+(?:"[^"]*"|''[^'']*''|\S+))*)\s+worktree\s+add\b(?<args>.*)$'
+    foreach ($seg in Get-TopLevelSegments (Get-HeredocSinkStripped $cmd)) {
+        $m = [regex]::Match($seg, $rx)
+        if (-not $m.Success) { continue }
+        if ($m.Groups['args'].Value -match '(^|[\\/"''\s])chain-parent-') { continue }
+        $dir = $cwd
+        $cm = [regex]::Matches($m.Groups[1].Value, '-C\s+("[^"]*"|''[^'']*''|\S+)')
+        if ($cm.Count) {
+            $c = $cm[$cm.Count - 1].Groups[1].Value.Trim('"', "'")
+            $dir = if ([System.IO.Path]::IsPathRooted($c)) { $c } else { Join-Path $cwd $c }
+        }
+        $agents = $null
+        $cur = $dir
+        while ($cur -and (Test-Path -LiteralPath $cur -PathType Container)) {
+            $cand = Join-Path $cur 'AGENTS.md'
+            if (Test-Path -LiteralPath $cand -PathType Leaf) { $agents = $cand; break }
+            if (Test-Path -LiteralPath (Join-Path $cur '.git')) { break }
+            $parent = [System.IO.Path]::GetDirectoryName($cur.TrimEnd('\', '/'))
+            if (-not $parent -or $parent -eq $cur) { break }
+            $cur = $parent
+        }
+        if (-not $agents) { continue }
+        $verify = $null
+        foreach ($l in @(Get-Content -LiteralPath $agents -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+            $vm = [regex]::Match([string]$l, '^- \*\*Verify \(앱 조작\)\*\*:\s*(.*)$')
+            if ($vm.Success) { $verify = $vm.Groups[1].Value.Trim(); break }
+        }
+        if (-not $verify -or $verify -match '^\W*없음') { continue }
+        $msg = (@(
+            "[SCREEN BASELINE WARNING] 이 레포는 AGENTS.md 에 「Verify (앱 조작)」 가 있습니다 — 화면 기준선은 같은 작업 트리에서 편집 전에 찍습니다. BASE worktree 금지(implement 스킬 references/screen-scenarios.md 「화면 시나리오 실행」).",
+            "  - 빌드 산출물 폴더를 공유하면 HEAD 판이 BASE 산출물을 물어 거짓 판정이 납니다(Karina 3회 재발).",
+            "  - 화면 기준선이 아니라 등가·성능 측정용 worktree 면 그대로 진행하세요. 이 경고는 차단이 아닙니다."
+        ) -join "`n")
+        return New-HookResult -Block $false -Stderr @($msg) -Context $msg
+    }
+    return New-HookResult
+}
+
 # 커밋 메시지 읽기(전문 — 제목은 첫 줄) — 근거는 `rules/bash-guard-rationale.md` §14
 function Get-CommitMessage([string]$cmd, [string]$baseDir) {
     $judge = [regex]::Replace((Remove-HeredocBodyForJudge $cmd), '(?s)@([''"])[ \t]*\r?\n.*?\r?\n\1@', { param($m) '@' + $m.Groups[1].Value + ' ' + $m.Groups[1].Value + '@' })
@@ -620,7 +664,7 @@ function Write-GbSlowEvent {
     } catch {}
 }
 
-# 검사 12종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
+# 검사 13종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
 # 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md` §8
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },
@@ -634,7 +678,8 @@ $checks = @(
     @{ fn = 'Invoke-WarnStaleDocs';       name = 'warn-stale-docs' },
     @{ fn = 'Invoke-WarnTaskAudit';       name = 'warn-task-audit' },
     @{ fn = 'Invoke-BlockCommitComments'; name = 'block-commit-comments' },
-    @{ fn = 'Invoke-BlockPythonNewCode';  name = 'block-python-newcode' }
+    @{ fn = 'Invoke-BlockPythonNewCode';  name = 'block-python-newcode' },
+    @{ fn = 'Invoke-WarnBaseWorktree';    name = 'warn-base-worktree' }
 )
 $results = New-Object System.Collections.Generic.List[object]
 foreach ($c in $checks) {
