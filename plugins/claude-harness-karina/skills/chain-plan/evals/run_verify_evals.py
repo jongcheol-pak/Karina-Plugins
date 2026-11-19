@@ -60,8 +60,8 @@ class FakeProc:
     def terminate(self):
         self.terminated += 1
 
-    def tail(self, n):
-        return self.tail_lines[-n:]
+    def lines(self):
+        return list(self.tail_lines)
 
     def discard(self):
         self.discarded += 1
@@ -667,6 +667,116 @@ def reuse_glob_needs_stamp():
     p = subprocess.run([sys.executable, SCRIPT, '--reuse-glob', 'assets/**', '--cwd', '.', '--', 'bash', 'x.sh'],
                        capture_output=True, encoding='utf-8', errors='replace', timeout=60)
     assert p.returncode == 2 and '--reuse-glob 는 --stamp' in p.stderr, (p.returncode, p.stderr[-300:])
+
+
+EXPECT_FAILED = ['--expect-regex', r'Failed:\s*(\d+)']
+
+
+def summary(lines):
+    return [l for l in lines if l.startswith('SUMMARY: ')]
+
+
+@case
+def expect_match_passes_with_summary():
+    p = FakeProc([(0, 1, 0.0)], tail_lines=['Passed: 12, Failed: 0', '끝'])
+    lines, _, _ = run([p], EXPECT_FAILED + ['--expect-value', '0'])
+    assert result(lines).startswith('RESULT: pass — '), lines
+    assert lines[1].startswith('SUMMARY: ') and lines[1].endswith(' 0'), lines
+
+
+@case
+def expect_mismatch_fails():
+    p = FakeProc([(0, 1, 0.0)], tail_lines=['Passed: 9, Failed: 3'])
+    lines, _, _ = run([p], EXPECT_FAILED + ['--expect-value', '0'])
+    r = result(lines)
+    assert r.startswith('RESULT: fail — ') and '3' in r, r
+
+
+@case
+def expect_without_summary_line_is_nosummary():
+    p = FakeProc([(0, 1, 0.0)], tail_lines=['빌드 끝'])
+    lines, _, _ = run([p], EXPECT_FAILED + ['--expect-value', '0'])
+    assert result(lines).startswith('RESULT: nosummary — '), lines
+
+
+@case
+def expect_reads_beyond_tail():
+    body = ['Passed: 5, Failed: 2'] + ['줄%d' % i for i in range(60)]
+    lines, _, _ = run([FakeProc([(0, 1, 0.0)], tail_lines=body)], EXPECT_FAILED + ['--expect-value', '0'])
+    assert result(lines).startswith('RESULT: fail — '), lines
+    assert 'Passed: 5, Failed: 2' not in lines, '꼬리 40줄 밖 줄은 꼬리에 싣지 않는다'
+
+
+@case
+def expect_uses_last_matching_line():
+    body = ['Failed: 0', 'Failed: 4']
+    lines, _, _ = run([FakeProc([(0, 1, 0.0)], tail_lines=body)], EXPECT_FAILED + ['--expect-value', '0'])
+    assert result(lines).startswith('RESULT: fail — '), lines
+
+
+@case
+def expect_regex_only_reports_summary():
+    lines, _, _ = run([FakeProc([(0, 1, 0.0)], tail_lines=['Failed: 7'])], EXPECT_FAILED)
+    assert result(lines).startswith('RESULT: pass — '), lines
+    assert summary(lines) and summary(lines)[0].endswith(' 7'), lines
+
+
+@case
+def expect_regex_only_without_match_is_nosummary():
+    lines, _, _ = run([FakeProc([(0, 1, 0.0)], tail_lines=['x'])], EXPECT_FAILED)
+    assert result(lines).startswith('RESULT: nosummary — '), lines
+
+
+@case
+def expect_nonzero_exit_still_fails():
+    p = FakeProc([(1, 1, 0.0)], tail_lines=['Failed: 0'])
+    lines, _, _ = run([p], EXPECT_FAILED + ['--expect-value', '0'])
+    assert result(lines).startswith('RESULT: fail — ') and 'exit 1' in result(lines), lines
+
+
+@case
+def expect_args_change_stamp_key():
+    git = FakeGit()
+    folder = seeded(git)
+    try:
+        _, out, calls, _ = stamped(git, EXPECT_FAILED + ['--expect-value', '0'], folder=folder)
+        assert calls == [1], '기대 인자 없이 남긴 기록을 기대 인자 있는 실행이 재사용했다'
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def stamp_skipped_on_nosummary():
+    lines, out, _, folder = stamped(FakeGit(), run_lines=['RESULT: nosummary — 합계 줄 없음 — 미검증으로 적는다'])
+    try:
+        assert any(l.startswith('STAMP: 기록 안 함 — ') for l in out), out
+        assert not stamp_files(folder)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@case
+def expect_bad_args_exit_2():
+    bad = (['--expect-regex', r'Failed: \d+'],
+           ['--expect-regex', r'(a)(b)'],
+           ['--expect-regex', r'(\d+)', '--expect-value', '1', '--expect-value', '2'],
+           ['--expect-value', '0'],
+           ['--expect-regex', r'(\d+'])
+    for args in bad:
+        p = subprocess.run([sys.executable, SCRIPT] + args + ['--cwd', '.', '--', 'bash', 'x.sh'],
+                           capture_output=True, encoding='utf-8', errors='replace', timeout=60)
+        assert p.returncode == 2 and '--expect' in p.stderr, (args, p.returncode, p.stderr[-300:])
+
+
+@case
+def real_expect_mismatch_fails():
+    d = tempfile.mkdtemp()
+    try:
+        p = _wrap(EXPECT_FAILED + ['--expect-value', '0', '--', sys.executable, '-c', 'print("Failed: 3")'], d)
+        text = p.stdout.decode('utf-8', errors='replace')
+        assert 'RESULT: fail — ' in text, text[-500:]
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 def _wrap(args, cwd, env=None, timeout=90):

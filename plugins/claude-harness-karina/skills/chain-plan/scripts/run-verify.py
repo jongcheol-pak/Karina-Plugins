@@ -3,16 +3,20 @@
 사용: python run-verify.py --cwd <대상 레포> [--label <이름>] [옵션] -- <명령 argv…>
 
 출력 — 진행 중 시도마다 `STEP <label> start (시도 k/N …)` 줄, 끝에 `RESULT: <갈래> — <다음 행동>` 한 줄,
-이어 마지막 시도 출력의 끝 40줄. 판정은 `RESULT:` 줄로 한다(래퍼 exit 는 인자 오류 2, 그 밖 0).
-- pass       명령이 exit 0 으로 끝났다.
-- fail       명령이 0 아닌 exit 로 끝났다(코드를 싣는다 · 126/127 은 unrunnable).
+이어 (기대 조건을 줬으면) `SUMMARY: <k> <값>` 줄과 마지막 시도 출력의 끝 40줄. 판정은 `RESULT:` 줄로 한다(래퍼 exit 는 인자 오류 2, 그 밖 0).
+--expect-regex RE (여러 번 · 캡처 그룹 정확히 하나) 를 주면 지우기 전 전체 출력에서 RE 마다 마지막 일치 줄의 캡처를
+`SUMMARY:` 줄로 낸다. --expect-value V 는 주지 않거나 RE 와 같은 수로 주고, 순서대로 짝지어 캡처와 문자열로 비교한다.
+- pass       명령이 exit 0 으로 끝났다(기대 조건을 줬으면 일치 줄이 모두 있고 값이 모두 맞는다).
+- fail       명령이 0 아닌 exit 로 끝났거나(코드를 싣는다 · 126/127 은 unrunnable) exit 0 인데 기대값이 어긋났다.
+- nosummary  exit 0 인데 어느 --expect-regex 의 일치 줄도 출력에 없다 — 미검증이다.
 - stalled    마지막 진행 시점부터 --stall-sec 동안 출력이 늘지 않고 CPU 증가가 --cpu-sec 미만인 일이
              --retries 회 재실행 뒤에도 되풀이됐다.
 - deadline   (--deadline-sec — 사전 단계) 벽시계 시한에 닿았다. 멈춤 판정·재실행을 하지 않는다.
 - overtime   (본체) 진행이 이어져도 --max-sec 에 닿았다. 재실행하지 않는다.
 - superseded 같은 --cwd 의 새 래퍼가 잠금을 가져갔다. 이 결과는 판정에 쓰지 않는다.
 - unrunnable 명령을 띄우지 못했거나(실행 파일 없음) exit 126/127 이다.
-- reused     (--stamp) 같은 작업 폴더·같은 명령 내용의 통과 기록이 지금 HEAD 에 맞아 띄우지 않았다. 기록된 꼬리를 낸다.
+- reused     (--stamp) 같은 작업 폴더·같은 명령 내용·같은 기대 조건의 통과 기록이 지금 HEAD 에 맞아 띄우지 않았다.
+             기록된 SUMMARY 줄과 꼬리를 낸다.
 
 --stamp 를 주면 실행 전에 기록을 보고, 통과(pass)했고 실행 전·후 HEAD 가 같고 미커밋 추적 변경이 없으면
 (작업 폴더 바로 아래 plan.md·notes.md 는 세지 않는다) chain 폴더의 `karina-chain-verify-stamp-*.json` 에 기록한다.
@@ -75,6 +79,8 @@ def parse_args(argv):
     p.add_argument('--stamp', action='store_true')
     p.add_argument('--reuse-docs', action='store_true')
     p.add_argument('--reuse-glob', action='append', default=[])
+    p.add_argument('--expect-regex', action='append', default=[])
+    p.add_argument('--expect-value', action='append', default=[])
     p.add_argument('cmd', nargs=argparse.REMAINDER)
     opts = p.parse_args(argv)
     if opts.cmd[:1] == ['--']:
@@ -87,6 +93,17 @@ def parse_args(argv):
         p.error('--reuse-docs 는 --stamp 와 함께만 준다')
     if opts.reuse_glob and not opts.stamp:
         p.error('--reuse-glob 는 --stamp 와 함께만 준다')
+    if opts.expect_value and len(opts.expect_value) != len(opts.expect_regex):
+        p.error('--expect-value 는 주지 않거나 --expect-regex 와 같은 수로 준다(순서대로 짝)')
+    opts.expect = []
+    for pattern in opts.expect_regex:
+        try:
+            rx = re.compile(pattern)
+        except re.error as e:
+            p.error('--expect-regex 를 읽지 못했다(%s) — %s' % (e, pattern))
+        if rx.groups != 1:
+            p.error('--expect-regex 는 캡처 그룹이 정확히 하나여야 한다 — %s' % pattern)
+        opts.expect.append(rx)
     if opts.max_sec is None and opts.deadline_sec is None:
         opts.max_sec = DEFAULT_MAX_SEC
     return opts
@@ -126,6 +143,28 @@ def _result(kind, action, tail=()):
     return ['RESULT: %s — %s' % (kind, action)] + list(tail)
 
 
+def summarize(opts, log_lines):
+    """regex 마다 마지막 일치 줄의 캡처 — 일치 줄이 없으면 None."""
+    found = [None] * len(opts.expect)
+    for line in log_lines:
+        for i, rx in enumerate(opts.expect):
+            m = rx.search(line)
+            if m:
+                found[i] = m.group(1)
+    return found
+
+
+def judge_expect(opts, found):
+    """exit 0 인 시도의 기대 조건 판정 — (갈래, 다음 행동)."""
+    missing = [opts.expect_regex[i] for i, v in enumerate(found) if v is None]
+    if missing:
+        return 'nosummary', '합계 줄을 찾지 못했다(%s) — 미검증으로 적는다' % missing[0]
+    for i, want in enumerate(opts.expect_value):
+        if found[i] != want:
+            return 'fail', '기대값 불일치(%s 기대 %s · 실제 %s) — 실패로 판정한다' % (opts.expect_regex[i], want, found[i])
+    return 'pass', '통과 — 다음 명령으로 간다'
+
+
 def run(opts, launch, clock, sleep, lock, emit):
     """시도를 돌려 RESULT 줄과 꼬리 줄을 돌려준다. sleep(proc, 초) 는 그 사이 자식이 끝나면 일찍 돌아와도 된다.
     emit 은 진행 중 STEP 줄을 받는다."""
@@ -142,12 +181,18 @@ def run(opts, launch, clock, sleep, lock, emit):
                 outcome = watch(proc, opts, clock, sleep, lock)
             finally:
                 proc.terminate()
-            tail = proc.tail(TAIL_LINES)
+            log_lines = proc.lines()
         finally:
             proc.discard()
+        tail = log_lines[-TAIL_LINES:]
         if outcome[0] == 'exit':
             code = outcome[1]
+            if opts.expect:
+                found = summarize(opts, log_lines)
+                tail = ['SUMMARY: %d %s' % (i + 1, v) for i, v in enumerate(found) if v is not None] + tail
             if code == 0:
+                if opts.expect:
+                    return _result(*judge_expect(opts, found), tail)
                 return _result('pass', '통과 — 다음 명령으로 간다', tail)
             if code in UNRUNNABLE_EXITS:
                 return _result('unrunnable', '실행 불가(exit %d) — 미검증으로 적는다' % code, tail)
@@ -179,8 +224,8 @@ def _git_out(git, cwd, args):
     return out if code == 0 else None
 
 
-def command_key(cmd, cwd):
-    parts = [os.path.splitext(os.path.basename(cmd[0]))[0].lower()]
+def command_key(cmd, cwd, expect=()):
+    parts = ['x:' + e for e in expect] + [os.path.splitext(os.path.basename(cmd[0]))[0].lower()]
     for arg in cmd[1:]:
         path = arg if os.path.isabs(arg) else os.path.join(cwd, arg)
         if os.path.isfile(path):
@@ -297,7 +342,7 @@ def run_stamped(opts, git, run_fn, emit, folder, now=time.time):
     if path is None or before is None:
         emit('STAMP: 기록 안 함 — git 상태를 읽지 못했다')
         return run_fn()
-    key = command_key(opts.cmd, opts.cwd)
+    key = command_key(opts.cmd, opts.cwd, ['r:' + r for r in opts.expect_regex] + ['v:' + v for v in opts.expect_value])
     stamps = _load(path)
     entry = stamps.get(key)
     why = _reusable(opts, git, entry, before)
@@ -446,10 +491,10 @@ class RealProc:
             self.job = None
         self.log.close()
 
-    def tail(self, n):
+    def lines(self):
         try:
             with open(self.log_path, encoding='utf-8', errors='replace') as f:
-                return [l.rstrip('\r\n') for l in f.readlines()[-n:]]
+                return [l.rstrip('\r\n') for l in f]
         except OSError:
             return []
 
