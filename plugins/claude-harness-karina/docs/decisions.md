@@ -2,6 +2,8 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-19] python-newcode 지역 선언 판정(v3.37.0)의 같은 이름 재선언 — 보류: 다른 리터럴에 같은 이름의 지역 선언이 있으면 기존 항목으로 봐 섀도잉 추가(`let interval = …` 재선언)는 막지 않는다 — 전사 재생 3,731건에서 이 이름 대조 없이는 줄 모양만 바꾼 재작성 4건이 오차단됐다(`scripts/rules/bash-guard-rationale.md` §22).
+
 - [2026-11-19] 코드와 같은 편집의 기존 주석 문구 수정 차단(v3.36.0) — 기각: 편집 직후 경고(`post-write-checks`) — 2026-11-01 경고는 반응 15·무반응 178 이었고 async 라 한 턴 늦다(사용자 재답 「편집 차단으로」) · 기각: 커밋 게이트(`guard-commit-comments`)에서도 막기 — 커밋 게이트는 Edit 를 거치지 않은 쓰기를 잡는 자리다
   - 기각: 골든 시간 판정 실패 그룹의 단독 재실행 — 실결함을 덮는다(사용자 재답). 대신 멈춘 git 을 끊는 케이스를 벽시계가 아닌 「가짜 git 이 끝나기를 기다렸는가」로 잰다(`scripts/rules/post-write-rationale.md` §22)
 
