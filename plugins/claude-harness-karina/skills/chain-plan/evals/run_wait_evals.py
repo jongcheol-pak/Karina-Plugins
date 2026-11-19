@@ -357,8 +357,6 @@ class FakeGit:
             return (False, '') if self.tree is None else (True, self.tree[0])
         if 'ls-files' in args:
             return (True, self.tree[1]) if self.tree else (False, '')
-        if args[0] == 'hash-object':
-            return (True, self.tree[2]) if self.tree else (False, '')
         if args[0] == 'rev-parse':
             if self.heads:
                 return self.heads.pop(0)
@@ -397,7 +395,11 @@ class FakeStore:
 
 
 def prog(git, store=None, plan=PLAN5, label='Plan 2'):
-    return ww.Progress(git, lambda: plan, store if store is not None else FakeStore({'sha': 'h0', 'shown': []}), label)
+    def stat(files):
+        git.calls.append(['stat'] + list(files))
+        return git.tree[2] if git.tree else ''
+    return ww.Progress(git, lambda: plan, store if store is not None else FakeStore({'sha': 'h0', 'shown': []}), label,
+                       stat)
 
 
 def runp(cli, progress, lock=None, **kw):
@@ -697,11 +699,11 @@ def tree_change_resets_stall():
 
 @case
 def untracked_content_change_resets_stall():
-    git = FakeGit(history=[], trees=[('same', 'new.rs', 'hash%d' % n) for n in range(4)])
+    git = FakeGit(history=[], trees=[('same', 'new.rs', '%d 1' % n) for n in range(4)])
     cli = FakeCli([EMPTY] * 4 + [msg_batch()], [screen('frozen')] * 4)
     out = runp(cli, prog(git), timeout_ms=60000, poll_ms=60000)
     assert first(out).startswith('RESULT: message — '), out
-    assert any(c[0] == 'hash-object' and 'new.rs' in c for c in git.calls), git.calls
+    assert any(c[0] == 'stat' and 'new.rs' in c for c in git.calls), git.calls
 
 
 @case
@@ -1444,16 +1446,47 @@ def tree_sig_moves_on_non_ascii_untracked():
             f.write('a\n')
         g('add', 'a.txt')
         g('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'init')
-        p = ww.Progress(ww.make_git(repo), lambda: '', FakeStore({'sha': 'h0', 'shown': []}), 'Plan 1')
+        p = ww.Progress(ww.make_git(repo), lambda: '', FakeStore({'sha': 'h0', 'shown': []}), 'Plan 1',
+                        ww.make_stat(repo))
         path = os.path.join(repo, '화면.txt')
         with open(path, 'w', encoding='utf-8') as f:
             f.write('1\n')
         first_sig = p.tree_sig()
         with open(path, 'w', encoding='utf-8') as f:
-            f.write('2\n')
+            f.write('22\n')
         second_sig = p.tree_sig()
         assert first_sig is not None and second_sig is not None, (first_sig, second_sig)
         assert first_sig != second_sig, first_sig
+    finally:
+        shutil.rmtree(repo, ignore_errors=True)
+
+
+@case
+def tree_sig_untracked_size_change_without_hash_object():
+    repo = tempfile.mkdtemp(prefix='ww-stat-')
+    try:
+        def g(*args):
+            subprocess.run(['git', '-C', repo] + list(args), check=True, capture_output=True, timeout=60)
+        g('init', '-q')
+        with open(os.path.join(repo, 'a.txt'), 'w', encoding='utf-8') as f:
+            f.write('a\n')
+        g('add', 'a.txt')
+        g('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'init')
+        real, calls = ww.make_git(repo), []
+
+        def git(args):
+            calls.append(list(args))
+            return real(args)
+        p = ww.Progress(git, lambda: '', FakeStore({'sha': 'h0', 'shown': []}), 'Plan 1', ww.make_stat(repo))
+        path = os.path.join(repo, 'asset.bin')
+        with open(path, 'wb') as f:
+            f.write(b'x' * 10)
+        first_sig = p.tree_sig()
+        with open(path, 'wb') as f:
+            f.write(b'x' * 20)
+        second_sig = p.tree_sig()
+        assert first_sig is not None and first_sig != second_sig, (first_sig, second_sig)
+        assert not any('hash-object' in c for c in calls), calls
     finally:
         shutil.rmtree(repo, ignore_errors=True)
 

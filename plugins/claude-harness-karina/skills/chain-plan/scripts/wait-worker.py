@@ -49,7 +49,6 @@ CLI_WAIT_MARGIN_SEC = 60     # check --wait 는 자기 --timeout-ms 에 이만�
 GIT_TIMEOUT_SEC = 30         # lint.py·relocate-agents.py 의 git 시한과 같다
 SWEEP_AGE_SEC = 7 * 24 * 3600
 BUSY_SAME_MAX = 6            # 바쁨(백그라운드 셸)인 같은 화면을 움직임으로 세는 연속 비교 상한(약 54분)
-TREE_HASH_MAX = 200
 ANSWER_MAX_SEC = 2700        # --answer-by 상한 — 백그라운드 대기 생존 실측 45분
 
 
@@ -496,10 +495,10 @@ PLAN_TASK = re.compile(r'^### T(\d+)\. ', re.M)
 
 
 class Progress:
-    """task 완료 커밋을 표시 줄로 바꾸고, 멈춤 판정에 쓸 작업 트리 서명(tree_sig)을 낸다. git(args)->(성공, 출력) · read_plan()->str|None · store(load/save) 는 주입한다."""
+    """task 완료 커밋을 표시 줄로 바꾸고, 멈춤 판정에 쓸 작업 트리 서명(tree_sig)을 낸다. git(args)->(성공, 출력) · read_plan()->str|None · store(load/save) · stat(untracked 경로들)->str 는 주입한다."""
 
-    def __init__(self, git, read_plan, store, label):
-        self.git, self.read_plan, self.store, self.label = git, read_plan, store, label
+    def __init__(self, git, read_plan, store, label, stat=lambda files: ''):
+        self.git, self.read_plan, self.store, self.label, self.stat = git, read_plan, store, label, stat
         self.pending = None
         self.last_head = None
 
@@ -517,13 +516,8 @@ class Progress:
         ok, untracked = self.git(['-c', 'core.quotepath=off', 'ls-files', '--others', '--exclude-standard'])
         if not ok:
             return None
-        files = [f for f in untracked.splitlines() if f][:TREE_HASH_MAX]
-        hashes = ''
-        if files:
-            ok, hashes = self.git(['hash-object', '--'] + files)
-            if not ok:
-                return None
-        return hashlib.sha1('\x1f'.join((diff, untracked, hashes)).encode('utf-8')).hexdigest()[:16]
+        sizes = self.stat([f for f in untracked.splitlines() if f])
+        return hashlib.sha1('\x1f'.join((diff, untracked, sizes)).encode('utf-8')).hexdigest()[:16]
 
     def poll(self):
         """새 진행 줄(task 완료)을 돌려주고 갱신할 상태를 pending 에 둔다 — 저장은 commit() 이 한다(잠금 확인 뒤).
@@ -642,6 +636,19 @@ def make_git(repo):
     return git
 
 
+def make_stat(repo):
+    def stat(files):
+        out = []
+        for f in files:
+            try:
+                s = os.stat(os.path.join(repo, f))
+                out.append('%d %d' % (s.st_size, s.st_mtime_ns))
+            except OSError:
+                out.append('-')
+        return '\n'.join(out)
+    return stat
+
+
 def make_read_plan(repo):
     def read_plan():
         try:
@@ -697,7 +704,7 @@ def main(argv=None):
     progress = None
     poll_ms = a.poll_ms
     if a.repo:
-        progress = [Progress(make_git(r), make_read_plan(r), FileStore(d), lb)
+        progress = [Progress(make_git(r), make_read_plan(r), FileStore(d), lb, make_stat(r))
                     for d, r, lb in zip(ids, a.repo, labels)]
         poll_ms = poll_ms or 60000
     lock = FileLock(ids[0]) if len(ids) == 1 else AllLocks([FileLock(d) for d in ids])
