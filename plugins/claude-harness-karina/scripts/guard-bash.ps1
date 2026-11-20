@@ -254,14 +254,17 @@ function Invoke-WarnDangerousAssignment {
 function Get-ShellWriteHits {
     param([string]$cmd, [scriptblock]$IsTarget)
     $assigned = @{}
-    foreach ($m in [regex]::Matches($cmd, '(?:^|[\s;&|("''])\s*\$?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[''"]([^''"]*)[''"]')) {
-        $assigned[$m.Groups[1].Value] = $m.Groups[2].Value
+    foreach ($m in [regex]::Matches($cmd, '(?:^|[\s;&|("''])\s*\$?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:[''"]([^''"]*)[''"]|([^\s;&|''"()]+))')) {
+        $name = $m.Groups[1].Value
+        if (-not $assigned.ContainsKey($name)) { $assigned[$name] = New-Object System.Collections.Generic.List[string] }
+        $assigned[$name].Add(($m.Groups[2].Value + $m.Groups[3].Value).Trim())
     }
     function Test-PlanTarget([string]$arg) {
         if ([string]::IsNullOrWhiteSpace($arg)) { return $false }
         $a = $arg.Trim().Trim('"', "'", '(', ')', ',')
         if ($a -match '^\$?\{?([A-Za-z_][A-Za-z0-9_]*)\}?$' -and $assigned.ContainsKey($Matches[1])) {
-            $a = $assigned[$Matches[1]]
+            foreach ($v in $assigned[$Matches[1]]) { if (& $IsTarget $v) { return $true } }
+            return $false
         }
         return [bool](& $IsTarget $a)
     }
@@ -276,7 +279,7 @@ function Get-ShellWriteHits {
         if ($isWrite -and (Test-PlanTarget $m.Groups[1].Value)) { $hits.Add('pathlib') }
     }
     $stripped = Get-HeredocSinkStripped $cmd
-    foreach ($m in [regex]::Matches($stripped, '>>?\s*("[^"]*"|''[^'']*''|\S+)')) {
+    foreach ($m in [regex]::Matches($stripped, '>>?\s*((?:"[^"]*"|''[^'']*''|\\\r?\n|[^\s;&|<>()])+)')) {
         if (Test-PlanTarget $m.Groups[1].Value) { $hits.Add('>') }
     }
     foreach ($m in [regex]::Matches($cmd, '(?i)\[(?:System\.)?IO\.File\]::(WriteAll\w+|AppendAllText)\s*\(\s*([^,()]+)')) {
@@ -303,20 +306,14 @@ function Get-ShellWriteHits {
     return , $hits
 }
 
-function Test-LiteralTempPlanTarget([string]$Arg, [string]$Cmd) {
-    $a = $Arg.Trim().Trim('"', "'")
-    if ($a -notmatch '^[A-Za-z]:[\\/][\w .\\/-]*$') { return $false }
-    foreach ($seg in ($a.Substring(3) -split '[\\/]')) {
+function Test-LiteralTempPath([string]$Path, [string]$TempRoot) {
+    foreach ($seg in ($Path.Substring(3) -split '/')) {
         if ($seg -eq '' -or $seg -match '^\.+$' -or $seg -match '^ | $|\.$') { return $false }
     }
-    if ([regex]::IsMatch($Cmd, '=\s*["'']?' + [regex]::Escape($a))) { return $false }
-    if ($Cmd -match '(?i)\b(mklink|junction|symboliclink|ln)\b') { return $false }
-    $tempRoot = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '/', '\'
-    if (-not $tempRoot) { return $false }
-    $full = try { [System.IO.Path]::GetFullPath($a) -replace '/', '\' } catch { return $false }
-    if (-not $full.StartsWith($tempRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) { return $false }
+    $full = try { [System.IO.Path]::GetFullPath($Path) -replace '/', '\' } catch { return $false }
+    if (-not $full.StartsWith($TempRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) { return $false }
     $node = $full
-    while ($node -and $node.Length -gt $tempRoot.Length) {
+    while ($node -and $node.Length -gt $TempRoot.Length) {
         if ([System.IO.File]::Exists($node) -or [System.IO.Directory]::Exists($node)) {
             $attr = try { [System.IO.File]::GetAttributes($node) } catch { return $false }
             if ($attr -band [System.IO.FileAttributes]::ReparsePoint) { return $false }
@@ -326,19 +323,36 @@ function Test-LiteralTempPlanTarget([string]$Arg, [string]$Cmd) {
     return $true
 }
 
+function Get-LiteralTempPlanPaths([string]$Cmd) {
+    $tempRoot = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '/', '\'
+    if (-not $tempRoot) { return @() }
+    if ($Cmd -match '(?i)(?:^|[\s;&|(])(?:ln|mklink|junction(?:\.exe)?)\s|-ItemType\s+["'']?(?:Junction|SymbolicLink|HardLink)|(?:^|\s)(?:-t|--target-directory)\b') { return @() }
+    $wordRx = '(?i)(?<![^\s>(,])(?<q>["'']?)(?<p>[A-Za-z]:/[\w ./-]*?(?<=/)plan\.md)\k<q>(?=$|[\s;&|),])'
+    $paths = New-Object System.Collections.Generic.List[string]
+    foreach ($m in [regex]::Matches($Cmd, $wordRx)) {
+        $p = $m.Groups['p'].Value
+        if (-not $m.Groups['q'].Value -and $p.Contains(' ')) { return @() }
+        if (-not (Test-LiteralTempPath $p $tempRoot)) { return @() }
+        $paths.Add($p)
+    }
+    if ([regex]::Replace($Cmd, $wordRx, ' ') -match '(?i)plan\.md') { return @() }
+    return $paths.ToArray()
+}
+
 # block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 — 근거는 `rules/bash-guard-rationale.md` §10
 function Invoke-BlockPlanWrite {
     param($data)
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
-    $hits = Get-ShellWriteHits $cmd { param($a) ($a -match '(^|[\\/:])plan\.md$') -and -not (Test-LiteralTempPlanTarget $a $cmd) }
+    $tempPlans = @(Get-LiteralTempPlanPaths ([string]$cmd))
+    $hits = Get-ShellWriteHits $cmd { param($a) ($a -match '(^|[\\/:])plan\.md$') -and -not ($tempPlans -contains $a) }
     if ($hits.Count -eq 0) { return New-HookResult }
     $where = (($hits | Select-Object -Unique) -join ', ')
     return New-HookResult -Block $true -Stderr @(
         "[HARNESS] BLOCKED: plan.md 를 스크립트로 쓰려 합니다.",
         "감지된 쓰기 구문: $where.",
         "gitignore 라 잘못 쓰면 복구할 수 없습니다 — 전체 교체는 Write, 부분 수정은 Edit 도구로 하세요(`plan/SKILL.md` 「Step 5」). 읽기는 막지 않습니다.",
-        '임시 폴더의 픽스처 plan.md 면 대상을 변수 없이 글자 그대로 쓴 절대 Temp 경로로 쓰세요(예: "C:/Users/<이름>/AppData/Local/Temp/<폴더>/plan.md") — $TEMP·변수·cd 뒤 상대 경로·/c/… 꼴은 실제로 어느 폴더인지 확인할 수 없어 막습니다.'
+        '임시 폴더의 픽스처 plan.md 면 대상을 변수 없이 슬래시(/)로 글자 그대로 쓴 절대 Temp 경로로 쓰고, 그 명령에 다른 plan.md 언급을 두지 마세요(예: > "C:/Users/<이름>/AppData/Local/Temp/<폴더>/plan.md") — $TEMP·변수·역슬래시·cd 뒤 상대 경로·/c/… 꼴은 실제로 어느 폴더인지 확인할 수 없어 막습니다.'
     ) -Context "plan.md 쓰기가 차단됐습니다($where). Write·Edit 도구를 쓰세요 — 그 둘은 파일 상태를 추적해 잘림을 막습니다."
 }
 

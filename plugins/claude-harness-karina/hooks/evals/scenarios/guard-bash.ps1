@@ -558,9 +558,10 @@ if (-not (Test-Path -LiteralPath $ptJunctionWin)) { New-Item -ItemType Junction 
 $ptJunction = $ptJunctionWin -replace '\\', '/'
 $ptPass = @(
     @{ Name = '절대 Temp 경로의 plan.md 리다이렉트 통과'; Cmd = ('echo x > "' + $ptTemp + '/fx/plan.md"') },
-    @{ Name = '역슬래시로 쓴 절대 Temp 경로 통과'; Cmd = ('echo x > "' + ($ptTemp -replace '/', '\') + '\fx\plan.md"') },
-    @{ Name = '대소문자·슬래시를 섞어 쓴 절대 Temp 경로 통과'; Cmd = ('echo x > "' + $ptTemp.ToUpperInvariant().Replace('/APPDATA/', '\APPDATA/') + '/fx/plan.md"') },
-    @{ Name = 'cp plan.md <절대 Temp 경로>/plan.md 통과'; Cmd = ('cp plan.md "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
+    @{ Name = '따옴표 없이 쓴 절대 Temp 경로 통과'; Cmd = ('echo x > ' + $ptTemp + '/fx/plan.md') },
+    @{ Name = '대소문자를 달리 쓴 절대 Temp 경로 통과'; Cmd = ('echo x > "' + $ptTemp.ToUpperInvariant() + '/fx/plan.md"') },
+    @{ Name = '옵션 묶음 -ln 이 든 명령의 절대 Temp 경로 통과'; Cmd = ('ls -ln; echo x > "' + $ptTemp + '/fx/plan.md"') },
+    @{ Name = 'cp notes.md <절대 Temp 경로>/plan.md 통과'; Cmd = ('cp notes.md "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
     @{ Name = 'python open(<절대 Temp 경로>/plan.md) 쓰기 통과'; Cmd = ("python -c `"open('" + $ptTemp + "/fx/plan.md','w').write('x')`"") }
 )
 foreach ($c in $ptPass) {
@@ -611,7 +612,20 @@ $ptDeny = @(
     @{ Name = '8.3 짧은 이름(~)이 든 경로는 차단'; Cmd = 'echo x > "C:/Users/PUBLIC~1/AppData/Local/Temp/fx/plan.md"' },
     @{ Name = '안쪽 따옴표로 이어 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > ' + $ptTemp + '/"fx"/plan.md') },
     @{ Name = '같은 명령에서 mklink 로 junction 을 만든 뒤 그 아래 plan.md 는 차단'; Cmd = ('cmd //c mklink /J "' + $ptTemp + '/ptl" D:/repo && echo x > "' + $ptTemp + '/ptl/plan.md"') },
-    @{ Name = '이미 있는 junction 을 거친 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptJunction + '/plan.md"') }
+    @{ Name = '이미 있는 junction 을 거친 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptJunction + '/plan.md"') },
+    @{ Name = '역슬래시로 쓴 절대 Temp 경로는 차단(슬래시로만 면제한다)'; Cmd = ('echo x > "' + ($ptTemp -replace '/', '\') + '\fx\plan.md"') },
+    @{ Name = '닫는 큰따옴표 뒤에 꼬리를 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptTemp + '/x/plan.md"/../../../plan.md') },
+    @{ Name = '닫는 작은따옴표 뒤에 꼬리를 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > ''' + $ptTemp + '/x/plan.md''/../../../plan.md') },
+    @{ Name = '줄 연속으로 꼬리를 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptTemp + "/x/plan.md`"\`n/../../../plan.md") },
+    @{ Name = '앞 공백 값 대입 뒤 따옴표 없이 재대입한 변수 대상은 차단'; Cmd = ('P=" ' + $ptTemp + '/x/plan.md"; P=plan.md; echo x > "$P"') },
+    @{ Name = '탭 값 대입 뒤 따옴표 없이 재대입한 변수 대상은 차단'; Cmd = ("P=`"`t" + $ptTemp + '/x/plan.md"; P=plan.md; echo x > $P') },
+    @{ Name = 'python 8진 이스케이프로 Temp 를 벗어나는 open 은 차단'; Cmd = ("python -c `"open('" + $ptTemp + "\057\056\056\plan.md','w').write('x')`"") },
+    @{ Name = 'python 16진 이스케이프로 Temp 를 벗어나는 open 은 차단'; Cmd = ("python -c `"open('" + $ptTemp + "\x2e\x2e\plan.md','w').write('x')`"") },
+    @{ Name = 'cp -t . <절대 Temp 경로>/plan.md 는 차단'; Cmd = ('cp -t . "' + $ptTemp + '/x/plan.md"') },
+    @{ Name = '빈 따옴표를 앞에 붙인 ""plan.md 리다이렉트는 차단'; Cmd = 'echo x > ""plan.md' },
+    @{ Name = '따옴표 없이 대입한 변수 P=plan.md 대상은 차단'; Cmd = 'P=plan.md; echo x > $P' },
+    @{ Name = 'cp plan.md <절대 Temp 경로>/plan.md 는 차단(원본 쪽 맨 plan.md 언급)'; Cmd = ('cp plan.md "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
+    @{ Name = '절대 Temp 경로와 맨 plan.md 언급이 함께 있으면 차단'; Cmd = ('echo plan.md; echo x > "' + $ptTemp + '/fx/plan.md"') }
 )
 foreach ($c in $ptDeny) {
     $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
