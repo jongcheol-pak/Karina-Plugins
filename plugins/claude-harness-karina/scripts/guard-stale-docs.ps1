@@ -24,7 +24,7 @@ $script:StaleAxisMap = @(
        TtlFile = 'AGENTS.md'
        TtlDays = 90 }
     @{ Pattern = '^skills/llm-wiki/'
-       Axis    = '위키 규칙 ↔ 실 vault — 골든 픽스처는 작아 실물 규모의 형상을 못 재므로 실 vault 사본으로 lint 를 한 번 돌린다' }
+       Axis    = '위키 규칙 ↔ 실 vault — 골든 픽스처는 작아 실물 규모의 형상을 못 잰다 · 사용자가 vault 를 지정했을 때만 그 사본으로 lint 를 한 번 돌린다(하니스 세션이 vault 를 스스로 열지 않는다)' }
 )
 # 4 -> 3: `docs/golden-runner.md` 의 소요 실측 축이 **층 2 의 케이스 수 대조로 승격**돼
 #   빠졌다(회차 64). 근거 문서 §5 의 「감소에도 정당한 형태가 하나 있다」가 이 자리다.
