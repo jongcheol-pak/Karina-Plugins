@@ -2,6 +2,10 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-20] 체인 재개 빈틈·함정 문서 기한(체인 run_8ec4012a plan 4) — 기각: 자리 대기(`--place`)에 다른 Run 배치 필터 — 자리 대기는 다른 세션 워커의 dispatch 를 지켜봐 「이 Run」 을 dispatch 로 정할 수 없다(평소 대기만 `foreign` 으로 가른다)
+  - 기각: `check-stale-refs.py` DEAD 이름 예외에서 `docs/conventions.md` 빼기 — 날짜 단 함정 항목은 그때의 이름을 적고 90일 정리가 낡은 항목을 걷어, 산문 경로·심볼 축 편입만 했다
+  - 기각: 재개 때 끝나지 않은 옛 Run 워커도 닫기 — 커밋 전 변경과 화면이 사라진다. Task 가 `completed` 인 워커만 닫고 나머지는 보고하고 멈춘다
+
 - [2026-11-20] 주석 규칙 정합·차단 메시지·오차단(체인 run_8ec4012a plan 3) — 보류: 승인된 push 의 `warn-external-ops` 와 grep 정규식의 역슬래시 경고 줄이기(사용자 답 「보류」 — 대장 등재). 함께 들인 범위 축소는 사용자 지시다 — 문서가 정본으로 지정한 주석 네 파일(`evals/check-stale-refs.py`·`skills/llm-wiki/scripts/lint.py`·`skills/implement/scripts/work-clock.ps1`·`scripts/harness-root.ps1`)을 `Comment (보존)` 경로에 넣었고(문서를 좁히는 안 대신), 골든 시나리오·헬퍼 머리 주석은 「쓰지 않는다」 로 맞췄다
   - 기각: 주석만 고친 Edit 까지 문구 수정 게이트를 넓히기 — 차단 범위 확대라 이 회차 판정 원칙(hook 의 실제 동작을 문서에 적고 범위를 넓히지 않는다) 밖이고 사용자 결정이 없다(plan 2 가 넘긴 재발 건) · hook-events 의 세션 식별자를 전역 변수로 넘기기 — 골든의 in-process runspace 가 케이스 사이에 값을 물려받아 호출부가 인자로 넘긴다 · `block-plan-write` 의 Temp `plan.md` 면제 — 체인 승인에서 받아 넣었다가 뺐다(사용자 답 「권장」 — 면제를 없앤다). hook 이 명령 글자만 보고 쓰기가 실제로 닿는 파일을 맞혀야 하는데 완료 리뷰가 열한 번 연속으로 새 우회를 재현해 닫히지 않았다 — Temp 픽스처는 Write 도구나 스크립트 파일로 쓴다(차단 메시지가 안내 · `scripts/rules/bash-guard-rationale.md` §10)
   - 알고 받아들인 위험: 셸 명령으로 쓰는 Temp 픽스처 `plan.md` 는 전부 막힌다(14일 로그의 Temp 꼴 3줄 포함 — 차단 메시지가 Write 도구·스크립트 파일을 안내한다) · `plan.md` 쓰기 차단의 기존 미탐은 그대로다(`scripts/rules/bash-guard-rationale.md` §10 「한계」) · 정리(cleanup) 이벤트 줄에는 세션 식별자가 없다
