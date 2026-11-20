@@ -64,7 +64,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ## 검증
 
-**task마다 아래 셋 중 해당하는 것을 실행한다.** 명령은 `AGENTS.md`에서 가져온다 — 추측한 명령은 실행 시점에 실패한다. **`AGENTS.md`에 없으면 사용자에게 묻는다**(그 파일이 아직 비어 있는 레포가 있다).
+**task마다 아래 셋 중 해당하는 것을 실행한다.** 명령은 `AGENTS.md`에서 가져온다 — 추측한 명령은 실행 시점에 실패한다. **있는데 실패하면 `references/loop-exceptions.md`「레포 문서·스크립트 정정」 대로 고쳐 진행하고, `AGENTS.md`에 없으면 사용자에게 묻는다.**
 
 | # | 대상 | 언제 |
 |---|---|---|
@@ -121,5 +121,4 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 ## See also
 
 - `karina:plan` — 이 스킬이 실행할 plan을 만든다
-- `references/code-style.md`「확인할 수 있게 만든다」·「고쳐도 무너지지 않게 만든다」·「파일은 그 프로젝트의 관례로 저장한다」·「주석」 — 코드를 쓰는 순간의 규약
 - `../DESIGN.md` — 이 스킬의 문면이 따르는 설계 원칙

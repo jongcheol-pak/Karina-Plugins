@@ -273,6 +273,23 @@ Assert-Case -Name "suggest: 짝 없는 따옴표는 종전 동작이라 제안 (
 $r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 't7m' 'git commit -m ''빌드 $(npm run build)''')
 Assert-Case -Name "suggest: 인용 안 명령 치환은 미탐 수용 — 제안 안 함 (포기 고정 ④)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+$fproj = Join-Path $work 'fixproj'; New-Item -ItemType Directory $fproj -Force | Out-Null
+$fence = '```'
+(@('# AGENTS', '## Build & Test', '- **Build**: `dotnet build App.sln -c Release`', '- **Test (task)**: `dotnet test --filter <대상>`', '- **Test**:', $fence, 'pytest tests/unit -q', $fence) -join "`n") | Set-Content (Join-Path $fproj 'AGENTS.md') -Encoding UTF8
+$mkFix = { param($sid, $cmdText) @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $fproj; session_id = $sid; tool_input = @{ command = $cmdText } } | ConvertTo-Json -Compress }
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkFix 'fx-a' 'dotnet build Other.sln')
+Assert-Case -Name "suggest 정정: 머리 토큰은 AGENTS.md 에 있고 인자가 다른 명령이면 기존 줄 정정을 제안한다" -R $r -ExpectExit 0 -ExpectContains '기존 줄 정정'
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkFix 'fx-a' 'dotnet build Third.sln')
+Assert-Case -Name "suggest 정정: 같은 세션의 두 번째 정정 대상 명령은 침묵한다" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkFix 'fx-b' 'dotnet build App.sln -c Release')
+Assert-Case -Name "suggest 정정: AGENTS.md 에 기록된 줄 그대로인 명령은 침묵한다" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkFix 'fx-c' 'dotnet test --filter FooTests')
+Assert-Case -Name "suggest 정정: <대상> 자리표시 줄에 맞는 명령은 침묵한다" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkFix 'fx-d' 'pytest tests/unit -q --no-header')
+Assert-Case -Name "suggest 정정: 펜스 안에 기록된 명령 그대로면 침묵한다" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'suggest-agents-record.ps1' (& $mkCase 'fx-e' 'cargo build')
+Assert-Case -Name "suggest: 신규 제안은 자율 루프 안이면 지금 묻지 않고 최종 보고에 싣으라고 쓴다" -R $r -ExpectExit 0 -ExpectContains '자율 루프'
+
 # 30일 지난 상태 마커 정리는 2026-10-08 세션 시작 1회로 옮겼다 — 그 케이스는 scenarios/session-context.ps1 에 있다.
 }   # ---- §5 게이트 끝 (suggest-agents-record) ----
 

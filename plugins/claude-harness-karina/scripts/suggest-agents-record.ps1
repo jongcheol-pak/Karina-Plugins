@@ -208,27 +208,65 @@ function Test-SuggestMarkerReopen([string]$MarkerPath) {
     return ($failed -eq $true)
 }
 
+# 기록된 줄과 실행 명령의 대조 — 근거는 `rules/suggest-record-rationale.md` §9
+$cmdNorm = ($cmdScan -replace '\s+', ' ').ToLower()
+$recordedSpans = New-Object System.Collections.Generic.List[string]
+foreach ($m in [regex]::Matches($agentsRaw, '`([^`\r\n]+)`')) { $recordedSpans.Add($m.Groups[1].Value) }
+$inFence = $false
+foreach ($line in ($agentsRaw -split "`r?`n")) {
+    if ($line -match '^\s*(```|~~~)') { $inFence = -not $inFence; continue }
+    if ($inFence -and $line.Trim()) { $recordedSpans.Add($line) }
+}
+function Test-RecordedAsRun([string]$Token) {
+    $withToken = @($recordedSpans | ForEach-Object { ($_ -replace '\s+', ' ').Trim().ToLower() } | Where-Object { $_.Contains($Token) })
+    if ($withToken.Count -eq 0) { return $true }
+    foreach ($span in $withToken) {
+        $rx = [regex]::Replace([regex]::Escape($span), '<[^<>]+>', '.+')
+        if ($cmdNorm -match $rx) { return $true }
+    }
+    return $false
+}
+
 $toSuggest = New-Object System.Collections.Generic.List[object]
 foreach ($h in $hits) {
     $tok = ($h.token -replace '\s+', ' ').ToLower()
-    if ($agentsHay.Contains($tok)) { continue }   # (1) self-terminating: 이미 기록됨
-    $markerName = if ($sidSafe) { $sidSafe + '_' + $leafSafe + '_' + $h.name } else { $leafSafe + '_' + $h.name }
+    $isFix = $false
+    if ($agentsHay.Contains($tok)) {
+        if (Test-RecordedAsRun $tok) { continue }   # (1) self-terminating: 기록된 줄 그대로 실행
+        $isFix = $true
+    }
+    $markerKind = if ($isFix) { $h.name + '-fix' } else { $h.name }
+    $markerName = if ($sidSafe) { $sidSafe + '_' + $leafSafe + '_' + $markerKind } else { $leafSafe + '_' + $markerKind }
     $markerPath = Join-Path $stateDir $markerName
     if ((Test-Path -LiteralPath $markerPath) -and -not (Test-SuggestMarkerReopen $markerPath)) { continue }   # (2) 세션·프로젝트·카테고리당 1회
-    $toSuggest.Add($h)
+    $toSuggest.Add([pscustomobject]@{ section = $h.section; label = $h.label; token = $h.token; fix = $isFix })
     $markerText = if ($toolUseId -and $transcriptPath) { ('pending ' + $toolUseId + ' ' + $agentId).TrimEnd() } else { '' }
     try { [System.IO.File]::WriteAllText($markerPath, $markerText) } catch {}   # 생성 실패는 무시(비치명)
 }
 if ($toSuggest.Count -eq 0) { exit 0 }
 
 # ---- 제안 출력 ----
-$lines = @("[AGENTS 기록 제안] 지금 실행하려는 명령이 AGENTS.md에 기록돼 있지 않습니다:")
-foreach ($s in $toSuggest) {
-    $lines += ("  - " + $s.label + ": `"" + $s.token + "`"  -> AGENTS.md '" + $s.section + "' 섹션")
+$lines = @()
+$newOnes = @($toSuggest | Where-Object { -not $_.fix })
+$fixOnes = @($toSuggest | Where-Object { $_.fix })
+if ($newOnes.Count -gt 0) {
+    $lines += "[AGENTS 기록 제안] 지금 실행하려는 명령이 AGENTS.md에 기록돼 있지 않습니다:"
+    foreach ($s in $newOnes) {
+        $lines += ("  - " + $s.label + ": `"" + $s.token + "`"  -> AGENTS.md '" + $s.section + "' 섹션")
+    }
+    $lines += ""
+    $lines += "이 명령이 성공했으면, 다음 작업부터 재확인하지 않도록 record-project-fact 스킬로 AGENTS.md에 추가할지 사용자에게 물어보세요. 실패했거나 실행되지 않았으면 무시하세요 — 실패·거부된 명령이면 다음 같은 종류 명령에서 다시 제안합니다."
+    $lines += "자동 기록이 아닙니다 — 사용자가 승인하면 그때만 기록합니다. 자율 루프(karina:implement) 안이면 지금 묻지 않고 최종 보고에 제안으로 싣습니다. (DB는 실제 연결문자열 금지, 환경변수 이름만)"
 }
-$lines += ""
-$lines += "이 명령이 성공했으면, 다음 작업부터 재확인하지 않도록 record-project-fact 스킬로 AGENTS.md에 추가할지 사용자에게 물어보세요. 실패했거나 실행되지 않았으면 무시하세요 — 실패·거부된 명령이면 다음 같은 종류 명령에서 다시 제안합니다."
-$lines += "자동 기록이 아닙니다 — 사용자가 승인하면 그때만 기록합니다. (DB는 실제 연결문자열 금지, 환경변수 이름만)"
+if ($fixOnes.Count -gt 0) {
+    if ($lines.Count -gt 0) { $lines += "" }
+    $lines += "[AGENTS 기존 줄 정정 제안] 지금 실행하려는 명령이 AGENTS.md에 기록된 같은 종류 명령과 인자가 다릅니다:"
+    foreach ($s in $fixOnes) {
+        $lines += ("  - " + $s.label + ": `"" + $s.token + "`"  -> AGENTS.md '" + $s.section + "' 섹션의 기존 줄")
+    }
+    $lines += ""
+    $lines += "AGENTS.md 의 그 줄대로 돌려 실패하는 것을 봤고 이 명령이 성공했을 때만 기존 줄 정정 대상입니다 — 다른 대상을 고른 것뿐이면 무시하세요. karina:implement 루프나 karina-systematic-debugging 안이면 묻지 않고 record-project-fact 의 기존 줄 정정 예외로 고친 뒤 보고에 적고, 그 밖이면 사용자에게 정정을 제안하세요."
+}
 $lines += "이 제안은 차단이 아닙니다."
 $msg = $lines -join "`n"
 
