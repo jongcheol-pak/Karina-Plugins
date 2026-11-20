@@ -113,7 +113,7 @@ argument-hint: "<버그 또는 에러 설명>"
 
 **`plan.md` 가 없으면 첫 편집 전에 면제 표식을 받는다 — 편집 크기와 무관하게 1회다** — 절차는 `../plan/references/interview.md` 「계획 불필요 판정과 면제 표식」 그대로다(고칠 파일 경로 확정 → `A) 바로 수정 / B) 계획부터` → A 면 `[PLAN-EXEMPT]` 표식, B 면 `karina:plan`). 표식 경로에는 4-A 회귀 테스트를 쓰는 경우 그 파일도 함께 적는다. `guard-write` 의 plan 존재 게이트가 plan 없는 편집을 막고, 그것을 여는 수단이 이 표식뿐이다.
 
-**첫 편집 전에 `../implement/references/push-flow.md`「디버깅 단독 경로」 의 「갈래」 를 거친다 — `karina:implement` 루프 안이면 건너뛴다** — push 할지(진행 중 회차가 있으면 미룬다)와 clean 판정의 untracked 스냅숏은 편집 전에 정해야 수정 커밋이 그 위에 쌓인다.
+**첫 편집 전에 `references/commit-push.md`「갈래」 를 거친다 — `karina:implement` 루프 안이면 건너뛴다** — push 할지(진행 중 회차가 있으면 미룬다)와 clean 판정의 untracked 스냅숏은 편집 전에 정해야 수정 커밋이 그 위에 쌓인다.
 
 ### 4-A. 회귀 테스트 먼저
 
@@ -137,7 +137,7 @@ argument-hint: "<버그 또는 에러 설명>"
 
 ### 4-D. 검증
 
-명령은 `AGENTS.md` 「Build & Test」에서 가져와 빌드·테스트와 검증 매핑이 지목한 검사를 돌린다 — 있는데 실패하면(그 줄이 틀렸다) `../implement/references/loop-exceptions.md`「레포 문서·스크립트 정정」 대로 고쳐 진행하고, 없으면 사용자에게 묻는다(추측한 명령은 실행 시점에 실패한다). 빌드·테스트 전체가 통과하면 그 직후 트리 해시를 잰다 — push 전 확인의 clean 줄 근거다(`../implement/references/push-flow.md`「커밋」 끝 불릿).
+명령은 `AGENTS.md` 「Build & Test」에서 가져와 빌드·테스트와 검증 매핑이 지목한 검사를 돌린다 — 있는데 실패하면(그 줄이 틀렸다) `../implement/references/loop-exceptions.md`「레포 문서·스크립트 정정」 대로 고쳐 진행하고, 없으면 사용자에게 묻는다(추측한 명령은 실행 시점에 실패한다). 빌드·테스트 전체가 통과하면 그 직후 트리 해시를 잰다 — push 전 확인의 clean 줄 근거다(`references/commit-push.md`「커밋」 끝 불릿).
 
 - **4-A 회귀 테스트 통과에 더해 1-B 의 원래 재현을 같은 환경에서 다시 돌린다(seam 이 없어 회귀 테스트를 쓰지 않았으면 원래 재현 재실행으로 판정한다) — `AGENTS.md` 의 `Verify (앱 조작)` 검증 스킬로 재현했으면 그 스킬로 다시 돌린다 · 수정이 `Verify (형식 검증)` 스킬 「변경 검증」의 감시 경로를 건드렸으면 그 검사도 돌리고, 알려진 위반 밖 반례가 나오면 통과로 적지 않는다** — 단위 테스트는 분기 동작을 보일 뿐 버그가 사라졌음을 보이지 못하고, 증상을 낸 것은 원래 재현의 경로다. 회귀 테스트가 곧 원래 재현(같은 명령·같은 환경)이면 한 번 실행으로 갈음한다. 다음 셋은 통과로 적지 않고 `미검증 — <사유>` 로 적는다: 재실행 결과가 **불명확**하다(산발 버그의 반복 횟수 부족·판정 신호가 없는 로그) · 원래 재현이 UI 인데 수정 전후 스크린샷 짝이 없다(검증 스킬이 없어 수동으로 재현했으면 `미검증` 대신 `미촬영(HUMAN-VERIFY)` 이다 — `references/investigation-log.md`「화면 증거 (UI 재현)」 · 이때만 `/karina:create-verification-skill` 을 권한다) · 재현을 `번역된 증거` 로 했다.
 - **보고에 실패 출력(RED·원래 재현)과 통과 출력(GREEN·재실행)의 판정 줄을 원문으로 싣는다 — 판정에 쓰인 연속 줄(실패 단언·예외 메시지·결과 요약 줄)을 고치지 않고 옮기고, 잘라 낸 자리는 `…(N줄 생략)` 으로 표시한다** — 요약한 「통과했다」는 사용자가 확인할 수 없고, 실패와 통과를 나란히 둬야 그 수정이 그 증상을 없앴다는 것이 보인다. 고친 문서·재현 스크립트·로그·스크린샷처럼 사용자가 열 파일은 `../implement/references/report-format.md`「보고 형식」 의 「확인할 것」 표에 수정 전·수정 후 짝으로 싣는다(수정 전 기준은 조사 서식의 `착수 HEAD`).
@@ -148,7 +148,7 @@ argument-hint: "<버그 또는 에러 설명>"
 
 ### 4-F. 커밋·push
 
-**4-D 가 끝나면(통과든 `미검증` 이든) `../implement/references/push-flow.md`「디버깅 단독 경로」 의 「커밋」 을 따르고, 같은 파일 「push 전 확인」 을 거쳐 「기본 브랜치 push」 의 push 를 한다(「갈래」 의 진행 중 회차 예외 포함) — 보고에 `push: <결과>` 를 싣는다** — 이 단계가 없으면 고친 버그가 로컬 커밋 없이 작업 트리에만 남는다. 미검증도 push 까지 가는 이유와 커밋 순서의 근거는 `references/debugging-rationale.md` §11.
+**4-D 가 끝나면(통과든 `미검증` 이든) `references/commit-push.md`「커밋」 을 따르고, `../implement/references/push-flow.md`「push 전 확인」 을 거쳐 그 파일 「기본 브랜치 push」 의 push 를 한다(`references/commit-push.md`「갈래」 의 진행 중 회차 예외 포함) — 보고에 `push: <결과>` 를 싣는다** — 이 단계가 없으면 고친 버그가 로컬 커밋 없이 작업 트리에만 남는다. 미검증도 push 까지 가는 이유와 커밋 순서의 근거는 `references/debugging-rationale.md` §11.
 
 ## Phase 4.5 — 아키텍처 의심
 
