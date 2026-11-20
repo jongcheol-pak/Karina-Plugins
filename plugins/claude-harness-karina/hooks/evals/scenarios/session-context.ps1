@@ -527,6 +527,7 @@ if (Test-HookSelected @('session-context')) {
         Set-Content -Encoding UTF8 $scLedFile
     $r = & $scLedInvoke
     Assert-Case -Name "session-context: Deferred 대장 최고령 주입 (SC44)" -R $r -ExpectExit 0 -ExpectContains 'Deferred 대장: 대기 3건'
+    Assert-Case -Name "session-context: Deferred 대장 신호에 폐지된 축 ② 문구가 없다" -R $r -ExpectExit 0 -ExpectNotContains '축 ②'
 
     # SC44mono [모노레포 이전]: 하니스가 git 루트 아래 플러그인 폴더에 있어도 그 폴더의 대장을 읽는다.
     $scLedMono = Join-Path $work ("sc-ledger-mono-" + $suffix)
