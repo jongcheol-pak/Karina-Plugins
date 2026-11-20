@@ -279,8 +279,11 @@ function Get-ShellWriteHits {
         if ($isWrite -and (Test-PlanTarget $m.Groups[1].Value)) { $hits.Add('pathlib') }
     }
     $stripped = Get-HeredocSinkStripped $cmd
-    foreach ($m in [regex]::Matches($stripped, '>>?\s*((?:"[^"]*"|''[^'']*''|\\\r?\n|[^\s;&|<>()])+)')) {
-        if (Test-PlanTarget $m.Groups[1].Value) { $hits.Add('>') }
+    $redirectHead = '>>?[&|]?\s*(?:\\\r?\n\s*)?'
+    foreach ($word in '("[^"]*"|''[^'']*''|\S+)', '((?:"[^"]*"|''[^'']*''|\\\r?\n|[\\`].|[^\s;&|<>()])+)') {
+        foreach ($m in [regex]::Matches($stripped, $redirectHead + $word)) {
+            if (Test-PlanTarget $m.Groups[1].Value) { $hits.Add('>') }
+        }
     }
     foreach ($m in [regex]::Matches($cmd, '(?i)\[(?:System\.)?IO\.File\]::(WriteAll\w+|AppendAllText)\s*\(\s*([^,()]+)')) {
         if (Test-PlanTarget $m.Groups[2].Value) { $hits.Add('[System.IO.File]') }

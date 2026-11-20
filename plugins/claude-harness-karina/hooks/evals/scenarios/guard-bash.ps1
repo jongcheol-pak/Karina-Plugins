@@ -608,6 +608,15 @@ $ptDeny = @(
     @{ Name = '같은 명령에서 mklink 로 junction 을 만든 뒤 그 아래 plan.md 는 차단'; Cmd = ('cmd //c mklink /J "' + $ptTemp + '/ptl" D:/repo && echo x > "' + $ptTemp + '/ptl/plan.md"') },
     @{ Name = '끝에 점을 붙인 레포 plan.md 는 차단(Windows 가 끝 점을 뗀다)'; Cmd = 'Set-Content -Path D:/repo/plan.md. -Value x' },
     @{ Name = '끝에 점을 붙인 레포 plan.md 리다이렉트는 차단'; Cmd = 'echo x > plan.md.' },
+    @{ Name = '괄호 식으로 쓴 리다이렉트 대상 (''plan.md'') 는 차단'; Cmd = 'echo x > (''plan.md'')' },
+    @{ Name = '괄호로 감싼 변수 리다이렉트 대상 ($f) 는 차단'; Cmd = '$f=''plan.md''; echo x > ($f)' },
+    @{ Name = '역슬래시로 이스케이프한 괄호가 든 리다이렉트 대상은 차단'; Cmd = 'echo x > a\(b\)/plan.md' },
+    @{ Name = '역슬래시로 이스케이프한 세미콜론이 든 리다이렉트 대상은 차단'; Cmd = 'echo x > a\;b/plan.md' },
+    @{ Name = '역슬래시로 이스케이프한 앰퍼샌드가 든 리다이렉트 대상은 차단'; Cmd = 'echo x > a\&b/plan.md' },
+    @{ Name = '백틱으로 이스케이프한 괄호가 든 리다이렉트 대상은 차단'; Cmd = 'echo x > a`(b`)/plan.md' },
+    @{ Name = '줄 연속 뒤에 온 리다이렉트 대상은 차단'; Cmd = "echo x > \`nplan.md" },
+    @{ Name = '>& 리다이렉트의 plan.md 는 차단'; Cmd = 'echo x >& plan.md' },
+    @{ Name = '>| 리다이렉트의 plan.md 는 차단'; Cmd = 'echo x >| plan.md' },
     @{ Name = '역슬래시로 쓴 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + ($ptTemp -replace '/', '\') + '\fx\plan.md"') },
     @{ Name = '닫는 큰따옴표 뒤에 꼬리를 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptTemp + '/x/plan.md"/../../../plan.md') },
     @{ Name = '닫는 작은따옴표 뒤에 꼬리를 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > ''' + $ptTemp + '/x/plan.md''/../../../plan.md') },
@@ -658,6 +667,10 @@ foreach ($c in $ptDeny) {
     $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
     Assert-Case -Name "plan-write Temp — $($c.Name)" -R $r -ExpectExit 2 -ExpectContains $ptBlock
 }
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo x > (''C:/Users/u/.claude/plugins/cache/karina-plugins/karina/1.0.0/scripts/guard-bash.ps1'')')
+Assert-Case -Name "installed-write — 괄호 식으로 쓴 설치본 스크립트 리다이렉트는 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo done 2>&1 >&2; grep -c x plan.md > count.txt')
+Assert-Case -Name "plan-write — 2>&1·>&2 와 다른 파일로 가는 리다이렉트는 통과 (음성 짝)" -R $r -ExpectExit 0 -ExpectNotContains $ptBlock
 $ptPsWild = 'Set-Content -Path "' + $ptTemp + '/fx/plan.md" -Value x; Add-Content ''D:/repo/pla?.md'' y'
 $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'PowerShell'; cwd = $noLib; tool_input = @{ command = $ptPsWild } } | ConvertTo-Json -Compress)
 Assert-Case -Name "plan-write Temp — PowerShell 도구에서 작은따옴표 안 와일드카드로 이름을 숨긴 둘째 쓰기는 차단" -R $r -ExpectExit 2 -ExpectContains $ptBlock
