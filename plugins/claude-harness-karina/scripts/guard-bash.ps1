@@ -341,26 +341,7 @@ function Test-TempPlanTarget([string]$Arg, [string]$Cmd) {
     $target = Expand-TempShellPath $Arg $assigned $tempRoot
     if ($null -eq $target) { return $false }
     if ($target -match '^[A-Za-z]:[\\/]') { return (Test-UnderTempRoot $target $tempRoot) }
-    if ($target -match '^[\\/~]' -or $Cmd -match '\(\s*(cd|pushd|Set-Location|sl)\b') { return $false }
-
-    $cdRx = '(?:^|[\s;&|])(?:cd|pushd|Set-Location|sl)\s+("[^"]*"|''[^'']*''|[^\s;&|)]+)'
-    $cds = [regex]::Matches($Cmd, $cdRx)
-    if ($cds.Count -eq 0 -or $cds[0].Index -gt $Cmd.IndexOf('plan.md')) { return $false }
-    $moves = [regex]::Matches($Cmd, '(?:^|[\s;&|])(?:cd|pushd|Set-Location|sl|popd|Pop-Location)(?=$|[\s;&|)])')
-    if ($moves.Count -ne $cds.Count) { return $false }
-    $cwd = $null
-    foreach ($c in $cds) {
-        $to = Expand-TempShellPath $c.Groups[1].Value $assigned $tempRoot
-        if ($null -eq $to -or $to -match '^[-~\\/]') { return $false }
-        if ($to -notmatch '^[A-Za-z]:[\\/]') {
-            if (-not $cwd) { return $false }
-            $to = Join-Path $cwd $to
-        }
-        if (-not (Test-UnderTempRoot $to $tempRoot)) { return $false }
-        $cwd = [System.IO.Path]::GetFullPath($to)
-        if (-not (Test-UnderTempRoot (Join-Path $cwd $target) $tempRoot)) { return $false }
-    }
-    return $true
+    return $false
 }
 
 # block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 — 근거는 `rules/bash-guard-rationale.md` §10
@@ -374,7 +355,8 @@ function Invoke-BlockPlanWrite {
     return New-HookResult -Block $true -Stderr @(
         "[HARNESS] BLOCKED: plan.md 를 스크립트로 쓰려 합니다.",
         "감지된 쓰기 구문: $where.",
-        "gitignore 라 잘못 쓰면 복구할 수 없습니다 — 전체 교체는 Write, 부분 수정은 Edit 도구로 하세요(`plan/SKILL.md` 「Step 5」). 읽기는 막지 않습니다."
+        "gitignore 라 잘못 쓰면 복구할 수 없습니다 — 전체 교체는 Write, 부분 수정은 Edit 도구로 하세요(`plan/SKILL.md` 「Step 5」). 읽기는 막지 않습니다.",
+        '임시 폴더의 픽스처 plan.md 면 대상을 Temp 절대 경로로 쓰세요(예: "$TEMP/<폴더>/plan.md") — cd 한 뒤의 상대 경로는 어느 폴더인지 확인할 수 없어 막습니다.'
     ) -Context "plan.md 쓰기가 차단됐습니다($where). Write·Edit 도구를 쓰세요 — 그 둘은 파일 상태를 추적해 잘림을 막습니다."
 }
 

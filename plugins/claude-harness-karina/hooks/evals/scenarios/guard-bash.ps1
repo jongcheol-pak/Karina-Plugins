@@ -555,7 +555,6 @@ $ptPass = @(
     @{ Name = '절대 Temp 경로의 plan.md 리다이렉트 통과'; Cmd = ('echo x > "' + $ptTemp + '/fx/plan.md"') },
     @{ Name = '$TEMP·$env:TEMP 접두 통과'; Cmd = 'echo x > "$TEMP/fx/plan.md"; echo y > "$env:TEMP/fx/plan.md"' },
     @{ Name = '값이 Temp 경로인 변수 접두 통과'; Cmd = 'D="$TEMP/karina-plugin/scratch/pc"; mkdir -p "$D" && printf x > "$D/plan.md"' },
-    @{ Name = 'Temp 로 cd 한 뒤 상대 plan.md 통과'; Cmd = ('S="' + $ptTemp + '/sp"; mkdir -p "$S" && cd "$S" && git init -q r && cd r && echo x > plan.md') },
     @{ Name = 'cp plan.md <Temp>/…/plan.md 통과'; Cmd = 'cp plan.md "$TEMP/karina-plugin/scratch/snap/plan.md"' }
 )
 foreach ($c in $ptPass) {
@@ -571,6 +570,10 @@ $ptDeny = @(
     @{ Name = '서브셸 ( cd <Temp> ) 뒤 상대 plan.md 는 차단'; Cmd = '(cd "$TEMP") && echo x > plan.md' },
     @{ Name = 'Temp 로 대입한 변수를 . 로 다시 대입하면 차단'; Cmd = 'D="$TEMP/x"; D=.; echo x > "$D/plan.md"' },
     @{ Name = '%TEMP%/plan.md 는 차단'; Cmd = 'echo x > "%TEMP%/plan.md"' },
+    @{ Name = 'Temp 로 cd 한 뒤 상대 plan.md 는 차단(cwd 를 추론하지 않는다)'; Cmd = ('S="' + $ptTemp + '/sp"; mkdir -p "$S" && cd "$S" && git init -q r && cd r && echo x > plan.md') },
+    @{ Name = '없는 Temp 폴더로 cd 가 실패한 뒤 ; 로 이은 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP/nonexist" ; echo x > plan.md' },
+    @{ Name = 'cd <Temp> || 뒤 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP/x" || echo x > plan.md' },
+    @{ Name = 'Temp 로 cd 한 뒤 bash -c 안에서 레포로 cd 한 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP/x" && bash -c ''cd D:/repo && echo x > plan.md''' },
     @{ Name = 'Temp 로 cd 한 뒤 cd - 로 돌아온 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP/x" && cd - && echo x > plan.md' },
     @{ Name = 'pushd <Temp> 뒤 popd 한 상대 plan.md 는 차단'; Cmd = 'pushd "$TEMP/x" && popd && echo x > plan.md' },
     @{ Name = 'Temp 로 cd 한 뒤 cd ~/… 한 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP/x" && cd ~/repo && echo x > plan.md' },
