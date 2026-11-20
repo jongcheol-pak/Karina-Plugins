@@ -650,6 +650,11 @@ $ptDeny = @(
     @{ Name = 'Set-Content Function: 으로 허용 명령을 다시 정의한 명령은 차단'; Cmd = ('Set-Content Function:mkdir "ni -it j ' + $ptTemp + '/pj17 D:/repo"; mkdir; echo x > "' + $ptTemp + '/pj17/plan.md"') },
     @{ Name = '유니코드 작은따옴표로 닫아 뒤 명령을 숨긴 꼴은 차단'; Cmd = ("echo 'a" + [char]0x2018 + '; ni -it j "' + $ptTemp + '/pj30" -Value D:/repo; echo ' + [char]0x2018 + "b'; echo x > `"" + $ptTemp + '/pj30/plan.md"') },
     @{ Name = '유니코드 큰따옴표로 닫아 뒤 명령을 숨긴 꼴은 차단'; Cmd = ("echo 'a" + [char]0x201C + '; ni -it j ' + $ptTemp + '/pj32 -Value D:/repo; echo ' + [char]0x201C + "b'; Set-Content -Path `"" + $ptTemp + '/pj32/plan.md" -Value x') },
+    @{ Name = 'heredoc 본문의 작은따옴표로 링크 생성 줄을 숨긴 꼴은 차단'; Cmd = ("cat <<echo > " + $ptTemp + "/pa9/a.txt`necho '`necho`npwsh -NoProfile -c ni -it j " + $ptTemp + "/pj93 -Value D:/repo`necho PWNED > " + $ptTemp + "/pj93/plan.md`ncat <<echo > " + $ptTemp + "/pa9/b.txt`n'`necho") },
+    @{ Name = 'heredoc 본문의 큰따옴표로 링크 생성 줄을 숨긴 꼴은 차단'; Cmd = ("cat <<echo > " + $ptTemp + "/pa9/a.txt`necho `"`necho`npwsh -NoProfile -c ni -it j " + $ptTemp + "/pj94 -Value D:/repo`necho PWNED > " + $ptTemp + "/pj94/plan.md`ncat <<echo > " + $ptTemp + "/pa9/b.txt`n`"`necho") },
+    @{ Name = 'heredoc 으로 절대 Temp 경로에 쓰는 명령은 차단(heredoc 에는 면제가 없다)'; Cmd = ("cat > `"" + $ptTemp + "/fx/plan.md`" <<EOF`nx`nEOF") },
+    @{ Name = '작은따옴표 조각을 이어 붙여 이름을 숨긴 둘째 쓰기가 든 명령은 차단'; Cmd = ('echo x > "' + $ptTemp + '/fx/plan.md"; echo y > ''D:/repo/pla''''n.md''') },
+    @{ Name = '맨 글자와 따옴표 조각을 이어 붙인 tee 둘째 대상이 든 명령은 차단'; Cmd = ('echo x | tee "' + $ptTemp + '/fx/plan.md" D:/repo/pla"n".md') },
     @{ Name = '변수 대입 접두가 든 명령은 차단'; Cmd = ('PATH=D:/evil tee "' + $ptTemp + '/fx/plan.md"') },
     @{ Name = '큰따옴표 안 치환이 든 명령은 차단'; Cmd = ('echo "$(ni -it j a b)" > "' + $ptTemp + '/fx/plan.md"') },
     @{ Name = '절대 Temp 경로와 맨 plan.md 언급이 함께 있으면 차단'; Cmd = ('echo plan.md; echo x > "' + $ptTemp + '/fx/plan.md"') }
@@ -658,6 +663,12 @@ foreach ($c in $ptDeny) {
     $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
     Assert-Case -Name "plan-write Temp — $($c.Name)" -R $r -ExpectExit 2 -ExpectContains $ptBlock
 }
+$ptPsWild = 'Set-Content -Path "' + $ptTemp + '/fx/plan.md" -Value x; Add-Content ''D:/repo/pla?.md'' y'
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'PowerShell'; cwd = $noLib; tool_input = @{ command = $ptPsWild } } | ConvertTo-Json -Compress)
+Assert-Case -Name "plan-write Temp — PowerShell 도구에서 작은따옴표 안 와일드카드로 이름을 숨긴 둘째 쓰기는 차단" -R $r -ExpectExit 2 -ExpectContains $ptBlock
+$ptPsPlain = 'Set-Content -Path "' + $ptTemp + '/fx/plan.md" -Value ''plain text'''
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'PowerShell'; cwd = $noLib; tool_input = @{ command = $ptPsPlain } } | ConvertTo-Json -Compress)
+Assert-Case -Name "plan-write Temp — PowerShell 도구의 Set-Content 절대 Temp 경로 쓰기 통과" -R $r -ExpectExit 0 -ExpectNotContains $ptBlock
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > run.sh <<'EOF'`necho x > plan.md`nEOF")
 Assert-Case -Name "hd: 실행 가능 스크립트(.sh) 싱크 본문의 > plan.md 는 차단 (HD7 차단 유지)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
 # HD8·HD9: 대상 인자 뒤에 리다이렉션 토큰이 붙어도 마지막 실효 인자를 본다(2026-10-13 실해 — 미탐 보완).
