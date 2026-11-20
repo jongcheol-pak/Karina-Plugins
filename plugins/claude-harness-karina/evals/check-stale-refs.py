@@ -150,7 +150,9 @@ HISTORY_WHY = ('회차 1·2의 제거·개명 이력 — 지우면 다음 세션
 #   여덟을 재서 전부 그 문턱을 넘겼다(문서별 착수 오탐율 — WIKI 0.0% · BUDGET 3.4% ·
 #   golden-runner 3.7% · harness-consistency-rationale 3.7% · AGENTS 6.0% · AUTHORING 7.1% ·
 #   DESIGN 7.7% · README 9.5%). 그때 남은 오탐 14 중 3 은 아래 구조 규칙 둘이, 11 은 **문서에서
-#   백틱을 벗겨** 닫았다 — 면제 목록을 만들지 않는 것이 이 축의 설계다.
+#   백틱을 벗겨** 닫았다 — 면제 목록을 만들지 않는 것이 이 축의 설계다. 사용자가 편입을 지정한
+#   문서는 문턱을 넘어도 넣되, 넣기 전에 문서에서 미실존 0 으로 닫는다 — `docs/conventions.md` 는
+#   착수 경로 30.6%·심볼 7.9% 를 낡은 이름 갱신과 백틱 벗기기로 0 으로 닫고 넣었다(2026-11-20).
 PROSE_TARGETS = (
     'docs/harness-conventions.md',
     'docs/verification-mapping.md',
@@ -162,6 +164,7 @@ PROSE_TARGETS = (
     'skills/BUDGET.md',
     'evals/harness-consistency-rationale.md',
     'evals/harness-consistency-pointer-rationale.md',
+    'docs/conventions.md',
 )
 
 PROSE_TOKEN_RX = re.compile(r'`([^`\n]+)`')
