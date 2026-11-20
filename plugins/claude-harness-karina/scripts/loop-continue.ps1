@@ -9,7 +9,7 @@ $stateDir = Join-Path $base '.claude/.state/loop-continue'
 # 같은 미완 집합에 주입하는 횟수의 상한 — 근거는 `rules/loop-continue-rationale.md` §2
 $MaxPerSet = 2
 $ImplementRx = '^(karina:)?implement$'
-$PlanRx = '^(karina:)?plan$'
+$PlanRx = '^(karina:)?(chain-)?plan$'
 
 # 판정 불가는 전부 침묵이다 — 근거는 `rules/loop-continue-rationale.md` §3
 try { $data = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin } else { [Console]::In.ReadToEnd() }) | ConvertFrom-Json -ErrorAction Stop } catch { exit 0 }

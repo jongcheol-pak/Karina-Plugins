@@ -69,6 +69,16 @@ $null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-s6' 'karina:plan')
 $r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-s6' $lcProj)
 Assert-Case -Name "loop-continue: karina:plan 발동 뒤에는 침묵(마커 제거)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-s7' 'karina:implement')
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-s7' 'karina:chain-plan')
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-s7' $lcProj)
+Assert-Case -Name "loop-continue: karina:chain-plan 발동 뒤에는 침묵(마커 제거)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-s8' 'karina:implement')
+$null = Invoke-Hook 'loop-continue.ps1' (@{ session_id = 'lc-s8'; hook_event_name = 'UserPromptExpansion'; command_name = 'chain-plan' } | ConvertTo-Json -Compress)
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-s8' $lcProj)
+Assert-Case -Name "loop-continue: /chain-plan 직접 입력 뒤에는 침묵(마커 제거)" -R $r -ExpectExit 0 -ExpectSilent $true
+
 $r = Invoke-Hook 'loop-continue.ps1' 'not json {'
 Assert-Case -Name "loop-continue: 잘못된 stdin 은 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
 
