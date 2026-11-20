@@ -156,6 +156,70 @@ function Get-TaskAuditGrowth([string]$RuleDir, $Rule, $Scope) {
     return @{ Net = $net; Capped = $capped }
 }
 
+# RED·화면 판정 줄 대조 — `skills/plan/scripts/check-plan.ps1` -Base 판정의 사본이다 · 근거는 `rules/task-audit-rationale.md` §7
+function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Message) {
+    $planPath = Join-Path ([System.IO.Path]::GetDirectoryName($AgentsPath)) 'plan.md'
+    if (-not (Test-Path -LiteralPath $planPath -PathType Leaf)) { return @() }
+    $plan = @(Get-Content -LiteralPath $planPath -Encoding UTF8 -ErrorAction SilentlyContinue)
+    $block = @()
+    $inBlock = $false
+    foreach ($l in $plan) {
+        if ($l -match '^#{2,3}\s') { $inBlock = $l -match ('^###\s+T' + $TaskId + '\.(\s|$)') ; continue }
+        if ($inBlock) { $block += [string]$l }
+    }
+    $hasRed = [bool]@($block | Where-Object { $_.StartsWith('- **Files**:') -and $_.Contains('(RED)') }).Count
+    $hasScreen = [bool]@($block | Where-Object { $_.StartsWith('- **화면**:') }).Count
+    if (-not $hasRed -and -not $hasScreen) { return @() }
+
+    $bodies = @($Message)
+    $tagged = @()
+    $baseLine = @($plan | Where-Object { $_ -match '^> BASE:\s*([0-9a-fA-F]{7,40})\s*$' } | Select-Object -First 1)
+    if ($baseLine.Count -and $baseLine[0] -match '^> BASE:\s*([0-9a-fA-F]{7,40})') {
+        $log = Invoke-CommitGit -Check 'warn-task-audit' -Dir ([System.IO.Path]::GetDirectoryName($AgentsPath)) -GitArgs @('-c', 'core.quotepath=off', '-c', 'i18n.logOutputEncoding=UTF-8', 'log', '--format=%B%x00', ($Matches[1] + '..HEAD'))
+        if ($log.Code -eq 0) {
+            $titleRx = '^\s*(?:(?:기능|수정|리팩토링|문서|설정)\s*:\s*)?T' + $TaskId + '\s*(?::|—|-)'
+            foreach ($c in ((@($log.Lines) -join "`n") -split "`0")) {
+                $c = $c.Trim()
+                if (-not $c) { continue }
+                if ([regex]::IsMatch(@($c -split "`n")[0], $titleRx)) { $bodies += $c } else { $tagged += $c }
+            }
+        }
+    }
+    $text = $bodies -join "`n"
+    $lineHead = '(?m)^\s*(?:[-*]\s*)?'
+    $out = @()
+    if ($hasRed -and -not [regex]::IsMatch($text, $lineHead + 'RED(?:\((?:구현 전|사후[^)\r\n]*)\))?\s*:\s*\S')) {
+        $out += "  - RED 줄 없음 — Files 줄에 (RED) 가 있는 task 다. 본문에 ``RED(구현 전): <실패 출력>`` (또는 ``RED: 미확인 — <사유>``) 줄을 둔다"
+    }
+    $verdictRx = $lineHead + '화면:\s*(?:HEAD\s*(?:참|거짓)|미촬영\(HUMAN-VERIFY\))'
+    $taggedRx = $lineHead + '화면:\s*T' + $TaskId + '\s+(?:HEAD\s*(?:참|거짓)|미촬영\(HUMAN-VERIFY\))'
+    if ($hasScreen -and -not [regex]::IsMatch($text, $verdictRx) -and -not [regex]::IsMatch(($tagged + $bodies) -join "`n", $taggedRx)) {
+        $odd = @([regex]::Matches($Message, '(?m)^\s*(?:[-*]\s*)?화면\s*[^\s:]*\s*:.*$') | ForEach-Object { $_.Value.Trim() } | Select-Object -First 1)
+        $seen = if ($odd.Count) { " — 본 줄: ``$($odd[0])``" } else { '' }
+        $out += "  - 화면 판정 줄 없음 — ``- **화면**:`` 줄이 있는 task 다. 본문에 ``화면: HEAD 참|거짓 — <스크린샷>`` 또는 ``화면: 미촬영(HUMAN-VERIFY) · 사유 <…>`` 줄을 둔다$seen"
+    }
+    return $out
+}
+
+function New-TaskAuditResult([string]$TaskId, $AuditLines, $EvidenceLines, [string[]]$Extra = @()) {
+    $parts = @($Extra)
+    if (@($AuditLines).Count) {
+        $parts += "[HARNESS] T$TaskId 완료 커밋에 AGENTS.md 「Test (감사)」 명령이 없습니다 — 필터 테스트는 이 감사를 돌리지 않습니다."
+        $parts += @($AuditLines)
+    }
+    if (@($EvidenceLines).Count) {
+        $parts += "[HARNESS] T$TaskId 완료 커밋의 검증 기록이 회차 끝 증거 대조(check-plan -Base)에 걸립니다:"
+        $parts += @($EvidenceLines)
+    }
+    if (-not (@($AuditLines).Count + @($EvidenceLines).Count)) {
+        if (@($Extra).Count) { return New-HookResult -Stderr @($Extra) }
+        return New-HookResult
+    }
+    $parts += "이 경고는 커밋을 막지 않습니다. 커밋 뒤 빠진 명령·기록을 ``git commit --allow-empty`` 보충 커밋(제목 ``{유형}: T$TaskId — 검증 기록 보충``)의 본문에 남기세요. 실패하면 수정 커밋을 합니다."
+    $msg = ($parts | ForEach-Object { $_ }) -join "`n"
+    return New-HookResult -Block $false -Stderr @($msg) -Context $msg
+}
+
 function Invoke-WarnTaskAudit {
     param($data)
     $cmd = [string]$data.tool_input.command
@@ -174,16 +238,18 @@ function Invoke-WarnTaskAudit {
 
     $agents = Find-TaskAuditAgents $commitDir
     if (-not $agents) { return New-HookResult }
+    $t = $tm.Groups[1].Value
+    $evidence = @(if (-not $t.Contains('-')) { Get-TaskEvidenceLines $agents $t $message })
     # 감사 줄 파서는 comment-lines.ps1 에 있고 검사 호출 시점에만 부른다 — 근거는 `rules/task-audit-rationale.md` §6
     if (-not (Get-Command Get-TaskAuditRules -ErrorAction SilentlyContinue)) {
         try { . (Join-Path $PSScriptRoot 'comment-lines.ps1') } catch {}
     }
     if (-not (Get-Command Get-TaskAuditRules -ErrorAction SilentlyContinue)) {
         $w = '[guard-bash] comment-lines.ps1 로드 실패 — task 감사 누락 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.'
-        return New-HookResult -Stderr @($w)
+        return New-TaskAuditResult $t @() $evidence @($w)
     }
     $rules = @(Get-TaskAuditRules $agents)
-    if (-not $rules.Count) { return New-HookResult }
+    if (-not $rules.Count) { return New-TaskAuditResult $t @() $evidence }
     $ruleDir = [System.IO.Path]::GetDirectoryName($agents)
     $scope = Get-TaskAuditScope $judge $cm $commitDir
 
@@ -204,15 +270,7 @@ function Invoke-WarnTaskAudit {
     }
     if (Test-CommitGitTimedOut 'warn-task-audit') {
         $w = "[guard-bash] git 이 시간 상한($(Get-CommitGitLimitMs)ms) 안에 답하지 않아 task 감사 누락 검사를 건너뜁니다."
-        return New-HookResult -Stderr @($w)
+        return New-TaskAuditResult $t @() $evidence @($w)
     }
-    if (-not $lines.Count) { return New-HookResult }
-
-    $t = $tm.Groups[1].Value
-    $msg = (@(
-        "[HARNESS] T$t 완료 커밋에 AGENTS.md 「Test (감사)」 명령이 없습니다 — 필터 테스트는 이 감사를 돌리지 않습니다.",
-        $lines.ToArray(),
-        "이 경고는 커밋을 막지 않습니다. 커밋 뒤 위 명령을 돌리고 결과를 ``git commit --allow-empty`` 보충 커밋(제목 ``{유형}: T$t — 검증 기록 보충``)의 본문에 남기세요. 실패하면 수정 커밋을 합니다."
-    ) | ForEach-Object { $_ }) -join "`n"
-    return New-HookResult -Block $false -Stderr @($msg) -Context $msg
+    return New-TaskAuditResult $t $lines.ToArray() $evidence
 }

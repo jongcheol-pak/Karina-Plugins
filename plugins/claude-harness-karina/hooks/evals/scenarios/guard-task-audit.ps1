@@ -183,6 +183,45 @@ try {
     & git -C $taRoot add src/lib.rs 2>$null
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle '- python docs/test-task.py target/fix-zoom-msg.txt zoom_badge _audit every_child_process_hides_its_console → exit 0')
     Assert-Case -Name 'task-audit: Test (task) 줄이 없는 레포의 같은 본문 → 경고' -R $r -ExpectExit 0 -ExpectContains $taCmd
+
+    Reset-TaRepo
+    $teBase = (& git -C $taRoot rev-parse HEAD 2>$null)
+    $tePlan = Join-Path $taRoot 'plan.md'
+    @('# plan', '', '## Goal', '', ('> BASE: ' + $teBase), '', '## 작업 단계', '', '### T1. 항목', '',
+      '- [x] **T1-1** 항목을 더한다', '- **Files**: `src/lib.rs` — 케이스: 「항목」 (RED)', '- **화면**: 시나리오 열기 · 스크린샷 t1.png · 통과 조건 보인다', '',
+      '### T2. 문서', '', '- [x] **T2-1** 문서', '- **Files**: `README.md` — `[면제 ①]` 문서') | Set-Content -LiteralPath $tePlan -Encoding UTF8
+    $teOk = '검증 결과: ok' + "`n" + '- `' + $taCmd + '` → ok'
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
+    Assert-Case -Name 'task-evidence: (RED) task 완료 커밋에 RED 줄이 없으면 경고' -R $r -ExpectExit 0 -ExpectContains 'RED 줄'
+    Assert-Case -Name 'task-evidence: 화면 task 완료 커밋에 화면 판정 줄이 없으면 경고' -R $r -ExpectExit 0 -ExpectContains '화면 판정 줄'
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + 'RED(구현 전): 케이스 FAIL' + "`n" + '화면(verify-karina): 보인다'))
+    Assert-Case -Name 'task-evidence: 서식이 다른 화면 줄은 인용해 기대 서식을 보인다' -R $r -ExpectExit 0 -ExpectContains '화면(verify-karina): 보인다' -ExpectNotContains 'RED 줄'
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + 'RED(구현 전): 케이스 FAIL' + "`n" + '화면: HEAD 참 — t1.png'))
+    Assert-Case -Name 'task-evidence: RED·화면 판정 줄이 있으면 경고 없음' -R $r -ExpectExit 0 -ExpectSilent $true
+    $r = Invoke-TaCase (New-TaCommitCmd '기능: T1-2 — 하위' $teOk)
+    Assert-Case -Name 'task-evidence: 하위 ID 커밋은 RED·화면을 재지 않는다' -R $r -ExpectExit 0 -ExpectNotContains 'RED 줄'
+    $r = Invoke-TaCase (New-TaCommitCmd '문서: T2 — 문서' $teOk)
+    Assert-Case -Name 'task-evidence: (RED)·화면 줄이 없는 task 는 재지 않는다' -R $r -ExpectExit 0 -ExpectSilent $true
+    ('# AGENTS.md' + $nl) | Set-Content (Join-Path $taRoot 'AGENTS.md')
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle '검증 결과: ok')
+    Assert-Case -Name 'task-evidence: 감사 규칙이 없는 레포에서도 RED 누락을 경고' -R $r -ExpectExit 0 -ExpectContains 'RED 줄'
+    & git -C $taRoot checkout -q -- AGENTS.md 2>$null
+    Rename-Item -LiteralPath $tePlan -NewName 'plan-off.md'
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
+    Assert-Case -Name 'task-evidence: plan.md 가 없으면 침묵' -R $r -ExpectExit 0 -ExpectSilent $true
+    Rename-Item -LiteralPath (Join-Path $taRoot 'plan-off.md') -NewName 'plan.md'
+
+    $teCheck = Join-Path $scriptsDir '../skills/plan/scripts/check-plan.ps1'
+    & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m $taTitle -m $teOk 2>$null
+    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
+    Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 RED·화면 위반으로 낸다 (사본 정합)' -R @{ code = $r.code; out = "cp=$teCp hook=$($r.out)" } -ExpectExit 0 -ExpectContains 'no-red-evidence T1'
+    Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 화면 위반으로 낸다 (사본 정합)' -R @{ code = $r.code; out = "cp=$teCp" } -ExpectExit 0 -ExpectContains 'no-screen-verdict T1'
+    & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m '기능: T1 — 앞 커밋' -m ($teOk + "`n" + 'RED(구현 전): 케이스 FAIL' + "`n" + '화면: HEAD 참 — t1.png') 2>$null
+    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
+    Assert-Case -Name 'task-evidence: 앞 T1 커밋 본문에 RED·화면 판정이 있으면 경고 없음' -R $r -ExpectExit 0 -ExpectSilent $true
+    Assert-Case -Name 'task-evidence: 그 이력을 check-plan -Base 도 통과시킨다 (사본 정합)' -R @{ code = 0; out = "cp=$teCp" } -ExpectExit 0 -ExpectNotContains 'T1'
 } finally {
     if (Test-Path $taRoot) { Remove-Item $taRoot -Recurse -Force -ErrorAction SilentlyContinue }
 }

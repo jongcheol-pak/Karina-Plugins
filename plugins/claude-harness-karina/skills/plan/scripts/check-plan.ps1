@@ -59,6 +59,8 @@
 #   screen-unshot T<N>           판정이 미촬영뿐이고 AGENTS.md(위 Plan check 와 같은 탐색)의 「- **Verify (앱 조작)**:」 값이
 #                                「없음」 이 아님 — 미촬영 줄에 「· 사유 <…>」 칸이 있으면 위반 대신 note screen-unshot-reason T<N>
 #                                (Verify 줄이 없거나 AGENTS.md 가 없으면 검증 스킬 없음 — 미촬영 통과)
+#   no-red-evidence·no-screen-verdict 판정의 사본이 scripts/guard-task-audit.ps1 의 Get-TaskEvidenceLines 에 있다 —
+#                                한쪽을 고치면 다른 쪽도 고친다(골든 guard-task-audit 의 「사본 정합」 케이스가 대조한다)
 #   ERROR no-git · ERROR bad-base  plan 이 git 밖 · BASE 가 커밋이 아님(exit 2)
 # 제목 형식의 정본은 guard-bash 의 완료 커밋 판정이다(scripts/rules/bash-guard-rationale.md §14) — 같은 정규식을 쓴다.
 #
