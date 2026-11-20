@@ -561,7 +561,8 @@ $ptPass = @(
     @{ Name = '따옴표 없이 쓴 절대 Temp 경로 통과'; Cmd = ('echo x > ' + $ptTemp + '/fx/plan.md') },
     @{ Name = '대소문자를 달리 쓴 절대 Temp 경로 통과'; Cmd = ('echo x > "' + $ptTemp.ToUpperInvariant() + '/fx/plan.md"') },
     @{ Name = '옵션 묶음 -ln 이 든 명령의 절대 Temp 경로 통과'; Cmd = ('ls -ln; echo x > "' + $ptTemp + '/fx/plan.md"') },
-    @{ Name = 'cp notes.md <절대 Temp 경로>/plan.md 통과'; Cmd = ('cp notes.md "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
+    @{ Name = 'tee <절대 Temp 경로>/plan.md 통과'; Cmd = ('echo x | tee "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
+    @{ Name = 'Set-Content -Path <절대 Temp 경로>/plan.md 통과'; Cmd = ('Set-Content -Path "' + $ptTemp + '/fx/plan.md" -Value x') },
     @{ Name = 'python open(<절대 Temp 경로>/plan.md) 쓰기 통과'; Cmd = ("python -c `"open('" + $ptTemp + "/fx/plan.md','w').write('x')`"") }
 )
 foreach ($c in $ptPass) {
@@ -625,6 +626,18 @@ $ptDeny = @(
     @{ Name = '빈 따옴표를 앞에 붙인 ""plan.md 리다이렉트는 차단'; Cmd = 'echo x > ""plan.md' },
     @{ Name = '따옴표 없이 대입한 변수 P=plan.md 대상은 차단'; Cmd = 'P=plan.md; echo x > $P' },
     @{ Name = 'cp plan.md <절대 Temp 경로>/plan.md 는 차단(원본 쪽 맨 plan.md 언급)'; Cmd = ('cp plan.md "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
+    @{ Name = 'cp notes.md <절대 Temp 경로>/plan.md 는 차단(복사·이동 명령에는 면제가 없다)'; Cmd = ('cp notes.md "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
+    @{ Name = 'cp -vt . <절대 Temp 경로>/plan.md 는 차단'; Cmd = ('cp -vt . "' + $ptTemp + '/x/plan.md"') },
+    @{ Name = 'cp --target=. <절대 Temp 경로>/plan.md 는 차단'; Cmd = ('cp --target=. "' + $ptTemp + '/x/plan.md"') },
+    @{ Name = 'cp --t . <절대 Temp 경로>/plan.md 는 차단'; Cmd = ('cp --t . "' + $ptTemp + '/x/plan.md"') },
+    @{ Name = 'mv -ft . <절대 Temp 경로>/plan.md 는 차단'; Cmd = ('mv -ft . "' + $ptTemp + '/x/plan.md"') },
+    @{ Name = 'Copy-Item -Destination . <절대 Temp 경로>/plan.md 는 차단'; Cmd = ('Copy-Item -Destination . "' + $ptTemp + '/x/plan.md"') },
+    @{ Name = 'Move-Item -Destination . <절대 Temp 경로>/plan.md 는 차단'; Cmd = ('Move-Item -Destination . "' + $ptTemp + '/x/plan.md"') },
+    @{ Name = '따옴표 안 mklink 로 만든 junction 아래 plan.md 는 차단'; Cmd = ('cmd //c "mklink /J ' + ($ptTemp -replace '/', '\') + '\pj5 D:\repo" && echo x > "' + $ptTemp + '/pj5/plan.md"') },
+    @{ Name = '/usr/bin/ln -s 로 만든 링크 아래 plan.md 는 차단'; Cmd = ('/usr/bin/ln -s /d/repo "' + $ptTemp + '/pj6" && echo x > "' + $ptTemp + '/pj6/plan.md"') },
+    @{ Name = 'New-Item -ItemType:Junction 뒤 그 아래 plan.md 는 차단'; Cmd = ('New-Item -ItemType:Junction -Path "' + $ptTemp + '/pj8" -Value D:/repo; echo x > "' + $ptTemp + '/pj8/plan.md"') },
+    @{ Name = '백틱 치환 안 ln 뒤 링크 아래 plan.md 는 차단'; Cmd = ('x=`ln -s /d/repo ' + $ptTemp + '/pj9`; echo x > "' + $ptTemp + '/pj9/plan.md"') },
+    @{ Name = 'python os.symlink 뒤 링크 아래 plan.md 는 차단'; Cmd = ("python -c `"import os; os.symlink('D:/repo','" + $ptTemp + "/pj10')`"; echo x > `"" + $ptTemp + '/pj10/plan.md"') },
     @{ Name = '절대 Temp 경로와 맨 plan.md 언급이 함께 있으면 차단'; Cmd = ('echo plan.md; echo x > "' + $ptTemp + '/fx/plan.md"') }
 )
 foreach ($c in $ptDeny) {

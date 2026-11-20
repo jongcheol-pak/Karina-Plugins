@@ -326,7 +326,8 @@ function Test-LiteralTempPath([string]$Path, [string]$TempRoot) {
 function Get-LiteralTempPlanPaths([string]$Cmd) {
     $tempRoot = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '/', '\'
     if (-not $tempRoot) { return @() }
-    if ($Cmd -match '(?i)(?:^|[\s;&|(])(?:ln|mklink|junction(?:\.exe)?)\s|-ItemType\s+["'']?(?:Junction|SymbolicLink|HardLink)|(?:^|\s)(?:-t|--target-directory)\b') { return @() }
+    if ($Cmd -match '(?i)mklink|junction|symboliclink|hardlink|symlink|reparse|(?<![\w-])ln(?![\w-])') { return @() }
+    if ($Cmd -match '(?i)(?<![\w.-])(?:cp|mv|copy|move|ren|rename|copy-item|move-item|rename-item|cpi|mi|rni|robocopy|xcopy|install|rsync|dd|xargs)(?:\.exe)?(?![\w-])') { return @() }
     $wordRx = '(?i)(?<![^\s>(,])(?<q>["'']?)(?<p>[A-Za-z]:/[\w ./-]*?(?<=/)plan\.md)\k<q>(?=$|[\s;&|),])'
     $paths = New-Object System.Collections.Generic.List[string]
     foreach ($m in [regex]::Matches($Cmd, $wordRx)) {
