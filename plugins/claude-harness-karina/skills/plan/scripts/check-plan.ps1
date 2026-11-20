@@ -3,10 +3,13 @@
 #
 # 사용: check-plan.ps1 <plan.md 경로>                 서식 검사(계획 시점)
 #       check-plan.ps1 <plan.md 경로> -Base <sha>     증거 대조만(회차 끝) — 서식 검사는 돌리지 않는다
-# 출력은 ASCII 만이고 줄 종류는 여섯이다:
+# 출력은 ASCII 만이고 줄 종류는 일곱이다:
 #   check-plan <줄>: <코드> <세부>        위반 하나
 #   check-plan: note <코드> T<N>          -Base 모드의 보고 전용 표시(위반 아님 · 위반 수·종료 코드에 세지 않는다)
 #   check-plan: skip <검사> <사유>        건너뛴 검사 하나(위반 아님)
+#   check-plan: files <N>                 서식 검사 모드만 — 모든 task 의 Files 줄 백틱 경로(줄의 첫 「[면제」 앞까지) 합집합 수(위반 아님).
+#                                         문서도 세고 문서뿐인 「[면제 ①」 줄도 센다 — 경량 판정(light-files)과 다른 값이다.
+#                                         karina:plan Step 6 이 이 값으로 plan-reviewer 를 부를지 가른다
 #   check-plan: ran plan-check exit 0     AGENTS.md 의 Plan check 가 돌아 통과함(위반 아님 · 로그 파일 없음)
 #   check-plan: <N> problems              마지막 줄 — 위반 수
 #   check-plan: ERROR <사유>              입력 오류(exit 2)
@@ -14,7 +17,6 @@
 #
 # 코드와 뜻 — 이 표가 정본이다(plan/SKILL.md Step 6 은 여기를 가리킨다):
 #   empty-command                Investigation Log 표의 명령 칸이 비었거나 줄표(-·—·–)뿐인 행
-#   no-closed-trace              레포가 deferred-closed.md 를 추적하는데 Log 에 「deferred-closed」 가 없음
 #   open-question                Open Questions 절에 「- [ ]」 가 남음
 #   acceptance-baseline T<N>     Acceptance 줄에 백틱(판정 명령·리터럴)이 있는데 「착수」 가 없음
 #   case-mark T<N>               Files 줄에 (RED)·(GREEN·[면제 가 하나도 없음
@@ -61,7 +63,8 @@
 # 제목 형식의 정본은 guard-bash 의 완료 커밋 판정이다(scripts/rules/bash-guard-rationale.md §14) — 같은 정규식을 쓴다.
 #
 # 왜 결정적 스크립트인가: 문자열로 갈리는 판정을 리뷰어(LLM)가 매 라운드 읽어 가르면 놓칠 수 있고 라운드를 쓴다.
-#   항목 단위 판정(케이스 경로마다의 표시·명령마다의 착수값·면제 사유의 옳음)은 리뷰어에 남는다.
+#   리뷰어에 남는 것은 면제 사유의 옳음과 음성 짝이다 — 케이스 경로마다의 표시·명령마다의 착수값은 아무도 재지 않는다
+#   (case-mark·acceptance-baseline 은 줄에 하나라도 있는가만 본다).
 # 왜 출력에 한글이 없는가: Git Bash 를 거친 PowerShell 출력에서 한글이 깨진다(work-clock 과 같은 이유).
 # 왜 펜스 안을 건너뛰는가: 템플릿·예시 펜스 안의 「## 」·「- [ ]」·표 행이 위반으로 잡힌다.
 # 왜 「\|」 를 칸 경계로 보지 않는가: 표 칸 안의 정규식은 「\|」 로 적히고, 그것으로 가르면 명령 칸 자리가 밀린다.
@@ -320,32 +323,35 @@ if ($goal) {
 }
 
 # ---- B5 경량 조건 — 사용자 승인 말고도 기계로 갈리는 조건은 여기서 잰다(모델 판정만으로 경량을 열지 않는다) ----
-if ($isLight) {
-    $exemptMark = '[' + (Get-Text @(0xBA74, 0xC81C))                                  # [면제
-    $docExemptMark = $exemptMark + ' ' + [char]0x2460
-    $structLabel = '- **' + (Get-Text @(0xAD6C, 0xC870)) + '**:'                       # - **구조**:
-    $paths = New-Object System.Collections.Generic.HashSet[string]
-    foreach ($b in @(Get-TaskBlocks)) {
-        foreach ($l in $b.Lines) {
-            if (Test-Prefix $l.Text $structLabel) { Add-Problem $l.N ('light-structure T' + $b.Id) }
-            if (-not (Test-Prefix $l.Text '- **Files**:')) { continue }
-            $t = $l.Text
-            $cut = $t.IndexOf($exemptMark, [System.StringComparison]::Ordinal)
-            $docOnly = $cut -ge 0 -and $t.Substring($cut).StartsWith($docExemptMark, [System.StringComparison]::Ordinal)
-            if ($cut -ge 0) { $t = $t.Substring(0, $cut) }
-            $found = @([regex]::Matches($t, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value.Trim() })
-            if ($docOnly -and $found.Count -and -not @($found | Where-Object { $_ -notmatch '\.(md|png|jpe?g|gif|svg|webp|ico)$' }).Count) { continue }
-            foreach ($p in $found) { $null = $paths.Add($p) }
-        }
+$exemptMark = '[' + (Get-Text @(0xBA74, 0xC81C))                                  # [면제
+$docExemptMark = $exemptMark + ' ' + [char]0x2460
+$structLabel = '- **' + (Get-Text @(0xAD6C, 0xC870)) + '**:'                       # - **구조**:
+$lightPaths = New-Object System.Collections.Generic.HashSet[string]
+$unionPaths = New-Object System.Collections.Generic.HashSet[string]
+foreach ($b in @(Get-TaskBlocks)) {
+    foreach ($l in $b.Lines) {
+        if ($isLight -and (Test-Prefix $l.Text $structLabel)) { Add-Problem $l.N ('light-structure T' + $b.Id) }
+        if (-not (Test-Prefix $l.Text '- **Files**:')) { continue }
+        $t = $l.Text
+        $cut = $t.IndexOf($exemptMark, [System.StringComparison]::Ordinal)
+        $docOnly = $cut -ge 0 -and $t.Substring($cut).StartsWith($docExemptMark, [System.StringComparison]::Ordinal)
+        if ($cut -ge 0) { $t = $t.Substring(0, $cut) }
+        $found = @([regex]::Matches($t, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value.Trim() })
+        foreach ($p in $found) { $null = $unionPaths.Add($p) }
+        if ($docOnly -and $found.Count -and -not @($found | Where-Object { $_ -notmatch '\.(md|png|jpe?g|gif|svg|webp|ico)$' }).Count) { continue }
+        foreach ($p in $found) { $null = $lightPaths.Add($p) }
     }
-    if ($paths.Count -gt 2) { Add-Problem $goal.N ('light-files ' + $paths.Count) }
+}
+Write-Output ('check-plan: files ' + $unionPaths.Count)
+if ($isLight) {
+    if ($lightPaths.Count -gt 2) { Add-Problem $goal.N ('light-files ' + $lightPaths.Count) }
     $approval = Find-Section (Get-Text @(0xC2B9, 0xC778, 0x20, 0xD544, 0xC694, 0x20, 0xD56D, 0xBAA9))    # 승인 필요 항목
     if ($approval) { Add-Problem $approval.N 'light-approval' }
     $relayMark = Get-Text @(0xCF54, 0xB514, 0xB124, 0xC774, 0xD130, 0x20, 0xC778, 0xD130, 0xBDF0, 0x20, 0xACBD, 0xC720)    # 코디네이터 인터뷰 경유
     if (@($requestLines | Where-Object { $_.Text.Contains($relayMark) }).Count) { Add-Problem $requestLines[0].N 'light-relay' }
 }
 
-# ---- A1·A3 Investigation Log ----
+# ---- A1 Investigation Log ----
 $log = Find-Section 'Investigation Log'
 if ($log) {
     $logProse = Get-ProseLines $log
@@ -359,18 +365,6 @@ if ($log) {
         $cells = @(Split-Row $row)
         if ($cells.Count -lt 2) { continue }
         if ($cells[1] -eq '' -or $dashes -contains $cells[1]) { Add-Problem $logProse[$i].N 'empty-command' }
-    }
-
-    # A3 — 대장 위치는 레포마다 다르다. git 레포 전체에서 추적 여부만 본다.
-    $planDir = Split-Path -Parent (Resolve-Path -LiteralPath $PlanPath).Path
-    $top = $null
-    try { $top = (& git -C $planDir rev-parse --show-toplevel 2>$null) } catch { $top = $null }
-    if ($LASTEXITCODE -ne 0 -or -not $top) {
-        Write-Output 'check-plan: skip closed-ledger no-git'
-    } else {
-        $closed = @(& git -C $top ls-files -- '*deferred-closed.md' 2>$null)
-        $logText = ($logProse | ForEach-Object { $_.Text }) -join "`n"
-        if ($closed.Count -and -not $logText.Contains('deferred-closed')) { Add-Problem $log.N 'no-closed-trace' }
     }
 }
 

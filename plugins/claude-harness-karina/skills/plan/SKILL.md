@@ -27,7 +27,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 
 1. **`AGENTS.md`** — 빌드·테스트 명령, 디렉터리 구조, 프로젝트 규약. **없으면 여기서 최소 생성한다** — 절차 정본은 `../AGENTS-BOUNDARY.md`「AGENTS.md 최소 생성」 이다.
 2. **함정 문서·결정 이력** — 레포 `docs/conventions.md`(작업 함정 — 읽는 법은 `../REPO-CONVENTIONS.md` 「읽기」)와 레포 `docs/decisions.md`(보류·기각 이력 — 요청 키워드 grep 만, `../REPO-DECISIONS.md` 「읽기」). 아카이브는 후보가 있을 때만 grep 한다.
-3. **그 레포의 Deferred 대장** (있으면 — 위치는 그 레포 `AGENTS.md` 의 `## Plan Location`) — `## 대기` 를 요청 키워드로 grep 해 겹치는 항목을 대장 겹침 후보로 낸다(`references/interview.md`「후보 목록」) — 혼자 흡수·제외하면 사용자가 못 본다. **중계 모드는 후보를 내지 않으므로 spec 재진술 `결과` 에 드는 겹침만 흡수하고 나머지는 Log 의 대장 행에 `→ 대장 유지` 로 남긴다.** **종결분(`deferred-closed.md`)은 후보가 있을 때만 후보 키워드로 grep 하고, 없으면 Log 에 `deferred-closed — 후보 없음(조회 생략)` 1줄을 남긴다** — 후보를 거르는 조회다. **없는 레포에서는 그 사실을 Log에 1줄 남긴다** — 「없음」과 「확인 안 함」은 다르다.
+3. **그 레포의 Deferred 대장** (있으면 — 위치는 그 레포 `AGENTS.md` 의 `## Plan Location`) — `## 대기` 를 요청 키워드로 grep 해 겹치는 항목을 대장 겹침 후보로 낸다(`references/interview.md`「후보 목록」) — 혼자 흡수·제외하면 사용자가 못 본다. **중계 모드는 후보를 내지 않으므로 spec 재진술 `결과` 에 드는 겹침만 흡수하고 나머지는 Log 의 대장 행에 `→ 대장 유지` 로 남긴다.** **종결분(`deferred-closed.md`)은 후보가 있을 때만 후보 키워드로 grep 한다** — 후보를 거르는 조회다. **없는 레포에서는 그 사실을 Log에 1줄 남긴다** — 「없음」과 「확인 안 함」은 다르다.
    - **포함한 항목의 「착수 조건」은 지금 다시 잰다** — 등재 시점 값이라 낡았고, 믿고 task 를 세우면 실행 시점에 조건이 안 맞아 멈춘다. 잰 값을 착수 기준선에 적는다.
 4. **진행 중 `plan.md`** — 있으면 이번 요청이 그것과 중복·모순되는지 먼저 확인한다.
 - **`AGENTS.md`에 아키텍처 선언이 없으면 이번 계획이 확정한다 — 확정 경로는 `references/rare-paths.md`「아키텍처 선언 부재」 를 Read 한다** — 말없이 적용하면 의도적 비채택인지 누락인지 갈리지 않는다.
@@ -84,7 +84,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 ## Step 6. 리뷰와 승인
 
 - **리뷰어를 부르기 전에 `"<skill>/scripts/check-plan.ps1" "<plan.md>"` 를 work-clock 과 같은 호출형(`../implement/references/report-format.md`「소요 기록」)으로 돌려 exit 0 을 본다 — 고치기·오탐·미해소·미실행 처리와 리뷰어 전달물은 `references/review-rounds.md`「check-plan 처리」 다** — 문자열로 갈리는 판정은 결정적 검사가 먼저 걸러야 리뷰 라운드가 판단에만 쓰인다. 코드 뜻은 스크립트 머리 주석이 정본이다.
-- **`karina:plan-reviewer` 는 task Files 경로 합이 4 이상이거나 `## 승인 필요 항목` 이 있을 때만 부른다(셈법 `references/review-rounds.md`「리뷰 라운드」 · 경량 계획은 부르지 않는다)** — 전달: `plan.md` 경로, 대상 레포 경로, `AGENTS.md` 경로, 플러그인 루트(`../READONLY-SUBAGENTS.md`「플러그인 루트」). 부를 때마다 `plan.md` 스냅숏을 남긴다(순서 `references/review-rounds.md`「리뷰 라운드」).
+- **`karina:plan-reviewer` 는 `check-plan` 이 낸 `files <N>` 값이 4 이상이거나 `## 승인 필요 항목` 이 있을 때만 부른다 — 이 줄이 호출 조건의 정본이다(`check-plan` 미실행이면 부른다 · 경량 계획은 부르지 않는다 · 생략 표기 `references/review-rounds.md`「리뷰 라운드」)** — 전달: `plan.md` 경로, 대상 레포 경로, `AGENTS.md` 경로, 플러그인 루트(`../READONLY-SUBAGENTS.md`「플러그인 루트」). 부를 때마다 `plan.md` 스냅숏을 남긴다(순서 `references/review-rounds.md`「리뷰 라운드」).
 - **리뷰어는 read-only 라 고치는 것은 이 세션이다.** **호출되지 않는 환경이면 그 사실을 plan 에 적고 승인 단계로 간다** — 리뷰 부재를 통과로 적지 않는다.
 - **`plan-reviewer` 지적은 BLOCKER·MAJOR 를 고치고, 다시 부를지·3라운드 상한·기각·MINOR 는 `references/review-rounds.md`「리뷰 라운드」 대로이며, 남은 지적은 승인 제시 `남은 리뷰 지적:` 에 싣는다** — 지적이 남은 계획을 숨기고 승인받으면 그 결함이 구현 중에 드러난다.
 - **승인이 필요한 항목(대상은 `references/plan-template.md`「승인 필요 항목」)이 `## 승인 필요 항목`에 있는지 확인한다** — `plan-reviewer` 는 그 항목에 회피 설계가 있는지를 보고, 누락은 복구 경로 없는 삭제만 센다. 그 밖의 누락은 여기서 잡지 않으면 실행 시점에 루프가 멈춘다.

@@ -1,7 +1,7 @@
 ﻿# scenarios/check-plan.ps1 — check-plan 시나리오 (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case)와 공유 변수($pluginRoot·$work)를 그대로 쓴다.
 # 무엇을 재는가: plan.md 결정적 검사(skills/plan/scripts/check-plan.ps1)의 판정 갈래마다 한 케이스 —
-#   정상 1 · A1~A6 · B1~B4 위반 · 하위 항목 상태 · 화면 줄 세 요소 · 펜스 무시 · 입력 오류 · PS 5.1 · 출력 ASCII · git 밖 건너뜀 ·
+#   정상 1 · A1~A6 · B1~B4 위반 · 하위 항목 상태 · 화면 줄 세 요소 · 펜스 무시 · 입력 오류 · PS 5.1 · 출력 ASCII · files 줄(경로 수) ·
 #   증거 대조(-Base) — 커밋 없음·본문 증거 없음·T10≠T1·BASE 이전 제외·통과·HUMAN-VERIFY·불요/열린 task 제외·BASE 오류·git 밖·PS 5.1.
 #   코드와 뜻의 정본은 스크립트 머리 주석이다.
 # 정상 plan 하나를 두고 케이스가 한 군데씩 망가뜨린다 — 정상 형상이 여러 벌이면 한쪽만 고친 채 갈린다.
@@ -93,18 +93,26 @@ Assert-Case -Name "check-plan: A1 명령 칸이 줄표뿐인 행도 빈 칸으�
 $r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', '| a \| b |  | 10 |'))
 Assert-Case -Name "check-plan: A1 주장 칸의 이스케이프 파이프에 칸이 밀리지 않는다" -R $r -ExpectExit 1 -ExpectContains 'empty-command'
 
-# ---- A3 종결 대장 조회 흔적 (git 임시 레포) ----
+# ---- 종결 대장을 추적하는 git 임시 레포 · files 줄 ----
 $cpGit = Join-Path $cpRoot 'git-repo'
 New-Item -ItemType Directory -Path (Join-Path $cpGit 'docs/plans') -Force | Out-Null
 [System.IO.File]::WriteAllText((Join-Path $cpGit 'docs/plans/deferred-closed.md'), "# closed`n", (New-Object System.Text.UTF8Encoding($false)))
 & git -C $cpGit init -q 2>$null
 & git -C $cpGit add -A 2>$null
 $r = Invoke-CheckPlan $cpBase $cpGit
-Assert-Case -Name "check-plan: A3 종결 대장이 추적되는데 Log 에 조회 흔적이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'no-closed-trace'
-$r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', ("| 크기 | ``wc -c a.ps1`` | 10 |`n| 종결분 | ``grep x docs/plans/deferred-closed.md`` | 0 |"))) $cpGit
-Assert-Case -Name "check-plan: A3 Log 에 deferred-closed 조회가 있으면 통과한다" -R $r -ExpectExit 0 -ExpectNotContains 'no-closed-trace'
+Assert-Case -Name "check-plan: 종결 대장이 추적돼도 Log 에 조회 흔적을 요구하지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+
 $r = Invoke-CheckPlan $cpBase
-Assert-Case -Name "check-plan: git 밖이면 A3 를 건너뛰고 알린다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: skip closed-ledger'
+Assert-Case -Name "check-plan files: Files 경로 합집합 수를 한 줄로 낸다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: files 2'
+$cpTwoTask = $cpBase.Replace("## 검증 방법`n", "### T2. 둘`n`n- [ ] **T2-1** 한다`n- **Files**: ``a.ps1`` · ``b.ps1`` · 케이스 ``t.ps1`` (RED)`n- **Acceptance**: 참`n- **검증**: ``run`` → OK`n`n## 검증 방법`n")
+$r = Invoke-CheckPlan $cpTwoTask
+Assert-Case -Name "check-plan files: 두 task 가 같이 적은 경로는 한 번만 센다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: files 3'
+$r = Invoke-CheckPlan ($cpBase.Replace('케이스 `t.ps1` (RED)', '케이스 `t.ps1` (RED) · [면제 ② `old.ps1`]'))
+Assert-Case -Name "check-plan files: 첫 면제 뒤 백틱은 세지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: files 2'
+$r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', '| 크기 |  | 10 |'))
+$cpOutLines = @($r.out -split "`r?`n")
+$r = @{ code = $r.code; out = ($cpOutLines[-1] + ' | ' + (@($cpOutLines | Where-Object { $_ -like 'check-plan: files *' }) -join ',')) }
+Assert-Case -Name "check-plan files: 위반이 있어도 files 줄이 나오고 마지막 줄은 위반 수다" -R $r -ExpectExit 1 -ExpectContains 'check-plan: 1 problems | check-plan: files 2'
 
 # ---- A4 Open Questions ----
 $r = Invoke-CheckPlan ($cpBase.Replace('## Investigation Log', "## Open Questions`n`n- [ ] 미정인 질문`n`n## Investigation Log"))
@@ -141,6 +149,7 @@ $r = Invoke-CheckPlan ($cpLight.Replace('케이스 `t.ps1` (RED)', '케이스 `t
 Assert-Case -Name "check-plan 경량: 면제 뒤 백틱은 파일로 세지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 $r = Invoke-CheckPlan ($cpLight.Replace('`a.ps1` · 케이스 `t.ps1` (RED)', '`a.md` · `b.md` · `c.png` [면제 ① 문서]'))
 Assert-Case -Name "check-plan 경량: 경로가 모두 문서·이미지인 면제 ① 줄은 파일로 세지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+Assert-Case -Name "check-plan files: 문서뿐인 면제 ① 줄도 files 줄에는 센다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: files 3'
 $r = Invoke-CheckPlan ($cpLight.Replace('`a.ps1` · 케이스 `t.ps1` (RED)', '`a.ps1` · `b.md` · `c.md` [면제 ① 문서]'))
 Assert-Case -Name "check-plan 경량: 코드가 섞인 면제 ① 줄은 통째로 센다" -R $r -ExpectExit 1 -ExpectContains 'light-files 3'
 $r = Invoke-CheckPlan ($cpLight.Replace('`a.ps1` · 케이스 `t.ps1` (RED)', '`a.md` · `b.md` · `c.md` [면제 ⑤ — 앞 회차의 [면제 ①] 표기를 놓침]'))
@@ -304,6 +313,7 @@ Assert-Case -Name "check-plan 증거: BASE 이전 커밋은 세지 않는다" -R
 $ev = New-EvidenceRepo @($cpOk)
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: 한글 제목·한글 검증 결과 본문이 있으면 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+Assert-Case -Name "check-plan files: 증거 대조 모드에는 files 줄이 없다" -R $r -ExpectExit 0 -ExpectNotContains 'check-plan: files'
 $ev = New-EvidenceRepo @("문서: T1 — 한다`n`nHUMAN-VERIFY: 화면 배치는 사용자 확인`nRED: t.ps1 → FAIL")
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: 본문의 HUMAN-VERIFY 낱말만으로는 증거가 아니다" -R $r -ExpectExit 1 -ExpectContains 'no-commit-evidence T1'
