@@ -46,7 +46,7 @@
 #   no-commit-evidence T<N>      그 커밋은 있으나 어느 본문에도 「검증 결과」·「검증:」 이 없음(HUMAN-VERIFY 낱말만으로는 증거가 아니다)
 #   아래 다섯은 본문 증거가 있는 task 만 잰다. 줄 머리 「- 」 는 허용한다:
 #   acceptance-evidence T<N> <have>/<want>  그 task 커밋 본문들의 「Acceptance: <항목> — <판정>」 줄 수(have)가 plan 의
-#                                「- **Acceptance**:」 항목 수(want)보다 적음 — 항목은 그 줄 값에서 백틱 스팬과 괄호 안을 지운 뒤
+#                                「- **Acceptance**:」 항목 수(want)보다 적음 — 항목은 그 줄 값에서 백틱 스팬을 한 글자로 바꾸고 괄호 안을 지운 뒤
 #                                「 · 」 로 가른 조각이다(항목 문면은 대조하지 않는다 — 표현만 달라도 위반이 되지 않게)
 #   no-red-evidence T<N>         Files 줄에 (RED) 가 있는데 어느 본문에도 「RED:」·「RED(구현 전):」·「RED(사후 …):」 줄이 없음
 #                                (「RED: 미확인 — <사유>」 만 있으면 위반 대신 note red-unverified T<N>)
@@ -267,7 +267,7 @@ if ($Base) {
             }
             $acceptRow = $b.Lines | Where-Object { Test-Prefix $_.Text $acceptLabel } | Select-Object -First 1
             if ($acceptRow) {
-                $criteria = [regex]::Replace($acceptRow.Text.Substring($acceptLabel.Length), '`[^`]*`', '')
+                $criteria = [regex]::Replace($acceptRow.Text.Substring($acceptLabel.Length), '`[^`]*`', 'x')
                 do { $before = $criteria; $criteria = [regex]::Replace($criteria, '\([^()]*\)', '') } while ($criteria -ne $before)
                 $want = @($criteria -split $itemSplitRx | Where-Object { $_.Trim() }).Count
                 $have = [int](($mine | Measure-Object -Property Verdicts -Sum).Sum)
