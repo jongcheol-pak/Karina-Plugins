@@ -142,6 +142,26 @@ Assert-Case -Name "hook-dispatch: 권고 — 구분 토큰 뒤가 비면 exit 1"
 $r = Invoke-HdAdv @('advisory:', 'f-mark.ps1')
 Assert-Case -Name "hook-dispatch: 권고 — 구분 토큰 앞이 비면 exit 1" -R $r -ExpectExit 1
 
+foreach ($hdLib in @('hook-event-log.ps1', 'secret-patterns.ps1')) { Copy-Item -LiteralPath (Join-Path $scriptsDir $hdLib) -Destination $hdFake -Force }
+'[System.Threading.Thread]::Sleep(6000); exit 0' | Set-Content -LiteralPath (Join-Path $hdFake 'f-sleep.ps1') -Encoding UTF8
+'$p = [string][System.Diagnostics.Process]::GetCurrentProcess().PriorityClass; [Console]::Out.WriteLine((@{ hookSpecificOutput = @{ hookEventName = ''PreToolUse''; additionalContext = "prio=$p" } } | ConvertTo-Json -Compress)); exit 0' | Set-Content -LiteralPath (Join-Path $hdFake 'f-prio.ps1') -Encoding UTF8
+function Get-HdDeadlineMarks {
+    $dir = Join-Path $env:USERPROFILE '.claude/.state/hook-events'
+    if (-not (Test-Path -LiteralPath $dir)) { return @() }
+    return @(Get-ChildItem -LiteralPath $dir -Filter '*.jsonl' | ForEach-Object { Get-Content -LiteralPath $_.FullName -Encoding UTF8 } | Where-Object { $_ -match '"hook":"hook-dispatch"' -and $_ -match 'deadline-near' })
+}
+$hdMarks0 = @(Get-HdDeadlineMarks).Count
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '3000', '-Blocking', 'f-ctx.ps1', 'f-sleep.ps1') -Process
+$hdNew = @(Get-HdDeadlineMarks | Select-Object -Skip $hdMarks0)
+Assert-Case -Name "hook-dispatch: 시한 표지 — 차단 묶음이 -SlowMarkMs 를 넘기면 도는 스크립트 이름과 함께 slow 줄을 남긴다" -R @{ code = $r.code; out = "n=$($hdNew.Count) " + ($hdNew -join ' ') } -ExpectExit 0 -ExpectContains 'at=f-sleep.ps1'
+$hdMarks0 = @(Get-HdDeadlineMarks).Count
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '3000', '-Blocking', 'f-ctx.ps1') -Process
+Assert-Case -Name "hook-dispatch: 시한 표지 — 시한 전에 끝난 차단 묶음은 표지를 남기지 않는다" -R @{ code = $r.code; out = "n=$(@(Get-HdDeadlineMarks).Count - $hdMarks0)" } -ExpectExit 0 -ExpectContains 'n=0'
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '3000', 'f-ctx.ps1', 'f-sleep.ps1') -Process
+Assert-Case -Name "hook-dispatch: 시한 표지 — 비차단 묶음은 감시를 띄우지 않는다" -R @{ code = $r.code; out = "n=$(@(Get-HdDeadlineMarks).Count - $hdMarks0)" } -ExpectExit 0 -ExpectContains 'n=0'
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-Blocking', 'f-prio.ps1') -Process
+Assert-Case -Name "hook-dispatch: 우선순위 — 차단 묶음 프로세스는 AboveNormal 로 돈다" -R $r -ExpectExit 0 -ExpectContains 'prio=AboveNormal'
+
 Push-Location -LiteralPath $hd
 try {
     $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('f-move.ps1', 'f-loc.ps1')

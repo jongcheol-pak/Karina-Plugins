@@ -4,10 +4,13 @@ param(
     [switch]$Blocking,
     [int]$AdvisoryBudgetMs = 20000,
     [int]$AdvisoryDeadlineMs = 45000,
+    [int]$SlowMarkMs = 55000,
     [Parameter(Position = 0, ValueFromRemainingArguments = $true)][string[]]$Scripts
 )
 
 $hdClock = [System.Diagnostics.Stopwatch]::StartNew()
+# 우선순위·시한 표지 — 근거는 `rules/hook-dispatch-rationale.md` §8
+try { [System.Diagnostics.Process]::GetCurrentProcess().PriorityClass = [System.Diagnostics.ProcessPriorityClass]::AboveNormal } catch {}
 $ErrorActionPreference = 'Continue'
 try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -51,7 +54,19 @@ $hdAdvPaths = @(Resolve-HdScriptPaths $hdAdvNames)
 
 $global:KarinaHookStdin = [Console]::In.ReadToEnd()
 $hdEvent = $null
-try { $hdEvent = [string](($global:KarinaHookStdin | ConvertFrom-Json -ErrorAction Stop).hook_event_name) } catch {}
+$hdSid = ''
+try { $hdIn = $global:KarinaHookStdin | ConvertFrom-Json -ErrorAction Stop; $hdEvent = [string]$hdIn.hook_event_name; $hdSid = [string]$hdIn.session_id } catch {}
+$hdWatch = $null
+$hdWatchState = $null
+if ($Blocking -and $SlowMarkMs -gt 0) {
+    try {
+        $hdWatchState = [hashtable]::Synchronized(@{ At = '(시작)'; Done = New-Object System.Threading.ManualResetEvent($false) })
+        $hdProcStart = [System.Diagnostics.Process]::GetCurrentProcess().StartTime
+        $hdWatch = [powershell]::Create()
+        $null = $hdWatch.AddScript('param($start, $limit, $st, $log, $sid) $wait = [int][Math]::Max(0, $limit - ([DateTime]::Now - $start).TotalMilliseconds); if ($st.Done.WaitOne($wait)) { return }; . $log; Write-HookEvent ''hook-dispatch'' ''slow'' ("deadline-near elapsed_ms=" + [long]([DateTime]::Now - $start).TotalMilliseconds + " at=" + $st.At) -SessionId $sid').AddArgument($hdProcStart).AddArgument($SlowMarkMs).AddArgument($hdWatchState).AddArgument((Join-Path $PSScriptRoot 'hook-event-log.ps1')).AddArgument($hdSid)
+        $hdWatchHandle = $hdWatch.BeginInvoke()
+    } catch { $hdWatch = $null }
+}
 $hdPlainEvents = @('SessionStart', 'UserPromptExpansion', 'UserPromptSubmit')
 $hdOut = [Console]::Out
 $hdErr = [Console]::Error
@@ -70,6 +85,7 @@ try {
         $hdAdv = $hdRun.Advisory
         if ($hdAdv -and (@($hdCodes | Where-Object { $_ -ne 0 }).Count -gt 0 -or $hdClock.ElapsedMilliseconds -ge $AdvisoryBudgetMs)) { break }
         $hdLeaf = Split-Path -Leaf $hdPath
+        if ($hdWatchState) { $hdWatchState.At = $hdLeaf }
         $hdBuf = New-Object System.IO.StringWriter
         $hdErrBuf = New-Object System.IO.StringWriter
         $hdPipe = ''
@@ -143,6 +159,10 @@ try {
     }
 } finally {
     Remove-Variable -Name KarinaHookStdin -Scope Global -ErrorAction SilentlyContinue
+    if ($hdWatch) {
+        $null = $hdWatchState.Done.Set()
+        if (-not $hdTimedOut) { try { $null = $hdWatch.EndInvoke($hdWatchHandle) } catch {}; $hdWatch.Dispose() }
+    }
 }
 
 if ($hdContexts.Count -gt 0) {
