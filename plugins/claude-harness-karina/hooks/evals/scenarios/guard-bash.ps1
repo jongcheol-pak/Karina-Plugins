@@ -548,6 +548,34 @@ $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'EOF'`nopen('plan.md
 Assert-Case -Name "hd: 실행 heredoc 본문의 open(plan.md,w) 는 차단 (HD5 차단 유지)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > w.py <<'EOF'`nopen('plan.md','w').write('x')`nEOF`npython w.py")
 Assert-Case -Name "hd: 파일로 쓰고 실행 — 싱크 본문의 open(plan.md,w) 는 원문 검사가 막는다 (HD6 차단 유지)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
+
+$ptBlock = '스크립트로 쓰려 합니다'
+$ptTemp = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '\\', '/'
+$ptPass = @(
+    @{ Name = '절대 Temp 경로의 plan.md 리다이렉트 통과'; Cmd = ('echo x > "' + $ptTemp + '/fx/plan.md"') },
+    @{ Name = '$TEMP·$env:TEMP 접두 통과'; Cmd = 'echo x > "$TEMP/fx/plan.md"; echo y > "$env:TEMP/fx/plan.md"' },
+    @{ Name = '값이 Temp 경로인 변수 접두 통과'; Cmd = 'D="$TEMP/karina-plugin/scratch/pc"; mkdir -p "$D" && printf x > "$D/plan.md"' },
+    @{ Name = 'Temp 로 cd 한 뒤 상대 plan.md 통과'; Cmd = ('S="' + $ptTemp + '/sp"; mkdir -p "$S" && cd "$S" && git init -q r && cd r && echo x > plan.md') },
+    @{ Name = 'cp plan.md <Temp>/…/plan.md 통과'; Cmd = 'cp plan.md "$TEMP/karina-plugin/scratch/snap/plan.md"' }
+)
+foreach ($c in $ptPass) {
+    $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
+    Assert-Case -Name "plan-write Temp — $($c.Name)" -R $r -ExpectExit 0 -ExpectNotContains $ptBlock
+}
+$ptDeny = @(
+    @{ Name = '레포 plan.md 리다이렉트는 차단'; Cmd = 'echo x > plan.md' },
+    @{ Name = 'Temp 스크립트로 레포 plan.md 를 쓰는 python 은 차단'; Cmd = "cat > `"`$TEMP/pl.py`" <<'EOF'`np='plan.md'`nopen(p,'w').write('x')`nEOF`npython `"`$TEMP/pl.py`"" },
+    @{ Name = '풀리지 않는 변수 접두는 차단'; Cmd = 'echo x > "$UNKNOWN_DIR/plan.md"' },
+    @{ Name = 'Temp 를 벗어나는 상위 폴더 경로는 차단'; Cmd = 'echo x > "$TEMP/../../../../repo/plan.md"' },
+    @{ Name = 'Temp 로 cd 한 뒤 레포로 다시 cd 한 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP" && cd "D:/repo" && echo x > plan.md' },
+    @{ Name = '서브셸 ( cd <Temp> ) 뒤 상대 plan.md 는 차단'; Cmd = '(cd "$TEMP") && echo x > plan.md' },
+    @{ Name = 'Temp 로 대입한 변수를 . 로 다시 대입하면 차단'; Cmd = 'D="$TEMP/x"; D=.; echo x > "$D/plan.md"' },
+    @{ Name = '%TEMP%/plan.md 는 차단'; Cmd = 'echo x > "%TEMP%/plan.md"' }
+)
+foreach ($c in $ptDeny) {
+    $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
+    Assert-Case -Name "plan-write Temp — $($c.Name)" -R $r -ExpectExit 2 -ExpectContains $ptBlock
+}
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > run.sh <<'EOF'`necho x > plan.md`nEOF")
 Assert-Case -Name "hd: 실행 가능 스크립트(.sh) 싱크 본문의 > plan.md 는 차단 (HD7 차단 유지)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
 # HD8·HD9: 대상 인자 뒤에 리다이렉션 토큰이 붙어도 마지막 실효 인자를 본다(2026-10-13 실해 — 미탐 보완).

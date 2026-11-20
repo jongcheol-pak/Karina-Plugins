@@ -303,12 +303,70 @@ function Get-ShellWriteHits {
     return , $hits
 }
 
+function Expand-TempShellPath([string]$Arg, [hashtable]$Assigned, [string]$TempRoot, [int]$Depth = 0) {
+    $a = $Arg.Trim().Trim('"', "'")
+    $a = [regex]::Replace($a, '^(?i)(\$env:(TEMP|TMP)|\$\{(TEMP|TMP)\}|\$(TEMP|TMP))(?=$|[\\/])', { param($m) $TempRoot })
+    $m = [regex]::Match($a, '^\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?(?=$|[\\/])')
+    if ($m.Success) {
+        $vals = $Assigned[$m.Groups[1].Value]
+        if ($Depth -ge 3 -or -not $vals) { return $null }
+        $rest = $a.Substring($m.Length)
+        $last = $null
+        foreach ($v in $vals) {
+            $last = Expand-TempShellPath ([string]$v) $Assigned $TempRoot ($Depth + 1)
+            if (-not (Test-UnderTempRoot $last $TempRoot)) { return $null }
+        }
+        $a = $last + $rest
+    }
+    if ($a.Contains('$') -or $a.Contains('`')) { return $null }
+    $a = $a -replace '^/([A-Za-z])/', '$1:/'
+    return $a
+}
+
+function Test-UnderTempRoot([string]$Path, [string]$TempRoot) {
+    if ([string]::IsNullOrEmpty($Path) -or $Path -notmatch '^[A-Za-z]:[\\/]') { return $false }
+    $full = try { [System.IO.Path]::GetFullPath($Path) -replace '/', '\' } catch { return $false }
+    return ($full.TrimEnd('\') + '\').StartsWith($TempRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Test-TempPlanTarget([string]$Arg, [string]$Cmd) {
+    $tempRoot = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '/', '\'
+    if (-not $tempRoot) { return $false }
+    $assigned = @{}
+    foreach ($m in [regex]::Matches($Cmd, '(?:^|[\s;&|(])\$?([A-Za-z_][A-Za-z0-9_]*)=(?:"([^"]*)"|''([^'']*)''|([^\s;&|)]*))')) {
+        $name = $m.Groups[1].Value
+        if (-not $assigned.ContainsKey($name)) { $assigned[$name] = New-Object System.Collections.Generic.List[string] }
+        $assigned[$name].Add($m.Groups[2].Value + $m.Groups[3].Value + $m.Groups[4].Value)
+    }
+    $target = Expand-TempShellPath $Arg $assigned $tempRoot
+    if ($null -eq $target) { return $false }
+    if ($target -match '^[A-Za-z]:[\\/]') { return (Test-UnderTempRoot $target $tempRoot) }
+    if ($target -match '^[\\/~]' -or $Cmd -match '\(\s*(cd|pushd|Set-Location|sl)\b') { return $false }
+
+    $cdRx = '(?:^|[\s;&|])(?:cd|pushd|Set-Location|sl)\s+("[^"]*"|''[^'']*''|[^\s;&|)]+)'
+    $cds = [regex]::Matches($Cmd, $cdRx)
+    if ($cds.Count -eq 0 -or $cds[0].Index -gt $Cmd.IndexOf('plan.md')) { return $false }
+    $cwd = $null
+    foreach ($c in $cds) {
+        $to = Expand-TempShellPath $c.Groups[1].Value $assigned $tempRoot
+        if ($null -eq $to) { return $false }
+        if ($to -notmatch '^[A-Za-z]:[\\/]') {
+            if (-not $cwd) { return $false }
+            $to = Join-Path $cwd $to
+        }
+        if (-not (Test-UnderTempRoot $to $tempRoot)) { return $false }
+        $cwd = [System.IO.Path]::GetFullPath($to)
+        if (-not (Test-UnderTempRoot (Join-Path $cwd $target) $tempRoot)) { return $false }
+    }
+    return $true
+}
+
 # block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 — 근거는 `rules/bash-guard-rationale.md` §10
 function Invoke-BlockPlanWrite {
     param($data)
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
-    $hits = Get-ShellWriteHits $cmd { param($a) $a -match '(^|[\\/])plan\.md$' }
+    $hits = Get-ShellWriteHits $cmd { param($a) ($a -match '(^|[\\/])plan\.md$') -and -not (Test-TempPlanTarget $a $cmd) }
     if ($hits.Count -eq 0) { return New-HookResult }
     $where = (($hits | Select-Object -Unique) -join ', ')
     return New-HookResult -Block $true -Stderr @(
@@ -382,7 +440,7 @@ function Invoke-WarnExternalOps {
         }
     }
 
-    if ($hitContext -and -not $hitAlways -and (Get-Command Test-ActivePlanRound -ErrorAction SilentlyContinue)) {
+    if ($hitContext -and -not $hitAlways -and (Test-Path function:Test-ActivePlanRound)) {
         $roundDir = if ($data.cwd) { [string]$data.cwd } else { (Get-Location).Path }
         if (Test-ActivePlanRound (Find-SinglePlanUpwards -StartDir $roundDir)) { $hits.Clear(); $hitContext = $false }
     }
@@ -611,7 +669,7 @@ if (-not $script:GitCommitRx) {
 # plan 탐색·회차 판정 헬퍼 — 체크박스 게이트가 쓰므로 없으면 커밋 명령을 막는다 — 근거는 `rules/bash-guard-rationale.md` §13
 $planRoundPath = Join-Path $PSScriptRoot 'plan-round.ps1'
 if (Test-Path -LiteralPath $planRoundPath) { . $planRoundPath }
-if (-not (Get-Command Find-SinglePlanUpwards -ErrorAction SilentlyContinue) -and $cmdText -match $script:GitCommitRx) {
+if (-not (Test-Path function:Find-SinglePlanUpwards) -and $cmdText -match $script:GitCommitRx) {
     [Console]::Error.WriteLine('[HARNESS] BLOCKED: plan 탐색 정의(plan-round.ps1)를 읽지 못해 task 체크박스 검사를 할 수 없습니다 — 플러그인을 재설치하세요.')
     exit 2
 }
@@ -627,14 +685,14 @@ foreach ($lib in @(@('timed-git.ps1', 'Invoke-TimedGit'),
     if (Test-Path -LiteralPath $libPath) {
         if (-not $loadCommitLibs) { continue }
         . $libPath
-        if (Get-Command $lib[1] -ErrorAction SilentlyContinue) { continue }
+        if (Test-Path ("function:" + $lib[1])) { continue }
     }
     [Console]::Error.WriteLine("[guard-bash] $($lib[0]) 로드 실패 — 그 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.")
 }
 
 if ($cmdText -match '(?i)\bpy(?:thon3?)?\b') {
     try { . (Join-Path $PSScriptRoot 'python-newcode.ps1') } catch {}
-    if (-not (Get-Command Test-PythonNewCodeScript -ErrorAction SilentlyContinue)) {
+    if (-not (Test-Path function:Test-PythonNewCodeScript)) {
         [Console]::Error.WriteLine('[guard-bash] python-newcode.ps1 로드 실패 — 그 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.')
     }
 }
@@ -642,7 +700,7 @@ if ($cmdText -match '(?i)\bpy(?:thon3?)?\b') {
 # block-python-newcode: python 으로 소스 파일에 새 코드·주석을 쓰는 명령 차단 — 근거는 `rules/bash-guard-rationale.md` §22
 function Invoke-BlockPythonNewCode {
     param($data)
-    if (-not (Get-Command Test-PythonNewCodeScript -ErrorAction SilentlyContinue)) { return New-HookResult }
+    if (-not (Test-Path function:Test-PythonNewCodeScript)) { return New-HookResult }
     $cwd = [string]$data.cwd
     foreach ($inv in (Get-PythonInvocations ([string]$data.tool_input.command) $script:HeredocBlockRx)) {
         $text = $inv.Text
@@ -677,7 +735,7 @@ try { . (Join-Path $PSScriptRoot 'hook-event-log.ps1') } catch {}
 function Write-DispatchEvent {
     param([string]$HookName, [string]$Decision, [object]$Result)
     try {
-        if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
+        if (Test-Path function:Write-HookEvent) {
             $rule = if ($Result.Stderr -and @($Result.Stderr).Count -gt 0) { [string](@($Result.Stderr)[0]) } else { '' }
             Write-HookEvent $HookName $Decision $rule $script:cmdText
         }
@@ -685,7 +743,7 @@ function Write-DispatchEvent {
 }
 function Write-GbSlowEvent {
     try {
-        if (Get-Command Write-HookSlowEvent -ErrorAction SilentlyContinue) { Write-HookSlowEvent 'guard-bash' $script:cmdText }
+        if (Test-Path function:Write-HookSlowEvent) { Write-HookSlowEvent 'guard-bash' $script:cmdText }
     } catch {}
 }
 
