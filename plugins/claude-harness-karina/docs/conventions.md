@@ -119,6 +119,8 @@
 
 ### 도구·환경 함정
 
+- [2026-11-20] **`hooks/evals/hook-cases.json` 에 `guard-bash.ps1` 케이스 1개를 더하면 골든 기준선은 2 오른다 — 디스패처 경로(`dispatch=guard-bash.ps1`)로 한 번 더 돈다** — `block-destructive.ps1` 케이스와 시나리오(`scenarios/*.ps1`)의 `Assert-Case` 는 1 씩이다. 기준선 세 곳을 올릴 값은 더한 케이스 수로 짐작하지 말고 무인자 실행의 `결과: N/N` 으로 맞춘다(2026-11-20 체인 plan 3 — JSON 6 + 시나리오 3 을 더해 +11).
+
 - [2026-11-17] **새 골든 시나리오·헬퍼 `.ps1` 은 처음부터 주석 없이 쓴다 — 머리 설명·케이스 번호 주석은 주석 게이트가 막는다(Write 단계 `guard-write` · 커밋 단계 `guard-bash`)** — 같은 원인으로 두 번 막혔다: 2026-11-14 골든 시나리오의 `# 7) …` 케이스 번호 주석(커밋 단계) · 2026-11-17 `image-diff` 시나리오 머리 설명과 헬퍼의 계약 포인터 한 줄(Write 단계). 무엇을 재는지는 `Assert-Case` 이름이, 출력·종료 코드 계약은 그것을 부르는 참조 문서(`skills/implement/references/screen-scenarios.md` 등)가 말하게 한다. 규칙 정본은 `skills/implement/references/code-style.md`「주석」 의 보존 대상 불릿이다(등록된 `Comment (보존)` 경로만 통과).
 
 - [2026-11-17] **PowerShell 에서 `Add-Type` C# 메서드의 `string` 인자에 `$null` 을 넘기면 `null` 이 아니라 빈 문자열 `""` 이 간다 — C# 쪽은 `== null` 대신 `string.IsNullOrEmpty` 로 가른다** — `image-diff.ps1` 이 「저장 경로 없음」 을 `$null` 로 넘겼다가 C# 이 `""` 를 경로로 받아 `Bitmap.Save("")` 가 `A generic error occurred in GDI+.` 로 죽었고, 그 예외가 스크립트 밖으로 새 exit 0 이 났다(골든 5/10 FAIL 실측). 메서드 호출을 `try`/`catch` 로 감싸 오류 종료 코드로 바꾸는 것도 같이 한다.
