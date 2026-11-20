@@ -562,4 +562,22 @@ Assert-Case -Name "guard-comment: .ps1 닫히지 않은 한 줄 문자열 뒤로
 $r = Invoke-GcEdit 'fx_missing.py' 'jobs:' "Y = $gcQ`n# 안쪽 줄`njobs:"
 Assert-Case -Name "guard-comment: 전체 텍스트를 못 얻은 Edit 조각의 # 줄은 문자열 안으로 보지 않고 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 
+function Get-GcRepoLine([string]$Rel, [string]$Rx) {
+    return [string]([System.IO.File]::ReadAllLines((Join-Path $pluginRoot $Rel)) | Where-Object { $_ -match $Rx } | Select-Object -First 1)
+}
+$gcRepoKeep = @(
+    @{ Rel = 'evals/check-stale-refs.py'; Rx = '^REQUIRED_DIRS = '; Add = '# 대상을 늘리는 조건을 적는 상수 설명'; What = '상수 주석' },
+    @{ Rel = 'skills/llm-wiki/scripts/lint.py'; Rx = '^import '; Add = '# §7-99 새 신호의 임계값 설명'; What = '§ 주석' },
+    @{ Rel = 'skills/implement/scripts/work-clock.ps1'; Rx = '^# 출력은 늘'; Add = '#   새 인자 꼴의 출력 설명 한 줄'; What = '머리 주석 줄' },
+    @{ Rel = 'scripts/harness-root.ps1'; Rx = '^# 하니스는 모노레포'; Add = '#   덧붙인 머리 설명 한 줄'; What = '머리 주석 줄' }
+)
+foreach ($k in $gcRepoKeep) {
+    $gcLine = Get-GcRepoLine $k.Rel $k.Rx
+    $r = Invoke-GcEditAt (Join-Path $pluginRoot $k.Rel) $gcLine ($k.Add + "`n" + $gcLine)
+    Assert-Case -Name "guard-comment: 보존 선언(하니스 레포) — $($k.Rel) $($k.What) 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+}
+$gcLine = Get-GcRepoLine 'scripts/hook-event-log.ps1' '^function Write-HookSlowEvent'
+$r = Invoke-GcEditAt (Join-Path $pluginRoot 'scripts/hook-event-log.ps1') $gcLine ("# 느린 실행을 적는 함수 설명`n" + $gcLine)
+Assert-Case -Name "guard-comment: 보존 선언(하니스 레포) — 목록 밖 scripts/hook-event-log.ps1 새 주석 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+
 }
