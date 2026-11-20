@@ -215,13 +215,15 @@ try {
     & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m $taTitle -m $teOk 2>$null
     $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
-    Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 RED·화면 위반으로 낸다 (사본 정합)' -R @{ code = $r.code; out = "cp=$teCp hook=$($r.out)" } -ExpectExit 0 -ExpectContains 'no-red-evidence T1'
+    Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 RED·화면 위반으로 낸다 (사본 정합)' -R @{ code = $r.code; out = "cp=$teCp" } -ExpectExit 0 -ExpectContains 'no-red-evidence T1'
+    Assert-Case -Name 'task-evidence: 같은 이력에 hook 도 RED·화면 경고를 낸다 (사본 정합)' -R $r -ExpectExit 0 -ExpectContains 'RED 줄 없음'
+    Assert-Case -Name 'task-evidence: 같은 이력에 hook 도 화면 경고를 낸다 (사본 정합)' -R $r -ExpectExit 0 -ExpectContains '화면 판정 줄 없음'
     Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 화면 위반으로 낸다 (사본 정합)' -R @{ code = $r.code; out = "cp=$teCp" } -ExpectExit 0 -ExpectContains 'no-screen-verdict T1'
     & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m '기능: T1 — 앞 커밋' -m ($teOk + "`n" + 'RED(구현 전): 케이스 FAIL' + "`n" + '화면: HEAD 참 — t1.png') 2>$null
     $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
     Assert-Case -Name 'task-evidence: 앞 T1 커밋 본문에 RED·화면 판정이 있으면 경고 없음' -R $r -ExpectExit 0 -ExpectSilent $true
-    Assert-Case -Name 'task-evidence: 그 이력을 check-plan -Base 도 통과시킨다 (사본 정합)' -R @{ code = 0; out = "cp=$teCp" } -ExpectExit 0 -ExpectNotContains 'T1'
+    Assert-Case -Name 'task-evidence: 그 이력을 check-plan -Base 도 통과시킨다 (사본 정합)' -R @{ code = 0; out = "cp=$teCp" } -ExpectExit 0 -ExpectContains 'no-task-commit T2' -ExpectNotContains 'T1'
 } finally {
     if (Test-Path $taRoot) { Remove-Item $taRoot -Recurse -Force -ErrorAction SilentlyContinue }
 }

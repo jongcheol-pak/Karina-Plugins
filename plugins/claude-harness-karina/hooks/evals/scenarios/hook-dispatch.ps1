@@ -155,7 +155,7 @@ $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '3000', '-Blo
 $hdNew = @(Get-HdDeadlineMarks | Select-Object -Skip $hdMarks0)
 Assert-Case -Name "hook-dispatch: 시한 표지 — 차단 묶음이 -SlowMarkMs 를 넘기면 도는 스크립트 이름과 함께 slow 줄을 남긴다" -R @{ code = $r.code; out = "n=$($hdNew.Count) " + ($hdNew -join ' ') } -ExpectExit 0 -ExpectContains 'at=f-sleep.ps1'
 $hdMarks0 = @(Get-HdDeadlineMarks).Count
-$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '3000', '-Blocking', 'f-ctx.ps1') -Process
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '20000', '-Blocking', 'f-ctx.ps1') -Process
 Assert-Case -Name "hook-dispatch: 시한 표지 — 시한 전에 끝난 차단 묶음은 표지를 남기지 않는다" -R @{ code = $r.code; out = "n=$(@(Get-HdDeadlineMarks).Count - $hdMarks0)" } -ExpectExit 0 -ExpectContains 'n=0'
 $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '3000', 'f-ctx.ps1', 'f-sleep.ps1') -Process
 Assert-Case -Name "hook-dispatch: 시한 표지 — 비차단 묶음은 감시를 띄우지 않는다" -R @{ code = $r.code; out = "n=$(@(Get-HdDeadlineMarks).Count - $hdMarks0)" } -ExpectExit 0 -ExpectContains 'n=0'
