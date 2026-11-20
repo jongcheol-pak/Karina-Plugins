@@ -5,7 +5,8 @@ function Write-HookEvent {
         [string]$Hook,
         [ValidateSet('block', 'warn', 'allow', 'cleanup', 'slow')][string]$Decision,
         [string]$Rule,
-        [string]$CommandText = ''
+        [string]$CommandText = '',
+        [string]$SessionId = ''
     )
     try {
         $homeBase = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
@@ -28,6 +29,10 @@ function Write-HookEvent {
             hook     = $Hook
             decision = $Decision
             rule     = if ($Rule -and $Rule.Length -gt 120) { $Rule.Substring(0, 120) } else { $Rule }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($SessionId)) {
+            $sid = $SessionId -replace '[^\w.-]', '_'
+            $entry.session_id = if ($sid.Length -gt 64) { $sid.Substring(0, 64) } else { $sid }
         }
 
         if (-not [string]::IsNullOrWhiteSpace($CommandText)) {
@@ -55,12 +60,12 @@ function Write-HookEvent {
 
 # 느린 실행 기록 — 근거는 `rules/event-log-rationale.md` §2
 function Write-HookSlowEvent {
-    param([string]$Hook, [string]$CommandText = '')
+    param([string]$Hook, [string]$CommandText = '', [string]$SessionId = '')
     try {
         $limitMs = [long]5000
         $parsed = [long]0
         if ([long]::TryParse([string]$env:KARINA_HOOK_SLOW_MS, [ref]$parsed) -and $parsed -ge 0) { $limitMs = $parsed }
         $elapsedMs = [long]([DateTime]::Now - [System.Diagnostics.Process]::GetCurrentProcess().StartTime).TotalMilliseconds
-        if ($elapsedMs -ge $limitMs) { Write-HookEvent $Hook 'slow' "elapsed_ms=$elapsedMs" $CommandText }
+        if ($elapsedMs -ge $limitMs) { Write-HookEvent $Hook 'slow' "elapsed_ms=$elapsedMs" $CommandText -SessionId $SessionId }
     } catch {}
 }

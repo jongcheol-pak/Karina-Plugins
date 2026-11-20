@@ -70,5 +70,21 @@ Test-SlowDelta -Name 'guard-bash 차단 경로도 slow 1줄 · 차단 유지' -H
 Test-SlowDelta -Name 'block-destructive 통과 경로가 기준 이상이면 slow 1줄' -Hook 'block-destructive.ps1' -Command 'ls -la' -ExpectExit 0 -SlowMs '0' -ExpectSlow $true
 Test-SlowDelta -Name 'block-destructive 차단 경로도 slow 1줄 · 차단 유지' -Hook 'block-destructive.ps1' -Command 'rm -rf /' -ExpectExit 2 -SlowMs '0' -ExpectSlow $true
 Test-SlowDelta -Name '기준 밑이면 slow 줄 없음 (음성 짝)' -Hook 'guard-bash.ps1' -Command 'ls -la' -ExpectExit 0 -SlowMs '86400000' -ExpectSlow $false
+
+function Invoke-EvSessionCase {
+    param([string]$Hook, [hashtable]$Top, [string]$LineRx, [string]$AbsentRx = '')
+    $before = (Get-EvLines).Count
+    $r = Invoke-Hook $Hook ((@{ tool_name = 'Bash'; tool_input = @{ command = 'rm -rf /' } } + $Top) | ConvertTo-Json -Compress)
+    $new = @(Get-EvLines | Select-Object -Skip $before | Where-Object { $_ -match '"decision":"block"' })
+    $hit = @($new | Where-Object { $_ -match $LineRx -and (-not $AbsentRx -or $_ -notmatch $AbsentRx) })
+    $r.out = [string]$r.out + "`nblocklines=$($new.Count) sidhit=$($hit.Count)"
+    return $r
+}
+$r = Invoke-EvSessionCase 'block-destructive.ps1' @{ session_id = 'evsid-A.1' } '"session_id":"evsid-A\.1"'
+Assert-Case -Name "event-log: stdin 의 session_id 가 차단 이벤트 줄에 실린다" -R $r -ExpectExit 2 -ExpectContains 'blocklines=1 sidhit=1'
+$r = Invoke-EvSessionCase 'block-destructive.ps1' @{ session_id = ('ev sid/..:x' + ('z' * 80)) } '"session_id":"ev_sid_\.\._xz{53}"'
+Assert-Case -Name "event-log: 파일 이름에 못 쓰는 문자·긴 값은 정리돼 실린다" -R $r -ExpectExit 2 -ExpectContains 'blocklines=1 sidhit=1'
+$r = Invoke-EvSessionCase 'block-destructive.ps1' @{} '"hook":"block-destructive"' 'session_id'
+Assert-Case -Name "event-log: session_id 없는 stdin 은 필드 없이 줄을 남긴다" -R $r -ExpectExit 2 -ExpectContains 'blocklines=1 sidhit=1'
 }
 

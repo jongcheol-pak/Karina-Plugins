@@ -30,7 +30,7 @@ function Invoke-GuardComment($Data, [string]$File) {
         $post = Get-CommentPostImage $File $Data $added
         $blocked = Get-BlockedCommentBodies $File $added $post $budget ([bool]$script:CommentPostImageFull)
         if ($blocked.Count -gt 0) {
-            Write-GuardCommentEvent 'block' $File
+            Write-GuardCommentEvent 'block' $File $Data
             $lines = @("$File : 주석 $($blocked.Count)줄") + @(Format-CommentGatePreview $blocked) + @($script:CommentGateRule) + @(
                 Get-CommentResubmitLines '편집' '  - 같은 편집을 다시 내도 통과하지 않습니다. 주석 없이 다시 쓰고, 남길 이유는 커밋 본문에 적으세요.' $budget) + @(
                 '  - 고친 코드를 설명하던 옛 주석이 있으면 그 주석을 old_string 에 넣어 지우세요 — 주석만 고치는 문구 수정·삭제는 막지 않습니다. 새 주석만 빼고 낡은 주석을 남기지 마세요.',
@@ -48,7 +48,7 @@ function Invoke-GuardComment($Data, [string]$File) {
     $rewBlocked = Get-BlockedCommentBodies $File $rew $rewPost $budget ([bool]$script:CommentPostImageFull)
     if ($rewBlocked.Count -eq 0) { return $pass }
 
-    Write-GuardCommentEvent 'block' $File
+    Write-GuardCommentEvent 'block' $File $Data
     $lines = @("$File : 코드와 같은 편집에서 기존 주석의 문구만 고쳤습니다 — 주석 $($rewBlocked.Count)줄") + @(Format-CommentGatePreview $rewBlocked) + @($script:CommentGateRule) + @(
         '  - 코드를 고친 hunk 안의 기존 주석은 위 통과 목록에 들지 않으면 고치지 말고 지우세요 — 남길 이유는 커밋 본문에 적습니다(code-style.md「주석」).',
         '  - 주석만 고치는 편집(주석 정리)은 막지 않습니다 — 문구를 꼭 고쳐야 하면 코드 편집과 주석 편집을 나눠 내세요. 같은 편집을 다시 내도 통과하지 않습니다.',
@@ -57,8 +57,8 @@ function Invoke-GuardComment($Data, [string]$File) {
     return @{ Block = $true; Lines = $lines }
 }
 
-function Write-GuardCommentEvent([string]$Decision, [string]$File) {
+function Write-GuardCommentEvent([string]$Decision, [string]$File, $Data = $null) {
     try {
-        if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) { Write-HookEvent 'guard-comment' $Decision 'new-comment' $File }
+        if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) { Write-HookEvent 'guard-comment' $Decision 'new-comment' $File -SessionId ([string]$Data.session_id) }
     } catch {}
 }

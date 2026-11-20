@@ -497,7 +497,7 @@ if ($allMsgs.Count -gt 0) {
     try {
         . (Join-Path $PSScriptRoot 'hook-event-log.ps1')
         if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
-            Write-HookEvent 'post-write-checks' 'warn' ([string]$allMsgs[0]) ([string]$file)
+            Write-HookEvent 'post-write-checks' 'warn' ([string]$allMsgs[0]) ([string]$file) -SessionId ([string]$data.session_id)
         }
     } catch {}
 

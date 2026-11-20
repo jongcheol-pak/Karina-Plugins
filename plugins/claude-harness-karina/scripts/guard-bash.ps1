@@ -737,13 +737,13 @@ function Write-DispatchEvent {
     try {
         if (Test-Path function:Write-HookEvent) {
             $rule = if ($Result.Stderr -and @($Result.Stderr).Count -gt 0) { [string](@($Result.Stderr)[0]) } else { '' }
-            Write-HookEvent $HookName $Decision $rule $script:cmdText
+            Write-HookEvent $HookName $Decision $rule $script:cmdText -SessionId ([string]$data.session_id)
         }
     } catch {}
 }
 function Write-GbSlowEvent {
     try {
-        if (Test-Path function:Write-HookSlowEvent) { Write-HookSlowEvent 'guard-bash' $script:cmdText }
+        if (Test-Path function:Write-HookSlowEvent) { Write-HookSlowEvent 'guard-bash' $script:cmdText -SessionId ([string]$data.session_id) }
     } catch {}
 }
 

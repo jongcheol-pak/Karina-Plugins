@@ -21,7 +21,7 @@ function Write-GacEvent {
     param([string]$Decision, [string]$Rule)
     try {
         if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
-            Write-HookEvent 'guard-harness' $Decision $Rule ([string]$script:data.tool_name + ' ' + [string]$script:targetPath)
+            Write-HookEvent 'guard-harness' $Decision $Rule ([string]$script:data.tool_name + ' ' + [string]$script:targetPath) -SessionId ([string]$script:data.session_id)
         }
     } catch {}
 }
@@ -80,7 +80,7 @@ if ($isHookScript -or $suspect83) {
     # [이벤트 로깅] 차단 판정 완료 후 exit 직전 — 호출 실패 전면 격리(차단 동작 무영향). 로드는 파일 머리에서 한 번 한다.
     try {
         if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
-            Write-HookEvent 'guard-harness' 'block' $why ([string]$targetPath)
+            Write-HookEvent 'guard-harness' 'block' $why ([string]$targetPath) -SessionId ([string]$script:data.session_id)
         }
     } catch {}
     exit 2

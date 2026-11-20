@@ -48,13 +48,13 @@ function Write-BdEvent {
     param([string]$Rule, [string]$CmdText)
     try {
         if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
-            Write-HookEvent 'block-destructive' 'block' $Rule $CmdText
+            Write-HookEvent 'block-destructive' 'block' $Rule $CmdText -SessionId ([string]$data.session_id)
         }
     } catch {}
 }
 function Write-BdSlowEvent {
     try {
-        if (Get-Command Write-HookSlowEvent -ErrorAction SilentlyContinue) { Write-HookSlowEvent 'block-destructive' $script:cmd }
+        if (Get-Command Write-HookSlowEvent -ErrorAction SilentlyContinue) { Write-HookSlowEvent 'block-destructive' $script:cmd -SessionId ([string]$data.session_id) }
     } catch {}
 }
 function Deny {

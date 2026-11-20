@@ -78,7 +78,7 @@ function Invoke-GuardDocOwner($Data, [string]$File) {
         $touched = $false
         foreach ($l in ($k -split "`n")) { if ($oldLines.Contains($l)) { $touched = $true; break } }
         if ($touched) { continue }
-        Write-GuardDocOwnerEvent $File
+        Write-GuardDocOwnerEvent $File $Data
         return @{ Block = $true; Lines = @(
             "$File",
             "  - ``$x`` 의 doc 이 ``$y`` 로 넘어갑니다: $($before[$k][0].First)",
@@ -88,8 +88,8 @@ function Invoke-GuardDocOwner($Data, [string]$File) {
     return $pass
 }
 
-function Write-GuardDocOwnerEvent([string]$File) {
+function Write-GuardDocOwnerEvent([string]$File, $Data = $null) {
     try {
-        if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) { Write-HookEvent 'guard-doc-owner' 'block' 'doc-owner' $File }
+        if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) { Write-HookEvent 'guard-doc-owner' 'block' 'doc-owner' $File -SessionId ([string]$Data.session_id) }
     } catch {}
 }

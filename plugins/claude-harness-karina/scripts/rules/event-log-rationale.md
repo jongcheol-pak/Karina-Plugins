@@ -21,6 +21,8 @@
 ```
 
 
+**세션 식별자 필드(2026-11-20).** `Write-HookEvent`·`Write-HookSlowEvent` 는 선택 인자 `-SessionId` 를 받아 줄에 `session_id` 로 싣는다 — 값은 `[^\w.-]` 를 `_` 로 바꾸고 64자로 자르며, 비면 필드를 싣지 않는다. 호출부(`block-destructive`·`guard-bash`·`guard-harness`·`guard-comment`·`guard-doc-owner`·`guard-write`·`post-write-checks`)가 자기가 읽은 stdin 의 `session_id` 를 넘긴다 — 헬퍼는 dot-source 되고 stdin 은 hook 이 이미 읽어 헬퍼가 다시 읽지 못한다. 필드가 없던 로그로는 같은 세션에서 같은 차단이 몇 번 이어졌는지 잴 수 없었다(14일 block 568줄 중 0). 전역 변수에 담지 않은 것은 골든의 in-process runspace 가 케이스 사이에 값을 물려받기 때문이다. 정리 이벤트(`session-end-cleanup-lib.ps1` 의 `cleanup`)는 그 함수가 stdin 을 받지 않아 싣지 않는다.
+
 ## §2 Write-HookSlowEvent — 느린 실행 기록
 
 ```powershell
