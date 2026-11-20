@@ -551,47 +551,16 @@ Assert-Case -Name "hd: 파일로 쓰고 실행 — 싱크 본문의 open(plan.md
 
 $ptBlock = '스크립트로 쓰려 합니다'
 $ptTemp = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '\\', '/'
-$ptFixture = Join-Path ([System.IO.Path]::GetTempPath()) 'karina-plugin\scratch\pt-fixture'
-$ptJunctionTarget = Join-Path $work 'pt-junction-target'
-$ptJunctionWin = Join-Path $ptFixture 'pt-junction-link'
-$ptHardDir = Join-Path $ptFixture 'pt-hardlink'
-$ptPlainDir = Join-Path $ptFixture 'pt-plain'
-New-Item -ItemType Directory -Path $ptJunctionTarget, $ptHardDir, $ptPlainDir -Force | Out-Null
-if (-not (Test-Path -LiteralPath $ptJunctionWin)) { New-Item -ItemType Junction -Path $ptJunctionWin -Target $ptJunctionTarget -ErrorAction SilentlyContinue | Out-Null }
-if (-not (Test-Path -LiteralPath (Join-Path $ptFixture 'pt-hardlink-source.md'))) { Set-Content -LiteralPath (Join-Path $ptFixture 'pt-hardlink-source.md') -Value 'source' }
-if (-not (Test-Path -LiteralPath (Join-Path $ptPlainDir 'plan.md'))) { Set-Content -LiteralPath (Join-Path $ptPlainDir 'plan.md') -Value 'plain' }
-if (-not (Test-Path -LiteralPath (Join-Path $ptHardDir 'plan.md'))) { New-Item -ItemType HardLink -Path (Join-Path $ptHardDir 'plan.md') -Target (Join-Path $ptFixture 'pt-hardlink-source.md') -ErrorAction SilentlyContinue | Out-Null }
-$ptSysDir = Join-Path $ptFixture 'pt-syscookie'
-$ptLnkDir = Join-Path $ptFixture 'pt-lnkfile'
-$ptLnkParent = Join-Path $ptFixture 'pt-lnkdir'
-New-Item -ItemType Directory -Path $ptSysDir, $ptLnkDir, $ptLnkParent -Force | Out-Null
-$ptSysFile = Join-Path $ptSysDir 'plan.md'
-if (-not [System.IO.File]::Exists($ptSysFile)) {
-    [System.IO.File]::WriteAllText($ptSysFile, '!<symlink>')
-    [System.IO.File]::SetAttributes($ptSysFile, [System.IO.FileAttributes]::System)
-}
-$ptExeDir = Join-Path $ptFixture 'pt-exefile'
-$ptExeLnkDir = Join-Path $ptFixture 'pt-exelnkfile'
-New-Item -ItemType Directory -Path $ptExeDir, $ptExeLnkDir -Force | Out-Null
-foreach ($f in @((Join-Path $ptLnkDir 'plan.md.lnk'), (Join-Path $ptLnkParent 'd.lnk'), (Join-Path $ptExeDir 'plan.md.exe'), (Join-Path $ptExeLnkDir 'plan.md.exe.lnk'))) {
-    if (-not [System.IO.File]::Exists($f)) { [System.IO.File]::WriteAllText($f, 'L') }
-}
-$ptFix = $ptFixture -replace '\\', '/'
-$ptJunction = $ptJunctionWin -replace '\\', '/'
-$ptHard = $ptHardDir -replace '\\', '/'
-$ptPlain = $ptPlainDir -replace '\\', '/'
-$ptPass = @(
-    @{ Name = '절대 Temp 경로의 plan.md 리다이렉트 통과'; Cmd = ('echo x > "' + $ptTemp + '/fx/plan.md"') },
-    @{ Name = '따옴표 없이 쓴 절대 Temp 경로 통과'; Cmd = ('echo x > ' + $ptTemp + '/fx/plan.md') },
-    @{ Name = '대소문자를 달리 쓴 절대 Temp 경로 통과'; Cmd = ('echo x > "' + $ptTemp.ToUpperInvariant() + '/fx/plan.md"') },
-    @{ Name = 'tee <절대 Temp 경로>/plan.md 통과'; Cmd = ('echo x | tee "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
-    @{ Name = 'Set-Content -Path <절대 Temp 경로>/plan.md 통과'; Cmd = ('Set-Content -Path "' + $ptTemp + '/fx/plan.md" -Value x') },
-    @{ Name = '이미 있는 보통 파일(링크 하나)인 절대 Temp 경로 덮어쓰기 통과'; Cmd = ('echo x > "' + $ptPlain + '/plan.md"') },
-    @{ Name = 'mkdir 뒤 작은따옴표 printf 내용(체크박스·역슬래시 n)을 절대 Temp 경로에 쓰기 통과'; Cmd = ('mkdir -p "' + $ptTemp + '/fx" && printf ''# plan\n- [ ] T1 $x (a)\n'' > "' + $ptTemp + '/fx/plan.md"') }
+$ptTempDeny = @(
+    @{ Name = '절대 Temp 경로의 plan.md 리다이렉트도 차단하고 Write 도구를 안내'; Cmd = ('echo x > "' + $ptTemp + '/fx/plan.md"') },
+    @{ Name = '따옴표 없이 쓴 절대 Temp 경로도 차단하고 Write 도구를 안내'; Cmd = ('echo x > ' + $ptTemp + '/fx/plan.md') },
+    @{ Name = 'tee <절대 Temp 경로>/plan.md 도 차단하고 Write 도구를 안내'; Cmd = ('echo x | tee "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
+    @{ Name = 'Set-Content -Path <절대 Temp 경로>/plan.md 도 차단하고 Write 도구를 안내'; Cmd = ('Set-Content -Path "' + $ptTemp + '/fx/plan.md" -Value x') },
+    @{ Name = 'mkdir 뒤 printf 로 절대 Temp 경로에 쓰기도 차단하고 Write 도구를 안내'; Cmd = ('mkdir -p "' + $ptTemp + '/fx" && printf ''# plan\n- [ ] T1 $x (a)\n'' > "' + $ptTemp + '/fx/plan.md"') }
 )
-foreach ($c in $ptPass) {
+foreach ($c in $ptTempDeny) {
     $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
-    Assert-Case -Name "plan-write Temp — $($c.Name)" -R $r -ExpectExit 0 -ExpectNotContains $ptBlock
+    Assert-Case -Name "plan-write Temp — $($c.Name)" -R $r -ExpectExit 2 -ExpectContains 'Write 도구로 그 경로에 쓰거나'
 }
 $ptDeny = @(
     @{ Name = '레포 plan.md 리다이렉트는 차단'; Cmd = 'echo x > plan.md' },
@@ -637,16 +606,9 @@ $ptDeny = @(
     @{ Name = '8.3 짧은 이름(~)이 든 경로는 차단'; Cmd = 'echo x > "C:/Users/PUBLIC~1/AppData/Local/Temp/fx/plan.md"' },
     @{ Name = '안쪽 따옴표로 이어 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > ' + $ptTemp + '/"fx"/plan.md') },
     @{ Name = '같은 명령에서 mklink 로 junction 을 만든 뒤 그 아래 plan.md 는 차단'; Cmd = ('cmd //c mklink /J "' + $ptTemp + '/ptl" D:/repo && echo x > "' + $ptTemp + '/ptl/plan.md"') },
-    @{ Name = '이미 있는 junction 을 거친 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptJunction + '/plan.md"') },
-    @{ Name = '이미 있는 하드링크인 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptHard + '/plan.md"') },
-    @{ Name = '이미 있는 system 속성 파일(Cygwin식 심링크 쿠키)인 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptFix + '/pt-syscookie/plan.md"') },
-    @{ Name = '같은 이름의 .lnk 바로가기가 있는 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptFix + '/pt-lnkfile/plan.md"') },
-    @{ Name = '같은 이름에 .exe 를 붙인 파일이 있는 절대 Temp 경로는 차단(Git Bash 가 .exe 를 붙여 연다)'; Cmd = ('echo x > "' + $ptFix + '/pt-exefile/plan.md"') },
-    @{ Name = '같은 이름에 .exe.lnk 를 붙인 파일이 있는 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptFix + '/pt-exelnkfile/plan.md"') },
-    @{ Name = '부모 폴더 이름의 .lnk 바로가기가 있는 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptFix + '/pt-lnkdir/d/plan.md"') },
     @{ Name = '끝에 점을 붙인 레포 plan.md 는 차단(Windows 가 끝 점을 뗀다)'; Cmd = 'Set-Content -Path D:/repo/plan.md. -Value x' },
     @{ Name = '끝에 점을 붙인 레포 plan.md 리다이렉트는 차단'; Cmd = 'echo x > plan.md.' },
-    @{ Name = '역슬래시로 쓴 절대 Temp 경로는 차단(슬래시로만 면제한다)'; Cmd = ('echo x > "' + ($ptTemp -replace '/', '\') + '\fx\plan.md"') },
+    @{ Name = '역슬래시로 쓴 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + ($ptTemp -replace '/', '\') + '\fx\plan.md"') },
     @{ Name = '닫는 큰따옴표 뒤에 꼬리를 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptTemp + '/x/plan.md"/../../../plan.md') },
     @{ Name = '닫는 작은따옴표 뒤에 꼬리를 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > ''' + $ptTemp + '/x/plan.md''/../../../plan.md') },
     @{ Name = '줄 연속으로 꼬리를 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptTemp + "/x/plan.md`"\`n/../../../plan.md") },
@@ -658,7 +620,7 @@ $ptDeny = @(
     @{ Name = '빈 따옴표를 앞에 붙인 ""plan.md 리다이렉트는 차단'; Cmd = 'echo x > ""plan.md' },
     @{ Name = '따옴표 없이 대입한 변수 P=plan.md 대상은 차단'; Cmd = 'P=plan.md; echo x > $P' },
     @{ Name = 'cp plan.md <절대 Temp 경로>/plan.md 는 차단(원본 쪽 맨 plan.md 언급)'; Cmd = ('cp plan.md "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
-    @{ Name = 'cp notes.md <절대 Temp 경로>/plan.md 는 차단(복사·이동 명령에는 면제가 없다)'; Cmd = ('cp notes.md "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
+    @{ Name = 'cp notes.md <절대 Temp 경로>/plan.md 는 차단'; Cmd = ('cp notes.md "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
     @{ Name = 'cp -vt . <절대 Temp 경로>/plan.md 는 차단'; Cmd = ('cp -vt . "' + $ptTemp + '/x/plan.md"') },
     @{ Name = 'cp --target=. <절대 Temp 경로>/plan.md 는 차단'; Cmd = ('cp --target=. "' + $ptTemp + '/x/plan.md"') },
     @{ Name = 'cp --t . <절대 Temp 경로>/plan.md 는 차단'; Cmd = ('cp --t . "' + $ptTemp + '/x/plan.md"') },
@@ -670,8 +632,8 @@ $ptDeny = @(
     @{ Name = 'New-Item -ItemType:Junction 뒤 그 아래 plan.md 는 차단'; Cmd = ('New-Item -ItemType:Junction -Path "' + $ptTemp + '/pj8" -Value D:/repo; echo x > "' + $ptTemp + '/pj8/plan.md"') },
     @{ Name = '백틱 치환 안 ln 뒤 링크 아래 plan.md 는 차단'; Cmd = ('x=`ln -s /d/repo ' + $ptTemp + '/pj9`; echo x > "' + $ptTemp + '/pj9/plan.md"') },
     @{ Name = 'python os.symlink 뒤 링크 아래 plan.md 는 차단'; Cmd = ("python -c `"import os; os.symlink('D:/repo','" + $ptTemp + "/pj10')`"; echo x > `"" + $ptTemp + '/pj10/plan.md"') },
-    @{ Name = '허용 목록 밖 명령(ls)이 함께 든 명령은 차단'; Cmd = ('ls -ln; echo x > "' + $ptTemp + '/fx/plan.md"') },
-    @{ Name = 'python open(<절대 Temp 경로>/plan.md) 는 차단(인터프리터에는 면제가 없다)'; Cmd = ("python -c `"open('" + $ptTemp + "/fx/plan.md','w').write('x')`"") },
+    @{ Name = 'ls 가 함께 든 절대 Temp 경로 쓰기는 차단'; Cmd = ('ls -ln; echo x > "' + $ptTemp + '/fx/plan.md"') },
+    @{ Name = 'python open(<절대 Temp 경로>/plan.md) 는 차단'; Cmd = ("python -c `"open('" + $ptTemp + "/fx/plan.md','w').write('x')`"") },
     @{ Name = 'ni -it j 로 만든 junction 아래 plan.md 는 차단'; Cmd = ('ni -it j "' + $ptTemp + '/pj11" -Value D:/repo; echo x > "' + $ptTemp + '/pj11/plan.md"') },
     @{ Name = 'New-Item -ItemType Jun 뒤 그 아래 plan.md 는 차단'; Cmd = ('New-Item -ItemType Jun -Path "' + $ptTemp + '/pj12" -Value D:/repo; echo x > "' + $ptTemp + '/pj12/plan.md"') },
     @{ Name = 'pwsh -c 안에서 만든 링크 아래 plan.md 는 차단'; Cmd = ('pwsh -c "ni -it j ' + $ptTemp + '/pj13 -Value D:/repo" && echo x > "' + $ptTemp + '/pj13/plan.md"') },
@@ -680,12 +642,12 @@ $ptDeny = @(
     @{ Name = 'PowerShell 괄호 식이 든 명령은 차단'; Cmd = ('Set-Content -Path "' + $ptTemp + '/fx/plan.md" -Value (Get-Date)') },
     @{ Name = '큰따옴표 안 작은따옴표로 뒤 명령을 가린 꼴은 차단'; Cmd = ('echo "it''s" ; ni -it j "' + $ptTemp + '/pj15" -Value D:/repo ; echo x > "' + $ptTemp + '/pj15/plan.md" ; echo ''z''') },
     @{ Name = '주석 안 작은따옴표로 다음 줄 명령을 가린 꼴은 차단'; Cmd = ("echo a # it's`nni -it j `"" + $ptTemp + "/pj16`" -Value D:/repo`necho 'x' > `"" + $ptTemp + '/pj16/plan.md"') },
-    @{ Name = 'Set-Content Function: 으로 허용 명령을 다시 정의한 명령은 차단'; Cmd = ('Set-Content Function:mkdir "ni -it j ' + $ptTemp + '/pj17 D:/repo"; mkdir; echo x > "' + $ptTemp + '/pj17/plan.md"') },
+    @{ Name = 'Set-Content Function: 뒤 junction 아래 plan.md 는 차단'; Cmd = ('Set-Content Function:mkdir "ni -it j ' + $ptTemp + '/pj17 D:/repo"; mkdir; echo x > "' + $ptTemp + '/pj17/plan.md"') },
     @{ Name = '유니코드 작은따옴표로 닫아 뒤 명령을 숨긴 꼴은 차단'; Cmd = ("echo 'a" + [char]0x2018 + '; ni -it j "' + $ptTemp + '/pj30" -Value D:/repo; echo ' + [char]0x2018 + "b'; echo x > `"" + $ptTemp + '/pj30/plan.md"') },
     @{ Name = '유니코드 큰따옴표로 닫아 뒤 명령을 숨긴 꼴은 차단'; Cmd = ("echo 'a" + [char]0x201C + '; ni -it j ' + $ptTemp + '/pj32 -Value D:/repo; echo ' + [char]0x201C + "b'; Set-Content -Path `"" + $ptTemp + '/pj32/plan.md" -Value x') },
     @{ Name = 'heredoc 본문의 작은따옴표로 링크 생성 줄을 숨긴 꼴은 차단'; Cmd = ("cat <<echo > " + $ptTemp + "/pa9/a.txt`necho '`necho`npwsh -NoProfile -c ni -it j " + $ptTemp + "/pj93 -Value D:/repo`necho PWNED > " + $ptTemp + "/pj93/plan.md`ncat <<echo > " + $ptTemp + "/pa9/b.txt`n'`necho") },
     @{ Name = 'heredoc 본문의 큰따옴표로 링크 생성 줄을 숨긴 꼴은 차단'; Cmd = ("cat <<echo > " + $ptTemp + "/pa9/a.txt`necho `"`necho`npwsh -NoProfile -c ni -it j " + $ptTemp + "/pj94 -Value D:/repo`necho PWNED > " + $ptTemp + "/pj94/plan.md`ncat <<echo > " + $ptTemp + "/pa9/b.txt`n`"`necho") },
-    @{ Name = 'heredoc 으로 절대 Temp 경로에 쓰는 명령은 차단(heredoc 에는 면제가 없다)'; Cmd = ("cat > `"" + $ptTemp + "/fx/plan.md`" <<EOF`nx`nEOF") },
+    @{ Name = 'heredoc 으로 절대 Temp 경로에 쓰는 명령은 차단'; Cmd = ("cat > `"" + $ptTemp + "/fx/plan.md`" <<EOF`nx`nEOF") },
     @{ Name = '작은따옴표 조각을 이어 붙여 이름을 숨긴 둘째 쓰기가 든 명령은 차단'; Cmd = ('echo x > "' + $ptTemp + '/fx/plan.md"; echo y > ''D:/repo/pla''''n.md''') },
     @{ Name = '맨 글자와 따옴표 조각을 이어 붙인 tee 둘째 대상이 든 명령은 차단'; Cmd = ('echo x | tee "' + $ptTemp + '/fx/plan.md" D:/repo/pla"n".md') },
     @{ Name = '변수 대입 접두가 든 명령은 차단'; Cmd = ('PATH=D:/evil tee "' + $ptTemp + '/fx/plan.md"') },
@@ -704,7 +666,7 @@ $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'PowerShell'; cwd = $noLib; to
 Assert-Case -Name "plan-write Temp — PowerShell 도구에서 작은따옴표 안 백틱으로 이름을 숨긴 둘째 쓰기는 차단" -R $r -ExpectExit 2 -ExpectContains $ptBlock
 $ptPsPlain = 'Set-Content -Path "' + $ptTemp + '/fx/plan.md" -Value ''plain text'''
 $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'PowerShell'; cwd = $noLib; tool_input = @{ command = $ptPsPlain } } | ConvertTo-Json -Compress)
-Assert-Case -Name "plan-write Temp — PowerShell 도구의 Set-Content 절대 Temp 경로 쓰기 통과" -R $r -ExpectExit 0 -ExpectNotContains $ptBlock
+Assert-Case -Name "plan-write Temp — PowerShell 도구의 Set-Content 절대 Temp 경로 쓰기도 차단하고 Write 도구를 안내" -R $r -ExpectExit 2 -ExpectContains 'Write 도구로 그 경로에 쓰거나'
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > run.sh <<'EOF'`necho x > plan.md`nEOF")
 Assert-Case -Name "hd: 실행 가능 스크립트(.sh) 싱크 본문의 > plan.md 는 차단 (HD7 차단 유지)" -R $r -ExpectExit 2 -ExpectContains '스크립트로 쓰려 합니다'
 # HD8·HD9: 대상 인자 뒤에 리다이렉션 토큰이 붙어도 마지막 실효 인자를 본다(2026-10-13 실해 — 미탐 보완).

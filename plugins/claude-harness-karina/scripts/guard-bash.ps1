@@ -306,97 +306,19 @@ function Get-ShellWriteHits {
     return , $hits
 }
 
-function Test-LiteralTempPath([string]$Path, [string]$TempRoot) {
-    foreach ($seg in ($Path.Substring(3) -split '/')) {
-        if ($seg -eq '' -or $seg -match '^\.+$' -or $seg -match '^ | $|\.$') { return $false }
-    }
-    $full = try { [System.IO.Path]::GetFullPath($Path) -replace '/', '\' } catch { return $false }
-    if (-not $full.StartsWith($TempRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) { return $false }
-    $node = $full
-    while ($node -and $node.Length -gt $TempRoot.Length) {
-        if ([System.IO.File]::Exists($node) -or [System.IO.Directory]::Exists($node)) {
-            $attr = try { [System.IO.File]::GetAttributes($node) } catch { return $false }
-            if ($attr -band ([System.IO.FileAttributes]::ReparsePoint -bor [System.IO.FileAttributes]::System)) { return $false }
-        }
-        foreach ($suffix in '.lnk', '.exe', '.exe.lnk') {
-            if ([System.IO.File]::Exists($node + $suffix) -or [System.IO.Directory]::Exists($node + $suffix)) { return $false }
-        }
-        $node = Split-Path -Parent $node
-    }
-    if ([System.IO.File]::Exists($full)) {
-        $item = try { Get-Item -LiteralPath $full -Force -ErrorAction Stop } catch { return $false }
-        if ($item.LinkType) { return $false }
-    }
-    return $true
-}
-
-function Test-PlainWriteCommand([string]$Cmd) {
-    if ($Cmd.IndexOfAny([char[]](0x2018..0x201F)) -ge 0) { return $false }
-    if ($Cmd.Contains('<<')) { return $false }
-    $mark = [string][char]1
-    if ($Cmd.Contains($mark)) { return $false }
-    $bare = New-Object System.Text.StringBuilder
-    $skeleton = New-Object System.Text.StringBuilder
-    $state = 0
-    foreach ($ch in $Cmd.ToCharArray()) {
-        if ($state -eq 1) {
-            if ($ch -eq "'") { $state = 0 }
-            elseif ($script:IsPsTool -and '*?[]`'.IndexOf($ch) -ge 0) { return $false }
-            continue
-        }
-        if ($state -eq 2) {
-            [void]$bare.Append($ch)
-            if ($ch -eq '"') { $state = 0 }
-            continue
-        }
-        if ($ch -eq "'") { $state = 1; [void]$bare.Append($mark); [void]$skeleton.Append($mark); continue }
-        if ($ch -eq '"') { $state = 2; [void]$bare.Append($ch); [void]$skeleton.Append($mark); continue }
-        [void]$bare.Append($ch)
-        [void]$skeleton.Append($ch)
-    }
-    if ($state -ne 0) { return $false }
-    if ($bare.ToString() -match '[`$\\(){}*?\[\]#@^%!~]') { return $false }
-    if (($bare.ToString() -replace '(?<!\w)[A-Za-z]:/', '') -match ':') { return $false }
-    $flat = $skeleton.ToString() -replace '\d*>&\d*', ' '
-    foreach ($seg in ($flat -split '[;|&\r\n]')) {
-        $tk = @(($seg -split '\s+') | Where-Object { $_ })
-        if ($tk.Count -eq 0) { continue }
-        if ($tk | Where-Object { $_ -match '=' -or ($_.Contains($mark) -and $_.Length -ne 1) }) { return $false }
-        if ($tk[0] -notmatch '^(?i)(echo|printf|cat|tee|mkdir|cd|true|set-content|add-content|out-file|write-output|write-host)$') { return $false }
-    }
-    return $true
-}
-
-function Get-LiteralTempPlanPaths([string]$Cmd) {
-    $tempRoot = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '/', '\'
-    if (-not $tempRoot) { return @() }
-    if (-not (Test-PlainWriteCommand $Cmd)) { return @() }
-    $wordRx = '(?i)(?<![^\s>(,])(?<q>["'']?)(?<p>[A-Za-z]:/[\w ./-]*?(?<=/)plan\.md)\k<q>(?=$|[\s;&|),])'
-    $paths = New-Object System.Collections.Generic.List[string]
-    foreach ($m in [regex]::Matches($Cmd, $wordRx)) {
-        $p = $m.Groups['p'].Value
-        if (-not $m.Groups['q'].Value -and $p.Contains(' ')) { return @() }
-        if (-not (Test-LiteralTempPath $p $tempRoot)) { return @() }
-        $paths.Add($p)
-    }
-    if ([regex]::Replace($Cmd, $wordRx, ' ') -match '(?i)plan\.md') { return @() }
-    return $paths.ToArray()
-}
-
 # block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 — 근거는 `rules/bash-guard-rationale.md` §10
 function Invoke-BlockPlanWrite {
     param($data)
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
-    $tempPlans = @(Get-LiteralTempPlanPaths ([string]$cmd))
-    $hits = Get-ShellWriteHits $cmd { param($a) ($a -match '(^|[\\/:])plan\.md[. ]*$') -and -not ($tempPlans -contains $a) }
+    $hits = Get-ShellWriteHits $cmd { param($a) $a -match '(^|[\\/:])plan\.md[. ]*$' }
     if ($hits.Count -eq 0) { return New-HookResult }
     $where = (($hits | Select-Object -Unique) -join ', ')
     return New-HookResult -Block $true -Stderr @(
         "[HARNESS] BLOCKED: plan.md 를 스크립트로 쓰려 합니다.",
         "감지된 쓰기 구문: $where.",
         "gitignore 라 잘못 쓰면 복구할 수 없습니다 — 전체 교체는 Write, 부분 수정은 Edit 도구로 하세요(`plan/SKILL.md` 「Step 5」). 읽기는 막지 않습니다.",
-        '임시 폴더의 픽스처 plan.md 면 단순 쓰기 명령 하나로 쓰세요 — 대상은 변수 없이 슬래시(/)로 글자 그대로 쓴 절대 Temp 경로, 내용은 작은따옴표 문자열입니다(예: printf ''# plan\n'' > "C:/Users/<이름>/AppData/Local/Temp/<폴더>/plan.md"). 그 명령에는 echo·printf·cat·tee·mkdir·cd·true·Set-Content·Add-Content·Out-File·Write-Output·Write-Host 만 쓸 수 있고 변수·치환·괄호·글롭·역슬래시·heredoc·굽은 따옴표·다른 plan.md 언급이 있으면 막습니다(실제로 어디에 쓰는지 확인할 수 없습니다).'
+        '임시 폴더의 픽스처 plan.md 도 셸 명령으로는 쓸 수 없습니다(명령만 보고는 실제로 어디에 쓰는지 확인할 수 없습니다) — Write 도구로 그 경로에 쓰거나, 쓰는 코드를 Write 도구로 만든 스크립트 파일 안에 두고 그 파일을 실행하세요.'
     ) -Context "plan.md 쓰기가 차단됐습니다($where). Write·Edit 도구를 쓰세요 — 그 둘은 파일 상태를 추적해 잘림을 막습니다."
 }
 
