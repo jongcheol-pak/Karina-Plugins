@@ -10,6 +10,7 @@
 - **체인 승인 화면 머리 줄 아래에 `앞 인계: <경로 (근거: 마지막 커밋 <%h>) | 없음 — 새 파일>` 줄을 싣는다** — 다른 체인의 파일을 골랐는지 사용자가 거기서 본다. `E` 로 경로를 고치면 그것을 따른다.
   - 고른 파일에 `## plan <N>([^0-9]|$)` 절이 이미 있으면(멈춘 plan N 이나 그 이어받기가 남긴 것) 같은 줄 끝에 `· plan N 절 이미 있음 — 새 워커가 같은 이름의 절을 덧붙인다` 를 더한다 — 뒤 계획이 두 절 중 어느 것을 따를지 사용자가 미리 안다.
 - **고른 인계 파일 이름의 옛 Run id 로 `karina-chain-<옛 Run id>-decisions.md` 가 `../../TEMP-FILES.md` 의 `chain\` 에 있으면(없으면 그 폴더를 쓰기 전 판이 남긴 임시 폴더 바로 아래도 한 번 본다), 새 Run 의 결정 파일을 `chain-decisions.md`「결정 기록」 대로 만들 때 머리 줄 아래에 그 파일의 머리 줄 밖 내용을 이어 붙이고(`- plan <M> · 부모` 줄 중 M ≥ N 인 것은 옮기지 않는다 — 다시 도는 계획은 `worker-start` 직전에 새 부모 줄을 받는다), `앞 인계:` 줄 끝에 `· 결정 기록 <N>줄 이어받음`(없으면 `· 결정 기록 없음`)을 더한다** — 멈추기 전 체인의 답·판정이 재개 뒤 계획에도 앞 결정으로 남아, 같은 갈림길이 다시 사용자에게 가거나 반대로 판정되지 않는다.
+- **승인 뒤 첫 `worker-start` 전에 `worker-list --json` 에서 `runId` 가 고른 인계 파일 이름의 옛 Run id 이고 자리를 쥔(`../scripts/wait-worker.py` 의 `HOLDING_STATES` · `terminalState` 가 `released` 아님) 대상 레포 워커를 찾는다 — 그 Task 가 `completed`(`task-list --json`)면 `release.md`「닫기」 를 적용하고, 아니면 닫지 않고 그 dispatch·`state`·`terminalState` 를 보고하고 멈춘다(끝내는 것은 사용자 몫 — `interrupt.md`「사용자 중단」)** — 실패·중단한 계획의 워커는 `worker-retain` 으로 남아 같은 폴더 자리를 쥐고, 재개의 `worker-start` 가 `duplicate_worker` 로 막힌다(`release.md`「닫기」 의 2026-11-18 실측). 끝나지 않은 워커를 닫으면 커밋 전 변경과 화면이 사라진다. 옛 Run 이 보낸 배치는 평소 대기가 `RESULT: foreign` 으로 돌려준다.
 - **spec 의 `인계:` 줄은 Run id 경로 대신 고른 경로를 레포 상대 경로(`docs/plans/…`)로 적은 것이고, 모든 계획 task 에 같다** — 원 서식과 같은 형태라 워커의 Read·커밋 경로가 어긋나지 않고, 워커는 그 파일을 Read 한 뒤 `## plan <N>` 절을 덧붙인다.
 
 ## 미병합 병렬 브랜치

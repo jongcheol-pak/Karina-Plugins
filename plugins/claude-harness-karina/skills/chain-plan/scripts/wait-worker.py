@@ -10,6 +10,8 @@
 - freed      (`--place` 만) 지켜보던 다른 세션 워커가 자리를 놓았다(그 dispatch 행 — message 와 같은 축약).
 - orphaned   대기를 띄운 셸·세션이 사라졌다(두 모드 공통 · 본문 없음).
 - deadline   (`--answer-by` 만) 시한까지 배치가 없었다(본문 없음).
+- foreign    (평소 대기만) 배치의 모든 메시지에 `runId` 가 있고 전부 대기 중인 dispatch 의 Run 이 아니다
+             (멈춘 앞 Run 의 배치 — message 와 같은 축약 · ack 는 코디네이터가 한다).
 - closed     (`--watch` 만) 지켜보던 dispatch 행이 자리를 놓았거나 배치가 다른 Run 의 것이다(그 dispatch 행 —
              배치는 싣지 않는다 · ack 전이라 그 Run 의 대기가 받는다).
 
@@ -76,6 +78,9 @@ def _action(kind, dispatch, streak=0, on_place=False, parallel=False, answer_by=
     if kind == 'message' and answer_by is not None:
         return ('배치를 chain-plan 「워커 루프」 규칙대로 처리하고 ack 한 뒤, 사용자에게 넘긴 질문이 아직 열려 있으면 '
                 '같은 --answer-by %d 로 다시 띄운다 (답을 reply 했으면 --answer-by 없이)' % answer_by)
+    if kind == 'foreign':
+        return ('이 Run 이 아닌(멈춘 앞 Run 의) 배치다 — 처리하지 않고 이 배치의 deliveryId 로 check --ack 만 한 뒤 '
+                '같은 대기를 같은 인자로 다시 띄운다 (메시지 유형과 요지를 한 줄 알린다 · references/resume.md)')
     if kind == 'deadline':
         return ('사용자에게 넘긴 질문에 시한까지 답이 없다 — references/user-relay.md 「미답 기본값」 대로 '
                 '기본값으로 reply 하고 알린 뒤 --answer-by 없이 대기를 다시 띄운다')
@@ -215,6 +220,19 @@ def wait_loop(call, lock, dispatch, timeout_ms, stall, poll_ms=None, progress=No
         if err is not None:
             return emit('error', [err], lines_done)
         if data.get('count', 0) > 0:
+            msgs = data.get('messages') or []
+            runs = {m.get('runId') for m in msgs}
+            if msgs and None not in runs:
+                try:
+                    rows_raw = call(['worker-list', '--json'])
+                except OSError as e:
+                    return _result('error', head, ['CLI 실행 실패: %s' % e])
+                rows, err = _parse(rows_raw)
+                if err is not None:
+                    return emit('error', [err], lines_done)
+                own = {r.get('runId') for r in rows.get('workers') or [] if r.get('dispatchId') in ids} - {None}
+                if own and not runs & own:
+                    return emit('foreign', [_compact(data)[:RESULT_CAP]], lines_done)
             return emit('message', [_compact(data)[:RESULT_CAP]], lines_done, answer_by=answer_by)
         if not lines_done and progs:
             commit_all()

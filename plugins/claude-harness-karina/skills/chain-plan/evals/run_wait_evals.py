@@ -1491,6 +1491,44 @@ def tree_sig_untracked_size_change_without_hash_object():
         shutil.rmtree(repo, ignore_errors=True)
 
 
+OWN_ROW = workers(dict(place_row('ready', 'kept', dispatch='disp_1'), runId='run_new'))
+
+
+def mixed_batch(*run_ids):
+    msgs = [dict({'id': 'msg_%d' % i, 'type': 'question', 'subject': 'Q'}, **({'runId': r} if r else {}))
+            for i, r in enumerate(run_ids)]
+    return json.dumps({'ok': True, 'count': len(msgs), 'deliveryId': 'dlv_1', 'messages': msgs})
+
+
+@case
+def foreign_run_batch_is_foreign():
+    cli = FakeCli([run_batch('run_old')], [OWN_ROW])
+    out = run(cli)
+    assert first(out).startswith('RESULT: foreign — '), out
+    assert 'ack' in first(out) and '처리하지 않' in first(out), '처리하지 않고 ack 하라고 지시해야 한다'
+    assert any('dlv_1' in l for l in out), 'ack 할 deliveryId 가 실려야 한다'
+
+
+@case
+def own_run_mixed_batch_is_message():
+    out = run(FakeCli([mixed_batch('run_old', 'run_new')], [OWN_ROW]))
+    assert first(out).startswith('RESULT: message — '), out
+
+
+@case
+def missing_run_id_mixed_batch_is_message():
+    out = run(FakeCli([mixed_batch('run_old', None)], [OWN_ROW]))
+    assert first(out).startswith('RESULT: message — '), out
+
+
+@case
+def batch_without_run_id_skips_worker_list():
+    cli = FakeCli([msg_batch()])
+    out = run(cli)
+    assert first(out).startswith('RESULT: message — '), out
+    assert not any(c[0] == 'worker-list' for c in cli.calls), 'runId 없는 배치에 worker-list 를 부르면 안 된다'
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
     failed = 0
