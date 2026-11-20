@@ -320,6 +320,10 @@ function Test-LiteralTempPath([string]$Path, [string]$TempRoot) {
         }
         $node = Split-Path -Parent $node
     }
+    if ([System.IO.File]::Exists($full)) {
+        $item = try { Get-Item -LiteralPath $full -Force -ErrorAction Stop } catch { return $false }
+        if ($item.LinkType) { return $false }
+    }
     return $true
 }
 
@@ -334,7 +338,7 @@ function Test-PlainWriteCommand([string]$Cmd) {
     foreach ($ch in $Cmd.ToCharArray()) {
         if ($state -eq 1) {
             if ($ch -eq "'") { $state = 0 }
-            elseif ($script:IsPsTool -and '*?[]'.IndexOf($ch) -ge 0) { return $false }
+            elseif ($script:IsPsTool -and '*?[]`'.IndexOf($ch) -ge 0) { return $false }
             continue
         }
         if ($state -eq 2) {
@@ -382,7 +386,7 @@ function Invoke-BlockPlanWrite {
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
     $tempPlans = @(Get-LiteralTempPlanPaths ([string]$cmd))
-    $hits = Get-ShellWriteHits $cmd { param($a) ($a -match '(^|[\\/:])plan\.md$') -and -not ($tempPlans -contains $a) }
+    $hits = Get-ShellWriteHits $cmd { param($a) ($a -match '(^|[\\/:])plan\.md[. ]*$') -and -not ($tempPlans -contains $a) }
     if ($hits.Count -eq 0) { return New-HookResult }
     $where = (($hits | Select-Object -Unique) -join ', ')
     return New-HookResult -Block $true -Stderr @(
