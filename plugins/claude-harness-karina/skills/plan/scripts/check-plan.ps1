@@ -44,7 +44,10 @@
 #   no-task-commit T<N>          BASE..HEAD 에 제목이 「{유형}: T<N> —」(또는 「T<N>:」)인 커밋이 없음 — 마지막 task 는
 #                                그 블록이 <버전> 을 담으면 「설정: v<버전> —」(Release 형식 버전 커밋)도 센다
 #   no-commit-evidence T<N>      그 커밋은 있으나 어느 본문에도 「검증 결과」·「검증:」 이 없음(HUMAN-VERIFY 낱말만으로는 증거가 아니다)
-#   아래 넷은 본문 증거가 있는 task 만 잰다. 줄 머리 「- 」 는 허용한다:
+#   아래 다섯은 본문 증거가 있는 task 만 잰다. 줄 머리 「- 」 는 허용한다:
+#   acceptance-evidence T<N> <have>/<want>  그 task 커밋 본문들의 「Acceptance: <항목> — <판정>」 줄 수(have)가 plan 의
+#                                「- **Acceptance**:」 항목 수(want)보다 적음 — 항목은 그 줄 값에서 백틱 스팬과 괄호 안을 지운 뒤
+#                                「 · 」 로 가른 조각이다(항목 문면은 대조하지 않는다 — 표현만 달라도 위반이 되지 않게)
 #   no-red-evidence T<N>         Files 줄에 (RED) 가 있는데 어느 본문에도 「RED:」·「RED(구현 전):」·「RED(사후 …):」 줄이 없음
 #                                (「RED: 미확인 — <사유>」 만 있으면 위반 대신 note red-unverified T<N>)
 #   no-screen-verdict T<N>       「- **화면**:」 줄이 있는 task 인데 어느 본문에도 「화면: HEAD 참|거짓」·「화면: 미촬영(HUMAN-VERIFY)」 줄이 없음
@@ -199,6 +202,9 @@ if ($Base) {
     $unverified = Get-Text @(0xBBF8, 0xD655, 0xC778)    # 미확인
     $redRx = $lineHead + 'RED(?:\((?:' + (Get-Text @(0xAD6C, 0xD604, 0x20, 0xC804)) + '|' + (Get-Text @(0xC0AC, 0xD6C4)) + '[^)\r\n]*)\))?\s*:\s*(?!' + $unverified + ')\S'    # RED: · RED(구현 전): · RED(사후 …):
     $redUnRx = $lineHead + 'RED\s*:\s*' + $unverified
+    $verdictRx = $lineHead + 'Acceptance\s*:\s*\S'
+    $acceptLabel = '- **Acceptance**:'
+    $itemSplitRx = '\s' + [char]0xB7 + '\s'
     $screenHead = $lineHead + (Get-Text @(0xD654, 0xBA74)) + ':\s*'    # 화면:
     $screenTrueRx = $screenHead + 'HEAD\s*' + (Get-Text @(0xCC38))    # 참
     $screenFalseRx = $screenHead + 'HEAD\s*' + (Get-Text @(0xAC70, 0xC9D3))    # 거짓
@@ -233,6 +239,7 @@ if ($Base) {
         $unshots = @([regex]::Matches($body, $unshotRx) | ForEach-Object { $_.Groups[1].Value })
         $commits += [pscustomobject]@{
             Id = $id; Evidence = [regex]::IsMatch($body, $evidenceRx); Tagged = $false
+            Verdicts = [regex]::Matches($body, $verdictRx).Count
             Red = [regex]::IsMatch($body, $redRx); RedUnverified = [regex]::IsMatch($body, $redUnRx)
             ScreenTrue = [regex]::IsMatch($body, $screenTrueRx); ScreenFalse = [regex]::IsMatch($body, $screenFalseRx)
             Unshot = [bool]$unshots.Count; UnshotReason = [bool]@($unshots | Where-Object { $_ -match $reasonRx }).Count
@@ -257,6 +264,14 @@ if ($Base) {
             if ($hasRed -and -not @($mine | Where-Object { $_.Red }).Count) {
                 if (@($mine | Where-Object { $_.RedUnverified }).Count) { $notes.Add('red-unverified ' + $tag) }
                 else { Add-Problem $b.N ('no-red-evidence ' + $tag) }
+            }
+            $acceptRow = $b.Lines | Where-Object { Test-Prefix $_.Text $acceptLabel } | Select-Object -First 1
+            if ($acceptRow) {
+                $criteria = [regex]::Replace($acceptRow.Text.Substring($acceptLabel.Length), '`[^`]*`', '')
+                do { $before = $criteria; $criteria = [regex]::Replace($criteria, '\([^()]*\)', '') } while ($criteria -ne $before)
+                $want = @($criteria -split $itemSplitRx | Where-Object { $_.Trim() }).Count
+                $have = [int](($mine | Measure-Object -Property Verdicts -Sum).Sum)
+                if ($have -lt $want) { Add-Problem $b.N ('acceptance-evidence ' + $tag + ' ' + $have + '/' + $want) }
             }
             $hasScreen = [bool]@($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabelBase }).Count
             if ($hasScreen -and -not @($screens | Where-Object { $_.ScreenTrue }).Count) {

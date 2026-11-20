@@ -288,7 +288,7 @@ function Invoke-CheckEvidence([string]$Text, [string]$Dir, [string]$Base, [strin
 }
 
 $cpDone = $cpBase.Replace('- [ ] **T1-1** 한다', '- [x] **T1-1** 한다')
-$cpOk = "기능: T1 — 한다`n`n검증 결과: run → OK`n- RED(구현 전): t.ps1 → FAIL"
+$cpOk = "기능: T1 — 한다`n`n검증 결과: run → OK`n- RED(구현 전): t.ps1 → FAIL`nAcceptance: grep 1 — 참"
 $ev = New-EvidenceRepo @()
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: [x] task 에 T<N> 커밋이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'no-task-commit T1'
@@ -307,7 +307,7 @@ Assert-Case -Name "check-plan 증거: 한글 제목·한글 검증 결과 본문
 $ev = New-EvidenceRepo @("문서: T1 — 한다`n`nHUMAN-VERIFY: 화면 배치는 사용자 확인`nRED: t.ps1 → FAIL")
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: 본문의 HUMAN-VERIFY 낱말만으로는 증거가 아니다" -R $r -ExpectExit 1 -ExpectContains 'no-commit-evidence T1'
-$ev = New-EvidenceRepo @("문서: T1 — 한다`n`n검증 결과: HUMAN-VERIFY — 화면 배치는 검증 스킬이 없어 사용자 확인`nRED: t.ps1 → FAIL")
+$ev = New-EvidenceRepo @("문서: T1 — 한다`n`n검증 결과: HUMAN-VERIFY — 화면 배치는 검증 스킬이 없어 사용자 확인`nRED: t.ps1 → FAIL`nAcceptance: grep 1 — HUMAN-VERIFY — 검증 스킬 없음")
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: 검증 결과 줄의 HUMAN-VERIFY 와 사유는 증거로 받는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 $cpVer = "설정: v1.2.3 — 버전`n`n검증 결과: json → OK"
@@ -350,12 +350,32 @@ if ($cpWinPs) {
     Assert-Case -Name "check-plan 증거: PS 5.1 에서도 본문 증거 없음을 잡는다" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'no-commit-evidence T1'
 }
 
+$cpAcc3 = $cpDone.Replace('`grep -c x a.ps1` ≥1 (착수 0)', '`grep -c x a.ps1` ≥1 (착수 0) · `run` exit 0 (착수 1) · 문서를 갱신했다')
+$cpAccLine2 = "`nAcceptance: run exit 0 — 참"
+$cpAccLine3 = "`nAcceptance: 문서 갱신 — 참"
+$ev = New-EvidenceRepo @($cpOk + $cpAccLine2)
+$r = Invoke-CheckEvidence $cpAcc3 $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: Acceptance 항목 3 에 판정 줄이 2 면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'acceptance-evidence T1 2/3'
+$ev = New-EvidenceRepo @($cpOk + $cpAccLine2 + $cpAccLine3)
+$r = Invoke-CheckEvidence $cpAcc3 $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: Acceptance 항목 3 에 판정 줄이 3 이면 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$cpAccInner = $cpDone.Replace('`grep -c x a.ps1` ≥1 (착수 0)', '`grep -c "a · b" a.ps1` ≥1 (착수 0 · 기준 0) · 문서를 갱신했다')
+$ev = New-EvidenceRepo @($cpOk + $cpAccLine3)
+$r = Invoke-CheckEvidence $cpAccInner $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 백틱·괄호 안의 가운뎃점은 Acceptance 항목으로 세지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$ev = New-EvidenceRepo @("기능: T1 — 한다`n`n검증 결과: run → OK`n- RED(구현 전): t.ps1 → FAIL`n- Acceptance: grep 1 — 참`n- Acceptance: run exit 0 — 참`n- Acceptance: 문서 갱신 — 참")
+$r = Invoke-CheckEvidence $cpAcc3 $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 불릿 머리의 Acceptance 판정 줄도 센다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$ev = New-EvidenceRepo @("기능: T1 — 한다`n`n무엇을 바꿨는지만 적었다")
+$r = Invoke-CheckEvidence $cpAcc3 $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 본문 증거가 없는 task 에는 Acceptance 위반을 겹쳐 내지 않는다" -R $r -ExpectExit 1 -ExpectNotContains 'acceptance-evidence'
+
 $ev = New-EvidenceRepo @()
 [System.IO.File]::WriteAllText((Join-Path $ev.dir 'AGENTS.md'), "# AGENTS.md`n`n- **Plan check**: ``exit 3```n", (New-Object System.Text.UTF8Encoding($false)))
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan Plan check: -Base 모드에서는 돌리지 않는다" -R $r -ExpectExit 1 -ExpectNotContains 'plan-check'
 
-$cpNoRed = "기능: T1 — 한다`n`n검증 결과: run → OK"
+$cpNoRed = "기능: T1 — 한다`n`n검증 결과: run → OK`nAcceptance: grep 1 — 참"
 $ev = New-EvidenceRepo @($cpNoRed)
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: (RED) 케이스 task 의 커밋 본문에 RED 표지가 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'no-red-evidence T1'

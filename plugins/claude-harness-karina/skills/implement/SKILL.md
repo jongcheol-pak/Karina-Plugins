@@ -37,7 +37,7 @@ description: 승인된 plan.md(`## Goal` 아래 `> 승인:` 줄에 날짜가 있
 loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
   1. 준비  — plan의 해당 task 정독(`**함정**` 줄 포함) · Files 목록 Read
   2. 구현  — plan이 새 동작을 재는 신규 케이스를 지목한 task면 그 케이스를 먼저 쓰고 돌려 RED 확인(아래 「검증」) · 최소 변경 · 첫 코드 task 전 1회 `references/code-style.md`「코드 작성 규약」 Read
-  3. 검증  — 아래 「검증」 · 그 task의 `**함정**` 줄을 어겼는지 1회 대조
+  3. 검증  — 아래 「검증」 · 그 task `**Acceptance**`·`**검증**` 줄을 항목마다 돌려 참을 본 뒤에만 4로(커밋 본문에 항목마다 `Acceptance: <항목> — 참`) · `**함정**` 줄 1회 대조
   4. 기록  — 체크박스 [x](하위 줄은 Edit 한 번에, 완료 커밋은 별도 호출 — `references/loop-exceptions.md`「실패 처리」) · 기능·UI를 바꿨으면 README 갱신 · 완료 커밋 · 2 task마다 Progress Log
 → 전 task 완료 후 아래 「회차 끝」 대로 → 최종 보고
 ```
