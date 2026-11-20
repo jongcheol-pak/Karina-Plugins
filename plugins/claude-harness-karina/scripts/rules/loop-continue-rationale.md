@@ -54,10 +54,20 @@ stdin 파싱 실패 · `session_id` 부재 · `cwd` 부재 · plan 을 못 찾�
 
 - plan 에 닫힌 task 가 1개 이상이고 승인 표지(`> 승인: <날짜>`)가 있다 — 표지가 없으면 초안이라 회차가 아니다
 - `> 요구:` 줄에 「코디네이터 인터뷰 경유」 가 없다 — 중계 워커는 4번 뒤에 인계 절 커밋을 남기고 코디네이터가 따로 검증하므로, 넣으면 워커마다 거짓 주입이 난다
-- `## Progress Log` 절(코드 펜스 밖)에 `4번 검증: <40자 SHA>` 줄이 없거나, 마지막 그 줄의 SHA 가 HEAD 가 아니고 `git diff --name-only <SHA>..HEAD` 에 plan 파일 밖 경로가 있다 — 절과 형식을 좁히지 않으면 Goal·Investigation Log 의 서식 예시를 SHA 로 집는다. plan 경로는 `git rev-parse --show-prefix` 로 레포 루트 기준으로 바꿔 대조한다
+- `## Progress Log` 절(코드 펜스 밖)에 `4번 검증: <40자 SHA>` 줄이 없거나, 마지막 그 줄의 SHA 가 HEAD 가 아니고 `git diff --name-only <SHA>..HEAD` 에 plan 파일과 §8 의 선언 경로를 뺀 경로가 있다 — 절과 형식을 좁히지 않으면 Goal·Investigation Log 의 서식 예시를 SHA 로 집는다. plan 경로는 `git rev-parse --show-prefix` 로 레포 루트 기준으로 바꿔 대조한다
 
 **상한** — 같은 HEAD 에 `$MaxPerSet`(2)회다. 집합 키는 미완 ID 대신 HEAD 다.
 
 **판정 불가는 침묵이다(§3)** — git 밖 폴더 · HEAD 를 못 얻음 · diff 실패 · git 호출이 3초 상한(`timed-git.ps1`)을 넘김. Stop 디스패처는 응답 언어 hook 과 10초를 함께 쓴다.
 
 **남는 거짓 주입 둘** — 회차가 끝난 뒤 같은 세션에서 한 회차 밖 커밋(마커는 `karina:plan` 발동이나 세션 종료까지 남는다 — §6) · 4번은 통과했으나 clean 이 아니어서 줄을 남기지 않고 push 도 하지 않는 회차. 회차 안팎을 가를 신호가 plan 에 없어(완료 시각 줄은 재실행을 빼먹은 회차도 채웠다) 상한 2회와 주입 문구의 「회차 밖이면 무시」·정지 유지 구절로 받는다. push 직전 재검증은 통과하면 같은 줄을 남긴다(`implement/references/push-flow.md`「push 전 확인」). 버전 파일만 바꾼 커밋은 가르지 않는다 — 버전 커밋은 회차의 마지막 task 라 4번보다 앞이다.
+
+## §8 Gate 재사용 경로
+
+**4번 검증 줄 뒤의 변경에서 그 레포 `AGENTS.md` 의 `Gate 재사용 경로` glob 에 걸리는 파일은 뺀다(`Get-GateReuse`).** 종전에는 문서만 바꾼 커밋에도 재실행을 주입해, 리뷰 뒤 기록 커밋마다 전체 검증을 다시 돌았다(사용자 답 2026-11-20 「면제한다」 — `docs/decisions.md`). 면제 집합의 정본은 `skills/implement/references/push-flow.md`「push 전 확인」 이고 이 hook 은 그 집합에서 plan 파일과 선언 경로만 기계로 뺀다(버전 파일 집합은 §7 대로 가르지 않는다).
+
+- **선언은 plan 폴더에서 git 최상위까지 올라가며 처음 만난 `AGENTS.md` 의 `- **Gate 재사용 경로**:` 줄이고, glob 은 그 줄의 백틱 스팬이다** — `skills/plan/scripts/check-plan.ps1` 의 `AGENTS.md` 탐색과 같은 순서다. 줄이 없거나 백틱 glob 이 하나도 없으면(「없음」 등) 선언 없음이라 종전대로 전부 센다.
+- **glob 대조는 git 에 맡긴다 — 기존 `git diff --name-only` 호출에 `-- :/ :(exclude,glob)<g>…` pathspec 을 붙이고 작업 폴더를 그 `AGENTS.md` 폴더로 둔다** — 선언이 「이 `AGENTS.md` 폴더 기준 · `**` 는 하위 전체」 라(`skills/AGENTS-BOUNDARY.md` 템플릿) git 의 `:(glob)` 규칙과 같고, hook 안에 glob 을 구현하면 `skills/chain-plan/scripts/run-verify.py` 의 구현과 갈릴 사본이 하나 더 생긴다. git 호출 수는 늘지 않는다(`rev-parse` 에 `--show-toplevel` 인자 하나, `diff` 에 pathspec).
+- **확장자(`.md`·`.txt`)로는 빼지 않는다** — 문서가 빌드 입력·실행 자산인 레포가 있다(Karina 의 `include_str!` · 이 하니스의 스킬 문면 — `skills/chain-plan/references/run-verify-rationale.md`). 이 하니스 `AGENTS.md` 는 그 줄을 선언하지 않아 여기서는 문서 커밋도 계속 주입한다.
+- **선언 glob 이 검증 매핑 경로와 겹치는지는 재지 않는다** — 겹치지 않게 선언하는 것이 그 레포의 책임이고(`skills/AGENTS-BOUNDARY.md`), 겹침 판정 명령은 문면(`push-flow.md`)이 `skills/chain-plan/references/continuation.md`「코디네이터 검증」 을 가리킨다.
+- **잘못된 pathspec 으로 `git diff` 가 실패하면 §3 대로 침묵한다** — 선언을 읽을 수 없는 경우(파일 읽기 실패)는 선언 없음으로 본다.

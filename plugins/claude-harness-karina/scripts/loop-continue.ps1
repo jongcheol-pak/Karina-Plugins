@@ -60,6 +60,28 @@ function Get-OpenTaskIds([string]$planText) {
     return @($ms | ForEach-Object { $_.Groups['id'].Value })
 }
 
+# Gate 재사용 경로 선언 읽기 — 근거는 `rules/loop-continue-rationale.md` §8
+function Get-GateReuse([string]$PlanDir, [string]$TopDir) {
+    $none = @{ Dir = $PlanDir; Globs = @() }
+    $stop = ''
+    try { $stop = [System.IO.Path]::GetFullPath($TopDir).TrimEnd('\', '/') } catch { return $none }
+    $cur = [System.IO.Path]::GetFullPath($PlanDir).TrimEnd('\', '/')
+    for ($i = 0; $i -lt 8 -and $cur; $i++) {
+        $agents = Join-Path $cur 'AGENTS.md'
+        if (Test-Path -LiteralPath $agents -PathType Leaf) {
+            $text = ''
+            try { $text = Get-Content -LiteralPath $agents -Raw -Encoding UTF8 -ErrorAction Stop } catch { return $none }
+            $line = [regex]::Match([string]$text, '(?m)^- \*\*Gate 재사용 경로\*\*:(.*)$')
+            if (-not $line.Success) { return $none }
+            $globs = @([regex]::Matches($line.Groups[1].Value, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value.Trim() } | Where-Object { $_ })
+            return @{ Dir = $cur; Globs = $globs }
+        }
+        if ($cur.Equals($stop, [System.StringComparison]::OrdinalIgnoreCase)) { break }
+        $cur = [System.IO.Path]::GetDirectoryName($cur)
+    }
+    return $none
+}
+
 # 회차 끝 판정 — 근거는 `rules/loop-continue-rationale.md` §7
 function Get-FinalCheckGap([string]$PlanPath, [string]$PlanText) {
     $body = [regex]::Replace($PlanText, $planFenceRx, '')
@@ -70,16 +92,20 @@ function Get-FinalCheckGap([string]$PlanPath, [string]$PlanText) {
     try { . (Join-Path $PSScriptRoot 'timed-git.ps1') } catch { return $null }
     if (-not (Get-Command Invoke-TimedGit -ErrorAction SilentlyContinue)) { return $null }
     $dir = Split-Path -Parent $PlanPath
-    $rp = Invoke-TimedGit -GitArgs @('rev-parse', 'HEAD', '--show-prefix') -WorkDir $dir -TimeoutMs 3000
-    if ($rp.Code -ne 0 -or $rp.Lines.Count -lt 1 -or $rp.Lines[0] -notmatch '^[0-9a-f]{40}$') { return $null }
+    $rp = Invoke-TimedGit -GitArgs @('rev-parse', 'HEAD', '--show-toplevel', '--show-prefix') -WorkDir $dir -TimeoutMs 3000
+    if ($rp.Code -ne 0 -or $rp.Lines.Count -lt 2 -or $rp.Lines[0] -notmatch '^[0-9a-f]{40}$') { return $null }
     $head = [string]$rp.Lines[0]
-    $prefix = if ($rp.Lines.Count -gt 1) { [string]$rp.Lines[1] } else { '' }
+    $top = [string]$rp.Lines[1]
+    $prefix = if ($rp.Lines.Count -gt 2) { [string]$rp.Lines[2] } else { '' }
     $log = [regex]::Match($body, '(?ms)^## Progress Log[^\n]*\n(.*?)(?=^## |\z)')
     $shas = @()
     if ($log.Success) { $shas = @([regex]::Matches($log.Groups[1].Value, '4번 검증: ([0-9a-f]{40})') | ForEach-Object { $_.Groups[1].Value }) }
     if ($shas.Count -eq 0) { return @{ Head = $head; Files = @() } }
     if ($shas[-1] -eq $head) { return $null }
-    $df = Invoke-TimedGit -GitArgs @('-c', 'core.quotepath=off', 'diff', '--name-only', ($shas[-1] + '..HEAD')) -WorkDir $dir -TimeoutMs 3000
+    $gate = Get-GateReuse $dir $top
+    $diffArgs = @('-c', 'core.quotepath=off', 'diff', '--name-only', ($shas[-1] + '..HEAD'))
+    if ($gate.Globs.Count -gt 0) { $diffArgs += @('--', ':/') + @($gate.Globs | ForEach-Object { ':(exclude,glob)' + $_ }) }
+    $df = Invoke-TimedGit -GitArgs $diffArgs -WorkDir $gate.Dir -TimeoutMs 3000
     if ($df.Code -ne 0) { return $null }
     $planRel = $prefix + (Split-Path -Leaf $PlanPath)
     $files = @($df.Lines | Where-Object { $_ -and $_ -ne $planRel })
@@ -142,7 +168,7 @@ if ($gap) {
     } else {
         $shownFiles = ($gap.Files | Select-Object -First 5) -join ', '
         $moreFiles = if ($gap.Files.Count -gt 5) { " 외 $($gap.Files.Count - 5)개" } else { '' }
-        "Progress Log 의 「4번 검증」 줄 뒤에 plan 파일 밖 변경이 커밋됐습니다: ${shownFiles}${moreFiles}. 4번 검증을 최종 HEAD 에서 다시 돌리고 그 줄을 새 SHA 로 남기십시오(문서만 바꾼 커밋도 같습니다)."
+        "Progress Log 의 「4번 검증」 줄 뒤에 plan 파일 밖 변경이 커밋됐습니다: ${shownFiles}${moreFiles}. 4번 검증을 최종 HEAD 에서 다시 돌리고 그 줄을 새 SHA 로 남기십시오(문서만 바꾼 커밋도 같습니다 — AGENTS.md 의 「Gate 재사용 경로」 에 걸리는 변경만 뺐습니다)."
     }
     $msg = "[karina loop-continue] $($planHit.Label) 의 task 는 모두 닫혔는데 $what $keep 회차가 이미 끝났고 이 커밋이 회차 밖이면 이 안내를 무시합니다."
 } else {

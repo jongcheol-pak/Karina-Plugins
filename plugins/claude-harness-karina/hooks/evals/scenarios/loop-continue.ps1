@@ -220,7 +220,49 @@ $lcNoGit = Join-Path $work 'lc-final-nogit'; New-Item -ItemType Directory $lcNoG
 Set-LcFinalPlan $lcNoGit ''
 $r = Invoke-LcFinalStop 'lc-e8' $lcNoGit
 Assert-Case -Name "loop-continue: git 밖 폴더의 완료 plan 은 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
-Remove-Item -Recurse -Force $lcFin, $lcNoGit -ErrorAction SilentlyContinue
+function New-LcGateRepo([string]$Name, [string]$AgentsLine) {
+    $d = New-LcFinalRepo $Name
+    New-Item -ItemType Directory (Join-Path $d 'assets'), (Join-Path $d 'docs') -Force | Out-Null
+    'x' | Set-Content -LiteralPath (Join-Path $d 'assets/logo.txt') -Encoding UTF8
+    'x' | Set-Content -LiteralPath (Join-Path $d 'docs/guide.md') -Encoding UTF8
+    if ($AgentsLine) { [System.IO.File]::WriteAllText((Join-Path $d 'AGENTS.md'), "# AGENTS`n`n## Build & Test`n`n$AgentsLine`n", [System.Text.UTF8Encoding]::new($false)) }
+    git -C $d add -A; git -C $d commit -qm fixtures
+    return $d
+}
+function Add-LcGateCommit([string]$Dir, [string[]]$Paths) {
+    foreach ($p in $Paths) { Add-Content -LiteralPath (Join-Path $Dir $p) -Value 'more' -Encoding UTF8 }
+    git -C $Dir add -A -- $Paths; git -C $Dir commit -qm after-check
+}
+$lcGateLine = '- **Gate 재사용 경로**: `assets/**` · `notes/*.txt`'
+$lcGate = New-LcGateRepo 'lc-gate' $lcGateLine
+Set-LcFinalPlan $lcGate ("- 4번 검증: " + (git -C $lcGate rev-parse HEAD).Trim() + " · clean")
+Add-LcGateCommit $lcGate @('assets/logo.txt')
+$r = Invoke-LcFinalStop 'lc-g1' $lcGate
+Assert-Case -Name "loop-continue: 4번 검증 뒤 커밋이 Gate 재사용 경로 안 파일뿐이면 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+Add-LcGateCommit $lcGate @('assets/logo.txt', 'src/a.txt')
+$r = Invoke-LcFinalStop 'lc-g2' $lcGate
+Assert-Case -Name "loop-continue: Gate 재사용 경로 안·밖이 섞이면 재실행 안내를 주입" -R $r -ExpectExit 0 -ExpectContains 'src/a.txt'
+Assert-Case -Name "loop-continue: 재실행 안내 문구에 Gate 재사용 경로 안 파일은 싣지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'assets/logo.txt'
+
+$lcGateNone = New-LcGateRepo 'lc-gate-none' ''
+Set-LcFinalPlan $lcGateNone ("- 4번 검증: " + (git -C $lcGateNone rev-parse HEAD).Trim() + " · clean")
+Add-LcGateCommit $lcGateNone @('docs/guide.md')
+$r = Invoke-LcFinalStop 'lc-g3' $lcGateNone
+Assert-Case -Name "loop-continue: Gate 재사용 경로 선언이 없으면 문서만 바꾼 커밋에도 주입" -R $r -ExpectExit 0 -ExpectContains 'docs/guide.md'
+
+$lcGateSub = New-LcGateRepo 'lc-gate-sub' $lcGateLine
+$lcGateSubPlan = Join-Path $lcGateSub 'src'
+Set-LcFinalPlan $lcGateSubPlan ("- 4번 검증: " + (git -C $lcGateSub rev-parse HEAD).Trim() + " · clean")
+Add-LcGateCommit $lcGateSub @('assets/logo.txt')
+$r = Invoke-LcFinalStop 'lc-g4' $lcGateSubPlan
+Assert-Case -Name "loop-continue: plan 이 하위 폴더에 있어도 glob 을 AGENTS.md 폴더 기준으로 맞춰 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+
+$lcGateEmpty = New-LcGateRepo 'lc-gate-empty' '- **Gate 재사용 경로**: 없음'
+Set-LcFinalPlan $lcGateEmpty ("- 4번 검증: " + (git -C $lcGateEmpty rev-parse HEAD).Trim() + " · clean")
+Add-LcGateCommit $lcGateEmpty @('assets/logo.txt')
+$r = Invoke-LcFinalStop 'lc-g5' $lcGateEmpty
+Assert-Case -Name "loop-continue: Gate 재사용 경로 줄에 백틱 glob 이 없으면 선언 없음으로 보고 주입" -R $r -ExpectExit 0 -ExpectContains 'assets/logo.txt'
+Remove-Item -Recurse -Force $lcFin, $lcNoGit, $lcGate, $lcGateNone, $lcGateSub, $lcGateEmpty -ErrorAction SilentlyContinue
 }
 
 $lcHooks = Get-Content -LiteralPath (Join-Path $pluginRoot 'hooks/hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json
