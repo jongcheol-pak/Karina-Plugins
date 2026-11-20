@@ -22,6 +22,7 @@ $r = Invoke-GcEdit 'line.rs' 'fn a() {}' "// 섹션의 첫 행인가`nfn a() {}"
 Assert-Case -Name "guard-comment: 줄 주석을 더한 Edit 첫 시도는 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 Assert-Case -Name "guard-comment: 차단 사유가 예외 목록과 다시 내도 통과하지 않음을 낸다" -R $r -ExpectExit 2 -ExpectContains '같은 편집을 다시 내도 통과하지 않습니다'
 Assert-Case -Name "guard-comment: 차단 사유가 낡은 옛 주석을 고치거나 지우라고 안내한다" -R $r -ExpectExit 2 -ExpectContains '새 주석만 빼고 낡은 주석을 남기지 마세요'
+Assert-Case -Name "guard-comment: 새 주석 차단 메시지가 보존 등록·rationale 선작성을 안내한다" -R $r -ExpectExit 2 -ExpectContains 'Comment (보존) 경로에 그 파일을 등록한 뒤, 근거 포인터 주석이면 가리키는 .md 문서를 먼저 만든'
 
 $r = Invoke-GcEdit 'doc.rs' 'pub fn b() {}' "/// 그 모니터 작업 영역 가운데.`npub fn b() {}"
 Assert-Case -Name "guard-comment: doc 주석(///) 추가도 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
@@ -223,6 +224,7 @@ Assert-Case -Name "guard-comment: AGENTS.md Comment (보존) 경로·정규식�
 $gcRw = '기존 주석의 문구만 고쳤습니다'
 $r = Invoke-GcEdit 'rw1.cs' "// 합계를 센다`nint s = 0;" "// 합계를 다시 센다`nint s = 1;"
 Assert-Case -Name "guard-comment: 코드와 같은 Edit 에서 예외 밖 주석 문구만 고치면 차단" -R $r -ExpectExit 2 -ExpectContains $gcRw
+Assert-Case -Name "guard-comment: 문구 수정 차단 메시지의 규칙 줄이 주석만 고치는 편집을 말한다" -R $r -ExpectExit 2 -ExpectContains '주석만 고치는 편집의 기존 주석 문구 수정'
 $rwEdits = @(@{ old_string = 'int b = 2;'; new_string = 'int b = 3;' }, @{ old_string = "// 값 초기화`nint a = 0;"; new_string = "// 값을 새로 초기화`nint a = 1;" })
 $r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'gc-rw-multi'; tool_name = 'MultiEdit'; cwd = $gc; tool_input = @{ file_path = (Join-Path $gc 'rw2.cs'); edits = $rwEdits } } | ConvertTo-Json -Compress -Depth 5)
 Assert-Case -Name "guard-comment: MultiEdit 짝 안에서 코드와 주석 문구를 함께 고치면 차단" -R $r -ExpectExit 2 -ExpectContains $gcRw

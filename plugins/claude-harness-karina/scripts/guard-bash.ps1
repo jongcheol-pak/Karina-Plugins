@@ -166,11 +166,12 @@ function Invoke-BashBackslash {
     }
     if ($blockAt.Count -gt 0) {
         $at = $blockAt -join ' · '
-        return New-HookResult -Block $true -Stderr @(
+        $commitHow = if ($cmd -match '(?i)\bgit\b[^\r\n;|&]*\bcommit\b') { @('  - 커밋 본문이면 Write 도구로 메시지 파일을 만들어 git commit -F <파일> 로 넘기거나 PowerShell 도구로 보내세요.') } else { @() }
+        return New-HookResult -Block $true -Stderr (@(
             "[HARNESS] BLOCKED: 역슬래시 둘이 bash 에 하나로 넘어갑니다 — $at",
             "  - Windows 의 Bash 도구는 명령을 bash 에 넘기기 전에 역슬래시 둘을 하나로 줄입니다 — 따옴표 heredoc 안에서도 줄어, Python 의 'C:\\' 같은 문자열은 닫는 따옴표를 잃고 \\n 은 실제 줄바꿈이 됩니다.",
-            '  - 역슬래시가 든 스크립트는 Write 도구로 파일을 만들어 python <파일> 로 실행하거나, PowerShell 도구로 보내세요(PowerShell 도구는 그대로 넘깁니다).',
-            '  - 같은 명령을 다시 내도 통과하지 않습니다.')
+            '  - 역슬래시가 든 스크립트는 Write 도구로 파일을 만들어 python <파일> 로 실행하거나, PowerShell 도구로 보내세요(PowerShell 도구는 그대로 넘깁니다).') + $commitHow + @(
+            '  - 같은 명령을 다시 내도 통과하지 않습니다.'))
     }
     $inPlace = $false
     try {

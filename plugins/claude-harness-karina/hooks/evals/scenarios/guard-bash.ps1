@@ -770,6 +770,7 @@ $null = Invoke-Hook 'guard-harness.ps1' $ccEditJson
 Set-CcFile $d 'b.cs' "// 편집 때 남긴 설명`nint b;`n"; git -C $d add b.cs
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-approved'
 Assert-Case -Name "commit-comments: 편집 게이트에 두 번 낸 주석도 커밋에서 차단" -R $r -ExpectExit 2 -ExpectContains '[HARNESS] BLOCKED: 커밋에 새 주석이 있습니다'
+Assert-Case -Name "commit-comments: 차단 메시지가 보존 등록·rationale 선작성을 안내한다" -R $r -ExpectExit 2 -ExpectContains 'Comment (보존) 경로에 그 파일을 등록한 뒤, 근거 포인터 주석이면 가리키는 .md 문서를 먼저 만든'
 
 $d = New-CcRepo
 Set-CcFile $d 'a.cs' "int a;`n"; Set-CcFile $d 'b.cs' "// 기존 설명`nint b;`n"; git -C $d add a.cs b.cs

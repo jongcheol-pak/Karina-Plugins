@@ -58,9 +58,10 @@ function Write-BdSlowEvent {
     } catch {}
 }
 function Deny {
-    param([string]$Reason, [string]$Rule, [string]$Shown)
+    param([string]$Reason, [string]$Rule, [string]$Shown, [string]$Alt = '')
     [Console]::Error.WriteLine("BLOCKED: $Reason")
     [Console]::Error.WriteLine("Command: $Shown")
+    if ($Alt) { [Console]::Error.WriteLine("대안: $Alt") }
     [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
     Write-BdEvent $Rule $Shown
     Write-BdSlowEvent
@@ -109,7 +110,7 @@ if ($cmd -match $findDangerRoot -and (
         ($cmd -match ('(?i)\|\s*xargs\b[^|]*\b(' + $delCmdAlt + ')\b')) -or
         ($cmd -match '(?i)-exec(dir)?\s+(rm|Remove-Item)\b') -or
         ($cmd -match '(?i)\bfind\b[^|]*\s-delete\b'))) {
-    Deny "위험 루트(/, ~, `$HOME, 드라이브 루트)를 find로 훑어 삭제(xargs rm / -exec rm / -delete) 감지" 'find 위험루트 삭제' $cmd
+    Deny "위험 루트(/, ~, `$HOME, 드라이브 루트)를 find로 훑어 삭제(xargs rm / -exec rm / -delete) 감지" 'find 위험루트 삭제' $cmd 'find 의 시작 경로를 구체 폴더로 좁혀 다시 내세요(예: find <프로젝트 폴더>/build -name "*.tmp" -delete).'
 }
 
 # ---- 사전검사 ② 열거 명령으로 위험 루트를 훑어 삭제로 파이프 ----
@@ -123,7 +124,7 @@ $enumSrcScan = if ($hasNameFilter) { $beforePipe -replace '(^|\s)\.[\\/]?(?=\s|$
 if (($beforePipe -match $enumSource) -and (Test-DangerTarget $enumSrcScan) -and (
         (($cmd -match $pipeToDelete) -and ($cmd -match $delRecurseForce)) -or
         ($cmd -match $pipeXargsRm))) {
-    Deny "위험 루트를 열거 명령으로 훑어 삭제로 파이프(Get-ChildItem/ls/dir | Remove-Item/rm) 감지" '열거 파이프 삭제' $cmd
+    Deny "위험 루트를 열거 명령으로 훑어 삭제로 파이프(Get-ChildItem/ls/dir | Remove-Item/rm) 감지" '열거 파이프 삭제' $cmd '열거 대상을 구체 폴더로 좁히거나 이름 필터(-Filter·-name)를 붙여 다시 내세요.'
 }
 
 # ---- 최상위 구분자 분리 (따옴표 인식) ----
@@ -225,14 +226,14 @@ foreach ($sub in $subs) {
                       ($win -match '--recursive\b') -or
                       ($win -match '\s/s\b')
         if ($hasRecurse -and (Test-DangerTarget $win)) {
-            Deny "재귀 삭제 + 위험 루트 대상 감지" '재귀 삭제 + 위험 루트' $sub
+            Deny "재귀 삭제 + 위험 루트 대상 감지" '재귀 삭제 + 위험 루트' $sub '지울 폴더의 전체 경로를 인자로 주세요 — 루트·홈·드라이브 루트와 값이 그런 경로인 변수는 통과하지 않습니다.'
         }
     }
 
     foreach ($pattern in $patterns) {
         if ($scan -match $pattern) {
             $why = if ($patternWhy.ContainsKey($pattern) -and $patternWhy[$pattern]) { $patternWhy[$pattern] } else { $pattern }
-            Deny "파괴적 명령 패턴 감지 — $why" "패턴: $pattern" $sub
+            Deny "파괴적 명령 패턴 감지 — $why" "패턴: $pattern" $sub '승인이 필요한 작업입니다 — 무엇을·왜·되돌리는 방법을 보고하고 사용자가 직접 실행하게 하세요.'
         }
     }
 }

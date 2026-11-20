@@ -10,6 +10,48 @@
     },
     {
       "hook": "block-destructive.ps1",
+      "name": "block-destructive 대안 안내 — 재귀 삭제 + 위험 루트",
+      "command": "rm -rf /",
+      "expect_exit": 2,
+      "expect_contains": "지울 폴더의 전체 경로를 인자로"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "block-destructive 대안 안내 — find 위험 루트",
+      "command": "find / -name \"*.tmp\" | xargs rm",
+      "expect_exit": 2,
+      "expect_contains": "find 의 시작 경로를 구체 폴더로"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "block-destructive 대안 안내 — 열거 파이프",
+      "command": "Get-ChildItem C:\\ -Recurse | Remove-Item -Force",
+      "expect_exit": 2,
+      "expect_contains": "열거 대상을 구체 폴더로"
+    },
+    {
+      "hook": "block-destructive.ps1",
+      "name": "block-destructive 대안 안내 — 패턴",
+      "command": "git push origin main -f",
+      "expect_exit": 2,
+      "expect_contains": "무엇을·왜·되돌리는 방법을 보고"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: 역슬래시 든 커밋 heredoc 차단이 git commit -F 를 안내한다",
+      "command": "git commit -m \"$(cat <<'MSG'\n문서: 경로 C:\\\\Users 를 적는다\nMSG\n)\"",
+      "expect_exit": 2,
+      "expect_contains": "git commit -F <파일>"
+    },
+    {
+      "hook": "guard-bash.ps1",
+      "name": "역슬래시 축소: 커밋이 아닌 heredoc 역슬래시 차단은 git commit -F 를 내지 않는다",
+      "command": "python - <<'PY'\nx = 'C:\\\\'\nprint(len(x))\nPY",
+      "expect_exit": 2,
+      "expect_not_contains": "git commit -F"
+    },
+    {
+      "hook": "block-destructive.ps1",
       "name": "rm -fr /* 차단",
       "command": "rm -fr /*",
       "expect_exit": 2,
