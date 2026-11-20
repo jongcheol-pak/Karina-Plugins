@@ -604,12 +604,20 @@ def audit_has_no_bash_line():
 
 
 @case
-def audit_has_no_timing_lines():
+def audit_keeps_slow_bash_only():
     recs = [at(rec_user('<command-name>/karina:implement</command-name>'), 0)] + \
         tool_pair('t1', 'Bash', 1, 100, 'sleep 99')
     out = run_timed(recs, extra=['--audit'])
-    assert slow_lines(out) == [] and segment_lines(out) == [], out
+    assert slow_lines(out) == ['SLOW: Bash 99초 sleep 99'] and segment_lines(out) == [], out
     assert 'T: Bash sleep 99' in out.splitlines(), out
+
+
+@case
+def audit_drops_slow_non_bash():
+    recs = [at(rec_assistant([{'type': 'tool_use', 'id': 'r1', 'name': 'Read', 'input': {'file_path': 'a.md'}}]), 0),
+            at(rec_user_blocks([tool_result('r1', '출력')]), 90)]
+    out = run_timed(recs, extra=['--audit'])
+    assert slow_lines(out) == [], out
 
 
 AUDIT = [

@@ -29,11 +29,12 @@ Bash 소요 줄 — 구간 줄 앞에 `# Bash 소요: 시험 <N>초 <k>회 · �
 본 전사·서브에이전트 전사의 Bash 호출마다 SLOW 와 같은 시작 시각에서 tool_result 시각까지를 그 명령의 갈래에 더한다. 갈래는
 `git` 으로 시작하면(앞의 `cd <경로>;`·`cd <경로> &&` 는 건너뛴다) 기타, 아니면 BASH_KINDS 의 순서대로 처음 맞는 것이고 없으면 기타다 — 이은 명령은 첫 일치 갈래에 통째로 든다.
 `--audit`(implement 완료 리뷰의 전사 대조용) — 서브에이전트 전사를 읽지 않고 A: 줄 · Bash·Skill 의 T: 줄 ·
-이미지(IMAGE_EXT) Read 의 T: 줄 · `<command-name>` 이 든 U: 줄만 남긴다(Skill·slash command 줄은 대조 범위를 가르는 표지
-· 이미지 Read 줄은 완료 리뷰가 화면 판정의 스크린샷을 열어 봤는지 대조하는 재료다). 머리에 `# 모드: audit` 을 싣는다.
+이미지(IMAGE_EXT) Read 의 T: 줄 · `<command-name>` 이 든 U: 줄 · `SLOW: Bash` 줄만 남긴다(Skill·slash command 줄은 대조 범위를
+가르는 표지 · 이미지 Read 줄은 완료 리뷰가 화면 판정의 스크린샷을 열어 봤는지 대조하는 재료 · `SLOW: Bash` 줄은 회차 끝 도구 점검과
+완료 리뷰가 느린 검증 명령을 대조하는 재료다). 머리에 `# 모드: audit` 을 싣는다.
   한글 음절(가-힣)이 하나도 없는 A: 줄은 `A: [한글 없음] …` 으로 표지하고 그 수를 머리 `# 한글 없는 A: <N>` 에 싣는다
   — implement·pr 의 「상태 메모도 한글로」 위반을 완료 리뷰가 세는 재료는 대조 범위 안의 표지 줄이고, 머리 수는 세션 전체 값이다.
-  audit 은 SLOW: 줄·Bash 소요 줄·구간 줄을 내지 않는다.
+  audit 은 Bash 아닌 SLOW: 줄·Bash 소요 줄·구간 줄을 내지 않는다.
 
 종료 코드: 0 정상 · 2 세션 판정 실패(ID 없음·파일 0개·2개 이상) · 3 인식한 레코드 0(전사 형식이 바뀌었을 수 있다).
 전사 형식은 Claude Code 내부 형식이라 문서화돼 있지 않다 — 2.1.306 실측 기준이다.
@@ -59,6 +60,7 @@ HOOK_TYPES = ('hook_additional_context', 'hook_cancelled')
 PERSISTED = re.compile(r'<persisted-output>\s*Output too large \(([\d.]+)(KB|MB)\)')
 AUDIT_KINDS = ('U', 'A', 'T')
 AUDIT_TOOLS = ('T: Bash ', 'T: Skill ')
+AUDIT_SLOW = 'SLOW: Bash '
 IMAGE_EXT = ('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp')
 NEST_MARK = ' › '
 BASH_KINDS = (
@@ -79,7 +81,7 @@ def is_image_read(line):
 def audit_keep(line):
     if line.startswith('U: '):
         return '<command-name>' in line
-    return line.startswith('A: ') or line.startswith(AUDIT_TOOLS) or is_image_read(line)
+    return line.startswith('A: ') or line.startswith(AUDIT_TOOLS) or line.startswith(AUDIT_SLOW) or is_image_read(line)
 
 
 def cut(value, cap):
