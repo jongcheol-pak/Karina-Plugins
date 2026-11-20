@@ -85,10 +85,49 @@ function Test-TaskAuditFilterCovered([string]$Message, [string]$Command, $Templa
     return $false
 }
 
-function Get-TaskAuditGrowth([string]$RuleDir, $Rule, [bool]$IncludeUntracked) {
-    $run = Invoke-CommitGit -Check 'warn-task-audit' -Dir $RuleDir -GitArgs (@('-c', 'core.quotepath=off', 'diff', '--unified=0', '--no-color', '--no-ext-diff', 'HEAD', '--') + @($Rule.Pathspec))
-    if ($run.Code -ne 0 -and -not $run.TimedOut) { $run = Invoke-CommitGit -Check 'warn-task-audit' -Dir $RuleDir -GitArgs (@('-c', 'core.quotepath=off', 'diff', '--unified=0', '--no-color', '--no-ext-diff', '--cached', '--') + @($Rule.Pathspec)) }
-    $diff = @($run.Lines)
+# 이번 커밋에 드는 변경의 범위 — 근거는 `rules/task-audit-rationale.md` §3
+function Get-TaskAuditScope([string]$Judge, $Cm, [string]$CommitDir) {
+    $scope = @{ Wide = $true; Cached = $true; Paths = @(); UntrackedAll = $false; UntrackedPaths = @(); CommitDir = $CommitDir }
+    $pre = $Judge.Substring(0, $Cm.Index)
+    $adds = @([regex]::Matches($pre, '(?i)' + $script:GitAddRx + '\s+(?<args>[^&;|\r\n]*)') | ForEach-Object { $_.Groups['args'].Value.Trim() })
+    $scope.UntrackedAll = [bool]@($adds | Where-Object { $_ -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)' }).Count
+    if (-not (Get-Command Get-CommitCommentArgs -ErrorAction SilentlyContinue)) { $scope.UntrackedAll = [bool]$adds.Count; return $scope }
+    $segment = (($Judge.Substring($Cm.Index) -replace '\r?\n\s*\)', ')') -split '(\|\||&&|;|\r?\n)')[0]
+    $opt = Get-CommitCommentArgs $segment
+    $addPaths = @($adds | ForEach-Object { $_ -split '\s+' } | Where-Object { $_ -and -not $_.StartsWith('-') } | ForEach-Object { $_.Trim('"', "'") })
+    if ($scope.UntrackedAll) { return $scope }
+    $scope.UntrackedPaths = $addPaths
+    if ($opt.All) { return $scope }
+    $scope.Wide = $false
+    if ($opt.Paths.Count) {
+        $scope.Paths = @($opt.Paths)
+        $scope.Cached = [bool]$opt.Include
+        return $scope
+    }
+    $scope.Paths = $addPaths
+    return $scope
+}
+
+function Get-TaskAuditNames([string]$Dir, [string[]]$GitArgs, [string[]]$Spec) {
+    return @((Invoke-CommitGit -Check 'warn-task-audit' -Dir $Dir -GitArgs (@('-c', 'core.quotepath=off') + $GitArgs + @('--') + $Spec)).Lines | Where-Object { $_ })
+}
+
+function Get-TaskAuditGrowth([string]$RuleDir, $Rule, $Scope) {
+    $diffArgs = @('-c', 'core.quotepath=off', 'diff', '--unified=0', '--no-color', '--no-ext-diff')
+    if ($Scope.Wide) {
+        $run = Invoke-CommitGit -Check 'warn-task-audit' -Dir $RuleDir -GitArgs ($diffArgs + @('HEAD', '--') + @($Rule.Pathspec))
+        if ($run.Code -ne 0 -and -not $run.TimedOut) { $run = Invoke-CommitGit -Check 'warn-task-audit' -Dir $RuleDir -GitArgs ($diffArgs + @('--cached', '--') + @($Rule.Pathspec)) }
+        $diff = @($run.Lines)
+    } else {
+        $inRule = @(Get-TaskAuditNames $RuleDir @('diff', '--name-only', 'HEAD') @($Rule.Pathspec))
+        $work = @()
+        if ($Scope.Paths.Count) { $work = @(Get-TaskAuditNames $Scope.CommitDir @('diff', '--name-only', 'HEAD') @($Scope.Paths) | Where-Object { $inRule -ccontains $_ }) }
+        $cached = @()
+        if ($Scope.Cached) { $cached = @(Get-TaskAuditNames $RuleDir @('diff', '--name-only', '--cached') @($Rule.Pathspec) | Where-Object { $work -cnotcontains $_ }) }
+        $diff = @()
+        if ($work.Count) { $diff += @((Invoke-CommitGit -Check 'warn-task-audit' -Dir $RuleDir -GitArgs ($diffArgs + @('HEAD', '--') + @($work | ForEach-Object { ":(top,literal)$_" }))).Lines) }
+        if ($cached.Count) { $diff += @((Invoke-CommitGit -Check 'warn-task-audit' -Dir $RuleDir -GitArgs ($diffArgs + @('--cached', '--') + @($cached | ForEach-Object { ":(top,literal)$_" }))).Lines) }
+    }
     $net = 0
     foreach ($l in $diff) {
         if ($l -match '^(\+\+\+|---) (a/|b/|/dev/null)') { continue }
@@ -96,11 +135,17 @@ function Get-TaskAuditGrowth([string]$RuleDir, $Rule, [bool]$IncludeUntracked) {
         elseif ($l.StartsWith('-') -and $Rule.Pattern.IsMatch($l.Substring(1))) { $net-- }
     }
     $capped = $false
-    if ($IncludeUntracked) {
-        $files = @((Invoke-CommitGit -Check 'warn-task-audit' -Dir $RuleDir -GitArgs (@('-c', 'core.quotepath=off', 'ls-files', '--others', '--exclude-standard', '--') + @($Rule.Pathspec))).Lines | Where-Object { $_ })
+    $files = @()
+    if ($Scope.UntrackedAll) {
+        $files = @(Get-TaskAuditNames $RuleDir @('ls-files', '--others', '--exclude-standard') @($Rule.Pathspec) | ForEach-Object { Join-Path $RuleDir $_ })
+    } elseif ($Scope.UntrackedPaths.Count) {
+        $ruleNew = @(Get-TaskAuditNames $RuleDir @('ls-files', '--others', '--exclude-standard', '--full-name') @($Rule.Pathspec))
+        $top = [string](@((Invoke-CommitGit -Check 'warn-task-audit' -Dir $RuleDir -GitArgs @('rev-parse', '--show-toplevel')).Lines)[0])
+        $files = @(Get-TaskAuditNames $Scope.CommitDir @('ls-files', '--others', '--exclude-standard', '--full-name') @($Scope.UntrackedPaths) | Where-Object { $ruleNew -ccontains $_ } | ForEach-Object { Join-Path $top $_ })
+    }
+    if ($files.Count) {
         if ($files.Count -gt $script:TaskAuditUntrackedMax) { $capped = $true; $files = $files[0..($script:TaskAuditUntrackedMax - 1)] }
-        foreach ($f in $files) {
-            $full = Join-Path $RuleDir $f
+        foreach ($full in $files) {
             if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
             if ((Get-Item -LiteralPath $full).Length -gt 1MB) { $capped = $true; continue }
             foreach ($line in @(Get-Content -LiteralPath $full -Encoding UTF8 -ErrorAction SilentlyContinue)) {
@@ -140,7 +185,7 @@ function Invoke-WarnTaskAudit {
     $rules = @(Get-TaskAuditRules $agents)
     if (-not $rules.Count) { return New-HookResult }
     $ruleDir = [System.IO.Path]::GetDirectoryName($agents)
-    $preAdd = [regex]::IsMatch($judge.Substring(0, $cm.Index), $script:GitAddRx)
+    $scope = Get-TaskAuditScope $judge $cm $commitDir
 
     $lines = New-Object System.Collections.Generic.List[string]
     $taskTemplate = Get-TaskAuditTaskTemplate $agents
@@ -149,7 +194,7 @@ function Invoke-WarnTaskAudit {
             $lines.Add("  - 규칙을 읽지 못함: AGENTS.md:$($rule.Line) ($($rule.Error)) — 이 줄은 검사되지 않습니다")
             continue
         }
-        $g = Get-TaskAuditGrowth $ruleDir $rule $preAdd
+        $g = Get-TaskAuditGrowth $ruleDir $rule $scope
         if ($g.Net -le 0) { continue }
         $accepted = @($rule.Command) + @($rule.Alternatives)
         if (@($accepted | Where-Object { Test-TaskAuditCommandInMessage $message $_ }).Count) { continue }

@@ -12,7 +12,15 @@
 
 ## §3 무엇을 「이번 커밋의 변경」으로 보는가
 
-`git diff HEAD`(인덱스와 작업 트리)를 쓴다. `--cached` 만 보면 PreToolUse 시점에 아직 스테이징되지 않은 세 형태를 놓친다 — `git add … && git commit`, `git commit -a`, `git commit -- <경로>`. 같은 명령에서 커밋보다 앞에 `git add` 가 있으면 미추적 파일의 줄도 센다. 상한은 `guard-commit-secrets` 와 같은 50개·파일당 1MB 이고, 넘으면 경고 줄에 「일부만 셈」을 붙인다. 커밋에 들어가지 않을 미스테이징 변경까지 세는 과경고는 받아들인다. 경고가 한 번 더 나는 비용이 놓침보다 작다. HEAD 가 없는 초기 저장소면 `--cached` 로 대신한다.
+PreToolUse 시점에는 같은 명령의 `git add` 가 아직 돌지 않아, `--cached` 만 보면 `git add … && git commit`·`git commit -a`·`git commit -- <경로>` 를 놓친다. 그래서 같은 명령을 읽어 커밋에 들 변경을 가른다(`Get-TaskAuditScope`). 커밋 인자 해석은 `guard-commit-comments.ps1` 의 `Get-CommitCommentArgs` 를 호출 시점에 쓴다 — 같은 갈래를 두 검사가 따로 두면 한쪽만 고쳐진다.
+
+- **`git add -A`·`--all`·`-u`·`.` 또는 `git commit -a` 면 `git diff HEAD`(인덱스와 작업 트리) 전체와, add 면 규칙 경로의 미추적 파일**
+- **`git commit [--] <경로…>` 면 그 경로의 `git diff HEAD` 만** — git 은 경로를 주면 기본이 `--only` 라 다른 경로의 staged 는 커밋에 들지 않는다(병행 세션 커밋이 이 꼴이다 — 레포 `docs/conventions.md` 2026-09-10). `-i`/`--include` 면 staged 를 더한다.
+- **`git add <경로…>` 면 staged 와 그 경로의 `git diff HEAD`·미추적 파일**, add 도 경로도 없으면 staged 만.
+
+셈은 늘 규칙 경로(pathspec) 안의 파일만이고, 작업 트리 쪽과 staged 쪽에 같은 파일이 있으면 작업 트리 쪽(staged 를 품는다)으로 한 번만 센다. 미추적 파일 상한은 `guard-commit-secrets` 와 같은 50개·파일당 1MB 이고, 넘으면 경고 줄에 「일부만 셈」을 붙인다. 커밋 인자 해석 함수가 없으면(파일 부재) 종전처럼 `git diff HEAD` 전체로 넓게 센다. HEAD 가 없는 초기 저장소면 `--cached` 로 대신한다.
+
+종전 판은 미스테이징 변경까지 `git diff HEAD` 로 세고 그 과경고를 「경고 한 번의 비용」으로 받아들였다. 실제 비용은 그보다 컸다 — 2026-11-20 Karina plan 11 의 T13 문서 커밋(`git add plan.md docs/…`)이 작업 트리의 T15 RED 시험 3개를 「증가 3줄」로 경고받아, 감사(`test_doc_audit` 85초)를 다시 돌리고 빈 보충 커밋 1개를 남겼다.
 
 순증은 일치하는 `+` 줄 수에서 일치하는 `-` 줄 수를 뺀 **전체 합산**이다. 파일 사이 이동(A 에서 지우고 B 에 더함)에 경고하지 않으려는 선택이다. 대가로 서로 다른 항목이 두 파일에서 상쇄되는 경우는 놓친다. 그 경우는 회차 끝 전체 테스트가 잡는 기존 경로로 돌아간다.
 

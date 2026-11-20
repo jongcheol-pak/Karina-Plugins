@@ -106,6 +106,26 @@ try {
 
     Reset-TaRepo
     ('pub fn old() {}' + $nl + 'pub fn added() {}') | Set-Content (Join-Path $taRoot 'src/lib.rs')
+    ('# 문서' + $nl + '본문') | Set-Content (Join-Path $taRoot 'README.md')
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $taBodyNone 'git add README.md && ')
+    Assert-Case -Name 'task-audit: add 명시 경로 밖의 미스테이징 증가는 세지 않는다 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+    & git -C $taRoot add README.md 2>$null
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $taBodyNone)
+    Assert-Case -Name 'task-audit: add 없는 커밋은 staged 만 센다 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $taBodyNone 'git add src/lib.rs && ')
+    Assert-Case -Name 'task-audit: add 명시 경로의 증가 → 경고' -R $r -ExpectExit 0 -ExpectContains $taCmd
+    $r = Invoke-TaCase ((New-TaCommitCmd $taTitle $taBodyNone) + ' -- src/lib.rs')
+    Assert-Case -Name 'task-audit: commit -- <경로> 의 미스테이징 증가 → 경고' -R $r -ExpectExit 0 -ExpectContains $taCmd
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $taBodyNone 'git add -A && ')
+    Assert-Case -Name 'task-audit: add -A 는 작업 트리 전체를 센다 → 경고' -R $r -ExpectExit 0 -ExpectContains $taCmd
+    & git -C $taRoot add src/lib.rs 2>$null
+    $r = Invoke-TaCase ((New-TaCommitCmd $taTitle $taBodyNone) + ' -- README.md')
+    Assert-Case -Name 'task-audit: commit -- <경로> 는 다른 경로의 staged 증가를 세지 않는다 → 무출력' -R $r -ExpectExit 0 -ExpectSilent $true
+    $r = Invoke-TaCase ((New-TaCommitCmd $taTitle $taBodyNone '' '-i ') + ' -- README.md')
+    Assert-Case -Name 'task-audit: commit -i -- <경로> 는 staged 증가도 센다 → 경고' -R $r -ExpectExit 0 -ExpectContains $taCmd
+
+    Reset-TaRepo
+    ('pub fn old() {}' + $nl + 'pub fn added() {}') | Set-Content (Join-Path $taRoot 'src/lib.rs')
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $taBodyNone '' '-a ')
     Assert-Case -Name 'task-audit: -a 커밋의 미스테이징 변경 → 경고' -R $r -ExpectExit 0 -ExpectContains $taCmd
 
