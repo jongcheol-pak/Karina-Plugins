@@ -561,6 +561,19 @@ if (-not (Test-Path -LiteralPath $ptJunctionWin)) { New-Item -ItemType Junction 
 if (-not (Test-Path -LiteralPath (Join-Path $ptFixture 'pt-hardlink-source.md'))) { Set-Content -LiteralPath (Join-Path $ptFixture 'pt-hardlink-source.md') -Value 'source' }
 if (-not (Test-Path -LiteralPath (Join-Path $ptPlainDir 'plan.md'))) { Set-Content -LiteralPath (Join-Path $ptPlainDir 'plan.md') -Value 'plain' }
 if (-not (Test-Path -LiteralPath (Join-Path $ptHardDir 'plan.md'))) { New-Item -ItemType HardLink -Path (Join-Path $ptHardDir 'plan.md') -Target (Join-Path $ptFixture 'pt-hardlink-source.md') -ErrorAction SilentlyContinue | Out-Null }
+$ptSysDir = Join-Path $ptFixture 'pt-syscookie'
+$ptLnkDir = Join-Path $ptFixture 'pt-lnkfile'
+$ptLnkParent = Join-Path $ptFixture 'pt-lnkdir'
+New-Item -ItemType Directory -Path $ptSysDir, $ptLnkDir, $ptLnkParent -Force | Out-Null
+$ptSysFile = Join-Path $ptSysDir 'plan.md'
+if (-not [System.IO.File]::Exists($ptSysFile)) {
+    [System.IO.File]::WriteAllText($ptSysFile, '!<symlink>')
+    [System.IO.File]::SetAttributes($ptSysFile, [System.IO.FileAttributes]::System)
+}
+foreach ($f in @((Join-Path $ptLnkDir 'plan.md.lnk'), (Join-Path $ptLnkParent 'd.lnk'))) {
+    if (-not [System.IO.File]::Exists($f)) { [System.IO.File]::WriteAllText($f, 'L') }
+}
+$ptFix = $ptFixture -replace '\\', '/'
 $ptJunction = $ptJunctionWin -replace '\\', '/'
 $ptHard = $ptHardDir -replace '\\', '/'
 $ptPlain = $ptPlainDir -replace '\\', '/'
@@ -623,6 +636,9 @@ $ptDeny = @(
     @{ Name = '같은 명령에서 mklink 로 junction 을 만든 뒤 그 아래 plan.md 는 차단'; Cmd = ('cmd //c mklink /J "' + $ptTemp + '/ptl" D:/repo && echo x > "' + $ptTemp + '/ptl/plan.md"') },
     @{ Name = '이미 있는 junction 을 거친 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptJunction + '/plan.md"') },
     @{ Name = '이미 있는 하드링크인 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptHard + '/plan.md"') },
+    @{ Name = '이미 있는 system 속성 파일(Cygwin식 심링크 쿠키)인 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptFix + '/pt-syscookie/plan.md"') },
+    @{ Name = '같은 이름의 .lnk 바로가기가 있는 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptFix + '/pt-lnkfile/plan.md"') },
+    @{ Name = '부모 폴더 이름의 .lnk 바로가기가 있는 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptFix + '/pt-lnkdir/d/plan.md"') },
     @{ Name = '끝에 점을 붙인 레포 plan.md 는 차단(Windows 가 끝 점을 뗀다)'; Cmd = 'Set-Content -Path D:/repo/plan.md. -Value x' },
     @{ Name = '끝에 점을 붙인 레포 plan.md 리다이렉트는 차단'; Cmd = 'echo x > plan.md.' },
     @{ Name = '역슬래시로 쓴 절대 Temp 경로는 차단(슬래시로만 면제한다)'; Cmd = ('echo x > "' + ($ptTemp -replace '/', '\') + '\fx\plan.md"') },

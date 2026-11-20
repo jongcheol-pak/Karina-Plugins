@@ -316,8 +316,9 @@ function Test-LiteralTempPath([string]$Path, [string]$TempRoot) {
     while ($node -and $node.Length -gt $TempRoot.Length) {
         if ([System.IO.File]::Exists($node) -or [System.IO.Directory]::Exists($node)) {
             $attr = try { [System.IO.File]::GetAttributes($node) } catch { return $false }
-            if ($attr -band [System.IO.FileAttributes]::ReparsePoint) { return $false }
+            if ($attr -band ([System.IO.FileAttributes]::ReparsePoint -bor [System.IO.FileAttributes]::System)) { return $false }
         }
+        if ([System.IO.File]::Exists($node + '.lnk')) { return $false }
         $node = Split-Path -Parent $node
     }
     if ([System.IO.File]::Exists($full)) {
