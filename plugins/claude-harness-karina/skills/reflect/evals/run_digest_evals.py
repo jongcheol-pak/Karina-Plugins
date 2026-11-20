@@ -591,6 +591,13 @@ def bash_time_summed_by_kind():
 
 
 @case
+def git_after_cd_is_other():
+    recs = tool_pair('b1', 'Bash', 0, 10, 'cd "D:/repo x"; git commit -m "test 추가"') + \
+        tool_pair('b2', 'Bash', 20, 25, "cd /repo && git log --grep check")
+    assert bash_lines(run_timed(recs)) == ['# Bash 소요: 시험 0초 0회 · 검사·형식 0초 0회 · 기동·빌드 0초 0회 · 기타 15초 2회'], recs
+
+
+@case
 def audit_has_no_bash_line():
     out = run_timed(tool_pair('b1', 'Bash', 0, 100, 'cargo test'), extra=['--audit'])
     assert bash_lines(out) == [], out

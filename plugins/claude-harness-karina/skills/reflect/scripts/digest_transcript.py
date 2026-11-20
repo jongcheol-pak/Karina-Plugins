@@ -27,7 +27,7 @@ Skill 호출(레포·사용자 스킬)은 `<뿌리> › <자식>` 구간이 되�
 레코드로 갈려 같은 `usage` 가 반복된다. 반올림한 작업 시간이 0초이고 토큰도 없는 구간은 싣지 않는다.
 Bash 소요 줄 — 구간 줄 앞에 `# Bash 소요: 시험 <N>초 <k>회 · 검사·형식 … · 기동·빌드 … · 기타 …` 한 줄(갈래 넷을 늘 싣는다).
 본 전사·서브에이전트 전사의 Bash 호출마다 SLOW 와 같은 시작 시각에서 tool_result 시각까지를 그 명령의 갈래에 더한다. 갈래는
-`git` 으로 시작하면 기타, 아니면 BASH_KINDS 의 순서대로 처음 맞는 것이고 없으면 기타다 — 이은 명령은 첫 일치 갈래에 통째로 든다.
+`git` 으로 시작하면(앞의 `cd <경로>;`·`cd <경로> &&` 는 건너뛴다) 기타, 아니면 BASH_KINDS 의 순서대로 처음 맞는 것이고 없으면 기타다 — 이은 명령은 첫 일치 갈래에 통째로 든다.
 `--audit`(implement 완료 리뷰의 전사 대조용) — 서브에이전트 전사를 읽지 않고 A: 줄 · Bash·Skill 의 T: 줄 ·
 이미지(IMAGE_EXT) Read 의 T: 줄 · `<command-name>` 이 든 U: 줄만 남긴다(Skill·slash command 줄은 대조 범위를 가르는 표지
 · 이미지 Read 줄은 완료 리뷰가 화면 판정의 스크린샷을 열어 봤는지 대조하는 재료다). 머리에 `# 모드: audit` 을 싣는다.
@@ -67,7 +67,7 @@ BASH_KINDS = (
     ('기동·빌드', re.compile(r'\b(build|run|launch|start)\b')),
 )
 BASH_OTHER = '기타'
-GIT_COMMAND = re.compile(r'^\s*git\b')
+GIT_COMMAND = re.compile(r'''^\s*(?:cd\s+(?:"[^"]*"|'[^']*'|\S+)\s*(?:;|&&)\s*)*git\b''')
 HANGUL = re.compile('[가-힣]')
 HANGUL_FREE_MARK = 'A: [한글 없음] '
 
