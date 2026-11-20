@@ -234,6 +234,22 @@ $r = Invoke-CheckPlan (New-ScreenPlan $cpBaseScreen) (New-UiPlanDir "# AGENTS.md
 Assert-Case -Name "check-plan: 검증 스킬이 없으면 기준선 촬영 task 를 요구하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'screen-baseline'
 $r = Invoke-CheckPlan (New-ScreenPlan $cpScreen) (New-UiPlanDir $cpVerifyAgents)
 Assert-Case -Name "check-plan: 통과 조건이 기준선 일치가 아니면 기준선 촬영 task 를 요구하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'screen-baseline'
+$cpOriginAgents = "# AGENTS.md`n`n- **UI 재구현 기준 소스**: ``docs/port.md```n"
+$cpOrigin = '- **원본**: `upstream/ui/menu.tsx` — 메뉴 목록 옮김 · 단축키 표시 미룸(키 체계가 다르다) · 열림 애니메이션 이탈(미지원)'
+$r = Invoke-CheckPlan (New-ScreenPlan $cpScreen) (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 원본 이식 레포의 화면 task 에 원본 줄이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-missing T1'
+$r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n" + $cpOrigin)) (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 원본 이식 레포의 화면 task 에 원본 줄이 있으면 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n- **원본**: ``upstream/ui/menu.tsx`` — 메뉴 목록")) (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 원본 줄에 옮김·미룸·이탈이 하나도 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-line T1 verdict'
+$r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n- **원본**: 메뉴 목록 옮김")) (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 원본 줄에 백틱 원본 경로가 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-line T1 path'
+$r = Invoke-CheckPlan ((New-ScreenPlan $cpScreen).Replace('(RED)', '(RED) [원본 없음 — 이 앱 고유 화면]')) (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 사유를 단 [원본 없음] 표지는 원본 줄을 대신한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckPlan ((New-ScreenPlan $cpScreen).Replace('(RED)', '(RED) [원본 없음]')) (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 사유 없는 [원본 없음] 은 표지가 아니다" -R $r -ExpectExit 1 -ExpectContains 'origin-missing T1'
+$r = Invoke-CheckPlan (New-ScreenPlan $cpScreen) (New-UiPlanDir $cpVerifyAgents)
+Assert-Case -Name "check-plan: 원본 이식을 선언하지 않은 레포는 원본 줄을 요구하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'origin-'
 
 # ---- 펜스 · 입력 오류 ----
 $r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', ("| 크기 | ``wc -c a.ps1`` | 10 |`n`n``````text`n| 가짜 |  | 빈 |`n## 가짜 절`n- [ ] T9-9 가짜`n```````n")))

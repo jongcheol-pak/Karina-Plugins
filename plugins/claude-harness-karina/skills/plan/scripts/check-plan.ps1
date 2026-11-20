@@ -36,6 +36,9 @@
 #                                맞는데(-like · 패턴은 그 AGENTS.md 폴더 기준 — plan 폴더가 그 아래면 사이 경로를 붙여 맞춘다)
 #                                「- **화면**:」 줄도 Files 줄의 「[화면 없음 — <사유>]」 표지도 없음(사유가 빈 표지는 표지가 아니다)
 #                                (UI 경로 줄이 없고 Verify (앱 조작) 이 스킬을 가리키면 「check-plan: skip screen-missing no-ui-path」)
+#   origin-missing T<N>          AGENTS.md(같은 탐색)에 「- **UI 재구현 기준 소스**:」 줄이 있는데 「- **화면**:」 줄이 있는 task 에
+#                                「- **원본**:」 줄도 Files 줄의 「[원본 없음 — <사유>]」 표지도 없음(사유가 빈 표지는 표지가 아니다)
+#   origin-line T<N> <요소>      「- **원본**:」 줄에 path(백틱 원본 경로)·verdict(옮김·미룸·이탈 중 하나)가 없음 — 선언과 무관하게 줄이 있으면 잰다
 #   screen-baseline T<N>         Verify (앱 조작) 이 스킬을 가리키는데 화면 줄 통과 조건이 「기준선 일치」 로 시작하고
 #                                그 task 첫 하위 항목(T<N>-1) 줄에 「기준선」 이 없음(편집 전 기준선 촬영 자리)
 #   plan-check exit <n> log <파일>  plan 폴더에서 git 최상위까지 올라가며 찾은 AGENTS.md 의 「- **Plan check**: `<명령>`」 이
@@ -406,6 +409,11 @@ if (Find-Section $tasksTitle) {
     $baselineWord = Get-Text @(0xAE30, 0xC900, 0xC120)    # 기준선
     $baselineMatch = $baselineWord + ' ' + (Get-Text @(0xC77C, 0xCE58))    # 기준선 일치
     $noScreenRx = '\[' + (Get-Text @(0xD654, 0xBA74)) + '\s+' + (Get-Text @(0xC5C6, 0xC74C)) + '\s*' + [char]0x2014 + '\s*[^\]\s]'    # [화면 없음 — <사유>]
+    $originWord = Get-Text @(0xC6D0, 0xBCF8)
+    $originLabel = '- **' + $originWord + '**:'
+    $originDeclared = [bool](Get-AgentsLineValue $uiAgents ('UI ' + (Get-Text @(0xC7AC, 0xAD6C, 0xD604, 0x20, 0xAE30, 0xC900, 0x20, 0xC18C, 0xC2A4))))
+    $noOriginRx = '\[' + $originWord + '\s+' + (Get-Text @(0xC5C6, 0xC74C)) + '\s*' + [char]0x2014 + '\s*[^\]\s]'
+    $originVerdictRx = (Get-Text @(0xC62E, 0xAE40)) + '|' + (Get-Text @(0xBBF8, 0xB8F8)) + '|' + (Get-Text @(0xC774, 0xD0C8))
     foreach ($b in $blocks) {
         $tag = 'T' + $b.Id
         $items = 0
@@ -450,6 +458,15 @@ if (Find-Section $tasksTitle) {
             if (@($paths | Where-Object { $p = $_; @($uiPatterns | Where-Object { $p -like $_ }).Count }).Count) {
                 Add-Problem $files.N ('screen-missing ' + $tag)
             }
+        }
+        $origins = @($b.Lines | Where-Object { Test-Prefix $_.Text $originLabel })
+        foreach ($o in $origins) {
+            if ($o.Text -notmatch '`[^`]+`') { Add-Problem $o.N ('origin-line ' + $tag + ' path') }
+            if ($o.Text -notmatch $originVerdictRx) { Add-Problem $o.N ('origin-line ' + $tag + ' verdict') }
+        }
+        if ($originDeclared -and -not $origins.Count -and @($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabel }).Count -and
+            -not ($files -and [regex]::IsMatch($files.Text, $noOriginRx))) {
+            Add-Problem $b.N ('origin-missing ' + $tag)
         }
     }
 }
