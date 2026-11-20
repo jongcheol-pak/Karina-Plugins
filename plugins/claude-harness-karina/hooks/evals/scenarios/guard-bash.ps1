@@ -570,7 +570,11 @@ $ptDeny = @(
     @{ Name = 'Temp 로 cd 한 뒤 레포로 다시 cd 한 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP" && cd "D:/repo" && echo x > plan.md' },
     @{ Name = '서브셸 ( cd <Temp> ) 뒤 상대 plan.md 는 차단'; Cmd = '(cd "$TEMP") && echo x > plan.md' },
     @{ Name = 'Temp 로 대입한 변수를 . 로 다시 대입하면 차단'; Cmd = 'D="$TEMP/x"; D=.; echo x > "$D/plan.md"' },
-    @{ Name = '%TEMP%/plan.md 는 차단'; Cmd = 'echo x > "%TEMP%/plan.md"' }
+    @{ Name = '%TEMP%/plan.md 는 차단'; Cmd = 'echo x > "%TEMP%/plan.md"' },
+    @{ Name = 'Temp 로 cd 한 뒤 cd - 로 돌아온 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP/x" && cd - && echo x > plan.md' },
+    @{ Name = 'pushd <Temp> 뒤 popd 한 상대 plan.md 는 차단'; Cmd = 'pushd "$TEMP/x" && popd && echo x > plan.md' },
+    @{ Name = 'Temp 로 cd 한 뒤 cd ~/… 한 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP/x" && cd ~/repo && echo x > plan.md' },
+    @{ Name = 'Temp 로 cd 한 뒤 인자 없는 cd 뒤 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP/x" && cd && echo x > plan.md' }
 )
 foreach ($c in $ptDeny) {
     $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)

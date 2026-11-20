@@ -346,10 +346,12 @@ function Test-TempPlanTarget([string]$Arg, [string]$Cmd) {
     $cdRx = '(?:^|[\s;&|])(?:cd|pushd|Set-Location|sl)\s+("[^"]*"|''[^'']*''|[^\s;&|)]+)'
     $cds = [regex]::Matches($Cmd, $cdRx)
     if ($cds.Count -eq 0 -or $cds[0].Index -gt $Cmd.IndexOf('plan.md')) { return $false }
+    $moves = [regex]::Matches($Cmd, '(?:^|[\s;&|])(?:cd|pushd|Set-Location|sl|popd|Pop-Location)(?=$|[\s;&|)])')
+    if ($moves.Count -ne $cds.Count) { return $false }
     $cwd = $null
     foreach ($c in $cds) {
         $to = Expand-TempShellPath $c.Groups[1].Value $assigned $tempRoot
-        if ($null -eq $to) { return $false }
+        if ($null -eq $to -or $to -match '^[-~\\/]') { return $false }
         if ($to -notmatch '^[A-Za-z]:[\\/]') {
             if (-not $cwd) { return $false }
             $to = Join-Path $cwd $to
