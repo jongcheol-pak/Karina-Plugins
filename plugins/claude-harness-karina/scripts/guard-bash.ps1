@@ -254,10 +254,13 @@ function Invoke-WarnDangerousAssignment {
 function Get-ShellWriteHits {
     param([string]$cmd, [scriptblock]$IsTarget)
     $assigned = @{}
-    foreach ($m in [regex]::Matches($cmd, '(?:^|[\s;&|("''])\s*\$?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:[''"]([^''"]*)[''"]|([^\s;&|''"()]+))')) {
-        $name = $m.Groups[1].Value
-        if (-not $assigned.ContainsKey($name)) { $assigned[$name] = New-Object System.Collections.Generic.List[string] }
-        $assigned[$name].Add(($m.Groups[2].Value + $m.Groups[3].Value).Trim())
+    $assignHead = '(?:^|[\s;&|("''])\s*\$?([A-Za-z_][A-Za-z0-9_]*)\s*='
+    foreach ($value in '\s*[''"]([^''"]*)[''"]', '([^\s;&|''"()]+)') {
+        foreach ($m in [regex]::Matches($cmd, $assignHead + $value)) {
+            $name = $m.Groups[1].Value
+            if (-not $assigned.ContainsKey($name)) { $assigned[$name] = New-Object System.Collections.Generic.List[string] }
+            $assigned[$name].Add($m.Groups[2].Value.Trim())
+        }
     }
     function Test-PlanTarget([string]$arg) {
         if ([string]::IsNullOrWhiteSpace($arg)) { return $false }
@@ -266,7 +269,8 @@ function Get-ShellWriteHits {
             foreach ($v in $assigned[$Matches[1]]) { if (& $IsTarget $v) { return $true } }
             return $false
         }
-        return [bool](& $IsTarget $a)
+        if (& $IsTarget $a) { return $true }
+        return [bool](& $IsTarget ($a -replace '["'']', ''))
     }
 
     $hits = New-Object System.Collections.Generic.List[string]

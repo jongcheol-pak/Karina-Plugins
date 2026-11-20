@@ -617,6 +617,11 @@ $ptDeny = @(
     @{ Name = '줄 연속 뒤에 온 리다이렉트 대상은 차단'; Cmd = "echo x > \`nplan.md" },
     @{ Name = '>& 리다이렉트의 plan.md 는 차단'; Cmd = 'echo x >& plan.md' },
     @{ Name = '>| 리다이렉트의 plan.md 는 차단'; Cmd = 'echo x >| plan.md' },
+    @{ Name = '맨 글자 뒤에 따옴표 조각을 이은 ./"plan.md" 리다이렉트는 차단'; Cmd = 'echo x > ./"plan.md"' },
+    @{ Name = '빈 대입 뒤에 온 따옴표 대입 변수 대상은 차단'; Cmd = 'x= f="plan.md"; echo hi > $f' },
+    @{ Name = '연쇄 대입한 변수의 리다이렉트 대상은 차단'; Cmd = '$x = $f = ''plan.md''; ''hi'' > $f' },
+    @{ Name = '연쇄 대입한 변수의 Set-Content 대상은 차단'; Cmd = '$x = $f = ''plan.md''; Set-Content $f ''hi''' },
+    @{ Name = 'python 연쇄 대입 뒤 open(f, w) 는 차단'; Cmd = 'python -c "q = f = ''plan.md''; open(f, ''w'').write(''x'')"' },
     @{ Name = '역슬래시로 쓴 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + ($ptTemp -replace '/', '\') + '\fx\plan.md"') },
     @{ Name = '닫는 큰따옴표 뒤에 꼬리를 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptTemp + '/x/plan.md"/../../../plan.md') },
     @{ Name = '닫는 작은따옴표 뒤에 꼬리를 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > ''' + $ptTemp + '/x/plan.md''/../../../plan.md') },
@@ -669,6 +674,8 @@ foreach ($c in $ptDeny) {
 }
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo x > (''C:/Users/u/.claude/plugins/cache/karina-plugins/karina/1.0.0/scripts/guard-bash.ps1'')')
 Assert-Case -Name "installed-write — 괄호 식으로 쓴 설치본 스크립트 리다이렉트는 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'x= f="C:/Users/u/.claude/plugins/cache/karina-plugins/karina/1.0.0/scripts/guard-bash.ps1"; echo hi > $f')
+Assert-Case -Name "installed-write — 빈 대입 뒤에 온 따옴표 대입 변수의 설치본 스크립트 리다이렉트는 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'echo done 2>&1 >&2; grep -c x plan.md > count.txt')
 Assert-Case -Name "plan-write — 2>&1·>&2 와 다른 파일로 가는 리다이렉트는 통과 (음성 짝)" -R $r -ExpectExit 0 -ExpectNotContains $ptBlock
 $ptPsWild = 'Set-Content -Path "' + $ptTemp + '/fx/plan.md" -Value x; Add-Content ''D:/repo/pla?.md'' y'
