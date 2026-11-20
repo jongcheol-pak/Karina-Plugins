@@ -1,8 +1,5 @@
 ﻿# scenarios/check-plan.ps1 — check-plan 시나리오 (dot-source 전용, 단독 실행 금지)
 # 호출자(run-hook-evals.ps1)의 공용 헬퍼(Assert-Case)와 공유 변수($pluginRoot·$work)를 그대로 쓴다.
-# 무엇을 재는가: plan.md 결정적 검사(skills/plan/scripts/check-plan.ps1)의 판정 갈래마다 한 케이스 —
-#   증거 대조(-Base) — 커밋 없음·본문 증거 없음·T10≠T1·BASE 이전 제외·통과·HUMAN-VERIFY·불요/열린 task 제외·BASE 오류·git 밖·PS 5.1.
-#   코드와 뜻의 정본은 스크립트 머리 주석이다.
 # 정상 plan 하나를 두고 케이스가 한 군데씩 망가뜨린다 — 정상 형상이 여러 벌이면 한쪽만 고친 채 갈린다.
 # 대상은 hook 이 아니라 스킬 로컬 헬퍼라 `Invoke-Hook` 을 쓰지 않고 인자를 넘기는 자식 셸을 직접 띄운다.
 if (Test-HookSelected @('check-plan')) {
