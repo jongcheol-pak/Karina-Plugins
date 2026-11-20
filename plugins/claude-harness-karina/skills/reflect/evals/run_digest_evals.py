@@ -529,6 +529,73 @@ def early_attachment_not_double_counted():
     assert segment_lines(out)[0].startswith('# 구간 (스킬 밖): 작업 12초 · '), segment_lines(out)
 
 
+def skill_use(tid, name, sec):
+    return at(rec_assistant([{'type': 'tool_use', 'id': tid, 'name': 'Skill', 'input': {'skill': name}}]), sec)
+
+
+def segment_names(out):
+    return [s[len('# 구간 '):].split(': 작업 ')[0] for s in segment_lines(out)]
+
+
+def bash_lines(out):
+    return [l for l in out.splitlines() if l.startswith('# Bash 소요:')]
+
+
+@case
+def nested_skill_under_plugin_root():
+    recs = [skill_use('s1', 'karina:implement', 0), at(rec_user_blocks([tool_result('s1', '발동')]), 1),
+            skill_use('s2', 'verify-karina', 10), at(rec_user_blocks([tool_result('s2', '발동')]), 11),
+            at(rec_assistant([{'type': 'text', 'text': '다음 task'}]), 31)]
+    segs = segment_lines(run_timed(recs))
+    assert [s.split(' · ')[0] for s in segs] == ['# 구간 karina:implement: 작업 10초',
+                                                 '# 구간 karina:implement › verify-karina: 작업 21초'], segs
+
+
+@case
+def first_repo_skill_outside_is_root():
+    recs = [skill_use('s1', 'verify-karina', 0), at(rec_assistant([{'type': 'text', 'text': '조작'}]), 10)]
+    assert segment_names(run_timed(recs)) == ['verify-karina'], recs
+
+
+@case
+def plugin_skill_starts_new_root():
+    recs = [skill_use('s1', 'karina:implement', 0), skill_use('s2', 'verify-karina', 5),
+            skill_use('s3', 'karina:reflect', 10), at(rec_assistant([{'type': 'text', 'text': '회고'}]), 20)]
+    out = run_timed(recs)
+    assert segment_names(out) == ['karina:implement', 'karina:implement › verify-karina', 'karina:reflect'], out
+
+
+@case
+def local_command_restores_root():
+    recs = [skill_use('s1', 'karina:implement', 0), skill_use('s2', 'verify-karina', 5),
+            at(rec_user_blocks([tool_result('s2', '발동')]), 6),
+            at(rec_user('<command-name>/clear</command-name>\n<command-message>clear</command-message>'), 10),
+            at({'type': 'system', 'subtype': 'local_command', 'content': '<local-command-stdout></local-command-stdout>',
+                'commandRun': {'command': 'clear', 'args': ''}}, 12),
+            skill_use('s3', 'karina-computer-use', 20), at(rec_assistant([{'type': 'text', 'text': '끝'}]), 30)]
+    out = run_timed(recs)
+    assert segment_names(out) == ['karina:implement', 'karina:implement › verify-karina',
+                                  'karina:implement › karina-computer-use'], out
+
+
+@case
+def bash_time_summed_by_kind():
+    recs = tool_pair('b1', 'Bash', 0, 100, 'cargo test --no-fail-fast > t.txt 2>&1') + \
+        tool_pair('b2', 'Bash', 200, 230, 'cargo clippy --all-targets -- -D warnings') + \
+        tool_pair('b3', 'Bash', 300, 360, 'pwsh -File helpers/launch.ps1 -Repo .') + \
+        tool_pair('b4', 'Bash', 400, 405, 'git commit -m "test 추가"') + \
+        tool_pair('b5', 'Bash', 500, 502, 'ls')
+    sub = tool_pair('c1', 'Bash', 0, 20, 'python docs/test-task.py out.txt')
+    out = run_timed(recs, [('agent-abc.jsonl', sub, None)])
+    assert bash_lines(out) == ['# Bash 소요: 시험 120초 2회 · 검사·형식 30초 1회 · 기동·빌드 60초 1회 · 기타 7초 2회'], out
+
+
+@case
+def audit_has_no_bash_line():
+    out = run_timed(tool_pair('b1', 'Bash', 0, 100, 'cargo test'), extra=['--audit'])
+    assert bash_lines(out) == [], out
+
+
 @case
 def audit_has_no_timing_lines():
     recs = [at(rec_user('<command-name>/karina:implement</command-name>'), 0)] + \

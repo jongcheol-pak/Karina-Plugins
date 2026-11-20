@@ -16,19 +16,24 @@
 머리에 읽은 파일·구간 줄·갈래별 줄 수·총 줄 수를 싣는다 — 리뷰어가 총 줄 수까지 나눠 읽는다.
 구간 줄 — `# 구간 <이름>: 작업 <N>초 · 토큰 입력 <a> · 캐시읽기 <b> · 캐시쓰기 <c> · 출력 <d>`. 본 전사는 `Skill`
 tool_use 와 `<command-name>` 이 든 사용자 레코드(slash command — 앞 `/` 를 뗀다 · 바로 뒤에 같은 명령의
-`type: system`·`subtype: local_command` 레코드가 오는 내장 명령(`/clear` 등)은 앞 구간으로 되돌린다)가 구간을 바꾸고 첫 경계 앞은
-`(스킬 밖)` 이다 · 서브에이전트 전사는 파일마다 `서브에이전트 <meta.json 의 agentType | 파일 이름>` 한 구간이다.
+`type: system`·`subtype: local_command` 레코드가 오는 내장 명령(`/clear` 등)은 앞 구간·뿌리로 되돌린다)가 구간을 바꾸고 첫 경계 앞은
+`(스킬 밖)` 이다 · 구간 뿌리는 slash command · 이름에 `:` 가 든 플러그인 스킬 · 뿌리가 `(스킬 밖)` 일 때의 스킬이고, 그 밖의
+Skill 호출(레포·사용자 스킬)은 `<뿌리> › <자식>` 구간이 되어 다음 경계까지 잇는다(자식이 끝나는 표지는 전사에 없다 — 뿌리의
+소계는 `<뿌리>` 와 `<뿌리> › *` 의 합이다) · 서브에이전트 전사는 파일마다 `서브에이전트 <meta.json 의 agentType | 파일 이름>` 한 구간이다.
 작업 시간은 같은 전사 안 연속 레코드 `timestamp` 간격의 합이고(간격은 앞 레코드의 구간에 든다 · 앞 시각은 지금까지 본
 가장 늦은 시각이다 — 첨부 레코드는 앞 레코드보다 이른 시각으로 기록돼 그대로 쓰면 겹친 간격을 두 번 센다), 사용자 text
 레코드(slash command·대기 중 들어온 알림 포함)나 SLOW_EXCLUDE 도구의 결과로 끝나는 간격은 뺀다 — 사용자 대기와
 서브에이전트 대기(그 시간은 서브에이전트 구간이 센다)다. 토큰은 `message.id` 마다 한 번만 센다 — 한 응답이 블록마다
 레코드로 갈려 같은 `usage` 가 반복된다. 반올림한 작업 시간이 0초이고 토큰도 없는 구간은 싣지 않는다.
+Bash 소요 줄 — 구간 줄 앞에 `# Bash 소요: 시험 <N>초 <k>회 · 검사·형식 … · 기동·빌드 … · 기타 …` 한 줄(갈래 넷을 늘 싣는다).
+본 전사·서브에이전트 전사의 Bash 호출마다 SLOW 와 같은 시작 시각에서 tool_result 시각까지를 그 명령의 갈래에 더한다. 갈래는
+`git` 으로 시작하면 기타, 아니면 BASH_KINDS 의 순서대로 처음 맞는 것이고 없으면 기타다 — 이은 명령은 첫 일치 갈래에 통째로 든다.
 `--audit`(implement 완료 리뷰의 전사 대조용) — 서브에이전트 전사를 읽지 않고 A: 줄 · Bash·Skill 의 T: 줄 ·
 이미지(IMAGE_EXT) Read 의 T: 줄 · `<command-name>` 이 든 U: 줄만 남긴다(Skill·slash command 줄은 대조 범위를 가르는 표지
 · 이미지 Read 줄은 완료 리뷰가 화면 판정의 스크린샷을 열어 봤는지 대조하는 재료다). 머리에 `# 모드: audit` 을 싣는다.
   한글 음절(가-힣)이 하나도 없는 A: 줄은 `A: [한글 없음] …` 으로 표지하고 그 수를 머리 `# 한글 없는 A: <N>` 에 싣는다
   — implement·pr 의 「상태 메모도 한글로」 위반을 완료 리뷰가 세는 재료는 대조 범위 안의 표지 줄이고, 머리 수는 세션 전체 값이다.
-  audit 은 SLOW: 줄·구간 줄을 내지 않는다.
+  audit 은 SLOW: 줄·Bash 소요 줄·구간 줄을 내지 않는다.
 
 종료 코드: 0 정상 · 2 세션 판정 실패(ID 없음·파일 0개·2개 이상) · 3 인식한 레코드 0(전사 형식이 바뀌었을 수 있다).
 전사 형식은 Claude Code 내부 형식이라 문서화돼 있지 않다 — 2.1.306 실측 기준이다.
@@ -55,6 +60,14 @@ PERSISTED = re.compile(r'<persisted-output>\s*Output too large \(([\d.]+)(KB|MB)
 AUDIT_KINDS = ('U', 'A', 'T')
 AUDIT_TOOLS = ('T: Bash ', 'T: Skill ')
 IMAGE_EXT = ('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp')
+NEST_MARK = ' › '
+BASH_KINDS = (
+    ('시험', re.compile(r'\b(test|tests|pytest)\b|test[-_]task|\bevals?\b|[-_]evals?\b')),
+    ('검사·형식', re.compile(r'\b(checks?|fmt|clippy|lint|format)\b|drift|audit')),
+    ('기동·빌드', re.compile(r'\b(build|run|launch|start)\b')),
+)
+BASH_OTHER = '기타'
+GIT_COMMAND = re.compile(r'^\s*git\b')
 HANGUL = re.compile('[가-힣]')
 HANGUL_FREE_MARK = 'A: [한글 없음] '
 
@@ -125,6 +138,36 @@ def slow_line(b, tools, ts):
     return ('SLOW: %s %d초 %s' % (name, round(sec), cut(hint, BIG_HEAD))).rstrip()
 
 
+def bash_kind(command):
+    if GIT_COMMAND.match(command):
+        return BASH_OTHER
+    for kind, rx in BASH_KINDS:
+        if rx.search(command):
+            return kind
+    return BASH_OTHER
+
+
+def add_bash_time(d, tools, bash):
+    if d.get('type') != 'user' or not isinstance(d.get('message'), dict):
+        return
+    ts = parse_ts(d)
+    for b in d['message'].get('content') or []:
+        if not isinstance(b, dict) or b.get('type') != 'tool_result':
+            continue
+        name, start, hint, _ = tools.get(b.get('tool_use_id'), ('?', None, '', False))
+        if name != 'Bash' or ts is None or start is None:
+            continue
+        total = bash.setdefault(bash_kind(str(hint)), [0.0, 0])
+        total[0] += max(0.0, (ts - start).total_seconds())
+        total[1] += 1
+
+
+def bash_line(bash):
+    kinds = [k for k, _ in BASH_KINDS] + [BASH_OTHER]
+    return '# Bash 소요: ' + ' · '.join(
+        '%s %d초 %d회' % (k, round(bash.get(k, [0.0, 0])[0]), bash.get(k, [0.0, 0])[1]) for k in kinds)
+
+
 def record_lines(d, tools):
     t = d.get('type')
     m = d.get('message') if isinstance(d.get('message'), dict) else {}
@@ -175,7 +218,7 @@ class Segments:
     """구간별 작업 시간·토큰 — 규칙은 모듈 docstring 「구간 줄」."""
 
     def __init__(self, first, split):
-        self.current, self.split = first, split
+        self.current, self.root, self.split = first, first, split
         self.totals, self.prev, self.seen, self.before_command = {}, None, set(), None
 
     def _add(self, name, i, value):
@@ -189,11 +232,11 @@ class Segments:
             text = c if isinstance(c, str) else ' '.join(
                 b.get('text', '') for b in c or [] if isinstance(b, dict) and b.get('type') == 'text')
             hit = COMMAND_NAME.search(text)
-            return hit.group(1).strip() if hit else None
+            return (hit.group(1).strip(), True) if hit else None
         if d.get('type') == 'assistant':
             for b in c or []:
                 if isinstance(b, dict) and b.get('type') == 'tool_use' and b.get('name') == 'Skill':
-                    return str((b.get('input') or {}).get('skill') or 'Skill')
+                    return str((b.get('input') or {}).get('skill') or 'Skill'), False
         return None
 
     def _waits(self, d, m, tools):
@@ -216,7 +259,7 @@ class Segments:
         ts = parse_ts(d)
         local = d.get('type') == 'system' and d.get('subtype') == 'local_command'
         if local and self.before_command is not None and (d.get('commandRun') or {}).get('command') == self.current:
-            self.current, self.before_command = self.before_command, None
+            (self.current, self.root), self.before_command = self.before_command, None
             if self.prev is not None:
                 self.prev = (self.prev[0], self.current)
         if ts is not None and self.prev is not None and not self._waits(d, m, tools):
@@ -226,10 +269,14 @@ class Segments:
             self.seen.add(m.get('id'))
             for i, key in enumerate(TOKEN_KEYS, 1):
                 self._add(self.current, i, int(usage.get(key) or 0))
-        name = self._boundary(d, m)
-        if name:
-            self.before_command = self.current if d.get('type') == 'user' else None
-            self.current = name
+        hit = self._boundary(d, m)
+        if hit:
+            name, command = hit
+            self.before_command = (self.current, self.root) if command else None
+            if command or ':' in name or self.root == OUTSIDE:
+                self.root = self.current = name
+            else:
+                self.current = self.root + NEST_MARK + name
         if ts is not None:
             self.prev = (ts if self.prev is None else max(ts, self.prev[0]), self.current)
 
@@ -239,7 +286,7 @@ class Segments:
                 if round(v[0]) or any(v[1:])]
 
 
-def digest_file(path, counts, segments):
+def digest_file(path, counts, segments, bash):
     lines, recognized, tools = [], 0, {}
     with open(path, encoding='utf-8', errors='replace') as f:
         for raw in f:
@@ -251,6 +298,7 @@ def digest_file(path, counts, segments):
                 continue
             remember_tools(d, tools)
             segments.observe(d, tools)
+            add_bash_time(d, tools, bash)
             got = record_lines(d, tools)
             if got is None:
                 continue
@@ -299,15 +347,15 @@ def main(argv=None):
         print('세션 전사 %d개 — 정확히 1개여야 한다: %s' % (len(mains), ', '.join(mains) or a.projects_dir),
               file=sys.stderr)
         return 2
-    counts, body, recognized = {}, [], 0
+    counts, body, recognized, bash = {}, [], 0, {}
     main_segments = Segments(OUTSIDE, True)
-    lines, n = digest_file(mains[0], counts, main_segments)
+    lines, n = digest_file(mains[0], counts, main_segments, bash)
     body += lines
     recognized += n
     segment_lines = main_segments.lines()
     for sub in subs:
         sub_segments = Segments('서브에이전트 ' + subagent_label(sub), False)
-        lines, n = digest_file(sub, counts, sub_segments)
+        lines, n = digest_file(sub, counts, sub_segments, bash)
         body += ['## subagent ' + os.path.basename(sub)] + lines
         recognized += n
         segment_lines += sub_segments.lines()
@@ -317,7 +365,7 @@ def main(argv=None):
     kinds = ('U', 'A', 'T', 'ERR', 'H', 'BIG', 'SLOW')
     head = ['# reflect 요약 — 세션 %s' % sid, '# 본 전사: %s' % mains[0], '# 서브에이전트 전사: %d개' % len(subs)]
     if not a.audit:
-        head += segment_lines
+        head += [bash_line(bash)] + segment_lines
     if a.audit:
         body = [line for line in body if audit_keep(line)]
         body = [HANGUL_FREE_MARK + line[3:] if line.startswith('A: ') and not HANGUL.search(line) else line
