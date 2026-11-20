@@ -560,10 +560,9 @@ $ptPass = @(
     @{ Name = '절대 Temp 경로의 plan.md 리다이렉트 통과'; Cmd = ('echo x > "' + $ptTemp + '/fx/plan.md"') },
     @{ Name = '따옴표 없이 쓴 절대 Temp 경로 통과'; Cmd = ('echo x > ' + $ptTemp + '/fx/plan.md') },
     @{ Name = '대소문자를 달리 쓴 절대 Temp 경로 통과'; Cmd = ('echo x > "' + $ptTemp.ToUpperInvariant() + '/fx/plan.md"') },
-    @{ Name = '옵션 묶음 -ln 이 든 명령의 절대 Temp 경로 통과'; Cmd = ('ls -ln; echo x > "' + $ptTemp + '/fx/plan.md"') },
     @{ Name = 'tee <절대 Temp 경로>/plan.md 통과'; Cmd = ('echo x | tee "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
     @{ Name = 'Set-Content -Path <절대 Temp 경로>/plan.md 통과'; Cmd = ('Set-Content -Path "' + $ptTemp + '/fx/plan.md" -Value x') },
-    @{ Name = 'python open(<절대 Temp 경로>/plan.md) 쓰기 통과'; Cmd = ("python -c `"open('" + $ptTemp + "/fx/plan.md','w').write('x')`"") }
+    @{ Name = 'mkdir 뒤 작은따옴표 printf 내용(체크박스·역슬래시 n)을 절대 Temp 경로에 쓰기 통과'; Cmd = ('mkdir -p "' + $ptTemp + '/fx" && printf ''# plan\n- [ ] T1 $x (a)\n'' > "' + $ptTemp + '/fx/plan.md"') }
 )
 foreach ($c in $ptPass) {
     $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
@@ -638,6 +637,19 @@ $ptDeny = @(
     @{ Name = 'New-Item -ItemType:Junction 뒤 그 아래 plan.md 는 차단'; Cmd = ('New-Item -ItemType:Junction -Path "' + $ptTemp + '/pj8" -Value D:/repo; echo x > "' + $ptTemp + '/pj8/plan.md"') },
     @{ Name = '백틱 치환 안 ln 뒤 링크 아래 plan.md 는 차단'; Cmd = ('x=`ln -s /d/repo ' + $ptTemp + '/pj9`; echo x > "' + $ptTemp + '/pj9/plan.md"') },
     @{ Name = 'python os.symlink 뒤 링크 아래 plan.md 는 차단'; Cmd = ("python -c `"import os; os.symlink('D:/repo','" + $ptTemp + "/pj10')`"; echo x > `"" + $ptTemp + '/pj10/plan.md"') },
+    @{ Name = '허용 목록 밖 명령(ls)이 함께 든 명령은 차단'; Cmd = ('ls -ln; echo x > "' + $ptTemp + '/fx/plan.md"') },
+    @{ Name = 'python open(<절대 Temp 경로>/plan.md) 는 차단(인터프리터에는 면제가 없다)'; Cmd = ("python -c `"open('" + $ptTemp + "/fx/plan.md','w').write('x')`"") },
+    @{ Name = 'ni -it j 로 만든 junction 아래 plan.md 는 차단'; Cmd = ('ni -it j "' + $ptTemp + '/pj11" -Value D:/repo; echo x > "' + $ptTemp + '/pj11/plan.md"') },
+    @{ Name = 'New-Item -ItemType Jun 뒤 그 아래 plan.md 는 차단'; Cmd = ('New-Item -ItemType Jun -Path "' + $ptTemp + '/pj12" -Value D:/repo; echo x > "' + $ptTemp + '/pj12/plan.md"') },
+    @{ Name = 'pwsh -c 안에서 만든 링크 아래 plan.md 는 차단'; Cmd = ('pwsh -c "ni -it j ' + $ptTemp + '/pj13 -Value D:/repo" && echo x > "' + $ptTemp + '/pj13/plan.md"') },
+    @{ Name = 'cmd 캐럿 표기 mk^link 뒤 그 아래 plan.md 는 차단'; Cmd = ('cmd //c "mk^link /J ' + $ptTemp + '/pj14 D:/repo" && echo x > "' + $ptTemp + '/pj14/plan.md"') },
+    @{ Name = 'tee 의 둘째 대상을 글롭 변수로 숨긴 명령은 차단'; Cmd = ('X=D:/repo/pla?.md; echo x | tee "' + $ptTemp + '/fx/plan.md" $X') },
+    @{ Name = 'PowerShell 괄호 식이 든 명령은 차단'; Cmd = ('Set-Content -Path "' + $ptTemp + '/fx/plan.md" -Value (Get-Date)') },
+    @{ Name = '큰따옴표 안 작은따옴표로 뒤 명령을 가린 꼴은 차단'; Cmd = ('echo "it''s" ; ni -it j "' + $ptTemp + '/pj15" -Value D:/repo ; echo x > "' + $ptTemp + '/pj15/plan.md" ; echo ''z''') },
+    @{ Name = '주석 안 작은따옴표로 다음 줄 명령을 가린 꼴은 차단'; Cmd = ("echo a # it's`nni -it j `"" + $ptTemp + "/pj16`" -Value D:/repo`necho 'x' > `"" + $ptTemp + '/pj16/plan.md"') },
+    @{ Name = 'Set-Content Function: 으로 허용 명령을 다시 정의한 명령은 차단'; Cmd = ('Set-Content Function:mkdir "ni -it j ' + $ptTemp + '/pj17 D:/repo"; mkdir; echo x > "' + $ptTemp + '/pj17/plan.md"') },
+    @{ Name = '변수 대입 접두가 든 명령은 차단'; Cmd = ('PATH=D:/evil tee "' + $ptTemp + '/fx/plan.md"') },
+    @{ Name = '큰따옴표 안 치환이 든 명령은 차단'; Cmd = ('echo "$(ni -it j a b)" > "' + $ptTemp + '/fx/plan.md"') },
     @{ Name = '절대 Temp 경로와 맨 plan.md 언급이 함께 있으면 차단'; Cmd = ('echo plan.md; echo x > "' + $ptTemp + '/fx/plan.md"') }
 )
 foreach ($c in $ptDeny) {
