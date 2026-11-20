@@ -254,23 +254,16 @@ function Invoke-WarnDangerousAssignment {
 function Get-ShellWriteHits {
     param([string]$cmd, [scriptblock]$IsTarget)
     $assigned = @{}
-    $assignHead = '(?:^|[\s;&|("''])\s*\$?([A-Za-z_][A-Za-z0-9_]*)\s*='
-    foreach ($value in '\s*[''"]([^''"]*)[''"]', '([^\s;&|''"()]+)') {
-        foreach ($m in [regex]::Matches($cmd, $assignHead + $value)) {
-            $name = $m.Groups[1].Value
-            if (-not $assigned.ContainsKey($name)) { $assigned[$name] = New-Object System.Collections.Generic.List[string] }
-            $assigned[$name].Add($m.Groups[2].Value.Trim())
-        }
+    foreach ($m in [regex]::Matches($cmd, '(?:^|[\s;&|("''])\s*\$?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[''"]([^''"]*)[''"]')) {
+        $assigned[$m.Groups[1].Value] = $m.Groups[2].Value
     }
     function Test-PlanTarget([string]$arg) {
         if ([string]::IsNullOrWhiteSpace($arg)) { return $false }
         $a = $arg.Trim().Trim('"', "'", '(', ')', ',')
         if ($a -match '^\$?\{?([A-Za-z_][A-Za-z0-9_]*)\}?$' -and $assigned.ContainsKey($Matches[1])) {
-            foreach ($v in $assigned[$Matches[1]]) { if (& $IsTarget $v) { return $true } }
-            return $false
+            $a = $assigned[$Matches[1]]
         }
-        if (& $IsTarget $a) { return $true }
-        return [bool](& $IsTarget ($a -replace '["'']', ''))
+        return [bool](& $IsTarget $a)
     }
 
     $hits = New-Object System.Collections.Generic.List[string]
@@ -283,11 +276,8 @@ function Get-ShellWriteHits {
         if ($isWrite -and (Test-PlanTarget $m.Groups[1].Value)) { $hits.Add('pathlib') }
     }
     $stripped = Get-HeredocSinkStripped $cmd
-    $redirectHead = '>>?[&|]?\s*(?:\\\r?\n\s*)?'
-    foreach ($word in '("[^"]*"|''[^'']*''|\S+)', '((?:"[^"]*"|''[^'']*''|\\\r?\n|[\\`].|[^\s;&|<>()])+)') {
-        foreach ($m in [regex]::Matches($stripped, $redirectHead + $word)) {
-            if (Test-PlanTarget $m.Groups[1].Value) { $hits.Add('>') }
-        }
+    foreach ($m in [regex]::Matches($stripped, '>>?\s*("[^"]*"|''[^'']*''|\S+)')) {
+        if (Test-PlanTarget $m.Groups[1].Value) { $hits.Add('>') }
     }
     foreach ($m in [regex]::Matches($cmd, '(?i)\[(?:System\.)?IO\.File\]::(WriteAll\w+|AppendAllText)\s*\(\s*([^,()]+)')) {
         if (Test-PlanTarget $m.Groups[2].Value) { $hits.Add('[System.IO.File]') }
@@ -318,7 +308,7 @@ function Invoke-BlockPlanWrite {
     param($data)
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
-    $hits = Get-ShellWriteHits $cmd { param($a) $a -match '(^|[\\/:])plan\.md[. ]*$' }
+    $hits = Get-ShellWriteHits $cmd { param($a) $a -match '(^|[\\/])plan\.md$' }
     if ($hits.Count -eq 0) { return New-HookResult }
     $where = (($hits | Select-Object -Unique) -join ', ')
     return New-HookResult -Block $true -Stderr @(
