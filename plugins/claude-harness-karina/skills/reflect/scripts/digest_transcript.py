@@ -11,7 +11,9 @@
 · SLOW: 오래 걸린 도구 호출(`SLOW: <도구명> <N>초 <hint 앞 120자>` — 결과 레코드 자리 · 시작과 tool_result 의
 `timestamp` 차가 SLOW_SEC 이상 · 시작은 그 tool_use_id 의 첫 PreToolUse 첨부(`attachment.hookEvent: PreToolUse` ·
 `attachment.toolUseID`) 시각이고 없으면 tool_use 레코드 시각이다 — tool_use 레코드는 블록 입력을 생성하기 시작할 때 찍혀
-생성 시간이 소요에 섞인다 · SLOW_EXCLUDE 도구는 뺀다 · Bash 의 권한 승인 대기는 전사로 가를 수 없어 소요에 든다).
+생성 시간이 소요에 섞인다 · SLOW_EXCLUDE 도구는 뺀다 · Bash 의 권한 승인 대기는 전사로 가를 수 없어 소요에 든다 ·
+백그라운드 Bash(결과가 `Command running in background with ID` 인 것)는 끝을 그 tool_use_id 를 담은 `<task-notification>`
+사용자 레코드 시각으로 재고 `SLOW: Bash <N>초 (백그라운드) <hint>` 로 그 레코드 자리에 싣는다 — Bash 소요 줄도 같은 끝으로 센다).
 그 밖(thinking·BIG_CAP 미만의 성공 결과·메타 레코드)은 싣지 않는다.
 머리에 읽은 파일·구간 줄·갈래별 줄 수·총 줄 수를 싣는다 — 리뷰어가 총 줄 수까지 나눠 읽는다.
 구간 줄 — `# 구간 <이름>: 작업 <N>초 · 토큰 입력 <a> · 캐시읽기 <b> · 캐시쓰기 <c> · 출력 <d>`. 본 전사는 `Skill`
@@ -69,6 +71,10 @@ BASH_KINDS = (
     ('기동·빌드', re.compile(r'\b(build|run|launch|start)\b')),
 )
 BASH_OTHER = '기타'
+BACKGROUND_RESULT = 'Command running in background with ID'
+BACKGROUND_MARK = '(백그라운드)'
+NOTIFICATION = '<task-notification>'
+NOTIFIED_TOOL = re.compile(r'<tool-use-id>([^<]+)</tool-use-id>')
 GIT_COMMAND = re.compile(r'''^\s*(?:cd\s+(?:"[^"]*"|'[^']*'|\S+)\s*(?:;|&&)\s*)*git\b''')
 HANGUL = re.compile('[가-힣]')
 HANGUL_FREE_MARK = 'A: [한글 없음] '
@@ -149,19 +155,47 @@ def bash_kind(command):
     return BASH_OTHER
 
 
+def background_bash_ids(text, tools):
+    if NOTIFICATION not in text:
+        return []
+    return [tid for tid in NOTIFIED_TOOL.findall(text) if tools.get(tid, ('?',))[0] == 'Bash']
+
+
+def background_slow_lines(text, tools, ts):
+    out = []
+    for tid in background_bash_ids(text, tools):
+        _, start, hint, _ = tools[tid]
+        if ts is not None and start is not None and (ts - start).total_seconds() >= SLOW_SEC:
+            out.append(('SLOW: Bash %d초 %s %s' % (round((ts - start).total_seconds()), BACKGROUND_MARK,
+                                                   cut(hint, BIG_HEAD))).rstrip())
+    return out
+
+
+def _add_bash(bash, hint, start, ts):
+    if ts is None or start is None:
+        return
+    total = bash.setdefault(bash_kind(str(hint)), [0.0, 0])
+    total[0] += max(0.0, (ts - start).total_seconds())
+    total[1] += 1
+
+
 def add_bash_time(d, tools, bash):
     if d.get('type') != 'user' or not isinstance(d.get('message'), dict):
         return
     ts = parse_ts(d)
-    for b in d['message'].get('content') or []:
-        if not isinstance(b, dict) or b.get('type') != 'tool_result':
+    c = d['message'].get('content')
+    for b in ([{'type': 'text', 'text': c}] if isinstance(c, str) else c or []):
+        if not isinstance(b, dict):
+            continue
+        if b.get('type') == 'text':
+            for tid in background_bash_ids(b.get('text', ''), tools):
+                _add_bash(bash, tools[tid][2], tools[tid][1], ts)
+            continue
+        if b.get('type') != 'tool_result' or BACKGROUND_RESULT in _result_text(b.get('content')):
             continue
         name, start, hint, _ = tools.get(b.get('tool_use_id'), ('?', None, '', False))
-        if name != 'Bash' or ts is None or start is None:
-            continue
-        total = bash.setdefault(bash_kind(str(hint)), [0.0, 0])
-        total[0] += max(0.0, (ts - start).total_seconds())
-        total[1] += 1
+        if name == 'Bash':
+            _add_bash(bash, hint, start, ts)
 
 
 def bash_line(bash):
@@ -175,12 +209,14 @@ def record_lines(d, tools):
     m = d.get('message') if isinstance(d.get('message'), dict) else {}
     c = m.get('content')
     if t == 'user':
+        ts = parse_ts(d)
         if isinstance(c, str):
-            return ['U: ' + cut(c, TEXT_CAP)]
-        out, ts = [], parse_ts(d)
+            return ['U: ' + cut(c, TEXT_CAP)] + background_slow_lines(c, tools, ts)
+        out = []
         for b in c or []:
             if b.get('type') == 'text':
                 out.append('U: ' + cut(b.get('text', ''), TEXT_CAP))
+                out += background_slow_lines(b.get('text', ''), tools, ts)
             elif b.get('type') == 'tool_result' and b.get('is_error'):
                 out.append('ERR: ' + cut(_result_text(b.get('content')), SHORT_CAP))
             elif b.get('type') == 'tool_result':

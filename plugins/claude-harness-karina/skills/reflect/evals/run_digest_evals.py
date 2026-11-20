@@ -597,6 +597,34 @@ def git_after_cd_is_other():
     assert bash_lines(run_timed(recs)) == ['# Bash 소요: 시험 0초 0회 · 검사·형식 0초 0회 · 기동·빌드 0초 0회 · 기타 15초 2회'], recs
 
 
+def background_bash(tid, start, launched, done, command):
+    note = ('<task-notification>\n<task-id>x1</task-id>\n<tool-use-id>%s</tool-use-id>\n'
+            '<output-file>o.txt</output-file>\n<status>completed</status>\n</task-notification>' % tid)
+    return [at(rec_assistant([tool_use(tid, 'Bash', command)]), start),
+            at(rec_user_blocks([tool_result(tid, 'Command running in background with ID: x1. Output is being written to: o.txt')]), launched),
+            at(rec_user(note), done)]
+
+
+@case
+def background_bash_measured_to_notification():
+    out = run_timed(background_bash('t1', 0, 1, 230, 'pwsh -File run-hook-evals.ps1'))
+    assert slow_lines(out) == ['SLOW: Bash 230초 (백그라운드) pwsh -File run-hook-evals.ps1'], out
+    assert bash_lines(out) == ['# Bash 소요: 시험 230초 1회 · 검사·형식 0초 0회 · 기동·빌드 0초 0회 · 기타 0초 0회'], out
+
+
+@case
+def background_bash_slow_kept_in_audit():
+    out = run_timed(background_bash('t1', 0, 1, 90, 'sleep 90'), extra=['--audit'])
+    assert slow_lines(out) == ['SLOW: Bash 90초 (백그라운드) sleep 90'], out
+
+
+@case
+def background_bash_short_not_slow():
+    out = run_timed(background_bash('t1', 0, 1, 30, 'sleep 30'))
+    assert slow_lines(out) == [], out
+    assert bash_lines(out) == ['# Bash 소요: 시험 0초 0회 · 검사·형식 0초 0회 · 기동·빌드 0초 0회 · 기타 30초 1회'], out
+
+
 @case
 def audit_has_no_bash_line():
     out = run_timed(tool_pair('b1', 'Bash', 0, 100, 'cargo test'), extra=['--audit'])
