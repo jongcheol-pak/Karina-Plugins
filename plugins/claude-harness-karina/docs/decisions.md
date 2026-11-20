@@ -2,6 +2,9 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-20] 원본 이식 화면 task 의 원본 줄·reflect 중첩 구간(reflect 6da4cdbf · v3.42.0) — 기각: reflect 요약에서 모든 Skill 호출을 현재 스킬의 자식으로 보기(사용자 답 「플러그인만 뿌리」) — plan 안에서 부른 implement 가 `karina:plan › karina:implement` 로 묶여 회차 단위 소계가 사라진다. 자식 구간이 끝나는 표지는 전사에 없어 다음 경계까지 잇는다(뿌리 소계는 `<뿌리>`+`<뿌리> › *`)
+  - 기각: 원본 이식 여부를 `UI 경로` 줄 값에 표지로 덧붙이는 안 — 화면 경로와 원본 이식은 다른 사실이고 Karina 가 이미 `UI 재구현 기준 소스` 줄을 따로 둔다 · 범위 밖: 완료 리뷰가 원본 줄의 옮김 조각을 화면과 대조하는 것(요청은 계획 서식과 check-plan)
+
 - [2026-11-20] 부하 중 차단 hook 시간 초과 재발(reflect 43178bc4 · v3.41.0) — 기각: 차단 묶음 timeout 60초를 더 올리는 안 — 2026-11-03 15→60 상향 뒤 재발했고 slow 기록상 차단 스크립트만으로 61.9초까지 가 더 큰 부하에서 다시 걸린다. 사용자 답 「우선순위+시한 표지」 로 디스패처가 AboveNormal 로 올린다(부하 A/B 14.6초 → 8.0초 — `scripts/rules/hook-dispatch-rationale.md` §8)
   - 기각: 요청 원문의 「advisory 시한 건너뛰기」 신설 — 이미 있다(권고 예산 20초·마감 45초, §7)
   - 번복: `guard-task-audit` 가 미스테이징 변경까지 세는 과경고를 받아들이던 판단(`task-audit-rationale.md` §3 종전 문단) — 실해(감사 85초 재실행 + 빈 보충 커밋)로 이번 커밋에 드는 변경만 센다
