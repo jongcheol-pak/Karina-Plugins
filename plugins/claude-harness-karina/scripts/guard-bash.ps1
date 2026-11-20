@@ -303,45 +303,27 @@ function Get-ShellWriteHits {
     return , $hits
 }
 
-function Expand-TempShellPath([string]$Arg, [hashtable]$Assigned, [string]$TempRoot, [int]$Depth = 0) {
+function Test-LiteralTempPlanTarget([string]$Arg, [string]$Cmd) {
     $a = $Arg.Trim().Trim('"', "'")
-    $a = [regex]::Replace($a, '^(?i)(\$env:(TEMP|TMP)|\$\{(TEMP|TMP)\}|\$(TEMP|TMP))(?=$|[\\/])', { param($m) $TempRoot })
-    $m = [regex]::Match($a, '^\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?(?=$|[\\/])')
-    if ($m.Success) {
-        $vals = $Assigned[$m.Groups[1].Value]
-        if ($Depth -ge 3 -or -not $vals) { return $null }
-        $rest = $a.Substring($m.Length)
-        $last = $null
-        foreach ($v in $vals) {
-            $last = Expand-TempShellPath ([string]$v) $Assigned $TempRoot ($Depth + 1)
-            if (-not (Test-UnderTempRoot $last $TempRoot)) { return $null }
-        }
-        $a = $last + $rest
+    if ($a -notmatch '^[A-Za-z]:[\\/][\w .\\/-]*$') { return $false }
+    foreach ($seg in ($a.Substring(3) -split '[\\/]')) {
+        if ($seg -eq '' -or $seg -match '^\.+$' -or $seg -match '^ | $|\.$') { return $false }
     }
-    if ($a.Contains('$') -or $a.Contains('`')) { return $null }
-    $a = $a -replace '^/([A-Za-z])/', '$1:/'
-    return $a
-}
-
-function Test-UnderTempRoot([string]$Path, [string]$TempRoot) {
-    if ([string]::IsNullOrEmpty($Path) -or $Path -notmatch '^[A-Za-z]:[\\/]') { return $false }
-    $full = try { [System.IO.Path]::GetFullPath($Path) -replace '/', '\' } catch { return $false }
-    return ($full.TrimEnd('\') + '\').StartsWith($TempRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)
-}
-
-function Test-TempPlanTarget([string]$Arg, [string]$Cmd) {
+    if ([regex]::IsMatch($Cmd, '=\s*["'']?' + [regex]::Escape($a))) { return $false }
+    if ($Cmd -match '(?i)\b(mklink|junction|symboliclink|ln)\b') { return $false }
     $tempRoot = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '/', '\'
     if (-not $tempRoot) { return $false }
-    $assigned = @{}
-    foreach ($m in [regex]::Matches($Cmd, '(?:^|[\s;&|(])\$?([A-Za-z_][A-Za-z0-9_]*)=(?:"([^"]*)"|''([^'']*)''|([^\s;&|)]*))')) {
-        $name = $m.Groups[1].Value
-        if (-not $assigned.ContainsKey($name)) { $assigned[$name] = New-Object System.Collections.Generic.List[string] }
-        $assigned[$name].Add($m.Groups[2].Value + $m.Groups[3].Value + $m.Groups[4].Value)
+    $full = try { [System.IO.Path]::GetFullPath($a) -replace '/', '\' } catch { return $false }
+    if (-not $full.StartsWith($tempRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) { return $false }
+    $node = $full
+    while ($node -and $node.Length -gt $tempRoot.Length) {
+        if ([System.IO.File]::Exists($node) -or [System.IO.Directory]::Exists($node)) {
+            $attr = try { [System.IO.File]::GetAttributes($node) } catch { return $false }
+            if ($attr -band [System.IO.FileAttributes]::ReparsePoint) { return $false }
+        }
+        $node = Split-Path -Parent $node
     }
-    $target = Expand-TempShellPath $Arg $assigned $tempRoot
-    if ($null -eq $target) { return $false }
-    if ($target -match '^[A-Za-z]:[\\/]') { return (Test-UnderTempRoot $target $tempRoot) }
-    return $false
+    return $true
 }
 
 # block-plan-write: plan.md 를 대상으로 하는 쓰기 명령 차단 — 근거는 `rules/bash-guard-rationale.md` §10
@@ -349,14 +331,14 @@ function Invoke-BlockPlanWrite {
     param($data)
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
-    $hits = Get-ShellWriteHits $cmd { param($a) ($a -match '(^|[\\/])plan\.md$') -and -not (Test-TempPlanTarget $a $cmd) }
+    $hits = Get-ShellWriteHits $cmd { param($a) ($a -match '(^|[\\/:])plan\.md$') -and -not (Test-LiteralTempPlanTarget $a $cmd) }
     if ($hits.Count -eq 0) { return New-HookResult }
     $where = (($hits | Select-Object -Unique) -join ', ')
     return New-HookResult -Block $true -Stderr @(
         "[HARNESS] BLOCKED: plan.md 를 스크립트로 쓰려 합니다.",
         "감지된 쓰기 구문: $where.",
         "gitignore 라 잘못 쓰면 복구할 수 없습니다 — 전체 교체는 Write, 부분 수정은 Edit 도구로 하세요(`plan/SKILL.md` 「Step 5」). 읽기는 막지 않습니다.",
-        '임시 폴더의 픽스처 plan.md 면 대상을 Temp 절대 경로로 쓰세요(예: "$TEMP/<폴더>/plan.md") — cd 한 뒤의 상대 경로는 어느 폴더인지 확인할 수 없어 막습니다.'
+        '임시 폴더의 픽스처 plan.md 면 대상을 변수 없이 글자 그대로 쓴 절대 Temp 경로로 쓰세요(예: "C:/Users/<이름>/AppData/Local/Temp/<폴더>/plan.md") — $TEMP·변수·cd 뒤 상대 경로·/c/… 꼴은 실제로 어느 폴더인지 확인할 수 없어 막습니다.'
     ) -Context "plan.md 쓰기가 차단됐습니다($where). Write·Edit 도구를 쓰세요 — 그 둘은 파일 상태를 추적해 잘림을 막습니다."
 }
 

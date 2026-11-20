@@ -551,11 +551,17 @@ Assert-Case -Name "hd: 파일로 쓰고 실행 — 싱크 본문의 open(plan.md
 
 $ptBlock = '스크립트로 쓰려 합니다'
 $ptTemp = [System.IO.Path]::GetTempPath().TrimEnd('\', '/') -replace '\\', '/'
+$ptJunctionTarget = Join-Path $work 'pt-junction-target'
+$ptJunctionWin = Join-Path $work 'pt-junction-link'
+New-Item -ItemType Directory -Path $ptJunctionTarget -Force | Out-Null
+if (-not (Test-Path -LiteralPath $ptJunctionWin)) { New-Item -ItemType Junction -Path $ptJunctionWin -Target $ptJunctionTarget | Out-Null }
+$ptJunction = $ptJunctionWin -replace '\\', '/'
 $ptPass = @(
     @{ Name = '절대 Temp 경로의 plan.md 리다이렉트 통과'; Cmd = ('echo x > "' + $ptTemp + '/fx/plan.md"') },
-    @{ Name = '$TEMP·$env:TEMP 접두 통과'; Cmd = 'echo x > "$TEMP/fx/plan.md"; echo y > "$env:TEMP/fx/plan.md"' },
-    @{ Name = '값이 Temp 경로인 변수 접두 통과'; Cmd = 'D="$TEMP/karina-plugin/scratch/pc"; mkdir -p "$D" && printf x > "$D/plan.md"' },
-    @{ Name = 'cp plan.md <Temp>/…/plan.md 통과'; Cmd = 'cp plan.md "$TEMP/karina-plugin/scratch/snap/plan.md"' }
+    @{ Name = '역슬래시로 쓴 절대 Temp 경로 통과'; Cmd = ('echo x > "' + ($ptTemp -replace '/', '\') + '\fx\plan.md"') },
+    @{ Name = '대소문자·슬래시를 섞어 쓴 절대 Temp 경로 통과'; Cmd = ('echo x > "' + $ptTemp.ToUpperInvariant().Replace('/APPDATA/', '\APPDATA/') + '/fx/plan.md"') },
+    @{ Name = 'cp plan.md <절대 Temp 경로>/plan.md 통과'; Cmd = ('cp plan.md "' + $ptTemp + '/karina-plugin/scratch/snap/plan.md"') },
+    @{ Name = 'python open(<절대 Temp 경로>/plan.md) 쓰기 통과'; Cmd = ("python -c `"open('" + $ptTemp + "/fx/plan.md','w').write('x')`"") }
 )
 foreach ($c in $ptPass) {
     $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
@@ -577,7 +583,35 @@ $ptDeny = @(
     @{ Name = 'Temp 로 cd 한 뒤 cd - 로 돌아온 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP/x" && cd - && echo x > plan.md' },
     @{ Name = 'pushd <Temp> 뒤 popd 한 상대 plan.md 는 차단'; Cmd = 'pushd "$TEMP/x" && popd && echo x > plan.md' },
     @{ Name = 'Temp 로 cd 한 뒤 cd ~/… 한 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP/x" && cd ~/repo && echo x > plan.md' },
-    @{ Name = 'Temp 로 cd 한 뒤 인자 없는 cd 뒤 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP/x" && cd && echo x > plan.md' }
+    @{ Name = 'Temp 로 cd 한 뒤 인자 없는 cd 뒤 상대 plan.md 는 차단'; Cmd = 'cd "$TEMP/x" && cd && echo x > plan.md' },
+    @{ Name = '$TEMP 접두 경로는 차단(환경변수 값을 짐작하지 않는다)'; Cmd = 'echo x > "$TEMP/fx/plan.md"' },
+    @{ Name = '$env:TEMP 접두 경로는 차단'; Cmd = 'echo y > "$env:TEMP/fx/plan.md"' },
+    @{ Name = '값이 Temp 경로인 변수 접두도 차단'; Cmd = ('D="' + $ptTemp + '/pc"; mkdir -p "$D" && printf x > "$D/plan.md"') },
+    @{ Name = '값이 절대 Temp 경로인 변수 통째 대상도 차단'; Cmd = ('P=plan.md; false && P="' + $ptTemp + '/fx/plan.md"; echo x > "$P"') },
+    @{ Name = '실행되지 않는 PWD 대입 뒤 $PWD 접두는 차단'; Cmd = 'false && PWD="$TEMP/x"; echo x > "$PWD/plan.md"' },
+    @{ Name = '한 명령 앞 접두 대입 PWD 뒤 $PWD 접두는 차단'; Cmd = 'PWD="$TEMP/x" echo x > "$PWD/plan.md"' },
+    @{ Name = '서브셸 안 PWD 대입 뒤 $PWD 접두는 차단'; Cmd = '(PWD="$TEMP/x"); echo x > "$PWD/plan.md"' },
+    @{ Name = 'for 로 재대입한 변수 접두는 차단'; Cmd = 'D="$TEMP/x"; for D in .; do echo x > "$D/plan.md"; done' },
+    @{ Name = 'read 로 재대입한 변수 접두는 차단'; Cmd = 'D="$TEMP/x"; read D <<< . ; echo x > "$D/plan.md"' },
+    @{ Name = '+= 로 Temp 를 벗어난 변수 접두는 차단'; Cmd = 'D="$TEMP/x"; D+=/../../../../../d/repo; echo x > "$D/plan.md"' },
+    @{ Name = 'TEMP=. 재대입 뒤 $TEMP 접두는 차단'; Cmd = 'TEMP=.; echo x > "$TEMP/plan.md"' },
+    @{ Name = 'export TMP=<레포> 뒤 $TMP 접두는 차단'; Cmd = 'export TMP=D:/repo; echo x > "$TMP/plan.md"' },
+    @{ Name = 'printf -v 로 재대입한 변수 접두는 차단'; Cmd = 'D="$TEMP/x"; printf -v D %s .; echo x > "$D/plan.md"' },
+    @{ Name = '절대 Temp 경로에서 .. 로 벗어나면 차단'; Cmd = ('echo x > "' + $ptTemp + '/../../../../repo/plan.md"') },
+    @{ Name = '절대 Temp 경로 안의 명령 치환은 차단'; Cmd = ('echo x > "' + $ptTemp + '/$(echo ../../..)/plan.md"') },
+    @{ Name = '절대 Temp 경로 안의 백틱 치환은 차단'; Cmd = ('echo x > "' + $ptTemp + '/`echo ..`/plan.md"') },
+    @{ Name = '절대 Temp 경로 안의 중괄호·글롭 확장은 차단'; Cmd = ('cp plan.md ' + $ptTemp + '/{..,x}/../plan.md') },
+    @{ Name = 'msys 꼴 /c/… 경로는 차단(마운트를 짐작하지 않는다)'; Cmd = ('echo x > "' + ($ptTemp -replace '^([A-Za-z]):', '/$1') + '/fx/plan.md"') },
+    @{ Name = '장치 접두 \\?\ 경로는 차단'; Cmd = ('echo x > "\\?\' + ($ptTemp -replace '/', '\') + '\fx\plan.md"') },
+    @{ Name = '드라이브 상대 경로 C:plan.md 는 차단'; Cmd = 'echo x > C:plan.md' },
+    @{ Name = 'Temp 와 이름이 앞부분만 같은 형제 폴더는 차단'; Cmd = ('echo x > "' + $ptTemp + 'x/plan.md"') },
+    @{ Name = '끝이 점인 세그먼트가 든 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptTemp + '/fx./plan.md"') },
+    @{ Name = '끝이 공백인 세그먼트가 든 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptTemp + '/fx /plan.md"') },
+    @{ Name = '구분자가 겹친 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptTemp + '//fx/plan.md"') },
+    @{ Name = '8.3 짧은 이름(~)이 든 경로는 차단'; Cmd = 'echo x > "C:/Users/PUBLIC~1/AppData/Local/Temp/fx/plan.md"' },
+    @{ Name = '안쪽 따옴표로 이어 붙인 절대 Temp 경로는 차단'; Cmd = ('echo x > ' + $ptTemp + '/"fx"/plan.md') },
+    @{ Name = '같은 명령에서 mklink 로 junction 을 만든 뒤 그 아래 plan.md 는 차단'; Cmd = ('cmd //c mklink /J "' + $ptTemp + '/ptl" D:/repo && echo x > "' + $ptTemp + '/ptl/plan.md"') },
+    @{ Name = '이미 있는 junction 을 거친 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptJunction + '/plan.md"') }
 )
 foreach ($c in $ptDeny) {
     $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
