@@ -351,6 +351,7 @@ $added.Add(@{ Body = $body; Pair = 0; Line = 0; Indexes = @(0) })
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $blocked = Get-BlockedCommentBodies $File $added @($body, 'fn rows() {}') $budget
 $ms = $sw.ElapsedMilliseconds
+$waited = ($FakeDelayMs -gt 0) -and (Test-Path -LiteralPath $pidFile) -and (([DateTime]::UtcNow - [System.IO.File]::GetLastWriteTimeUtc($pidFile)).TotalMilliseconds -ge $FakeDelayMs)
 $alive = 0
 if ($FakeDelayMs -gt 0) {
     $until = [DateTime]::UtcNow.AddMilliseconds(3000)
@@ -363,7 +364,7 @@ if ($FakeDelayMs -gt 0) {
     }
     if ($alive) { Stop-Process -Id $fake -Force -ErrorAction SilentlyContinue }
 }
-"ran=$(Test-Path -LiteralPath $ranFile) blocked=$($blocked.Count) alive=$alive fast=$($ms -lt 8000)"
+"ran=$(Test-Path -LiteralPath $ranFile) blocked=$($blocked.Count) alive=$alive waited=$waited ms=$ms"
 '@, [System.Text.UTF8Encoding]::new($true))
 $gbLib = Join-Path $pluginRoot 'scripts/comment-lines.ps1'
 $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 3000 3300 2>&1
@@ -372,10 +373,10 @@ $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $g
 Assert-Case -Name "guard-comment: BASE 예산 — 예산이 바닥났으면 복원 doc 도 차단" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=1'
 $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 0 0 0 '/// 보이는 줄의 범위를 센다.' 2>&1
 Assert-Case -Name "guard-comment: BASE 예산 — 예산이 바닥났으면 문구 수정 복원 doc 도 차단" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'blocked=1'
-$out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 1500 0 15000 2>&1
+$out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $gbBudgetScript $gbLib $gbFile 1500 0 59000 2>&1
 $gbSlow = @{ code = $LASTEXITCODE; out = ($out -join "`n") }
 Assert-Case -Name "guard-comment: BASE 예산 — PATH 앞 git.cmd 를 & git 과 같이 집고, 대기가 예산을 넘으면 손자까지 끝내고 복원 doc 도 차단" -R $gbSlow -ExpectExit 0 -ExpectContains 'ran=True blocked=1 alive=0'
-Assert-Case -Name "guard-comment: BASE 예산 — 시간 초과 때 예산만큼만 기다린다" -R $gbSlow -ExpectExit 0 -ExpectContains 'fast=True'
+Assert-Case -Name "guard-comment: BASE 예산 — 시간 초과 때 가짜 git 이 끝나기를 기다리지 않는다" -R $gbSlow -ExpectExit 0 -ExpectContains 'waited=False'
 $tgOrphanScript = Join-Path $gc 'timed-git-orphan.ps1'
 [System.IO.File]::WriteAllText($tgOrphanScript, @'
 param([string]$Lib, [string]$Dir)
@@ -390,6 +391,7 @@ $null = Import-TimedGitTree
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $run = Invoke-TimedGit -GitArgs @('status') -WorkDir $Dir -TimeoutMs 8000
 $ms = $sw.ElapsedMilliseconds
+$waited = (Test-Path -LiteralPath $pidFile) -and (([DateTime]::UtcNow - [System.IO.File]::GetLastWriteTimeUtc($pidFile)).TotalSeconds -ge 60)
 $gcPid = 0
 $until = [DateTime]::UtcNow.AddMilliseconds(5000)
 while (-not $gcPid -and [DateTime]::UtcNow -lt $until) {
@@ -401,7 +403,7 @@ if ($gcPid) {
     do { $alive = [bool](Get-Process -Id $gcPid -ErrorAction SilentlyContinue); if ($alive) { Start-Sleep -Milliseconds 200 } } while ($alive -and [DateTime]::UtcNow -lt $until)
     if ($alive) { Stop-Process -Id $gcPid -Force -ErrorAction SilentlyContinue }
 }
-"code=$($run.Code) pid=$([bool]$gcPid) alive=$alive fast=$($ms -lt 25000)"
+"code=$($run.Code) pid=$([bool]$gcPid) alive=$alive waited=$waited ms=$ms"
 '@, [System.Text.UTF8Encoding]::new($true))
 $tgDir = Join-Path $gc 'timed-git-orphan'; New-Item -ItemType Directory $tgDir -Force | Out-Null
 $tgSavedTmp = $env:TMPDIR
@@ -409,7 +411,7 @@ try {
     $env:TMPDIR = $tgDir
     $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $tgOrphanScript (Join-Path $pluginRoot 'scripts/timed-git.ps1') $tgDir 2>&1
 } finally { $env:TMPDIR = $tgSavedTmp }
-Assert-Case -Name "guard-comment: timed-git — 직계가 먼저 끝나고 손자가 출력을 쥔 채 시간 초과면 손자까지 끝내고 예산만큼만 기다린다" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'code=-1 pid=True alive=False fast=True'
+Assert-Case -Name "guard-comment: timed-git — 직계가 먼저 끝나고 손자가 출력을 쥔 채 시간 초과면 손자까지 끝내고 손자가 끝나기를 기다리지 않는다" -R @{ code = $LASTEXITCODE; out = ($out -join "`n") } -ExpectExit 0 -ExpectContains 'code=-1 pid=True alive=False waited=False'
 $tgCacheScript = Join-Path $gc 'timed-git-cache.ps1'
 [System.IO.File]::WriteAllText($tgCacheScript, @'
 param([string]$Lib, [string]$Dir)

@@ -121,11 +121,13 @@ $r = Invoke-HdAdv @('-Blocking', 'f-exit1.ps1', 'advisory:', 'f-mark.ps1')
 Assert-Case -Name "hook-dispatch: 권고 — 차단 exit 1 이면 권고를 돌리지 않는다" -R @{ code = $r.code; out = "ran=$($r.ran)" } -ExpectExit 1 -ExpectContains 'ran=False'
 $r = Invoke-HdAdv @('-AdvisoryBudgetMs', '0', '-Blocking', 'f-ctx.ps1', 'advisory:', 'f-mark.ps1') -Process
 Assert-Case -Name "hook-dispatch: 권고 — 권고 예산이 0 이면 권고를 돌리지 않고 exit 0" -R @{ code = $r.code; out = "ran=$($r.ran)" } -ExpectExit 0 -ExpectContains 'ran=False'
-'[System.Threading.Thread]::Sleep(12000); exit 0' | Set-Content -LiteralPath (Join-Path $hdFake 'f-hang.ps1') -Encoding UTF8
+$hdHangMark = Join-Path $hdFake 'hang-start.txt'
+("[System.IO.File]::WriteAllText('" + $hdHangMark + "', 'x'); [System.Threading.Thread]::Sleep(59000); exit 0") | Set-Content -LiteralPath (Join-Path $hdFake 'f-hang.ps1') -Encoding UTF8
+if (Test-Path -LiteralPath $hdHangMark) { [System.IO.File]::Delete($hdHangMark) }
 $hdHangClock = [System.Diagnostics.Stopwatch]::StartNew()
 $r = Invoke-HdAdv @('-AdvisoryDeadlineMs', '2000', '-Blocking', 'f-ctx.ps1', 'advisory:', 'f-hang.ps1', 'f-mark.ps1') -Process
-$hdHangMs = $hdHangClock.ElapsedMilliseconds
-Assert-Case -Name "hook-dispatch: 권고 마감 — 멈춘 권고(12초)는 마감 2초에서 버리고 exit 0 으로 8초 안에 끝난다" -R @{ code = $r.code; out = "fast=$($hdHangMs -lt 8000) ms=$hdHangMs" } -ExpectExit 0 -ExpectContains 'fast=True'
+$hdHangMs = $hdHangClock.ElapsedMilliseconds; $hdHangWaited = (Test-Path -LiteralPath $hdHangMark) -and (([DateTime]::UtcNow - [System.IO.File]::GetLastWriteTimeUtc($hdHangMark)).TotalSeconds -ge 59)
+Assert-Case -Name "hook-dispatch: 권고 마감 — 멈춘 권고(59초)는 마감 2초에서 버리고 그 권고가 끝나기를 기다리지 않고 exit 0" -R @{ code = $r.code; out = "waited=$hdHangWaited ms=$hdHangMs" } -ExpectExit 0 -ExpectContains 'waited=False'
 Assert-Case -Name "hook-dispatch: 권고 마감 — 차단 스크립트의 컨텍스트는 그대로 나간다" -R $r -ExpectExit 0 -ExpectContains 'FAKE-CTX'
 Assert-Case -Name "hook-dispatch: 권고 마감 — stderr 에 마감 초과한 권고 이름이 남는다" -R @{ code = $r.code; out = $r.err } -ExpectExit 0 -ExpectContains 'f-hang.ps1 마감 초과'
 Assert-Case -Name "hook-dispatch: 권고 마감 — 마감 뒤의 권고는 돌지 않는다" -R @{ code = $r.code; out = "ran=$($r.ran)" } -ExpectExit 0 -ExpectContains 'ran=False'

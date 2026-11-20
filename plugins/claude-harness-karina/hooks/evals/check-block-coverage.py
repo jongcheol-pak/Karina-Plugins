@@ -11,6 +11,9 @@
   양성      = 그 차단 문구를 ExpectContains 로 재는 케이스가 1건 이상
   델타 음성 = 같은 hook 에 exit 0(통과) 기대 케이스가 1건 이상
               — 차단이 정상 입력까지 삼키지 않음을 그 hook 안에서 보인다
+  벽시계 단언 = 시나리오 줄이 소요 시간을 숫자 문턱과 견준다(`-lt`·`-le <수>` 가 `fast=`·`Elapsed` 와 한 줄)
+              — 「멈춘 자식을 상한에서 끊는다」 를 소요 문턱으로 재면 부하에서 흔들린다(2026-11-19 post-write-checks ·
+                2026-11-20 check-plan Plan check 8회 중 2회 실패). 처리 속도가 성질인 시나리오는 WALLCLOCK_ALLOW 에 둔다
 
 exit 0 = 전건 충족, exit 1 = 미충족 있음.
 """
@@ -105,6 +108,21 @@ def negative_by_hook(cases):
     return counts
 
 
+WALLCLOCK_RX = re.compile(r'-l[te]\s+\d')
+WALLCLOCK_ALLOW = {'image-diff.ps1': '처리 속도가 재는 성질 자체다'}
+
+
+def wallclock_asserts():
+    hits = []
+    for p in sorted((EVALS / 'scenarios').glob('*.ps1')):
+        if p.name in WALLCLOCK_ALLOW:
+            continue
+        for n, line in enumerate(read(p).splitlines(), 1):
+            if WALLCLOCK_RX.search(line) and ('fast=' in line or 'Elapsed' in line):
+                hits.append('%s:%d' % (p.name, n))
+    return hits
+
+
 def main():
     paths = block_paths()
     unparsed = paths.pop('_unparsed', [])
@@ -150,7 +168,15 @@ def main():
         for q in partial:
             print('  %s' % q)
 
-    bad = len(missing_pos) + len(missing_neg) + len(unparsed) + len(partial)
+    wallclock = wallclock_asserts()
+    if wallclock:
+        print('\n[WALLCLOCK] 소요 시간 문턱으로 재는 시나리오 줄 — 부하에서 흔들린다:')
+        for w in wallclock:
+            print('  %s' % w)
+        print('  고치는 법: 가짜 자식이 시작 시각을 파일에 남기고, 대상이 끝난 때가 그로부터 가짜 대기 전체에 닿았는가(waited=)로 잰다.')
+        print('  처리 속도가 성질 자체인 시나리오만 WALLCLOCK_ALLOW 에 사유와 함께 둔다.')
+
+    bad = len(missing_pos) + len(missing_neg) + len(unparsed) + len(partial) + len(wallclock)
     print('\n결과: %s' % ('전건 충족' if bad == 0 else '미충족 %d건' % bad))
     return 1 if bad else 0
 

@@ -83,7 +83,7 @@
 
 **판정 시점 — 「이번 push 에 버전이 올랐는가」로 재지 않는다.** 그 기준은 **버전을 올린 회차**만 잡아, 반대 방향(플러그인을 고쳤는데 버전을 안 올린 경우)을 통째로 놓친다. **재는 것은 `git log "$(git log -1 --format=%H -- .claude-plugin/plugin.json)..HEAD" -- .claude-plugin agents evals hooks scripts skills`(하니스 루트에서 — 마지막 `plugin.json` 변경 커밋 뒤의 런타임 폴더 커밋만 센다) 이고 거기 커밋이 있으면 버전 대상이다** — 태그가 없어 남는 기준점이 버전 커밋이다. 버전 커밋 뒤에 붙은 완료 리뷰 수정 커밋도 세지만, 그 커밋이 설치본에 갔는지는 버전만으로 가를 수 없어 한 번 더 올리는 쪽을 택한다. **`warn-version-drift.ps1` 은 세션 시작 때 설치본 쪽을 알린다(`[karina 미배포]`)** — 설치 기록의 설치 커밋 뒤 origin/main 의 런타임 폴더 커밋을 센다(근거 `scripts/rules/version-drift-rationale.md` §2). 미push 커밋은 그 hook 이 보지 않으므로 회차 끝 판정은 이 명령으로 한다. **실해(2026-09-19)**: 한 회차의 첫 작업이 skills/llm-wiki/references/queue-consume-rules.md(2026-11-11 폐지) 를 고쳤는데 그 뒤 세 회차가 위키 vault·`docs/plans/`·회차 요구 기록(2026-11-06 폐지)만 건드려, 매 회차의 「이번 push 에 `plugin.json` 변경이 있는가」 판정이 연속으로 「없음」을 냈다. **사용자가 묻지 않았으면 그 변경은 미배포로 남았다** — 그 사이 병행 세션이 옛 문면으로 큐를 소비해 `lint §7-33` 위반을 실제로 냈다.
 
-**차단 경로 커버리지** — `hooks/evals/check-block-coverage.py`. **차단 사유 문구가 골든에 없으면 그 경로는 코드를 지워도 green 이다** — 차단 hook 이나 그 골든 케이스를 고쳤으면 필수다.
+**차단 경로 커버리지** — `hooks/evals/check-block-coverage.py`. **차단 사유 문구가 골든에 없으면 그 경로는 코드를 지워도 green 이다** — 차단 hook 이나 그 골든 케이스를 고쳤으면 필수다. 같은 검사가 시나리오의 벽시계 단언(소요 시간을 숫자 문턱과 견주는 줄)도 실패로 낸다 — 「멈춘 자식을 상한에서 끊는다」 는 가짜 자식의 시작 표지와 대기 여부(`waited=`)로 재고, 처리 속도가 성질인 시나리오만 그 스크립트의 `WALLCLOCK_ALLOW` 에 둔다.
 
 **잘린 주석 검사** — `evals/check-comment-truncation.py`. 세 축이다: 근거 인용 주석의 **절단**, 주석의 `§<id>` 가 `rules/*-rationale.md` 에 헤딩으로 하나 있는가(**번호 짝**), 헤딩 제목까지 복제하던 **옛 형식**의 잔존. `scripts/*.ps1`·`scripts/rules/*-rationale.md` 를 고쳤으면 필수다.
 
@@ -113,7 +113,7 @@
 
 | 파일 | 파일 문자 | 상한 |
 |---|---|---|
-| `docs/harness-conventions.md` | 51,044 | 137,000 |
+| `docs/harness-conventions.md` | 51,200 | 137,000 |
 | `docs/golden-runner.md` | 15,921 | 28,000 |
 
 > **단위는 문자 수다(v1.273.0)** — 근거는 `skills/BUDGET.md`「예산 표」의 단위 문단이다. **아래 도출 근거의 수치는 전부 바이트 실측이고 그대로 둔다** — *"그때 그렇게 정했다"*는 기록이라 낡지 않으며, **상한 숫자는 바이트 시절 값을 단위만 옮긴 것**이다(그래서 실질 여유가 늘었다 — 이 표의 파일은 B/문자가 1.8~2.0이다).
