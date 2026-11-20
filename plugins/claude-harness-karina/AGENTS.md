@@ -39,7 +39,7 @@
 - **주석**: 언어는 그 파일의 기존 주석을 따른다(이 레포는 한글) · 무엇을 남기는가는 `skills/implement/references/code-style.md` 「주석」, 근거를 어디로 내리는가는 `skills/BUDGET.md` 「처방 ④의 단서 셋」. **보존 대상**(지우지 않는다): 위 `Comment (보존)` 경로 목록에 든 스크립트의 모듈 docstring·머리 주석·함수 주석·상수 주석(문서가 정본으로 지정한 것 — 새로 지정하면 그 목록에 올려야 주석 게이트가 통과시킨다 · 올릴 후보 찾기: `git grep -n -E '모듈 docstring|머리 주석|주석이 정본|상수 주석'`)과 `scripts/*.ps1`·`skills/*/scripts/*` 의 rationale 포인터 주석 — `comment-reviewer` 가 이 줄을 판정 기준으로 읽는다.
 - **명령 출력 예산**: 판정용 명령은 **최소 형식**으로 낸다(정본은 `docs/harness-conventions.md` 「명령 출력 예산」).
 - **파일 크기**: 상한 표·초과 처방은 `skills/BUDGET.md`「예산 표」, 참조 깊이·목차 규칙은 `skills/BUDGET.md`「나눈 뒤에 지킬 것」이 정본. **처방은 묻지 않고 적용하고, 상한을 올리는 것은 처방이 아니다.**
-- **병행 세션의 커밋은 `git commit -- <경로…>` 다** — 순서는 `git commit -m "$(cat <<'MSG' … MSG)" -- <경로…>`(`-m` 을 `--` 뒤에 두면 경로로 읽혀 실패), 명령에 `2>&1`. 근거·주의는 `docs/harness-conventions.md` 「병행 세션의 커밋」.
+- **병행 세션의 커밋은 `git commit -- <경로…>` 다** — 순서는 `git commit -m "$(cat <<'MSG' … MSG)" -- <경로…>`(`-m` 을 `--` 뒤에 두면 경로로 읽혀 실패), 명령에 `2>&1` · 본문에 역슬래시가 들면 Write 로 만든 파일을 `git commit -F <파일>`. 근거·주의는 `docs/harness-conventions.md` 「병행 세션의 커밋」.
 - **hook 출력 규약**: 경고는 `exit 0` 비차단 + stderr + additionalContext, **차단은 `exit 2` 하나**(hook 넷) · 우회 변수 둘 · `guard-write` 게이트 2종의 정규식 공유 — hook 수정 전 `docs/harness-conventions.md` 「자격증명 취급」·「`guard-write`의 PLAN-EXEMPT 면제 경로」와 `scripts/rules/write-gate-rationale.md` 를 읽는다.
 - **⚠ `llm-wiki` 의 절차 이름·번호·쓰기 범위를 바꾸면 글로벌 `~/.claude/CLAUDE.md` 「절대 금지」 의 「기록의 해석 기준」 조항(스킬 자기 큐·지식베이스 기록 면제)과 함께 확인**한다(검사기 밖 — 정본 `docs/harness-conventions.md` 「llm-wiki ↔ 글로벌 지침 결합」).
 - **SKILL 문서**: 형식은 `skills/AUTHORING.md`, **설계 원칙은 `skills/DESIGN.md` 가 정본**이다.

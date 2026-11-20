@@ -20,14 +20,14 @@
 > 기준선을 작업 트리를 건드리지 않고 재려고 임시 `git worktree add` 를 쓸 때 읽는다(`plan/references/plan-template.md`「작업 단계」 의 측정 방법).
 
 - **자리는 `TEMP-FILES.md` 의 `scratch\base-<레포 폴더명>-<YYYYMMDD-HHmm>` 이다** — `%TEMP%\karina-plugin\` 바로 아래에 두면 세션 시작 정리가 보지 않아, 지우지 못한 사본이 기한 없이 남는다.
-- **측정이 끝나면 PowerShell 도구로 아래 명령을 돌리고 마지막 줄이 `남음: False` 인지 본다 — `True` 면 그 경로를 보고의 남은 이슈에 적는다** — 폴더 안 파일을 연 프로세스가 하나라도 살아 있으면 `git worktree remove --force` 가 `Invalid argument` 로 실패하고 등록만 풀린 채 폴더가 남는다(2026-11-18 실측 — BASE 에디터만 끄고 그 자식 `AssetImportWorker` 를 남겼다). 그래서 명령줄에 폴더 이름이 든 프로세스를 자식까지 빼지 않고 끝내되, 같은 이름을 명령줄에 담은 이 명령의 셸과 그 조상만 뺀다.
+- **측정이 끝나면 아래 명령을 Write 로 `.ps1` 파일에 담아 `pwsh -NoProfile -File <파일>` 로 돌리고(삭제 명령을 PowerShell 도구에 인라인으로 넣으면 도구의 경로 보호가 다른 따옴표 경로를 집어 막을 수 있다) 마지막 줄이 `남음: False` 인지 본다 — `True` 면 그 경로를 보고의 남은 이슈에 적는다** — 폴더 안 파일을 연 프로세스가 하나라도 살아 있으면 `git worktree remove --force` 가 `Invalid argument` 로 실패하고 등록만 풀린 채 폴더가 남는다(2026-11-18 실측 — BASE 에디터만 끄고 그 자식 `AssetImportWorker` 를 남겼다). 그래서 명령줄에 폴더 이름이 든 프로세스를 자식까지 빼지 않고 끝내되, 같은 이름을 명령줄에 담은 이 명령의 셸과 그 조상만 뺀다.
 
 ```powershell
 $repo = '<레포>'; $w = '<worktree 경로>'; $leaf = Split-Path $w -Leaf
 $mine = @(); $p = $PID; while ($p -and $p -notin $mine) { $mine += [int]$p; $p = (Get-CimInstance Win32_Process -Filter "ProcessId=$p").ParentProcessId }
 Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*$leaf*" -and [int]$_.ProcessId -notin $mine } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; Wait-Process -Id $_.ProcessId -Timeout 30 -ErrorAction SilentlyContinue }
 git -C $repo worktree remove --force $w
-if (Test-Path -LiteralPath $w) { Remove-Item -LiteralPath $w -Recurse -Force }
+if (Test-Path -LiteralPath $w) { cmd /c rd /s /q "$w" }
 git -C $repo worktree prune
 "남음: $(Test-Path -LiteralPath $w)"
 ```
