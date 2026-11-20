@@ -570,7 +570,10 @@ if (-not [System.IO.File]::Exists($ptSysFile)) {
     [System.IO.File]::WriteAllText($ptSysFile, '!<symlink>')
     [System.IO.File]::SetAttributes($ptSysFile, [System.IO.FileAttributes]::System)
 }
-foreach ($f in @((Join-Path $ptLnkDir 'plan.md.lnk'), (Join-Path $ptLnkParent 'd.lnk'))) {
+$ptExeDir = Join-Path $ptFixture 'pt-exefile'
+$ptExeLnkDir = Join-Path $ptFixture 'pt-exelnkfile'
+New-Item -ItemType Directory -Path $ptExeDir, $ptExeLnkDir -Force | Out-Null
+foreach ($f in @((Join-Path $ptLnkDir 'plan.md.lnk'), (Join-Path $ptLnkParent 'd.lnk'), (Join-Path $ptExeDir 'plan.md.exe'), (Join-Path $ptExeLnkDir 'plan.md.exe.lnk'))) {
     if (-not [System.IO.File]::Exists($f)) { [System.IO.File]::WriteAllText($f, 'L') }
 }
 $ptFix = $ptFixture -replace '\\', '/'
@@ -638,6 +641,8 @@ $ptDeny = @(
     @{ Name = '이미 있는 하드링크인 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptHard + '/plan.md"') },
     @{ Name = '이미 있는 system 속성 파일(Cygwin식 심링크 쿠키)인 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptFix + '/pt-syscookie/plan.md"') },
     @{ Name = '같은 이름의 .lnk 바로가기가 있는 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptFix + '/pt-lnkfile/plan.md"') },
+    @{ Name = '같은 이름에 .exe 를 붙인 파일이 있는 절대 Temp 경로는 차단(Git Bash 가 .exe 를 붙여 연다)'; Cmd = ('echo x > "' + $ptFix + '/pt-exefile/plan.md"') },
+    @{ Name = '같은 이름에 .exe.lnk 를 붙인 파일이 있는 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptFix + '/pt-exelnkfile/plan.md"') },
     @{ Name = '부모 폴더 이름의 .lnk 바로가기가 있는 절대 Temp 경로는 차단'; Cmd = ('echo x > "' + $ptFix + '/pt-lnkdir/d/plan.md"') },
     @{ Name = '끝에 점을 붙인 레포 plan.md 는 차단(Windows 가 끝 점을 뗀다)'; Cmd = 'Set-Content -Path D:/repo/plan.md. -Value x' },
     @{ Name = '끝에 점을 붙인 레포 plan.md 리다이렉트는 차단'; Cmd = 'echo x > plan.md.' },
