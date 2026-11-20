@@ -648,6 +648,8 @@ $ptDeny = @(
     @{ Name = '큰따옴표 안 작은따옴표로 뒤 명령을 가린 꼴은 차단'; Cmd = ('echo "it''s" ; ni -it j "' + $ptTemp + '/pj15" -Value D:/repo ; echo x > "' + $ptTemp + '/pj15/plan.md" ; echo ''z''') },
     @{ Name = '주석 안 작은따옴표로 다음 줄 명령을 가린 꼴은 차단'; Cmd = ("echo a # it's`nni -it j `"" + $ptTemp + "/pj16`" -Value D:/repo`necho 'x' > `"" + $ptTemp + '/pj16/plan.md"') },
     @{ Name = 'Set-Content Function: 으로 허용 명령을 다시 정의한 명령은 차단'; Cmd = ('Set-Content Function:mkdir "ni -it j ' + $ptTemp + '/pj17 D:/repo"; mkdir; echo x > "' + $ptTemp + '/pj17/plan.md"') },
+    @{ Name = '유니코드 작은따옴표로 닫아 뒤 명령을 숨긴 꼴은 차단'; Cmd = ("echo 'a" + [char]0x2018 + '; ni -it j "' + $ptTemp + '/pj30" -Value D:/repo; echo ' + [char]0x2018 + "b'; echo x > `"" + $ptTemp + '/pj30/plan.md"') },
+    @{ Name = '유니코드 큰따옴표로 닫아 뒤 명령을 숨긴 꼴은 차단'; Cmd = ("echo 'a" + [char]0x201C + '; ni -it j ' + $ptTemp + '/pj32 -Value D:/repo; echo ' + [char]0x201C + "b'; Set-Content -Path `"" + $ptTemp + '/pj32/plan.md" -Value x') },
     @{ Name = '변수 대입 접두가 든 명령은 차단'; Cmd = ('PATH=D:/evil tee "' + $ptTemp + '/fx/plan.md"') },
     @{ Name = '큰따옴표 안 치환이 든 명령은 차단'; Cmd = ('echo "$(ni -it j a b)" > "' + $ptTemp + '/fx/plan.md"') },
     @{ Name = '절대 Temp 경로와 맨 plan.md 언급이 함께 있으면 차단'; Cmd = ('echo plan.md; echo x > "' + $ptTemp + '/fx/plan.md"') }

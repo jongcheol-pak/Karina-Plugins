@@ -324,6 +324,7 @@ function Test-LiteralTempPath([string]$Path, [string]$TempRoot) {
 }
 
 function Test-PlainWriteCommand([string]$Cmd) {
+    if ($Cmd.IndexOfAny([char[]](0x2018..0x201F)) -ge 0) { return $false }
     $bare = New-Object System.Text.StringBuilder
     $skeleton = New-Object System.Text.StringBuilder
     $state = 0
