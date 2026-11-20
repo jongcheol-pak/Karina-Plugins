@@ -64,7 +64,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ## 검증
 
-**task마다 아래 셋 중 해당하는 것을 실행한다.** 명령은 `AGENTS.md`에서 가져온다 — 추측한 명령은 실행 시점에 실패한다. **있는데 실패하면 `references/loop-exceptions.md`「레포 문서·스크립트 정정」 대로 고쳐 진행하고, `AGENTS.md`에 없으면 사용자에게 묻는다.**
+**task마다 아래 셋 중 해당하는 것을 실행한다.** 명령은 `AGENTS.md`에서 가져온다 — 추측한 명령은 실행 시점에 실패한다. **있는데 실패하거나 경고·느림을 내면 `references/loop-exceptions.md`「레포 문서·스크립트 정정」 대로 고쳐 진행하고, `AGENTS.md`에 없으면 사용자에게 묻는다.**
 
 | # | 대상 | 언제 |
 |---|---|---|
@@ -93,7 +93,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터):
 
 ### 실패 처리
 
-- **task 검증이 실패하거나 막히거나 hook 이 막거나 하니스(스킬·hook) 결함을 만나면 `references/loop-exceptions.md`「실패 처리」 를, 검증 수단이 틀렸으면 같은 파일 「검증 수단 결함」 을 Read 한다** — 1회차 실패 기록·원인 수정·디버깅 절차 경로가 거기 있다.
+- **task 검증이 실패하거나 막히거나 hook 이 막거나 하니스(스킬·hook) 결함을 만나면 `references/loop-exceptions.md`「실패 처리」 를, 검증 수단이 틀렸거나 경고·느림을 내면 같은 파일 「검증 수단 결함」 을 Read 한다** — 1회차 실패 기록·원인 수정·디버깅 절차 경로가 거기 있다.
 
 ## 커밋
 
