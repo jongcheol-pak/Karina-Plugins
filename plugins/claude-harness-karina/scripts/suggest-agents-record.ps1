@@ -265,7 +265,7 @@ if ($fixOnes.Count -gt 0) {
         $lines += ("  - " + $s.label + ": `"" + $s.token + "`"  -> AGENTS.md '" + $s.section + "' 섹션의 기존 줄")
     }
     $lines += ""
-    $lines += "AGENTS.md 의 그 줄대로 돌려 실패하는 것을 봤고 이 명령이 성공했을 때만 기존 줄 정정 대상입니다 — 다른 대상을 고른 것뿐이면 무시하세요. karina:implement 루프나 karina-systematic-debugging 안이면 묻지 않고 record-project-fact 의 기존 줄 정정 예외로 고친 뒤 보고에 적고, 그 밖이면 사용자에게 정정을 제안하세요."
+    $lines += "AGENTS.md 의 그 줄대로 돌려 실패하거나 통과했지만 실측과 다른 값·경로를 재는 것을 봤고 이 명령이 성공했을 때만 기존 줄 정정 대상입니다 — 다른 대상을 고른 것뿐이면 무시하세요. karina:implement 루프나 karina-systematic-debugging 안이면 묻지 않고 record-project-fact 의 기존 줄 정정 예외로 고친 뒤 보고에 적고, 그 밖이면 사용자에게 정정을 제안하세요."
 }
 $lines += "이 제안은 차단이 아닙니다."
 $msg = $lines -join "`n"
