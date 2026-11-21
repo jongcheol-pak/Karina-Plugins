@@ -62,6 +62,9 @@
 #   screen-unshot T<N>           판정이 미촬영뿐이고 AGENTS.md(위 Plan check 와 같은 탐색)의 「- **Verify (앱 조작)**:」 값이
 #                                「없음」 이 아님 — 미촬영 줄에 「· 사유 <…>」 칸이 있으면 위반 대신 note screen-unshot-reason T<N>
 #                                (Verify 줄이 없거나 AGENTS.md 가 없으면 검증 스킬 없음 — 미촬영 통과)
+#   screen-unshot-attempt T<N>   위 screen-unshot 에서 사유 칸은 있는데 「· 시도 <…>」 칸이 없음 — 사유가 「기준선 흔들림」·
+#                                「image-diff: ERROR」 로 시작하면(조작은 성공) 시도 칸 없이 note
+#                                (판정 사본: scripts/guard-task-audit.ps1 Get-TaskEvidenceLines)
 #   no-red-evidence·no-screen-verdict 판정의 사본이 scripts/guard-task-audit.ps1 의 Get-TaskEvidenceLines 에 있다 —
 #                                한쪽을 고치면 다른 쪽도 고친다(골든 guard-task-audit 의 「사본 정합」 케이스가 대조한다)
 #   remaining-issue <종류>       task 단위가 아니라 「## Deferred / Follow-up」 항목 단위 — 넘김 사유 없이 남은 항목(줄 번호는 그 항목).
@@ -224,8 +227,11 @@ if ($Base) {
     $screenFalseRx = $screenHead + 'HEAD\s*' + (Get-Text @(0xAC70, 0xC9D3))    # 거짓
     $unshotRx = $screenHead + (Get-Text @(0xBBF8, 0xCD2C, 0xC601)) + '\(HUMAN-VERIFY\)(.*)$'    # 미촬영(HUMAN-VERIFY)
     $reasonRx = [char]0xB7 + '\s*' + (Get-Text @(0xC0AC, 0xC720)) + '\s+\S'    # · 사유 <…>
+    $attemptRx = [char]0xB7 + '\s*' + (Get-Text @(0xC2DC, 0xB3C4)) + '\s+\S'    # · 시도 <…>
+    $attemptFreeRx = [char]0xB7 + '\s*' + (Get-Text @(0xC0AC, 0xC720)) + '\s+(?:' + (Get-Text @(0xAE30, 0xC900, 0xC120, 0x20, 0xD754, 0xB4E4, 0xB9BC)) + '|image-diff:\s*ERROR)'    # · 사유 기준선 흔들림 | image-diff: ERROR
     $verifySkill = Test-VerifySkill (Get-AgentsFile (Resolve-Path -LiteralPath $PlanPath).Path)
     $versionRx = '^\s*' + (Get-Text @(0xC124, 0xC815)) + '\s*:\s*v(\d+\.\d+\.\d+)\s*' + [char]0x2014    # 설정: v<버전> —
+    function Test-UnshotAttempt([string]$Tail) { return ($Tail -match $reasonRx) -and (($Tail -match $attemptRx) -or ($Tail -match $attemptFreeRx)) }
     $taskBlocks = @(Get-TaskBlocks)
     $lastText = if ($taskBlocks.Count) { (@($taskBlocks[-1].Lines | ForEach-Object { $_.Text }) -join "`n") } else { '' }
     $taggedRx = $screenHead + 'T(\d+)\s+(.*)$'
@@ -243,6 +249,7 @@ if ($Base) {
                 Id = [int]$tm.Groups[1].Value; Evidence = $false; Red = $false; RedUnverified = $false; Tagged = $true
                 ScreenTrue = [regex]::IsMatch($line, $screenTrueRx); ScreenFalse = [regex]::IsMatch($line, $screenFalseRx)
                 Unshot = $tagUnshot.Success; UnshotReason = ($tagUnshot.Success -and $tagUnshot.Groups[1].Value -match $reasonRx)
+                UnshotAttempt = ($tagUnshot.Success -and (Test-UnshotAttempt $tagUnshot.Groups[1].Value))
             }
         }
         $m = [regex]::Match($parts[0], $titleRx)
@@ -257,6 +264,7 @@ if ($Base) {
             Red = [regex]::IsMatch($body, $redRx); RedUnverified = [regex]::IsMatch($body, $redUnRx)
             ScreenTrue = [regex]::IsMatch($body, $screenTrueRx); ScreenFalse = [regex]::IsMatch($body, $screenFalseRx)
             Unshot = [bool]$unshots.Count; UnshotReason = [bool]@($unshots | Where-Object { $_ -match $reasonRx }).Count
+            UnshotAttempt = [bool]@($unshots | Where-Object { Test-UnshotAttempt $_ }).Count
         }
     }
     $screenLabelBase = '- **' + (Get-Text @(0xD654, 0xBA74)) + '**:'    # - **화면**:
@@ -292,7 +300,8 @@ if ($Base) {
                 if (@($screens | Where-Object { $_.ScreenFalse }).Count) { Add-Problem $b.N ('screen-false ' + $tag) }
                 elseif (-not @($screens | Where-Object { $_.Unshot }).Count) { Add-Problem $b.N ('no-screen-verdict ' + $tag) }
                 elseif ($verifySkill) {
-                    if (@($screens | Where-Object { $_.UnshotReason }).Count) { $notes.Add('screen-unshot-reason ' + $tag) }
+                    if (@($screens | Where-Object { $_.UnshotAttempt }).Count) { $notes.Add('screen-unshot-reason ' + $tag) }
+                    elseif (@($screens | Where-Object { $_.UnshotReason }).Count) { Add-Problem $b.N ('screen-unshot-attempt ' + $tag) }
                     else { Add-Problem $b.N ('screen-unshot ' + $tag) }
                 }
             }

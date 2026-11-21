@@ -199,7 +199,18 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
     } elseif ($screenMissing) {
         $odd = @([regex]::Matches($Message, '(?m)^\s*(?:[-*]\s*)?화면\s*[^\s:]*\s*:.*$') | ForEach-Object { $_.Value.Trim() } | Select-Object -First 1)
         $seen = if ($odd.Count) { " — 본 줄: ``$($odd[0])``" } else { '' }
-        $out += "  - 화면 판정 줄 없음 — ``- **화면**:`` 줄이 있는 task 다. 본문에 ``화면: HEAD 참|거짓 — <스크린샷>`` 또는 ``화면: 미촬영(HUMAN-VERIFY) · 사유 <…>`` 줄을 둔다$seen"
+        $out += "  - 화면 판정 줄 없음 — ``- **화면**:`` 줄이 있는 task 다. 본문에 ``화면: HEAD 참|거짓 — <스크린샷>`` 또는 ``화면: 미촬영(HUMAN-VERIFY) · 사유 <…> · 시도 <…>`` 줄을 둔다$seen"
+    }
+    $verify = @(Get-Content -LiteralPath $AgentsPath -Encoding UTF8 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\s*-\s*\*\*Verify \(앱 조작\)\*\*\s*:\s*(.*)$' } | Select-Object -First 1)
+    $verifyOn = $verify.Count -and ($verify[0] -replace '^\s*-\s*\*\*Verify \(앱 조작\)\*\*\s*:\s*', '') -notmatch '^\W*없음'
+    $all = ($bodies + $tagged) -join "`n"
+    if ($hasScreen -and $verifyOn -and -not [regex]::IsMatch($all, $lineHead + '화면:\s*(?:T' + $TaskId + '\s+)?HEAD\s*참')) {
+        $tails = @([regex]::Matches($all, $lineHead + '화면:\s*(?:T' + $TaskId + '\s+)?미촬영\(HUMAN-VERIFY\)(.*)$') | ForEach-Object { $_.Groups[1].Value })
+        $withReason = @($tails | Where-Object { $_ -match '·\s*사유\s+\S' })
+        $attempted = @($withReason | Where-Object { $_ -match '·\s*시도\s+\S' -or $_ -match '·\s*사유\s+(?:기준선 흔들림|image-diff:\s*ERROR)' })
+        if ($withReason.Count -and -not $attempted.Count) {
+            $out += "  - 미촬영 줄에 시도 칸 없음 — 검증 스킬이 있는 레포다. 범용 도구·보강을 시도한 수단을 ``· 시도 <…>`` 칸으로 단다(사유가 기준선 흔들림·image-diff: ERROR 면 면제 · skills/implement/references/screen-scenarios.md)"
+        }
     }
     return $out
 }

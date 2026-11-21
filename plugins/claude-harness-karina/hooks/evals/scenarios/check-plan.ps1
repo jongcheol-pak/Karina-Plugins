@@ -477,10 +477,30 @@ $ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY)" + $cpScrTai
 Set-EvidenceAgents $ev.dir $cpVerifyOn
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: 검증 스킬이 있는 레포의 사유 없는 미촬영은 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-unshot T1'
+$ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY) · 사유 Launch 가 세 번 실패 · 시도 karina-computer-use" + $cpScrTail)
+Set-EvidenceAgents $ev.dir $cpVerifyOn
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 검증 스킬이 있어도 사유·시도를 단 미촬영은 note 로 낸다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note screen-unshot-reason T1'
 $ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY) · 사유 Launch 가 세 번 실패" + $cpScrTail)
 Set-EvidenceAgents $ev.dir $cpVerifyOn
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
-Assert-Case -Name "check-plan 증거: 검증 스킬이 있어도 사유를 단 미촬영은 note 로 낸다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note screen-unshot-reason T1'
+Assert-Case -Name "check-plan 증거: 검증 스킬이 있는 레포의 시도 칸 없는 미촬영은 잡는다 (CP-attempt)" -R $r -ExpectExit 1 -ExpectContains 'screen-unshot-attempt T1'
+$ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY) · 사유 Launch ERROR 창 없음" + $cpScrTail)
+Set-EvidenceAgents $ev.dir $cpVerifyOn
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 사유에 ERROR 가 있어도 image-diff 가 아니면 시도 칸이 필요하다 (CP-attempt-err)" -R $r -ExpectExit 1 -ExpectContains 'screen-unshot-attempt T1'
+$ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY) · 사유 기준선 흔들림 12 px bbox 1,2,3,4" + $cpScrTail)
+Set-EvidenceAgents $ev.dir $cpVerifyOn
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 기준선 흔들림 사유는 시도 칸 없이 note 로 낸다 (CP-attempt-base)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note screen-unshot-reason T1'
+$ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY) · 사유 image-diff: ERROR size 10x10 vs 12x12" + $cpScrTail)
+Set-EvidenceAgents $ev.dir $cpVerifyOn
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: image-diff ERROR 사유는 시도 칸 없이 note 로 낸다 (CP-attempt-diff)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note screen-unshot-reason T1'
+$ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY) · 사유 Launch 가 세 번 실패" + $cpScrTail)
+Set-EvidenceAgents $ev.dir "# AGENTS.md`n`n- **Verify (앱 조작)**: 없음`n"
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: Verify 가 없음인 레포는 시도 칸 없는 미촬영도 통과한다 (CP-attempt-off)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 $ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY)" + $cpScrTail)
 Set-EvidenceAgents $ev.dir "# AGENTS.md`n`n- **Verify (앱 조작)**: 없음`n"
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
@@ -496,10 +516,14 @@ Assert-Case -Name "check-plan 증거: 일괄 커밋의 화면: T1 HEAD 참 지�
 $ev = New-EvidenceRepo @($cpOk, ($cpBatch + "화면: T1 HEAD 거짓" + $cpScrTail))
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: 일괄 커밋의 지목 거짓뿐이면 screen-false 로 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-false T1'
+$ev = New-EvidenceRepo @($cpOk, ($cpBatch + "화면: T1 미촬영(HUMAN-VERIFY) · 사유 Launch 가 세 번 실패 · 시도 karina-browser-use" + $cpScrTail))
+Set-EvidenceAgents $ev.dir $cpVerifyOn
+$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 일괄 커밋의 사유·시도 단 지목 미촬영은 note 로 낸다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note screen-unshot-reason T1'
 $ev = New-EvidenceRepo @($cpOk, ($cpBatch + "화면: T1 미촬영(HUMAN-VERIFY) · 사유 Launch 가 세 번 실패" + $cpScrTail))
 Set-EvidenceAgents $ev.dir $cpVerifyOn
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
-Assert-Case -Name "check-plan 증거: 일괄 커밋의 사유 단 지목 미촬영은 note 로 낸다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note screen-unshot-reason T1'
+Assert-Case -Name "check-plan 증거: 일괄 커밋의 시도 칸 없는 지목 미촬영도 잡는다 (CP-attempt-batch)" -R $r -ExpectExit 1 -ExpectContains 'screen-unshot-attempt T1'
 $ev = New-EvidenceRepo @($cpOk + "`n화면: T2 HEAD 참" + $cpScrTail)
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: T1 커밋 안의 화면: T2 지목 줄은 T1 판정이 아니다" -R $r -ExpectExit 1 -ExpectContains 'no-screen-verdict T1'
