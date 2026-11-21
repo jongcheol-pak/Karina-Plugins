@@ -476,6 +476,16 @@ function Invoke-WarnBaseWorktree {
     return New-HookResult
 }
 
+function Expand-CommitMsgVars([string]$Text, [string]$Cmd) {
+    $vals = @{}
+    foreach ($m in [regex]::Matches($Cmd, '(?:^|[\s;&|(])(?<n>[A-Za-z_]\w*)=(?:"(?<v>[^"$`]*)"|''(?<v>[^'']*)''|(?<v>[^\s;&|"''$`]*))(?=[\s;&|)]|$)')) {
+        $vals[$m.Groups['n'].Value] = $m.Groups['v'].Value
+    }
+    $out = [regex]::Replace($Text, '\$(?:\{(?<n>\w+)\}|(?<n>[A-Za-z_]\w*))', { param($m) if ($vals.ContainsKey($m.Groups['n'].Value)) { $vals[$m.Groups['n'].Value] } else { $m.Value } })
+    if ($out.Contains('$')) { return $null }
+    return $out
+}
+
 # 커밋 메시지 읽기(전문 — 제목은 첫 줄) — 근거는 `rules/bash-guard-rationale.md` §14
 function Get-CommitMessage([string]$cmd, [string]$baseDir) {
     $judge = [regex]::Replace((Remove-HeredocBodyForJudge $cmd), '(?s)@([''"])[ \t]*\r?\n.*?\r?\n\1@', { param($m) '@' + $m.Groups[1].Value + ' ' + $m.Groups[1].Value + '@' })
@@ -507,6 +517,14 @@ function Get-CommitMessage([string]$cmd, [string]$baseDir) {
         if ($null -ne $hereDocBody) { return $hereDocBody }
         if ($null -ne $hereStrBody) { return $hereStrBody }
         return $false
+    }
+    if ($path.Contains('$')) { $path = Expand-CommitMsgVars $path $cmd; if ($null -eq $path) { return $false } }
+    foreach ($hm in [regex]::Matches($cmd, $script:HeredocBlockRx)) {
+        $ht = [regex]::Match($hm.Groups['line'].Value, '(?:^|[\s;&|(])cat\b[^>\r\n]*?>\s*(?<t>"[^"]+"|''[^'']+''|[^\s;&|<>]+)')
+        if (-not $ht.Success) { continue }
+        $tp = $ht.Groups['t'].Value.Trim('"', "'")
+        if ($tp.Contains('$')) { $tp = Expand-CommitMsgVars $tp $cmd }
+        if ($tp -eq $path) { return $hm.Groups['body'].Value }
     }
     if ($path -match '^/tmp(/.*)?$') { $path = $env:TEMP + ($Matches[1] -replace '/', '\') }
     elseif ($path -match '^/([A-Za-z])/(.*)$') { $path = $Matches[1] + ':\' + ($Matches[2] -replace '/', '\') }

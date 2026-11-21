@@ -315,6 +315,15 @@ $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn "git commit -F - <<'MSG'`nT3: �
 Assert-Case -Name "rf: -F - 본문 속 ' -m ' 을 -m 으로 오인하지 않는다 → 차단 (RF12)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'grep -F x msg.txt; git commit -a')
 Assert-Case -Name "rf: 다른 명령의 -F 는 커밋 파일이 아니다 → 통과(무출력) (RF13 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+$rfUnFwd = $rfUn -replace '\\', '/'
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('S="' + $rfUnFwd + '"; git add a && git commit -q -F "$S/msg.txt"'))
+Assert-Case -Name "rf: 같은 명령의 S=`"…`" 대입으로 -F `"`$S/msg.txt`" 를 펼쳐 첫 줄 T3 + 미완료 → 차단 (RF14)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ("M='msg.txt'; git commit -F " + '"${M}"'))
+Assert-Case -Name "rf: `${M} 꼴과 작은따옴표 대입도 펼친다 → 차단 (RF15)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ("cat > fresh-msg.txt <<'X'`nT3: 검색 요약`nX`ngit commit -F fresh-msg.txt"))
+Assert-Case -Name "rf: 같은 명령의 cat > 파일 heredoc 본문을 -F 메시지로 받는다(파일 미존재) → 차단 (RF16)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'git commit -F "$UNSET_DIR/msg.txt"')
+Assert-Case -Name "rf: 대입 없는 변수 -F 경로는 기존대로 경고·통과 (RF17)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'printf x | git commit -F -')
 Assert-Case -Name "rf: -F - 인데 같은 명령에 본문 없음 + plan 있음 → 경고·통과 (RF14)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfNoPlan 'git commit -m $msg')
