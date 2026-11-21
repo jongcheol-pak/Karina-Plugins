@@ -2,6 +2,10 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-21] 검증 스킬 공백 자동 보강 · 틀린 문서 정정 확장(v3.46.0) — 기각: 검증 스킬이 없는 레포(`Verify (앱 조작)` 없음)에서 루프가 검증 스킬을 자동 생성하는 안 — 사용자 답 「지금대로 유지」(HUMAN-VERIFY + `/karina:create-verification-skill` 권유). 검증 스킬이 있는데 그 화면·조작이 없는 공백만 루프가 범용 도구(`karina-computer-use`·`karina-browser-use`·앱 CLI)로 조작하고 그 검증 스킬 폴더를 보강한다(`skills/implement/references/screen-scenarios.md`).
+  - 기각: 보강에 `maintain-verification-skill` 을 부르는 안 — 사용자 호출 전용이고 전 기능을 조작해 루프 안 비용이 크다.
+  - 2026-11-11 「이미 생성된 레포 검증 스킬의 「변경 검증」 문면은 고치지 않는다」 는 하니스 plan 이 다른 레포를 고치는 것의 기각이라 유지된다 — 이번은 그 레포의 루프가 자기 레포 검증 스킬을 실행으로 증명된 만큼 보강하는 것이다.
+
 - [2026-11-21] reflect 686903a0 하니스 후보 6건(v3.45.0) — 기각: 같은 앱에 `karina-cli computer click`·촬영을 batch 없이 따로 N회 연속 내면 경고하는 hook — 그 세션 전사 요약에서 batch 아닌 click·screenshot 연속은 최대 2회라(click 53 · batch 3) N≥3 경고는 한 번도 뜨지 않았을 것이고, 규칙 정본이 Karina 레포 스킬(`verify-karina` 「Evidence」)이라 하니스 hook 이 다른 레포 규칙을 집행하는 결합이 생긴다. 그 세션의 verify 비용은 묶음 도중 결함마다 재기동한 것이 큰 몫이라 `screen-scenarios.md` 의 결함 일괄 수정·재기동 1회로 대신했다
   - 기각: `block-python-newcode` 를 셸 쓰기까지 넓히며 이름·파일명을 바꾸는 안 — 안전 임계 hook 의 이름 교체는 사용자 지시 사항이라 이름은 두고 rationale §22 에 범위를 적었다
 
