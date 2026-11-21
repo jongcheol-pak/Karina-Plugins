@@ -72,3 +72,12 @@ stdin 파싱 실패 · `session_id` 부재 · `cwd` 부재 · plan 을 못 찾�
 - **확장자(`.md`·`.txt`)로는 빼지 않는다** — 문서가 빌드 입력·실행 자산인 레포가 있다(Karina 의 `include_str!` · 이 하니스의 스킬 문면 — `skills/chain-plan/references/run-verify-rationale.md`). 이 하니스 `AGENTS.md` 는 그 줄을 선언하지 않아 여기서는 문서 커밋도 계속 주입한다.
 - **선언 glob 이 검증 매핑 경로와 겹치는지는 재지 않는다** — 겹치지 않게 선언하는 것이 그 레포의 책임이고(`skills/AGENTS-BOUNDARY.md`), 겹침 판정 명령은 문면(`push-flow.md`)이 `skills/chain-plan/references/continuation.md`「코디네이터 검증」 을 가리킨다.
 - **잘못된 pathspec 으로 `git diff` 가 실패하면 §3 대로 침묵한다** — 선언을 읽을 수 없는 경우(파일 읽기 실패)는 선언 없음으로 본다.
+
+## §9 넘김 사유 없는 남은 이슈
+
+**회차 끝에 `## Deferred / Follow-up` 에 넘김 사유 없는 항목이 남았으면 완료가 아니라고 보고 계속을 주입한다.** 판정은 `scripts/deferred-handoff.ps1` 의 `Get-UnhandedDeferred` 하나이고, 회차 끝 증거 대조(`skills/plan/scripts/check-plan.ps1 -Base` 의 `remaining-issue`)가 같은 함수를 dot-source 한다 — 두 자리에 규칙을 따로 두면 한쪽만 고쳐 갈린다. 사용자 관측(2026-11-21): 검증하지 않은 것·빼먹은 것·하지 않은 작업이 「남은 이슈」 로 실려 완료로 보고됐다. 남은 이슈로 넘길 수 있는 범주의 정본은 `skills/plan/references/deferred-rules.md` 다.
+
+- **위반 다섯** — 마커 없음(`no-marker`) · `[미판정]`(`unjudged`) · `[등재]`·`[미등재:대장 없음]` 인데 본문(이어지는 들여쓴 줄 포함)에 `넘김 사유 ①`·`②`·`다른 종류의 세션`(콜론 허용)이 없음(`no-reason`) · `[다음 회차]` 에 `(근거:` 없음(`no-basis`) · `[다음 회차]` 가 승인 표지의 `다음 회차 <N>` 을 넘음(`over-approved` — N 이 없으면 0). 그 밖의 `[미등재:<사유>]`·`[1회 실패]`·「없음」 은 통과다 — 버린 지적의 사유 진위는 문면으로 가를 수 없어 완료 리뷰가 본다.
+- **`[다음 회차]` 는 승인 표지의 수로 고정한다** — `plan.md` 는 gitignore 인 레포가 있어 BASE 판을 읽을 수 없고, 승인 표지는 plan 스킬이 승인 직후 쓰는 줄이라 구현 중에 붙인 항목과 가른다.
+- **주입 조건은 §7 의 회차 끝 조건(승인 표지·닫힌 task·중계 제외)을 공유하고, 4번 검증 공백이 있으면 그 안내가 먼저다** — 한 번에 두 안내를 내면 순서가 흐려진다. 상한은 §2 와 같은 2회이고 집합 키는 걸린 항목 줄이다.
+- **헬퍼를 읽지 못하면 침묵한다(§3)** — `check-plan` 은 `skip remaining-issue no-helper` 줄을 낸다.

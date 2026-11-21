@@ -90,7 +90,7 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 - **승인이 필요한 항목(대상은 `references/plan-template.md`「승인 필요 항목」)이 `## 승인 필요 항목`에 있는지 확인한다** — `plan-reviewer` 는 그 항목에 회피 설계가 있는지를 보고, 누락은 복구 경로 없는 삭제만 센다. 그 밖의 누락은 여기서 잡지 않으면 실행 시점에 루프가 멈춘다.
 - **`plan.md`를 쓴 뒤 화면에 요약을 내고 승인을 받는다** — 서식은 `references/interview.md`의 「승인 제시」. 중계 모드면 화면 대신 `ask` 로 보낸다(`references/relay-mode.md`「중계 모드」).
   - **승인 답이 `G`·`S`·`C` 면 `references/interview.md`「승인 제시」 의 그 갈래를 따른다(`G` 는 `references/grill.md`) — 셋 다 이 turn 에 `karina:implement` 를 부르지 않는다.**
-- **승인 직후 `plan.md` `## Goal` 의 `> BASE:`(그때의 HEAD)와 `> 승인:` 줄을 채운다 — 중계 모드면 코디네이터의 승인 답을 받은 뒤다(서식 정본 `references/plan-template.md` 「Goal」)** — `karina:implement` 가 `> 승인:` 줄 없는 `plan.md` 를 승인 전 초안으로 보고 확인을 묻는다.
+- **승인 직후 `plan.md` `## Goal` 의 `> BASE:`(그때의 HEAD)와 `> 승인:` 줄(끝에 `· 다음 회차 <N>` — 그때 `[다음 회차]` 항목 수)을 채운다 — 중계 모드면 코디네이터의 승인 답을 받은 뒤다(서식 정본 `references/plan-template.md` 「Goal」)** — `karina:implement` 가 `> 승인:` 줄 없는 `plan.md` 를 승인 전 초안으로 보고 확인을 묻는다.
 - **두 줄을 채우면 같은 turn에서 `karina:implement` 를 Skill 도구로 부른다(진행 모드면 그 전에 초안을 지운다 — `references/draft-mode.md`)** — 승인이 곧 실행 요청이라 「구현」을 다시 받지 않는다. 부르지 않고 그냥 이어 구현하면 `loop-continue` 의 발동 마커가 서지 않아, 루프가 중간에 멈췄을 때 계속을 주입하는 안전망이 꺼진다. 실행 중 멈추는 자리는 `karina:implement`의 「멈추는 넷 — 그리고 목록 밖의 넷」이 가른다.
 
 ## See also

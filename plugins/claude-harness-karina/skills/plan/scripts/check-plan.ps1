@@ -64,6 +64,11 @@
 #                                (Verify 줄이 없거나 AGENTS.md 가 없으면 검증 스킬 없음 — 미촬영 통과)
 #   no-red-evidence·no-screen-verdict 판정의 사본이 scripts/guard-task-audit.ps1 의 Get-TaskEvidenceLines 에 있다 —
 #                                한쪽을 고치면 다른 쪽도 고친다(골든 guard-task-audit 의 「사본 정합」 케이스가 대조한다)
+#   remaining-issue <종류>       task 단위가 아니라 「## Deferred / Follow-up」 항목 단위 — 넘김 사유 없이 남은 항목(줄 번호는 그 항목).
+#                                종류: no-marker(마커 없음) · unjudged([미판정]) · no-reason([등재]·[미등재:대장 없음] 에 「넘김 사유 ①·②·
+#                                다른 종류의 세션」 없음) · no-basis([다음 회차] 에 「(근거:」 없음) · over-approved([다음 회차] 가 승인 표지의
+#                                「다음 회차 <N>」(없으면 0)을 넘음). 판정 정본은 scripts/deferred-handoff.ps1 이고 loop-continue 가 같은 함수를 쓴다
+#                                (헬퍼를 못 읽으면 「check-plan: skip remaining-issue no-helper」)
 #   ERROR no-git · ERROR bad-base  plan 이 git 밖 · BASE 가 커밋이 아님(exit 2)
 # 제목 형식의 정본은 guard-bash 의 완료 커밋 판정이다(scripts/rules/bash-guard-rationale.md §14) — 같은 정규식을 쓴다.
 #
@@ -73,7 +78,8 @@
 # 왜 출력에 한글이 없는가: Git Bash 를 거친 PowerShell 출력에서 한글이 깨진다(work-clock 과 같은 이유).
 # 왜 펜스 안을 건너뛰는가: 템플릿·예시 펜스 안의 「## 」·「- [ ]」·표 행이 위반으로 잡힌다.
 # 왜 「\|」 를 칸 경계로 보지 않는가: 표 칸 안의 정규식은 「\|」 로 적히고, 그것으로 가르면 명령 칸 자리가 밀린다.
-# Deferred 마커 서식은 재지 않는다 — session-context hook 의 계수와 하니스 정합 검사가 이미 각자 구현한다.
+# Deferred 마커 서식(위치·볼드)은 재지 않는다 — session-context hook 의 계수와 하니스 정합 검사가 이미 각자 구현한다.
+#   -Base 모드의 remaining-issue 는 서식이 아니라 넘김 사유의 유무를 잰다.
 # stdin 은 읽지 않는다. PS 5.1·7 양쪽에서 돈다 — Windows 에는 5.1 만 있을 수 있다.
 param([string]$PlanPath = '', [string]$Base = '')
 
@@ -292,6 +298,11 @@ if ($Base) {
             }
         }
     }
+    $handoff = Join-Path (Split-Path (Split-Path (Split-Path $PSScriptRoot))) 'scripts/deferred-handoff.ps1'
+    try { . $handoff } catch { }
+    if (Get-Command Get-UnhandedDeferred -ErrorAction SilentlyContinue) {
+        foreach ($u in @(Get-UnhandedDeferred $raw)) { Add-Problem $u.N ('remaining-issue ' + $u.Kind) }
+    } else { Write-Output 'check-plan: skip remaining-issue no-helper' }
     Complete-Check
 }
 

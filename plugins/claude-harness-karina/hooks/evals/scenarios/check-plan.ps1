@@ -402,6 +402,41 @@ $ev = New-EvidenceRepo @()
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan Plan check: -Base 모드에서는 돌리지 않는다" -R $r -ExpectExit 1 -ExpectNotContains 'plan-check'
 
+$evRi = New-EvidenceRepo @($cpOk)
+function Invoke-RemainingIssue([string]$Deferred, [string]$Approval = '> 승인: <date>') {
+    $text = $cpDone.Replace("## Deferred / Follow-up`n`n없음", "## Deferred / Follow-up`n`n" + $Deferred).Replace('> 승인: <date>', $Approval)
+    return Invoke-CheckEvidence $text $evRi.dir $evRi.base
+}
+$riNext = '> 승인: 2026-01-01 · 화면 Y · 다음 회차 1'
+$r = Invoke-RemainingIssue '- **검증 못 함** — 골든을 돌리지 않았다'
+Assert-Case -Name "check-plan 남은 이슈: 마커 없는 Deferred 항목을 잡는다" -R $r -ExpectExit 1 -ExpectContains 'remaining-issue no-marker'
+$r = Invoke-RemainingIssue '- `[미판정]` **X** — 본문'
+Assert-Case -Name "check-plan 남은 이슈: [미판정] 항목을 잡는다" -R $r -ExpectExit 1 -ExpectContains 'remaining-issue unjudged'
+$r = Invoke-RemainingIssue '- `[등재]` **X** — 하지 않은 작업'
+Assert-Case -Name "check-plan 남은 이슈: 넘김 사유 없는 [등재] 를 잡는다" -R $r -ExpectExit 1 -ExpectContains 'remaining-issue no-reason'
+$r = Invoke-RemainingIssue '- `[등재]` **X** — 경고 조건을 바꾼다 — 넘김 사유 ②(의도된 동작 변경)'
+Assert-Case -Name "check-plan 남은 이슈: 넘김 사유 ② 가 있는 [등재] 는 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-RemainingIssue "- ``[등재]`` **X** — 테이블을 지운다`n  넘김 사유 ①(DB 삭제 승인)"
+Assert-Case -Name "check-plan 남은 이슈: 이어지는 줄의 넘김 사유도 센다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-RemainingIssue '- `[등재]` **X** — 넘김 사유: 다른 종류의 세션'
+Assert-Case -Name "check-plan 남은 이슈: 「넘김 사유: 다른 종류의 세션」 은 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-RemainingIssue '- `[미등재:대장 없음]` **X** — 본문'
+Assert-Case -Name "check-plan 남은 이슈: 넘김 사유 없는 [미등재:대장 없음] 을 잡는다" -R $r -ExpectExit 1 -ExpectContains 'remaining-issue no-reason'
+$r = Invoke-RemainingIssue "- ``[미등재:하니스 결함]`` **X** — 본문`n- ``[미등재:파일 수정 아님]`` **Y** — 교훈`n- ``[1회 실패]`` 원인 — 해결"
+Assert-Case -Name "check-plan 남은 이슈: 하니스 결함·버림·1회 실패 마커는 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-RemainingIssue '- `[다음 회차]` **T6** — 남은 절 (근거: abc1234)' $riNext
+Assert-Case -Name "check-plan 남은 이슈: 승인 표지 수 안의 [다음 회차] 는 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-RemainingIssue '- `[다음 회차]` **T6** — 남은 절' $riNext
+Assert-Case -Name "check-plan 남은 이슈: 근거 없는 [다음 회차] 를 잡는다" -R $r -ExpectExit 1 -ExpectContains 'remaining-issue no-basis'
+$r = Invoke-RemainingIssue "- ``[다음 회차]`` **T6** — 남은 절 (근거: abc1234)`n- ``[다음 회차]`` **T7** — 검증 못 한 것 (근거: abc1234)" $riNext
+Assert-Case -Name "check-plan 남은 이슈: 승인 표지 수를 넘은 [다음 회차] 를 잡는다" -R $r -ExpectExit 1 -ExpectContains 'remaining-issue over-approved'
+$r = Invoke-RemainingIssue '- `[다음 회차]` **T6** — 남은 절 (근거: abc1234)' '> 승인: 2026-01-01 · 화면 Y'
+Assert-Case -Name "check-plan 남은 이슈: 승인 표지에 수가 없으면 [다음 회차] 를 0 건 허용으로 본다" -R $r -ExpectExit 1 -ExpectContains 'remaining-issue over-approved'
+$r = Invoke-RemainingIssue "``````text`n- ``[등재]`` **예시** — 본문`n``````"
+Assert-Case -Name "check-plan 남은 이슈: 펜스 안 예시는 세지 않는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-RemainingIssue '없음'
+Assert-Case -Name "check-plan 남은 이슈: 없음 이면 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+
 $cpNoRed = "기능: T1 — 한다`n`n검증 결과: run → OK`nAcceptance: grep 1 — 참"
 $ev = New-EvidenceRepo @($cpNoRed)
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
