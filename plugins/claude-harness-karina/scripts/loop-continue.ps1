@@ -1,4 +1,4 @@
-﻿# loop-continue.ps1 — 자율 루프가 plan 미완 task 나 회차 끝 4번 검증을 남기고 멈추면 계속을 주입한다 — 근거는 `rules/loop-continue-rationale.md` §1
+﻿# loop-continue.ps1 — 자율 루프가 plan 미완 task·회차 끝 4번 검증·넘김 사유 없는 남은 이슈를 남기고 멈추면 계속을 주입한다 — 근거는 `rules/loop-continue-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -83,12 +83,16 @@ function Get-GateReuse([string]$PlanDir, [string]$TopDir) {
 }
 
 # 회차 끝 판정 — 근거는 `rules/loop-continue-rationale.md` §7
+function Test-RoundEnd([string]$PlanText) {
+    $body = [regex]::Replace($PlanText, $planFenceRx, '')
+    if ($body -notmatch '(?m)^> 승인: [0-9]{4}-') { return $false }
+    if ($body -notmatch ($planBulletRx + '\[[xX]\][ \t]*\**T\d+')) { return $false }
+    $req = [regex]::Match($body, '(?m)^> 요구:.*$')
+    return -not ($req.Success -and $req.Value.Contains('코디네이터 인터뷰 경유'))
+}
+
 function Get-FinalCheckGap([string]$PlanPath, [string]$PlanText) {
     $body = [regex]::Replace($PlanText, $planFenceRx, '')
-    if ($body -notmatch '(?m)^> 승인: [0-9]{4}-') { return $null }
-    if ($body -notmatch ($planBulletRx + '\[[xX]\][ \t]*\**T\d+')) { return $null }
-    $req = [regex]::Match($body, '(?m)^> 요구:.*$')
-    if ($req.Success -and $req.Value.Contains('코디네이터 인터뷰 경유')) { return $null }
     try { . (Join-Path $PSScriptRoot 'timed-git.ps1') } catch { return $null }
     if (-not (Get-Command Invoke-TimedGit -ErrorAction SilentlyContinue)) { return $null }
     $dir = Split-Path -Parent $PlanPath
@@ -149,12 +153,20 @@ if (-not $planHit) { exit 0 }
 try { $planText = Get-Content -LiteralPath $planHit.Path -Raw -Encoding UTF8 -ErrorAction Stop } catch { exit 0 }
 $ids = @(Get-OpenTaskIds $planText)
 $gap = $null
+$left = @()
 if ($ids.Count -eq 0) {
+    if (-not (Test-RoundEnd $planText)) { exit 0 }
     $gap = Get-FinalCheckGap $planHit.Path $planText
-    if (-not $gap) { exit 0 }
+    if (-not $gap) {
+        # 넘김 사유 없는 남은 이슈 — 근거는 `rules/loop-continue-rationale.md` §9
+        try { . (Join-Path $PSScriptRoot 'deferred-handoff.ps1') } catch { exit 0 }
+        if (-not (Get-Command Get-UnhandedDeferred -ErrorAction SilentlyContinue)) { exit 0 }
+        $left = @(Get-UnhandedDeferred $planText)
+        if ($left.Count -eq 0) { exit 0 }
+    }
 }
 
-$setKey = if ($gap) { Get-SetKey @('final', $gap.Head) } else { Get-SetKey $ids }
+$setKey = if ($gap) { Get-SetKey @('final', $gap.Head) } elseif ($left.Count) { Get-SetKey (@('left') + @($left | ForEach-Object { $_.Text })) } else { Get-SetKey $ids }
 $counter = Join-Path $stateDir ($sidSafe + '.' + $setKey + '.count')
 $n = 0
 try { $n = [int](Get-Content -LiteralPath $counter -Raw -ErrorAction Stop).Trim() } catch { $n = 0 }
@@ -171,6 +183,11 @@ if ($gap) {
         "Progress Log 의 「4번 검증」 줄 뒤에 plan 파일 밖 변경이 커밋됐습니다: ${shownFiles}${moreFiles}. 4번 검증을 최종 HEAD 에서 다시 돌리고 그 줄을 새 SHA 로 남기십시오(문서만 바꾼 커밋도 같습니다 — AGENTS.md 의 「Gate 재사용 경로」 에 걸리는 변경만 뺐습니다)."
     }
     $msg = "[karina loop-continue] $($planHit.Label) 의 task 는 모두 닫혔는데 $what $keep 회차가 이미 끝났고 이 커밋이 회차 밖이면 이 안내를 무시합니다."
+} elseif ($left.Count) {
+    $shownLeft = (@($left | Select-Object -First 5 | ForEach-Object { $_.Text.Substring(0, [Math]::Min(80, $_.Text.Length)) + " ($($_.Kind))" })) -join ' ; '
+    $moreLeft = if ($left.Count -gt 5) { " 외 $($left.Count - 5)건" } else { '' }
+    $msg = "[karina loop-continue] $($planHit.Label) 의 Deferred / Follow-up 에 넘김 사유 없는 남은 이슈 $($left.Count)건이 있어 회차가 완료되지 않았습니다: ${shownLeft}${moreLeft}. " +
+        "검증하지 않은 것·하지 않은 작업은 남은 이슈가 아니라 미완료입니다 — 고쳐서 항목을 지우고, 넘김 사유(① 사용자 승인·판단 · ② 기능 변경 · 다른 종류의 세션)가 실제로 있을 때만 항목에 그 사유를 적은 뒤 이어서 진행하십시오(skills/plan/references/deferred-rules.md). " + $keep
 } else {
     $shown = ($ids | Select-Object -First 5) -join ', '
     $more = if ($ids.Count -gt 5) { " 외 $($ids.Count - 5)개" } else { '' }

@@ -205,6 +205,25 @@ git -C $lcFin add plan.md; git -C $lcFin commit -qm plan-file
 $r = Invoke-LcFinalStop 'lc-e4' $lcFin
 Assert-Case -Name "loop-continue: 4번 검증 뒤 커밋이 plan 파일뿐이면 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
 
+$lcHead = (git -C $lcFin rev-parse HEAD).Trim()
+Set-LcFinalPlan $lcFin ("- 4번 검증: $lcHead · clean`n`n## Deferred / Follow-up`n`n- ``[등재]`` **골든 미실행** — 검증하지 않았다")
+$r = Invoke-LcFinalStop 'lc-r1' $lcFin
+Assert-Case -Name "loop-continue: 4번 clean 뒤 넘김 사유 없는 남은 이슈가 있으면 주입" -R $r -ExpectExit 0 -ExpectContains '넘김 사유'
+Assert-Case -Name "loop-continue: 남은 이슈 안내가 걸린 항목을 적는다" -R $r -ExpectExit 0 -ExpectContains '골든 미실행'
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-r1' $lcFin)
+Assert-Case -Name "loop-continue: 같은 남은 이슈 2회째는 주입" -R $r -ExpectExit 0 -ExpectContains '"additionalContext"'
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-r1' $lcFin)
+Assert-Case -Name "loop-continue: 같은 남은 이슈 3회째는 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+Set-LcFinalPlan $lcFin ("- 4번 검증: $lcHead · clean`n`n## Deferred / Follow-up`n`n- ``[등재]`` **경고 조건 변경** — 넘김 사유 ②(의도된 동작 변경)")
+$r = Invoke-LcFinalStop 'lc-r2' $lcFin
+Assert-Case -Name "loop-continue: 남은 이슈에 넘김 사유가 있으면 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
+Set-LcFinalPlan $lcFin "`n## Deferred / Follow-up`n`n- ``[등재]`` **골든 미실행** — 검증하지 않았다"
+$r = Invoke-LcFinalStop 'lc-r3' $lcFin
+Assert-Case -Name "loop-continue: 4번 공백이 있으면 남은 이슈보다 4번 안내가 먼저다" -R $r -ExpectExit 0 -ExpectNotContains '넘김 사유'
+Set-LcFinalPlan $lcFin ("- 4번 검증: $lcHead · clean`n`n## Deferred / Follow-up`n`n- ``[등재]`` **골든 미실행** — 검증하지 않았다") '코디네이터 인터뷰 경유 — spec 원문'
+$r = Invoke-LcFinalStop 'lc-r4' $lcFin
+Assert-Case -Name "loop-continue: 중계 plan 은 남은 이슈 안내 대상이 아니다" -R $r -ExpectExit 0 -ExpectSilent $true
+
 Set-LcFinalPlan $lcFin '' '코디네이터 인터뷰 경유 — spec 원문'
 $r = Invoke-LcFinalStop 'lc-e5' $lcFin
 Assert-Case -Name "loop-continue: 중계 plan 은 회차 끝 안내 대상이 아니다" -R $r -ExpectExit 0 -ExpectSilent $true
