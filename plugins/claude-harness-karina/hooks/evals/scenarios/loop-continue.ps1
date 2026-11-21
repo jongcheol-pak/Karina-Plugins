@@ -219,7 +219,7 @@ $r = Invoke-LcFinalStop 'lc-r2' $lcFin
 Assert-Case -Name "loop-continue: 남은 이슈에 넘김 사유가 있으면 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
 Set-LcFinalPlan $lcFin "`n## Deferred / Follow-up`n`n- ``[등재]`` **골든 미실행** — 검증하지 않았다"
 $r = Invoke-LcFinalStop 'lc-r3' $lcFin
-Assert-Case -Name "loop-continue: 4번 공백이 있으면 남은 이슈보다 4번 안내가 먼저다" -R $r -ExpectExit 0 -ExpectNotContains '넘김 사유'
+Assert-Case -Name "loop-continue: 4번 공백이 있으면 남은 이슈보다 4번 안내가 먼저다" -R $r -ExpectExit 0 -ExpectContains '4번 검증' -ExpectNotContains '넘김 사유'
 Set-LcFinalPlan $lcFin ("- 4번 검증: $lcHead · clean`n`n## Deferred / Follow-up`n`n- ``[등재]`` **골든 미실행** — 검증하지 않았다") '코디네이터 인터뷰 경유 — spec 원문'
 $r = Invoke-LcFinalStop 'lc-r4' $lcFin
 Assert-Case -Name "loop-continue: 중계 plan 은 남은 이슈 안내 대상이 아니다" -R $r -ExpectExit 0 -ExpectSilent $true
