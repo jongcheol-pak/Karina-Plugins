@@ -31,6 +31,6 @@ PowerShell: & "<스크립트>" -Action <pause|resume> -Holder '<보유자>'
 | `create-verification-skill` | 4단계 증명이 끝난 뒤 — 성공이든 초안이든 |
 | `maintain-verification-skill` | 5번 재증명까지 포함한 이번 실행의 마지막 조작 뒤, 6번 전 |
 
-- **pause 를 부른 세션은 turn 을 끝내는 보고를 내기 전에 resume 한다** — 위 표에 없는 정지도 같다. 덮지 않고 끝내면 다음 검증의 resume 이 올 때까지 사용자 화면이 걷힌 채 남는다.
+- **pause 를 부른 세션은 turn 을 끝내는 보고를 내기 전에 resume 한다 — 화면 검증 에이전트(`karina:screen-verifier`)의 응답을 기다리느라 turn 이 넘어가는 것은 보고가 아니라 resume 하지 않는다** — 위 표에 없는 정지도 같다. 대기 중에 덮으면 에이전트의 조작이 막힌다. 덮지 않고 끝내면 다음 검증의 resume 이 올 때까지 사용자 화면이 걷힌 채 남는다.
 - **resume 때 앱이 꺼져 있으면 스크립트가 기록을 지운다(`skip app-off`)** — 덮개는 앱 창이라 사용자가 앱을 종료하면 함께 사라진다. 그 뒤에 다시 덮으면 사용자가 없앤 덮개를 되살린다. 꺼짐은 `status` 의 `appRunning` 하나로 가르고, 그 밖의 CLI 실패는 기록을 지우지 않고 `ERROR` 로 끝나 다음 resume 이 다시 덮는다.
 - **상태 파일 `%TEMP%\karina-plugin\cover\` 는 보유 중에 지우지 않는다** — 지우면 걷은 모니터를 다시 덮지 못한다(`TEMP-FILES.md`).

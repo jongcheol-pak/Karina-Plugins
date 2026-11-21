@@ -1,6 +1,6 @@
 # 읽기 전용 서브에이전트 사후 확인
 
-> 여섯 호출부가 가리키는 공용 규칙이다 — `implement/references/final-review.md`(completion-reviewer) · `no-comments/SKILL.md`(comment-reviewer) · `plan/references/measure-delegation.md`(Explore) · `chain-plan/references/measure.md`(Explore) · `maintain-verification-skill/SKILL.md`(Explore 웨이브) · `karina-systematic-debugging/references/investigation-log.md`(Explore — 아티팩트 파싱). 읽기 전용이라고 정한 서브에이전트가 `Bash` 를 가지면 셸로 파일을 바꿀 수 있어, 그 서브에이전트를 부르기 전후에 이 절을 그대로 거친다. 「플러그인 루트」 절은 karina 리뷰어 셋을 부르는 세 곳(위 둘과 `plan/SKILL.md` Step 6)이 가리킨다.
+> 일곱 호출부가 가리키는 공용 규칙이다 — `implement/references/final-review.md`(completion-reviewer) · `implement/references/screen-scenarios.md`(screen-verifier — 레포 파일을 쓰지 않는 화면 검증 에이전트) · `no-comments/SKILL.md`(comment-reviewer) · `plan/references/measure-delegation.md`(Explore) · `chain-plan/references/measure.md`(Explore) · `maintain-verification-skill/SKILL.md`(Explore 웨이브) · `karina-systematic-debugging/references/investigation-log.md`(Explore — 아티팩트 파싱). 읽기 전용이라고 정한 서브에이전트가 `Bash` 를 가지면 셸로 파일을 바꿀 수 있어, 그 서브에이전트를 부르기 전후에 이 절을 그대로 거친다. 「플러그인 루트」 절은 karina 리뷰어 셋을 부르는 세 곳(위 둘과 `plan/SKILL.md` Step 6)이 가리킨다.
 
 ## 호출 전후 확인
 
@@ -19,7 +19,7 @@
 
 - **되돌리지 않고 그 경로를 보고에 싣는다** — 병행 세션이 같은 작업 트리에 쓴 변경도 차이로 잡히는데, 서브에이전트가 바꾼 것인지 가를 수 없어 자동으로 되돌리면 남의 작업을 지울 수 있다.
 - **싣는 자리는 호출부마다 정해져 있다**
-  - `karina:implement`(completion-reviewer) — `## Progress Log` 에 `판정: 서브에이전트 호출 뒤 작업 트리 변경 — <경로> — 되돌리지 않음 — 근거: 없음 — 틀리면: 그 변경이 다음 커밋에 섞인다` 줄. 최종 보고 「판정」 이 이 줄을 그대로 옮긴다.
+  - `karina:implement`(completion-reviewer) — `## Progress Log` 에 `판정: 서브에이전트 호출 뒤 작업 트리 변경 — <경로> — 되돌리지 않음 — 근거: 없음 — 틀리면: 그 변경이 다음 커밋에 섞인다` 줄. 최종 보고 「판정」 이 이 줄을 그대로 옮긴다. `karina:implement`(screen-verifier) 도 같은 줄이다 — 증거는 검증 스킬 Evidence 위치(임시 폴더)라 작업 트리 차이로 잡히지 않는다.
   - `karina:plan`(measure-delegation, 또는 Step 5 가 띄운 chain-plan measure) — Investigation Log 에 `서브에이전트 작업 트리 변경` 행.
   - `karina:chain-plan` 코디네이터(measure) — 체인 승인 제시에 `작업 트리 변경 — <경로>` 한 줄.
   - `karina:no-comments`·`karina:maintain-verification-skill` — 그 스킬의 「보고」 에 `작업 트리 변경 — <경로>` 한 줄. `karina:no-comments` 자동 모드는 위 `karina:implement` 줄과 같다.
