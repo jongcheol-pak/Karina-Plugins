@@ -210,6 +210,10 @@ $r = Invoke-CheckPlan ($cpUiPlan.Replace('(RED)', '(RED) [화면 없음]')) (New
 Assert-Case -Name "check-plan: 사유 없는 [화면 없음] 은 면제 표지가 아니다" -R $r -ExpectExit 1 -ExpectContains 'screen-missing T1'
 $r = Invoke-CheckPlan $cpBase (New-UiPlanDir "# AGENTS.md`n`n- **Verify (앱 조작)**: ``.claude/skills/verify-demo/```n")
 Assert-Case -Name "check-plan: 검증 스킬이 있는데 UI 경로가 없으면 ui-path-missing 위반이다" -R $r -ExpectExit 1 -ExpectContains 'ui-path-missing'
+$r = Invoke-CheckPlan $cpBase (New-UiPlanDir "# AGENTS.md`n`n- **Verify (앱 조작)**: ``.claude/skills/verify-demo/```n- **UI 경로**: 없음`n")
+Assert-Case -Name "check-plan: 패턴 없는 UI 경로 줄도 ui-path-missing 위반이다 (CP-uipath-empty)" -R $r -ExpectExit 1 -ExpectContains 'ui-path-missing'
+$r = Invoke-CheckPlan $cpBase (New-UiPlanDir "# AGENTS.md`n`n- **Verify (앱 조작)**: ``.claude/skills/verify-demo/```n- **UI 경로**: [화면 없음 — CLI 만 검증]`n")
+Assert-Case -Name "check-plan: 사유 단 [화면 없음] UI 경로는 ui-path-missing 면제 (CP-uipath-noscreen)" -R $r -ExpectExit 0 -ExpectNotContains 'ui-path-missing'
 $r = Invoke-CheckPlan ($cpUiPlan.Replace('- **Acceptance**:', ($cpScreen + "`n- **Acceptance**:"))) (New-UiPlanDir $cpUiAgents)
 Assert-Case -Name "check-plan: UI 경로 파일 task 에 화면 줄이 있으면 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 $r = Invoke-CheckPlan $cpBase (New-UiPlanDir $cpUiAgents)

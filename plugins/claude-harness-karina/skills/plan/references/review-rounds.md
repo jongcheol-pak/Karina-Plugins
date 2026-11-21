@@ -5,7 +5,7 @@
 ## check-plan 처리
 
 - **exit 1 이면 출력 줄마다 고치고 다시 돌려 exit 0 을 보고, 오탐이면 Investigation Log 에 `check-plan 오탐` 행으로, 같은 코드가 3회 연속 남으면 `check-plan 미해소 — <코드>` 행으로 적고 넘어간다. exit 0·1 이 아니면(exit 2 · pwsh 부재·기동 실패 포함) 또는 출력이 없으면 `check-plan 미실행 — <사유>` 줄을(경량 계획이면 리뷰어가 없으니 먼저 `light-plan.md`「경량 계획」 대로 일반 경로로 바꾼다), `skip` 줄이 있으면 그 줄을, 오탐·미해소 행이 있으면 그 행을 리뷰어 전달물에 싣는다. `plan-check` 위반은 레포가 `AGENTS.md` 에 선언한 계획 검사가 실패한 것이라 줄 끝 파일(임시 폴더 `karina-plugin\scratch\`)을 읽어 plan 을 고친다** — 검사를 리뷰보다 먼저 돌리는 근거는 `../SKILL.md` Step 6 이 정본이다.
-- **`ui-path-missing` 은 오탐·미해소로 넘기지 않는다 — `../../create-verification-skill/SKILL.md`「5. 등록하고 유지 루프를 안내한다」 의 `UI 경로` 후보·확정 절차로 사용자 확정을 받아 `karina:record-project-fact` 로 `AGENTS.md` 에 단 뒤 다시 돈다(중계 모드는 `relay-mode.md`「중계 모드」 의 `ask`)** — 이 줄이 없으면 `screen-missing` 이 돌지 않아 화면 줄 없는 UI 수정이 승인을 지나고, 화면 줄 없는 task 는 실행 중 화면을 조작하지 않으므로(`../../implement/references/screen-scenarios.md`「화면 시나리오 실행」) 그 화면은 아무도 재지 않는다. 넘기면 사용자가 고른 「승인 전에 막기」(2026-11-21)가 3회 뒤 건너뜀과 같아진다.
+- **`ui-path-missing` 은 오탐·미해소로 넘기지 않는다 — `../../create-verification-skill/SKILL.md`「5. 등록하고 유지 루프를 안내한다」 의 `UI 경로` 후보·확정 절차(후보가 없으면 패턴을 묻고, 화면 없는 표면이면 `[화면 없음 — <사유>]`)로 사용자 확정을 받아 `karina:record-project-fact` 로 `AGENTS.md` 에 단 뒤 다시 돈다(중계 모드는 `relay-mode.md`「중계 모드」 의 `ask`)** — 이 줄이 없으면 `screen-missing` 이 돌지 않아 화면 줄 없는 UI 수정이 승인을 지나고, 화면 줄 없는 task 는 실행 중 화면을 조작하지 않으므로(`../../implement/references/screen-scenarios.md`「화면 시나리오 실행」) 그 화면은 아무도 재지 않는다. 넘기면 사용자가 고른 「승인 전에 막기」(2026-11-21)가 3회 뒤 건너뜀과 같아진다.
 
 ## 리뷰 라운드
 

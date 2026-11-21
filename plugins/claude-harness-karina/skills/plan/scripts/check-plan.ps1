@@ -36,7 +36,7 @@
 #                                맞는데(-like · 패턴은 그 AGENTS.md 폴더 기준 — plan 폴더가 그 아래면 사이 경로를 붙여 맞춘다)
 #                                「- **화면**:」 줄도 Files 줄의 「[화면 없음 — <사유>]」 표지도 없음(사유가 빈 표지는 표지가 아니다)
 #   ui-path-missing              서식 검사 모드만 — AGENTS.md(같은 탐색)의 「- **Verify (앱 조작)**:」 이 스킬을 가리키는데 「- **UI 경로**:」 줄이
-#                                없음(줄 1). 없으면 screen-missing 을 잴 수 없어 화면 줄 없는 UI 수정이 승인을 지난다 — 넘기지 않고 UI 경로를 단다
+#                                없거나 백틱 패턴이 하나도 없음(줄 1 · 값이 「[화면 없음 — <사유>]」 면 면제 — CLI·API 검증 스킬). 없으면 screen-missing 을 잴 수 없어 화면 줄 없는 UI 수정이 승인을 지난다 — 넘기지 않고 UI 경로를 단다
 #   origin-missing T<N>          AGENTS.md(같은 탐색)에 「- **UI 재구현 기준 소스**:」 줄이 있는데 「- **화면**:」 줄이 있는 task 에
 #                                「- **원본**:」 줄도 Files 줄의 「[원본 없음 — <사유>]」 표지도 없음(사유가 빈 표지는 표지가 아니다)
 #   origin-line T<N> <요소>      「- **원본**:」 줄에 path(백틱 원본 경로)·verdict(옮김·미룸·이탈 중 하나)가 없음 — 선언과 무관하게 줄이 있으면 잰다
@@ -240,7 +240,7 @@ if ($Base) {
         if (-not $msg) { continue }
         $parts = $msg -split "`n", 2
         $body = if ($parts.Count -gt 1) { $parts[1] } else { '' }
-        $m =[regex]::Match($parts[0], $titleRx)
+        $m = [regex]::Match($parts[0], $titleRx)
         $v = [regex]::Match($parts[0], $versionRx)
         if ($m.Success) { $id = [int]$m.Groups[1].Value }
         elseif ($v.Success -and $taskBlocks.Count -and $lastText.Contains($v.Groups[1].Value)) { $id = $taskBlocks[-1].Id }
@@ -283,12 +283,12 @@ if ($Base) {
                 if ($have -lt $want) { Add-Problem $b.N ('acceptance-evidence ' + $tag + ' ' + $have + '/' + $want) }
             }
             $hasScreen = [bool]@($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabelBase }).Count
-            if ($hasScreen -and -not @($mine |Where-Object { $_.ScreenTrue }).Count) {
-                if (@($mine |Where-Object { $_.ScreenFalse }).Count) { Add-Problem $b.N ('screen-false ' + $tag) }
-                elseif (-not @($mine |Where-Object { $_.Unshot }).Count) { Add-Problem $b.N ('no-screen-verdict ' + $tag) }
+            if ($hasScreen -and -not @($mine | Where-Object { $_.ScreenTrue }).Count) {
+                if (@($mine | Where-Object { $_.ScreenFalse }).Count) { Add-Problem $b.N ('screen-false ' + $tag) }
+                elseif (-not @($mine | Where-Object { $_.Unshot }).Count) { Add-Problem $b.N ('no-screen-verdict ' + $tag) }
                 elseif ($verifySkill) {
-                    if (@($mine |Where-Object { $_.UnshotAttempt }).Count) { $notes.Add('screen-unshot-reason ' + $tag) }
-                    elseif (@($mine |Where-Object { $_.UnshotReason }).Count) { Add-Problem $b.N ('screen-unshot-attempt ' + $tag) }
+                    if (@($mine | Where-Object { $_.UnshotAttempt }).Count) { $notes.Add('screen-unshot-reason ' + $tag) }
+                    elseif (@($mine | Where-Object { $_.UnshotReason }).Count) { Add-Problem $b.N ('screen-unshot-attempt ' + $tag) }
                     else { Add-Problem $b.N ('screen-unshot ' + $tag) }
                 }
             }
@@ -409,13 +409,12 @@ if (Find-Section $tasksTitle) {
         if ($planDir.Length -gt $agentsDir.Length -and $planDir.StartsWith($agentsDir, [System.StringComparison]::OrdinalIgnoreCase)) {
             $uiPrefix = $planDir.Substring($agentsDir.Length + 1).Replace('\', '/') + '/'
         }
-    } elseif (Test-VerifySkill $uiAgents) {
-        Add-Problem 1 'ui-path-missing'
     }
+    $noScreenRx = '\[' + (Get-Text @(0xD654, 0xBA74)) + '\s+' + (Get-Text @(0xC5C6, 0xC74C)) + '\s*' + [char]0x2014 + '\s*[^\]\s]'    # [화면 없음 — <사유>]
     $uiVerifySkill = Test-VerifySkill $uiAgents
+    if ($uiVerifySkill -and -not $uiPatterns.Count -and -not [regex]::IsMatch([string]$uiValue, $noScreenRx)) { Add-Problem 1 'ui-path-missing' }
     $baselineWord = Get-Text @(0xAE30, 0xC900, 0xC120)    # 기준선
     $baselineMatch = $baselineWord + ' ' + (Get-Text @(0xC77C, 0xCE58))    # 기준선 일치
-    $noScreenRx = '\[' + (Get-Text @(0xD654, 0xBA74)) + '\s+' + (Get-Text @(0xC5C6, 0xC74C)) + '\s*' + [char]0x2014 + '\s*[^\]\s]'    # [화면 없음 — <사유>]
     $originWord = Get-Text @(0xC6D0, 0xBCF8)
     $originLabel = '- **' + $originWord + '**:'
     $originDeclared = [bool](Get-AgentsLineValue $uiAgents ('UI ' + (Get-Text @(0xC7AC, 0xAD6C, 0xD604, 0x20, 0xAE30, 0xC900, 0x20, 0xC18C, 0xC2A4))))
