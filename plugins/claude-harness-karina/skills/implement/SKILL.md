@@ -25,7 +25,7 @@ description: 승인된 plan.md(`## Goal` 아래 `> 승인:` 줄에 날짜가 있
 
 > Deliver what was asked, at the scope intended. Make routine judgment calls yourself, and check in only when different readings of the request would lead to materially different work. If the request seems mistaken or a better approach exists, say so in a sentence and continue with the task as asked rather than quietly narrowing, widening, or transforming it. Finish the whole task, and stop short of actions that are clearly beyond what was asked.
 
-- **task 를 서브에이전트에 하나씩 차례로 맡기지 않는다 — 직접 실행한다** — 맡길 때마다 맥락을 다시 읽고 다시 빌드해 대기만 는다(2026-11-10 Karina 워커 — task 9개를 차례로 넘겨 380분 중 도구 실행 11분).
+- **task 를 서브에이전트에 하나씩 차례로 맡기지 않는다 — 직접 실행한다. 예외는 `plan.md` 의 `> 병렬 그룹:` 줄이 묶은 task 뿐이고, 그 차례에 `references/parallel-run.md` 대로 동시에 돌린다** — 맡길 때마다 맥락을 다시 읽고 다시 빌드해 대기만 는다(2026-11-10 Karina 워커 — task 9개를 차례로 넘겨 380분 중 도구 실행 11분).
 - **프로젝트가 다른 패턴을 명시했으면 그것이 스킬 절차를 이긴다** — `AGENTS.md`(또는 그것이 가리키는 문서)가 아키텍처·배치·도구를 정해 두었으면 그 프로젝트의 결정이 먼저다. 스킬 절차를 그대로 밀면 그 레포에서만 이질적인 코드가 남는다.
 - **루프 진입 전 1회, `plan.md` 의 승인 표지(`^> 승인: [0-9]{4}-` 줄 — 서식 정본 `../plan/references/plan-template.md` 「Goal」)를 본다** — 없으면 승인 전 초안일 수 있다. 없으면 `references/loop-exceptions.md`「승인 표지 없음」 을 Read 한다 — 확인 방식이 이 루프의 여덟 정지와 갈리는 막힘형 호출이라 그 절에 있다.
 - **루프 진입 전 1회 `references/push-flow.md`「기본 브랜치 push」 를 Read 한다** — 브랜치를 그대로 두고 지금 브랜치에 커밋하며, 회차 끝에 같은 파일 「push 전 확인」 을 거쳐 push 한다.
@@ -99,7 +99,6 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터 · 순서 자율
 
 - **task 완료마다 현재 브랜치에 로컬 커밋한다** — 제목은 `{유형}: T<N> — <무엇을>`, 유형은 `기능`·`수정`·`리팩토링`·`문서`·`설정` 다섯이다(글로벌 지침이 없는 배포 환경에서도 이 다섯이고, `guard-bash` 가 이 다섯으로 완료 커밋을 읽는다). 하위 항목이 남은 중간 커밋은 제목에 `T<N> —`·`T<N>:` 를 쓰지 않는다(`… (T<N> 진행)`). 본문에 무엇을·왜·검증 결과를 적는다. 메시지와 README 문장은 첫 README 갱신이나 첫 커밋 메시지 전에 1회 Read 한 `../WRITING.md` 를 따른다. 이 커밋은 plan 승인에 포함되므로 다시 묻지 않는다.
 - **메시지는 셸 치환을 거치지 않게 넘긴다 — Bash 는 `git commit -m "$(cat <<'MSG'` … `MSG` `)"`, PowerShell 은 작은따옴표 문자열을 `-m` 에 쓴다(본문의 `'` 는 `''`) · 본문에 역슬래시가 들면 Write 로 만든 파일을 `git commit -F <파일>`** — 검증 결과의 백틱·`$` 가 `-m "…"` 에서 치환돼 사라지고, `guard-bash` 는 `-F` 파일·heredoc 만 읽어 변수 `-m` 은 체크박스 검사 없이 경고만 낸다.
-- **태그·릴리즈·배포는 포함되지 않는다** — 별도 승인이다(push 는 「멈추는 넷」 1번 밖).
 - **커밋 전에 diff에 시크릿·임시 파일이 없는지 확인하고, 걸리면 커밋하지 않고 멈춘다** — 커밋된 시크릿은 이력에 남아 회수가 어렵다. **커밋 명령의 hook 시크릿 경고(비밀번호 값·API key·Bearer·IP·`.env` 스테이징)는 차단이 아니라 읽을 때 커밋이 이미 끝나 있다 — 다음 커밋·push 전에 멈추고 SHA·걸린 줄을 보고한다(실제 값이면 `git reset --soft HEAD~1`)**. `Test (감사)` 누락 경고는 정지 대상이 아니다(`references/loop-exceptions.md`「실패 처리」).
 
 ## 재개
@@ -109,7 +108,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터 · 순서 자율
 
 ## 회차 끝
 
-- **4번 뒤 단계(완료 시각·plan 파일 커밋·push 전 확인·push)는 `references/final-review.md`「완료 순서」, `completion-reviewer` 호출은 「절차」 대로다** — 리뷰 반영 커밋이 생기면 4번을 다시 돌아 그 수정까지 잰다. 회차 끝 1회만 쓰이는 절차라 본문에 상시 두지 않는다.
+- **4번 뒤 단계(완료 시각·plan 파일 커밋·push 전 확인·push)는 `references/final-review.md`「완료 순서」, `completion-reviewer` 호출은 「절차」 대로다** — 리뷰 반영 커밋이 생기면 4번을 다시 돌아 그 수정까지 잰다.
 - **완료 때 함정 판정과 보류·기각·번복 결정 기록은 같은 파일 「함정 기록·결정 기록」 대로 레포에 한다(기준은 `../REPO-CONVENTIONS.md`「쓰기」·`../REPO-DECISIONS.md`「쓰기」)** — 결정 기록의 배치 시점은 그 절이 정한다.
 - **`## Deferred / Follow-up`의 항목은 전부 판정한다 — 판정과 대장 이관은 같은 파일 「Deferred 판정」** — 판정 없이 남긴 항목은 `plan.md` 와 함께 덮어써진다.
 - **일부 task를 남긴 채 완료라고 보고하지 않는다** — 남은 것이 있으면 그것은 진행 중이거나 중단이지 완료가 아니다.
