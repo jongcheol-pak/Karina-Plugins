@@ -20,7 +20,7 @@
 > 기준선을 작업 트리를 건드리지 않고 재려고 임시 `git worktree add` 를 쓸 때 읽는다(`plan/references/plan-template.md`「작업 단계」 의 측정 방법).
 
 - **자리는 `TEMP-FILES.md` 의 `scratch\base-<레포 폴더명>-<YYYYMMDD-HHmm>` 이다** — `%TEMP%\karina-plugin\` 바로 아래에 두면 세션 시작 정리가 보지 않아, 지우지 못한 사본이 기한 없이 남는다.
-- **측정이 끝나면 아래 명령을 Write 로 `.ps1` 파일에 담아 `pwsh -NoProfile -File <파일>` 로 돌리고(삭제 명령을 PowerShell 도구에 인라인으로 넣으면 도구의 경로 보호가 다른 따옴표 경로를 집어 막을 수 있다) 마지막 줄이 `남음: False` 인지 본다 — `True` 면 그 경로를 보고의 남은 이슈에 적는다** — 폴더 안 파일을 연 프로세스가 하나라도 살아 있으면 `git worktree remove --force` 가 `Invalid argument` 로 실패하고 등록만 풀린 채 폴더가 남는다(2026-11-18 실측 — BASE 에디터만 끄고 그 자식 `AssetImportWorker` 를 남겼다). 그래서 명령줄에 폴더 이름이 든 프로세스를 자식까지 빼지 않고 끝내되, 같은 이름을 명령줄에 담은 이 명령의 셸과 그 조상만 뺀다.
+- **측정이 끝나면 아래 명령을 Write 로 `.ps1` 파일에 담아 `pwsh -NoProfile -File <파일>` 로 돌리고(삭제 명령을 PowerShell 도구에 인라인으로 넣으면 도구의 경로 보호가 다른 따옴표 경로를 집어 막을 수 있다) 마지막 줄이 `남음: False` 인지 본다 — `True` 면 같은 파일을 다시 돌리고(최대 3회), 그래도 남으면 그 폴더를 연 프로세스(`Get-Process` 의 경로·명령줄)를 찾아 그 이름·경로와 함께 최종 보고 「승인 필요 항목」 에 「프로세스 종료·폴더 삭제」 로 올린다** — 남은 폴더는 넘김 사유 없는 남은 이슈가 아니라 정리를 끝내지 못한 미완료이고, 사용자 프로세스를 끝내는 것만 사용자 판단이다(`plan/references/deferred-rules.md`). 폴더 안 파일을 연 프로세스가 하나라도 살아 있으면 `git worktree remove --force` 가 `Invalid argument` 로 실패하고 등록만 풀린 채 폴더가 남는다(2026-11-18 실측 — BASE 에디터만 끄고 그 자식 `AssetImportWorker` 를 남겼다). 그래서 명령줄에 폴더 이름이 든 프로세스를 자식까지 빼지 않고 끝내되, 같은 이름을 명령줄에 담은 이 명령의 셸과 그 조상만 뺀다.
 
 ```powershell
 $repo = '<레포>'; $w = '<worktree 경로>'; $leaf = Split-Path $w -Leaf
