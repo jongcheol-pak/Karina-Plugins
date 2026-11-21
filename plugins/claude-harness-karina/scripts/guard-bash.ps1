@@ -633,14 +633,14 @@ foreach ($lib in @(@('timed-git.ps1', 'Invoke-TimedGit'),
     [Console]::Error.WriteLine("[guard-bash] $($lib[0]) 로드 실패 — 그 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.")
 }
 
-if ($cmdText -match '(?i)\bpy(?:thon3?)?\b') {
+if ($cmdText -match '(?i)\bpy(?:thon3?)?\b|\bsed\b[^\r\n]*\s-[A-Za-z]*i|\btee\b|\b(?:printf|echo|cat)\b[^\r\n]*>') {
     try { . (Join-Path $PSScriptRoot 'python-newcode.ps1') } catch {}
     if (-not (Test-Path function:Test-PythonNewCodeScript)) {
         [Console]::Error.WriteLine('[guard-bash] python-newcode.ps1 로드 실패 — 그 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.')
     }
 }
 
-# block-python-newcode: python 으로 소스 파일에 새 코드·주석을 쓰는 명령 차단 — 근거는 `rules/bash-guard-rationale.md` §22
+# block-python-newcode: python·셸 명령(sed·printf·echo·cat·tee)으로 소스 파일에 새 코드·주석을 쓰는 명령 차단 — 근거는 `rules/bash-guard-rationale.md` §22
 function Invoke-BlockPythonNewCode {
     param($data)
     if (-not (Test-Path function:Test-PythonNewCodeScript)) { return New-HookResult }
@@ -668,6 +668,15 @@ function Invoke-BlockPythonNewCode {
             "[HARNESS] BLOCKED: python 스크립트로 소스 파일에 새 코드·주석을 씁니다 — $($v.Target) : $($v.Line)",
             '  - 새 코드·주석은 Edit·Write 도구로 쓰세요. 쓰는 순간의 주석 게이트는 python 쓰기에 닿지 않습니다.',
             '  - 기계적 치환은 바꿀 줄과 같은 꼴의 검색 리터럴을 두거나 한 줄 리터럴로 하세요.',
+            '  - 같은 명령을 다시 내도 통과하지 않습니다. 이 판정이 틀렸으면 멈추고 사용자에게 보고하세요.')
+    }
+    foreach ($w in (Get-ShellNewCodeWrites ([string]$data.tool_input.command) $script:HeredocBlockRx)) {
+        $line = Test-ShellNewCode $w
+        if ($null -eq $line) { continue }
+        return New-HookResult -Block $true -Stderr @(
+            "[HARNESS] BLOCKED: 셸 명령으로 소스 파일에 새 코드·주석을 씁니다 — $($w.Target) : $line",
+            '  - 새 코드·주석은 Edit·Write 도구로 쓰세요. 쓰는 순간의 주석 게이트는 sed·printf·echo·cat·tee 쓰기에 닿지 않습니다.',
+            '  - 기계적 치환은 한 줄 sed 로, 바꿀 줄과 같은 꼴의 검색 패턴을 두세요.',
             '  - 같은 명령을 다시 내도 통과하지 않습니다. 이 판정이 틀렸으면 멈추고 사용자에게 보고하세요.')
     }
     return New-HookResult

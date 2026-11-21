@@ -328,7 +328,7 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 
 **차단 메시지는 명령이 `git commit` 이면 「Write 로 메시지 파일을 만들어 `git commit -F <파일>`」 한 줄을 더 낸다(2026-11-20)** — 14일 로그의 이 차단 41건 중 3건이 커밋 heredoc 이었고, 종전 안내(「python <파일> 로 실행」)는 커밋 본문에는 맞지 않았다.
 
-## §22 block-python-newcode: python 으로 소스 파일에 새 코드·주석을 쓰는 명령 차단
+## §22 block-python-newcode: python·셸 명령(sed·printf·echo·cat·tee)으로 소스 파일에 새 코드·주석을 쓰는 명령 차단
 
 **왜 막는가.** 새 주석 편집 게이트(`comment-gate-rationale.md`)는 Edit·Write 에만 닿는다 — python 스크립트가 소스 파일을 직접 쓰면 그 게이트를 거치지 않는다. 2026-11-11~12 Karina 체인(plan 4~11) 워커는 `src/*.rs` 에 쓰는 python 명령을 476회 냈고, 그중 새 항목(그 시각 직전 커밋에 없던 `fn`·`struct`·`const` 이름)을 넣은 것이 174회, 본문에 `///` 가 든 것이 92회였다. 커밋 게이트 차단 24회 중 16회가 이 경로로 들어온 주석이었다. 규칙(`skills/implement/references/code-style.md`「codemod 줄바꿈」 — 새 코드·주석은 Edit·Write)이 문면으로 있었는데도 났다. 사용자 지시(2026-11-13 「차단으로 올림」)로 비안전 차단을 들였다(`docs/harness-conventions.md` 「안전 임계 hook 의 차단 동작 변경」 ⑤).
 
@@ -340,7 +340,9 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 
 **전사 재생(2026-11-13 · 판정 함수 직접 호출).** 전사 분류(`newcode`·`comments`)로 새 코드 166건 중 150(90.4%) · 그중 주석 든 123건 중 111(90.2%) · 새 코드도 주석도 없는 226건 중 13(5.8%)을 막았다. 그 13건 중 11건은 그 시각 직전 커밋에 없던 필드·함수(전사 분류가 필드를 새 코드로 세지 않았다)라 막는 것이 맞고, 기존 항목에 걸린 오차단 후보는 2건이다.
 
-**한계.** 경로를 `glob`·문자열 연결로 만들면 ⓑ 가 안 보여 통과한다(fail-open). 한 줄 리터럴만으로 새 코드를 넣는 스크립트, PowerShell here-string 을 python stdin 으로 넘기는 꼴, 다른 인터프리터(node 등), 먼저 커밋한 뒤 실행하는 스크립트는 보지 않는다. 같은 명령을 다시 내도 통과하지 않는다 — 판정이 틀렸으면 우회 변수 없이 멈추고 사용자에게 보고한다.
+**맨 필드 줄과 셸 쓰기도 본다(2026-11-21 미탐 보완 · reflect 686903a0).** Karina 체인 run_994f7987 plan 3 에서 python 의 `dir: std::path::PathBuf,`(pub 없는 필드), `sed -i '140s|…|…\n…|'` 다줄 치환과 `112s|/// …|/// …|` doc 주석 교체, `printf '\npub fn probe…' >> src/…rs` 가 막히지 않았다 — 레포 conventions 에 「새 코드는 Edit」 을 적은 직후 sed 로 재발했다. 그래서 ⓐ `//` 계열 대상이면 `이름: 값` 꼴 줄(`default`·`case`·`else` 와 `::` 경로 제외)을 필드 줄로 세고 지역 선언처럼 이름을 대조한다. 같은 리터럴의 앞 줄들이 연 괄호 `(` 안(괄호 깊이 > 0)의 줄은 세지 않는다 — 여러 줄 시그니처의 매개변수(`x: u32,`)·이름 붙은 인자가 같은 꼴이라, 첫 판은 기존 델타 음성 「여러 줄 시그니처 치환」 둘을 막았다 — `#` 계열에는 `.yaml`·`.toml` 이 있어 키 줄이 전부 필드로 읽히므로 넣지 않는다. ⓑ `python-newcode.ps1` 의 `Get-ShellNewCodeWrites` 가 `sed -i` 의 `s` 치환(대체부)·`a`/`i`/`c` 본문, `printf`·`echo` 의 `>`/`>>` 내용, `cat`·`tee` heredoc 리다이렉트 본문을 대상 확장자 파일(임시 폴더 밖)에 한해 뽑고, `Test-ShellNewCode` 가 python 과 같은 줄 분류(`Test-NewCodeLine`)로 판정한다. 「이미 있는 줄」 재료는 sed 검색 패턴이다 — 같은 줄·같은 이름의 지역 선언·필드·선언이 패턴에 있으면 기존 항목이라 `origin_url: None,` → `origin_url: remote\n.github_slug…` 같은 값 치환은 통과한다. 줄바꿈이 없는 `s` 치환은 대체부가 통째 주석 줄일 때만 본다 — 한 줄 값 치환이 기계적 치환의 본꼴이다. 차단 문구는 수단을 가르려고 「셸 명령으로…」 로 따로 둔다(골든 SN-*).
+
+**한계.** 경로를 `glob`·문자열 연결로 만들면 ⓑ 가 안 보여 통과한다(fail-open). 한 줄 리터럴만으로 새 코드를 넣는 스크립트, PowerShell here-string 을 python stdin 으로 넘기는 꼴, 다른 인터프리터(node·perl 등), 먼저 커밋한 뒤 실행하는 스크립트는 보지 않는다. 셸 쓰기는 `sed` 식 하나 안의 `;` 로 이은 여러 명령, 변수에 담은 내용(`printf '%s' "$X"`), 줄바꿈 없는 `s` 치환의 코드 줄은 보지 않는다. 같은 명령을 다시 내도 통과하지 않는다 — 판정이 틀렸으면 우회 변수 없이 멈추고 사용자에게 보고한다.
 
 ## §23 block-installed-write: 설치본 hook 자산을 대상으로 하는 셸 쓰기 차단
 

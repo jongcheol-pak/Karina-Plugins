@@ -478,6 +478,33 @@ Assert-Case -Name "python 새 코드 (음성): 커밋 뒤 코드 문자열 없�
 Add-Content -LiteralPath (Join-Path $pyRepo 'gen.py') -Value "p.write_text(p.read_text() + '''`n/// 수정으로 더한 설명`nfn later() {}`n''')" -Encoding utf8
 $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $pyRepo; tool_input = @{ command = 'python gen.py' } } | ConvertTo-Json -Compress)
 Assert-Case -Name "python 새 코드: 커밋 뒤 수정으로 새 /// 문자열을 더한 .py 실행은 차단 (PN-modified-newcode)" -R $r -ExpectExit 2 -ExpectContains 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
+
+$pnMsg = 'python 스크립트로 소스 파일에 새 코드·주석을 씁니다'
+$snMsg = '셸 명령으로 소스 파일에 새 코드·주석을 씁니다'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'EOF'`np='src/fixture.rs'`nt=open(p).read()`nt=t.replace('    projects: P,\n}', '    projects: P,\n    dir: PathBuf,\n}')`nopen(p,'w').write(t)`nEOF")
+Assert-Case -Name "python 새 코드: pub 없는 새 필드 줄 → 차단 (PN-field)" -R $r -ExpectExit 2 -ExpectContains $pnMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'EOF'`np='cfg.yaml'`nopen(p,'w').write('name: x\nport: 1\n')`nEOF")
+Assert-Case -Name "python 새 코드 (음성): yaml 키 줄은 필드로 보지 않는다 (PN-field-yaml)" -R $r -ExpectExit 0 -ExpectNotContains $pnMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i '12s|    projects: P,|    projects: P,\n    dir: PathBuf,|' src/fixture.rs")
+Assert-Case -Name "셸 새 코드: sed 다줄 치환으로 새 필드 → 차단 (SN-sed-multi)" -R $r -ExpectExit 2 -ExpectContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i '112s|/// 옛 설명이다|/// 새로 쓴 설명이다|' src/refresh.rs")
+Assert-Case -Name "셸 새 코드: sed 한 줄 치환으로 doc 주석 줄 교체 → 차단 (SN-sed-comment)" -R $r -ExpectExit 2 -ExpectContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i '3a\    pub x: u8,' src/a.rs")
+Assert-Case -Name "셸 새 코드: sed a 명령으로 새 필드 줄 추가 → 차단 (SN-sed-append)" -R $r -ExpectExit 2 -ExpectContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "printf '\npub fn probe(line: &str) {\n}\n' >> src/a.rs")
+Assert-Case -Name "셸 새 코드: printf >> 로 새 fn → 차단 (SN-printf)" -R $r -ExpectExit 2 -ExpectContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "echo -e '\nfn added() {}' >> src/a.rs")
+Assert-Case -Name "셸 새 코드: echo -e >> 로 새 fn → 차단 (SN-echo)" -R $r -ExpectExit 2 -ExpectContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat >> src/a.rs <<'X'`nfn added() {}`nX")
+Assert-Case -Name "셸 새 코드: cat >> heredoc 으로 새 fn → 차단 (SN-cat)" -R $r -ExpectExit 2 -ExpectContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "tee -a src/a.rs <<'X'`npub fn added() {}`nX")
+Assert-Case -Name "셸 새 코드: tee -a heredoc 으로 새 fn → 차단 (SN-tee)" -R $r -ExpectExit 2 -ExpectContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i '419s| origin_url: None,| origin_url: Some(x),|' src/refresh.rs")
+Assert-Case -Name "셸 새 코드 (음성): sed 한 줄 값 치환은 통과 (SN-sed-value)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i '140s| origin_url: None,| origin_url: remote\n    .github_slug\n    .map(f),|' src/refresh.rs")
+Assert-Case -Name "셸 새 코드 (음성): 같은 이름 필드의 값을 다줄로 바꾸는 sed 는 통과 (SN-sed-samefield)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "printf -- '- a\n- b\n' >> docs/x.md")
+Assert-Case -Name "셸 새 코드 (음성): 대상 확장자 밖(.md) printf 는 통과 (SN-printf-md)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
 }
 
 if (Test-ScenarioUnit 3) {
