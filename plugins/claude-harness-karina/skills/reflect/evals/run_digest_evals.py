@@ -764,6 +764,25 @@ def audit_keeps_long_image_path_whole():
 
 
 @case
+def audit_keeps_subagent_image_reads_under_header():
+    sub = [rec_assistant([read_use('s1', 'C:\\ev\\sv.png'), read_use('s2', 'C:\\x\\SKILL.md'),
+                          tool_use('s3', 'Bash', 'pwsh shot.ps1'), {'type': 'text', 'text': '판정 참'}])]
+    out = run_timed([rec_assistant([read_use('r1', 'C:\\ev\\main.png')])],
+                    [('agent-v.jsonl', sub, {'agentType': 'karina:screen-verifier'})], ['--audit'])
+    body = [l for l in out.splitlines() if not l.startswith('# ')]
+    assert body == ['T: Read C:\\ev\\main.png', '## subagent agent-v.jsonl (karina:screen-verifier)',
+                    'T: Read C:\\ev\\sv.png'], body
+
+
+@case
+def audit_omits_subagent_header_without_image_reads():
+    sub = [rec_assistant([tool_use('s1', 'Bash', 'pwsh doctor.ps1'), {'type': 'text', 'text': '판정 참'}])]
+    out = run_timed([rec_assistant([read_use('r1', 'C:\\ev\\main.png')])],
+                    [('agent-v.jsonl', sub, {'agentType': 'karina:screen-verifier'})], ['--audit'])
+    assert '## subagent' not in out and 'doctor.ps1' not in out, out
+
+
+@case
 def audit_leaves_korean_lines():
     t = Tree()
     try:
