@@ -14,8 +14,13 @@
 
 ## 진입
 
+- **먼저 남은 서브에이전트 worktree 를 본다 — `git worktree list --porcelain` 의 `worktree-agent-*` 브랜치마다, 미완 그룹 task 의 것이면 셋 중 하나로 처리한다** — 압축·「계속」 재개 때 체크박스가 아직 `[ ]` 라, 이것을 건너뛰면 서브에이전트가 이미 했거나 하는 중인 task 를 메인이 순차로 다시 돈다.
+  - `locked` 줄이 있다 — 서브에이전트가 아직 돈다(실행 중에만 잠기고 끝나면 풀린다 — 실측 2026-11-21). 띄우지 않고 「대기」 로 간다
+  - 브랜치에 그 task 완료 커밋(`{유형}: T<N> —`)이 있다 — 보고 대신 그 커밋 본문을 보고로 읽어 「병합」 ⓐ 부터 한다
+  - 완료 커밋이 없다 — 브랜치·worktree 를 지우지 않고(미병합 커밋은 복구 경로가 없다) 그 task 를 「순차 전환」 하고, 최종 보고에 경로를 적는다
 - **그룹 첫 task 차례에 조건을 다시 잰다 — 하나라도 거짓이면 그룹 전체를 순차로 돌리고 `판정:` 줄에 어느 조건이 거짓이었는지 남긴다** — 계획 뒤에 앞 task 가 파일을 더 고쳤거나 ignored 입력이 생겼을 수 있다. 억지로 띄우면 병합 충돌·통합 검증 실패로 순차보다 느려진다.
   - 주 트리가 깨끗하다 — `git status --porcelain --untracked-files=no` 가 빈 값
+  - `git check-ignore -q .claude/worktrees/x` 가 참이다 — 무시되지 않으면 「순차 전환」 때 남기는 worktree 가 `?? .claude/` 로 4번 clean 판정에 잡혀 push 를 세운다. 이 PC 는 전역 gitignore(`core.excludesfile`)가 무시해 줄 뿐, 레포 `.gitignore` 가 보장하지 않는다(실측 2026-11-22)
   - 그룹 앞 task 가 전부 `[x]` 이고 커밋됐다 · 원격이 있으면 `git merge-base --is-ancestor origin/HEAD HEAD` 가 참이다 — 서브에이전트 worktree 는 로컬 HEAD 가 아니라 `origin/HEAD` 에서 갈라져, 프롬프트 0단계가 메인 HEAD 로 fast-forward 한다(실측 2026-11-21 — 로컬 a335de17 · worktree 7667481d). 조상이 아니면 fast-forward 가 안 된다
   - `../../plan/references/parallel-groups.md`「병렬 그룹」 의 넷 — 계획 이후 그룹 task 의 Files 가 앞 task 산출물을 가리키게 됐는지, `git status --ignored --short` 에 그 task 검증이 읽는 경로가 새로 생겼는지 본다
 - **그룹의 시작 시각을 `../scripts/work-clock.ps1` 무인자로 한 번 얻는다** — 「정리·기록」 의 경과 줄이 이 값에서 잰다.
@@ -88,7 +93,6 @@ task 번호 순으로 하나씩 한다. 보고가 `성공` 이 아니면 그 tas
 | 성능 측정 | 성능 줄 task 는 그룹에 들지 않는다 — 동시 부하가 BASE 교대 측정을 오염시킨다 | `../../PERF-MEASUREMENT.md`「성능 수치의 판정」 |
 | 회차 끝 증거 대조 | `check-plan -Base` 는 `BASE..HEAD` 를 `--first-parent` 없이 읽어 병합해 들어온 서브에이전트 완료 커밋 본문을 그대로 센다 — 그래서 서브에이전트도 같은 본문 서식을 쓴다 | `final-review.md`「절차」 |
 | 4번 검증·clean 줄 | 마지막 병합 커밋 뒤 메인이 평소대로 돈다 | `push-flow.md`「push 전 확인」 |
-| 착수 untracked 스냅숏 | worktree 는 주 트리 밖(`.claude/worktrees/` — ignored)이라 스냅숏·clean 판정에 들지 않는다 | `push-flow.md`「push 전 확인」 |
-| 루프 계속 주입 | 서브에이전트가 도는 동안의 turn 종료는 대기다 | `loop-pacing.md`「검증 대기」 |
+| 착수 untracked 스냅숏 | 「진입」 이 `.claude/worktrees/` 무시를 조건으로 걸어, worktree 는 스냅숏·clean 판정에 들지 않는다 | `push-flow.md`「push 전 확인」 |
 | 완료 리뷰·주석 정리 | 범위가 `BASE..HEAD` 라 병합된 변경을 함께 본다 | `final-review.md`「완료 순서」 |
 | 실패 카운터 | 서브에이전트 실패는 세지 않고 순차 전환 뒤부터 센다 | `loop-exceptions.md`「실패 처리」 |

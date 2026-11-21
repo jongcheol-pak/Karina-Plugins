@@ -25,5 +25,4 @@
 
 ## 검사
 
-- **기계로 갈리는 것은 `../scripts/check-plan.ps1` 이 승인 전에 막는다** — `parallel-size`(2~3 밖) · `parallel-order`(이웃 아님) · `parallel-task T<N> missing|screen|perf|outside` · `parallel-overlap`(Files 겹침). 코드 뜻은 그 스크립트 머리 표가 정본이다.
-- **①의존과 ③새 체크아웃 검증은 기계로 갈리지 않아 `plan-reviewer` 가 본다** — 그룹 안 뒤 task 가 앞 task 산출물을 전제하면 MAJOR 다.
+- **크기·이웃·Files 겹침·④는 `../scripts/check-plan.ps1` 이 승인 전에 막고(코드는 그 머리 표 `parallel-*`), ①·③은 `plan-reviewer` 가 본다** — 의존과 ignored 입력은 문자열로 갈리지 않는다.
