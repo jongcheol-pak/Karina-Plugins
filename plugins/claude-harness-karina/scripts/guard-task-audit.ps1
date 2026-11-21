@@ -220,6 +220,36 @@ function New-TaskAuditResult([string]$TaskId, $AuditLines, $EvidenceLines, [stri
     return New-HookResult -Block $false -Stderr @($msg) -Context $msg
 }
 
+# 회차 전 untracked 파일이 커밋에 드는가 — 근거는 `rules/task-audit-rationale.md` §8
+function Get-UntrackedStartLines([string]$Judge, $Cm, [string]$CommitDir) {
+    if (-not (Get-Command Find-SinglePlanUpwards -ErrorAction SilentlyContinue)) { return @() }
+    $planFile = Find-SinglePlanUpwards -StartDir $CommitDir
+    if (-not $planFile) { return @() }
+    $base = @(Get-Content -LiteralPath $planFile -Encoding UTF8 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^> BASE:\s*[0-9a-fA-F]{7,40}\s*$' } | Select-Object -First 1)
+    if (-not $base.Count) { return @() }
+    $sha7 = ([regex]::Match($base[0], '[0-9a-fA-F]{7,40}').Value).Substring(0, 7).ToLower()
+    $planDir = [System.IO.Path]::GetDirectoryName($planFile)
+    $snapName = 'untracked-start-' + (Split-Path -Leaf $planDir) + '-' + $sha7 + '.txt'
+    $snap = Join-Path ([System.IO.Path]::GetTempPath()) (Join-Path 'karina-plugin/scratch' $snapName)
+    if (-not (Test-Path -LiteralPath $snap -PathType Leaf)) { return @() }
+    $prefix = (@((Invoke-CommitGit -Check 'warn-task-audit' -Dir $planDir -GitArgs @('rev-parse', '--show-prefix')).Lines) -join '').Trim()
+    $start = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($l in @(Get-Content -LiteralPath $snap -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+        $t = ([string]$l).Trim()
+        if ($t) { [void]$start.Add($prefix + ($t -replace '\\', '/')) }
+    }
+    if (-not $start.Count) { return @() }
+    $entering = @(Get-TaskAuditNames $CommitDir @('diff', '--cached', '--name-only', '--diff-filter=A') @())
+    $scope = Get-TaskAuditScope $Judge $Cm $CommitDir
+    if ($scope.UntrackedAll) { $entering += @(Get-TaskAuditNames $CommitDir @('ls-files', '--others', '--exclude-standard', '--full-name') @()) }
+    elseif (@($scope.UntrackedPaths).Count) { $entering += @(Get-TaskAuditNames $CommitDir @('ls-files', '--others', '--exclude-standard', '--full-name') @($scope.UntrackedPaths)) }
+    $hits = @($entering | Where-Object { $start.Contains($_) } | Select-Object -Unique)
+    if (-not $hits.Count) { return @() }
+    $shown = ($hits | Select-Object -First 5) -join ', '
+    $more = if ($hits.Count -gt 5) { " 외 $($hits.Count - 5)개" } else { '' }
+    return @("[HARNESS] 회차 전부터 있던 untracked 파일이 이 커밋에 들어갑니다: ${shown}${more} — 의도한 것이 아니면 커밋 뒤 ``git rm --cached $($hits[0])`` 처럼 추적만 되돌리고, 다음부터 파일 이름으로 add 하세요(스냅숏 $snapName · 경고 전용).")
+}
+
 function Invoke-WarnTaskAudit {
     param($data)
     $cmd = [string]$data.tool_input.command
@@ -230,6 +260,15 @@ function Invoke-WarnTaskAudit {
 
     $startDir = if ($data.cwd) { [string]$data.cwd } elseif ($env:CLAUDE_PROJECT_DIR) { $env:CLAUDE_PROJECT_DIR } else { (Get-Location).Path }
     $commitDir = Resolve-GitCommitDir $judge $startDir
+    $r = Invoke-TaskAuditOnCommit $cmd $judge $cm $commitDir
+    $untracked = @(Get-UntrackedStartLines $judge $cm $commitDir)
+    if (-not $untracked.Count) { return $r }
+    $msg = $untracked -join "`n"
+    $ctx = if ($r -and $r.Context) { [string]$r.Context + "`n`n" + $msg } else { $msg }
+    return New-HookResult -Block $false -Stderr (@(if ($r) { $r.Stderr }) + @($msg) | Where-Object { $_ }) -Context $ctx
+}
+
+function Invoke-TaskAuditOnCommit([string]$cmd, [string]$judge, $cm, [string]$commitDir) {
     $message = Get-CommitMessage $cmd $commitDir
     if ($null -eq $message -or $message -is [bool]) { return New-HookResult }
     $title = @($message -split '\r?\n')[0]

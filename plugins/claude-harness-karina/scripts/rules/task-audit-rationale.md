@@ -56,3 +56,11 @@ CR(-F 파일의 CRLF 줄 끝)을 걷고 공백을 정규화한 메시지에서 �
 - **증거는 이번 메시지와 `plan.md` `> BASE:` 이후(`BASE..HEAD`)의 같은 `T<N>` 커밋 본문, 그리고 어느 커밋이든 지목 줄 `화면: T<N> …` 이다** — `check-plan -Base` 가 「어느 본문에도」 로 재므로 같은 기준이어야 회차 끝 위반과 맞는다. BASE 를 못 읽으면 메시지만 본다.
 - **판정 정규식은 `check-plan.ps1` 의 사본이다** — 그 스크립트는 `exit` 하는 독립 실행이라 dot-source 할 수 없다. 두 곳이 갈리지 않게 골든 「사본 정합」 케이스가 같은 커밋 이력을 두 검사에 넣어 같은 판정이 나는지 잰다. `RED: 미확인 — <사유>` 는 check-plan 이 위반이 아닌 note 로 다루므로 여기서도 통과다.
 - **화면 판정이 없을 때 메시지에 `화면…:` 꼴 줄이 있으면 그 줄을 인용해 기대 서식을 보인다** — 비서식 줄은 기록할 뜻은 있었는데 서식만 어긋난 것이라, 무엇을 고칠지 보이는 것이 경고의 쓸모다.
+
+## §8 회차 전 untracked 파일이 커밋에 들면 경고한다
+
+2026-11-21 Karina 체인 run_994f7987 plan 3 에서 `git add docs` 가 회차 전부터 있던 남의 untracked 파일 `docs/release.md` 를 두 번 커밋에 담았다(54f654b·057384d — 그 뒤 `git rm --cached` 로 추적만 되돌림). `karina:implement` 는 루프 진입 전 `untracked-start-<레포 폴더명>-<BASE sha7>.txt` 스냅숏을 남기지만(`skills/implement/SKILL.md`「작업 범위」), 그것을 읽는 자리는 회차 끝 clean 판정뿐이라 커밋 시점에는 아무도 대조하지 않았다.
+
+- **커밋마다(T 번호와 무관하게) `plan.md` 가 있는 폴더 이름과 그 `> BASE:` sha7 로 스냅숏을 찾고, 있으면 이번 커밋에 들어갈 새 파일과 교집합을 경고한다** — 들어갈 새 파일은 이미 stage 된 추가(`git diff --cached --diff-filter=A`)와 같은 명령의 `git add` 범위 안 아직 untracked 파일(`ls-files --others --full-name` — 범위는 §3 의 `Get-TaskAuditScope`)의 합이다. PreToolUse 시점에는 같은 명령의 `git add docs` 가 아직 돌지 않아 cached 만 보면 실해 형태를 놓친다.
+- **스냅숏 줄은 `plan.md` 폴더 기준 경로라 `rev-parse --show-prefix` 를 붙여 최상위 기준으로 맞춘다** — 하니스처럼 plan 폴더가 레포 하위인 세션에서는 두 목록의 기준이 갈려 교집합이 늘 빈다(계획 리뷰 지적 · 골든 UT-subdir).
+- **스냅숏·BASE·plan 이 없으면 침묵하고 막지 않는다** — 스냅숏은 implement 회차에만 있고, 회차 전 untracked 를 일부러 커밋하는 경우도 있어 판단은 경고를 읽는 쪽이 한다. 별도 검사로 등록하지 않고 `Invoke-WarnTaskAudit` 안에서 부른다 — 등록하면 「검사 13종」 사본 여섯 곳이 함께 바뀐다.

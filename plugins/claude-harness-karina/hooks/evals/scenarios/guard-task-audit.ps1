@@ -227,5 +227,66 @@ try {
 } finally {
     if (Test-Path $taRoot) { Remove-Item $taRoot -Recurse -Force -ErrorAction SilentlyContinue }
 }
+
+$utMark = '회차 전부터 있던 untracked 파일'
+$utScratch = Join-Path ([System.IO.Path]::GetTempPath()) 'karina-plugin/scratch'
+New-Item -ItemType Directory $utScratch -Force | Out-Null
+$utTop = Join-Path $work ('ut-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+$utSnaps = @()
+try {
+    New-Item -ItemType Directory (Join-Path $utTop 'sub/docs') -Force | Out-Null
+    New-Item -ItemType Directory (Join-Path $utTop 'docs') -Force | Out-Null
+    'x' | Set-Content (Join-Path $utTop 'README.md')
+    & git -C $utTop init -q 2>$null
+    & git -C $utTop add -A 2>$null
+    & git -C $utTop -c user.email=t@t -c user.name=t commit -q -m 'init' 2>$null
+    $utSha = ((& git -C $utTop rev-parse HEAD) | Out-String).Trim().Substring(0, 7)
+    ("# plan`n`n## Goal`n`n> BASE: $utSha`n") | Set-Content (Join-Path $utTop 'plan.md')
+    'old' | Set-Content (Join-Path $utTop 'docs/release.md')
+    $utSnap = Join-Path $utScratch ('untracked-start-' + (Split-Path -Leaf $utTop) + '-' + $utSha + '.txt')
+    "docs/release.md`nplan.md" | Set-Content $utSnap
+    $utSnaps += $utSnap
+    function Invoke-UtCase([string]$Command, [string]$Cwd) {
+        $json = @{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $Cwd; tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
+        Push-Location $Cwd
+        try { return (Invoke-Hook 'guard-bash.ps1' $json) } finally { Pop-Location }
+    }
+
+    $r = Invoke-UtCase 'git add docs && git commit -m "정리: 문서"' $utTop
+    Assert-Case -Name 'untracked-start: 같은 명령의 git add docs 가 회차 전 untracked 를 담으면 경고 (UT-add)' -R $r -ExpectExit 0 -ExpectContains $utMark
+    Assert-Case -Name 'untracked-start: 경고가 파일 이름과 rm --cached 를 안내 (UT-add-hint)' -R $r -ExpectExit 0 -ExpectContains 'git rm --cached docs/release.md'
+    & git -C $utTop add docs/release.md 2>$null
+    $r = Invoke-UtCase 'git commit -m "기능: 항목"' $utTop
+    Assert-Case -Name 'untracked-start: 이미 stage 된 회차 전 untracked 도 경고 (UT-staged)' -R $r -ExpectExit 0 -ExpectContains $utMark
+    & git -C $utTop reset -q 2>$null
+    'new' | Set-Content (Join-Path $utTop 'docs/new.md')
+    Remove-Item (Join-Path $utTop 'docs/release.md') -Force
+    $r = Invoke-UtCase 'git add docs && git commit -m "정리: 문서"' $utTop
+    Assert-Case -Name 'untracked-start (음성): 스냅숏 밖 새 파일만이면 침묵 (UT-new)' -R $r -ExpectExit 0 -ExpectNotContains $utMark
+    'old' | Set-Content (Join-Path $utTop 'docs/release.md')
+    ("# plan`n`n## Goal`n`n> BASE: 0000000`n") | Set-Content (Join-Path $utTop 'plan.md')
+    $r = Invoke-UtCase 'git add docs && git commit -m "정리: 문서"' $utTop
+    Assert-Case -Name 'untracked-start (음성): 그 BASE 의 스냅숏 파일이 없으면 침묵 (UT-nosnap)' -R $r -ExpectExit 0 -ExpectNotContains $utMark
+    "# plan`n" | Set-Content (Join-Path $utTop 'plan.md')
+    $r = Invoke-UtCase 'git add docs && git commit -m "정리: 문서"' $utTop
+    Assert-Case -Name 'untracked-start (음성): plan 에 BASE 가 없으면 침묵 (UT-nobase)' -R $r -ExpectExit 0 -ExpectNotContains $utMark
+
+    $utSub = Join-Path $utTop 'sub'
+    ("# plan`n`n## Goal`n`n> BASE: $utSha`n") | Set-Content (Join-Path $utSub 'plan.md')
+    'old' | Set-Content (Join-Path $utSub 'docs/r.md')
+    $utSubSnap = Join-Path $utScratch ('untracked-start-sub-' + $utSha + '.txt')
+    $utSubBackup = $null
+    if (Test-Path -LiteralPath $utSubSnap) { $utSubBackup = Get-Content -LiteralPath $utSubSnap -Raw }
+    "docs/r.md" | Set-Content $utSubSnap
+    try {
+        $r = Invoke-UtCase 'git add docs && git commit -m "정리: 문서"' $utSub
+        Assert-Case -Name 'untracked-start: 하위 폴더 plan 의 스냅숏 경로를 최상위 기준으로 맞춰 경고 (UT-subdir)' -R $r -ExpectExit 0 -ExpectContains $utMark
+    } finally {
+        if ($null -ne $utSubBackup) { Set-Content -LiteralPath $utSubSnap -Value $utSubBackup -NoNewline } else { Remove-Item -LiteralPath $utSubSnap -Force -ErrorAction SilentlyContinue }
+    }
+} finally {
+    foreach ($s in $utSnaps) { Remove-Item -LiteralPath $s -Force -ErrorAction SilentlyContinue }
+    if (Test-Path $utTop) { Remove-Item $utTop -Recurse -Force -ErrorAction SilentlyContinue }
+}
 }
 }
