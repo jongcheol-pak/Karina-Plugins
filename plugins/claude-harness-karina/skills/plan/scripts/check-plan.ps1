@@ -26,10 +26,10 @@
 #   parallel-size <k>            「## 작업 단계」 의 첫 「> 병렬 그룹:」 줄(첫 「—」 앞까지를 「|」 로 그룹, 그룹 안 T<N> 을 task 로 센다)에서
 #                                k 번째 그룹의 task 가 2 미만이거나 3 초과 — 조건 정본은 plan/references/parallel-groups.md
 #   parallel-order <k>           k 번째 그룹의 번호가 이웃하지 않음(앞 번호 + 1 이 아님)
-#   parallel-task T<N> <사유>    그룹의 task 가 missing(블록 없음)·screen(「- **화면**:」 줄)·perf(「- **성능**:」 줄)·
+#   parallel-task T<N> <사유>      그룹의 task 가 missing(블록 없음)·screen(「- **화면**:」 줄)·perf(「- **성능**:」 줄)·
 #                                outside(Files 백틱 경로 하나라도 레포 밖 — outside-evidence 와 같은 판정)
 #   parallel-overlap T<a> T<b>   같은 그룹 두 task 의 Files 백틱 경로(첫 「[면제」 앞까지 · 대소문자·구분자 무시)가 겹침
-#   missing-section <절>       필수 절 없음 — goal·out-of-scope·investigation-log·tasks·verification·deferred
+#   missing-section <절>         필수 절 없음 — goal·out-of-scope·investigation-log·tasks·verification·deferred
 #                                (Goal 절에 「> 경량:」 줄이 있는 경량 plan 은 out-of-scope·verification 을 재지 않는다)
 #   light-files <N>              경량 plan 의 task Files 줄 백틱 경로(줄의 첫 「[면제」 앞까지) 합집합이 2 를 넘음
 #                                (「[면제 ①」 줄은 경로가 전부 문서·이미지 확장자면 세지 않는다)
