@@ -304,4 +304,23 @@ $lcHit = @('karina:implement', 'implement', 'karina:plan', 'plan' | Where-Object
 })
 Assert-Case -Name "loop-continue: UserPromptExpansion matcher 가 karina: 접두·무접두 두 형태를 모두 받는다" -R @{ code = 0; out = "hits=$($lcHit.Count)" } -ExpectContains 'hits=4'
 
+$lcIdProj = Join-Path $work 'lc-identity'; New-Item -ItemType Directory $lcIdProj -Force | Out-Null
+$lcIdPlan = Join-Path $lcIdProj 'plan.md'
+$lcIdA = "# plan`n`n> 요구: 계획 3 의 요구`n`n## Goal`n`n> BASE: abc1234`n`n- [ ] **T1-1** 남음"
+$lcIdB = "# plan`n`n> 요구: 계획 4 의 요구`n`n## Goal`n`n> BASE: def5678`n`n- [ ] **T1-1** 남음"
+$lcIdSkill = { param($sid) (@{ session_id = $sid; hook_event_name = 'PreToolUse'; tool_name = 'Skill'; cwd = $lcIdProj; tool_input = @{ skill = 'karina:implement' } } | ConvertTo-Json -Compress) }
+$lcIdA | Set-Content -LiteralPath $lcIdPlan -Encoding UTF8
+$null = Invoke-Hook 'loop-continue.ps1' (& $lcIdSkill 'lc-id1')
+$lcIdB | Set-Content -LiteralPath $lcIdPlan -Encoding UTF8
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-id1' $lcIdProj)
+Assert-Case -Name "loop-continue: 발동 뒤 같은 폴더 plan 이 다른 계획(요구·BASE)으로 바뀌면 침묵 (LC-identity)" -R $r -ExpectExit 0 -ExpectSilent $true
+$lcIdA | Set-Content -LiteralPath $lcIdPlan -Encoding UTF8
+$null = Invoke-Hook 'loop-continue.ps1' (& $lcIdSkill 'lc-id2')
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-id2' $lcIdProj)
+Assert-Case -Name "loop-continue: 발동 때와 같은 plan 이면 주입 (LC-identity-same)" -R $r -ExpectExit 0 -ExpectContains '"additionalContext"'
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-id3' 'karina:implement')
+$lcIdB | Set-Content -LiteralPath $lcIdPlan -Encoding UTF8
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-id3' $lcIdProj)
+Assert-Case -Name "loop-continue: 발동 때 plan 을 못 읽은 마커(cwd 없음 · 옛 형식)는 지금처럼 주입 (LC-identity-compat)" -R $r -ExpectExit 0 -ExpectContains '"additionalContext"'
+
 }

@@ -21,7 +21,10 @@ $marker = Join-Path $stateDir ($sidSafe + '.active')
 
 function Set-ActiveMarker {
     try { New-Item -Force -ItemType Directory -Path $stateDir -ErrorAction Stop | Out-Null } catch { return }
-    try { Set-Content -LiteralPath $marker -Value (Get-Date -Format o) -Encoding UTF8 -ErrorAction Stop } catch {}
+    $identity = ''
+    $hit = Find-PlanFileUpwards -StartDir ([string]$data.cwd)
+    if ($hit) { try { $identity = Get-PlanIdentity (Get-Content -LiteralPath $hit.Path -Raw -Encoding UTF8 -ErrorAction Stop) } catch {} }
+    try { Set-Content -LiteralPath $marker -Value @((Get-Date -Format o), $identity) -Encoding UTF8 -ErrorAction Stop } catch {}
 }
 
 function Clear-ActiveMarker {
@@ -123,6 +126,13 @@ function Get-SetKey([string[]]$ids) {
     return (($bytes | ForEach-Object { $_.ToString('x2') }) -join '').Substring(0, 12)
 }
 
+function Get-PlanIdentity([string]$PlanText) {
+    $req = [regex]::Match($PlanText, '(?m)^> 요구:[^\r\n]*').Value.Trim()
+    $baseLine = [regex]::Match($PlanText, '(?m)^> BASE:[^\r\n]*').Value.Trim()
+    if (-not $req -and -not $baseLine) { return '' }
+    return Get-SetKey @($req, $baseLine)
+}
+
 $hookEvent = [string]$data.hook_event_name
 
 # 발동 마커는 Skill 도구 호출과 슬래시 직접 입력 두 경로에서 선다 — 근거는 `rules/loop-continue-rationale.md` §6
@@ -151,6 +161,10 @@ if ([string]::IsNullOrWhiteSpace($cwd)) { exit 0 }
 $planHit = Find-PlanFileUpwards -StartDir $cwd
 if (-not $planHit) { exit 0 }
 try { $planText = Get-Content -LiteralPath $planHit.Path -Raw -Encoding UTF8 -ErrorAction Stop } catch { exit 0 }
+# 발동 때와 다른 계획이면 같은 폴더의 다른 워커 plan 이다 — 근거는 `rules/loop-continue-rationale.md` §6
+$markedIdentity = ''
+try { $markedIdentity = [string](@(Get-Content -LiteralPath $marker -Encoding UTF8 -ErrorAction Stop)[1]) } catch {}
+if ($markedIdentity.Trim() -and $markedIdentity.Trim() -ne (Get-PlanIdentity $planText)) { exit 0 }
 $ids = @(Get-OpenTaskIds $planText)
 $gap = $null
 $left = @()
