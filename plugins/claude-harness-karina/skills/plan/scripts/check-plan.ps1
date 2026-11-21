@@ -60,7 +60,7 @@
 #                                지목 줄은 아래 화면 셋에만 쓰이고 no-task-commit·no-commit-evidence 를 대신하지 않는다)
 #   screen-false T<N>            화면 판정이 「HEAD 거짓」 뿐임(「HEAD 참」 이 하나라도 있으면 통과)
 #   screen-unshot T<N>           판정이 미촬영뿐이고 AGENTS.md(위 Plan check 와 같은 탐색)의 「- **Verify (앱 조작)**:」 값이
-#                                「없음」 이 아님 — 미촬영 줄에 「· 사유 <…>」 칸이 있으면 위반 대신 note screen-unshot-reason T<N>
+#                                「없음」 이 아님 — 미촬영 줄에 「· 사유 <…> · 시도 <…>」 칸이 있으면 위반 대신 note screen-unshot-reason T<N>
 #                                (Verify 줄이 없거나 AGENTS.md 가 없으면 검증 스킬 없음 — 미촬영 통과)
 #   screen-unshot-attempt T<N>   위 screen-unshot 에서 사유 칸은 있는데 「· 시도 <…>」 칸이 없음 — 사유가 「기준선 흔들림」·
 #                                「image-diff: ERROR」 로 시작하면(조작은 성공) 시도 칸 없이 note
