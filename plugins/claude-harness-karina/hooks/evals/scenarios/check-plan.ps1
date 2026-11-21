@@ -530,6 +530,22 @@ Assert-Case -Name "check-plan 증거: 화면: T10 지목 줄은 T1 판정이 아
 $ev = New-EvidenceRepo @(($cpBatch + "화면: T1 HEAD 참" + $cpScrTail))
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: 지목 줄은 T1 완료 커밋을 대신하지 않는다" -R $r -ExpectExit 1 -ExpectContains 'no-task-commit T1'
+
+$cpOutRepo = Join-Path $cpRoot 'outside-repo'
+New-Item -ItemType Directory -Path $cpOutRepo -Force | Out-Null
+& git -C $cpOutRepo init -q 2>$null
+$cpFilesLine = '- **Files**: `a.ps1` · 케이스 `t.ps1` (RED)'
+$cpOutsideOnly = $cpBase.Replace($cpFilesLine, '- **Files**: `C:\zz-outside\x.ps1` [면제 ① — 다른 레포]')
+$r = Invoke-CheckPlan $cpOutsideOnly $cpOutRepo
+Assert-Case -Name "check-plan: 레포 밖 Files 만인 task 에 증거 커밋 항목이 없으면 outside-evidence" -R $r -ExpectExit 1 -ExpectContains 'outside-evidence T1'
+$r = Invoke-CheckPlan ($cpOutsideOnly.Replace('- [ ] **T1-1** 한다', ('- [ ] **T1-1** 한다' + "`n" + '- [ ] **T1-2** 증거 커밋 `git commit --allow-empty`'))) $cpOutRepo
+Assert-Case -Name "check-plan: 레포 밖 Files task 에 --allow-empty 증거 항목이 있으면 통과" -R $r -ExpectExit 0 -ExpectNotContains 'outside-evidence'
+$r = Invoke-CheckPlan ($cpBase.Replace($cpFilesLine, '- **Files**: `a.ps1` · `C:\zz-outside\x.ps1` · 케이스 `t.ps1` (RED)')) $cpOutRepo
+Assert-Case -Name "check-plan: 레포 안 경로가 섞인 Files 는 outside-evidence 를 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'outside-evidence'
+$r = Invoke-CheckPlan ($cpBase.Replace($cpFilesLine, ('- **Files**: `' + (Join-Path $cpOutRepo 'x.ps1') + '` [면제 ① — 문서]'))) $cpOutRepo
+Assert-Case -Name "check-plan: 레포 안 절대 경로만인 Files 는 outside-evidence 를 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'outside-evidence'
+$r = Invoke-CheckPlan $cpOutsideOnly
+Assert-Case -Name "check-plan: git 밖 plan 은 outside-evidence 를 재지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'outside-evidence'
 }
 
 if (Test-ScenarioUnit 4) {

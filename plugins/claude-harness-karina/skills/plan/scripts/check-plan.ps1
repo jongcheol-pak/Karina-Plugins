@@ -20,6 +20,9 @@
 #   open-question                Open Questions 절에 「- [ ]」 가 남음
 #   acceptance-baseline T<N>     Acceptance 줄에 백틱(판정 명령·리터럴)이 있는데 「착수」 가 없음
 #   case-mark T<N>               Files 줄에 (RED)·(GREEN·[면제 가 하나도 없음
+#   outside-evidence T<N>        Files 줄 백틱 경로(첫 「[면제」 앞까지)가 하나 이상이고 전부 레포 밖(루트 경로이면서 plan 폴더의 git 최상위
+#                                아래가 아님)인데 그 task 블록에 「--allow-empty」 가 없음 — 다른 레포만 고치는 task 는 이 레포에 커밋이 생기지
+#                                않아 회차 끝 no-task-commit 으로 늦게 잡힌다. 하위 항목으로 빈 증거 커밋을 계획에 둔다(plan 이 git 밖이면 재지 않는다)
 #   missing-section <절>         필수 절 없음 — goal·out-of-scope·investigation-log·tasks·verification·deferred
 #                                (Goal 절에 「> 경량:」 줄이 있는 경량 plan 은 out-of-scope·verification 을 재지 않는다)
 #   light-files <N>              경량 plan 의 task Files 줄 백틱 경로(줄의 첫 「[면제」 앞까지) 합집합이 2 를 넘음
@@ -420,6 +423,9 @@ if (Find-Section $tasksTitle) {
     $originDeclared = [bool](Get-AgentsLineValue $uiAgents ('UI ' + (Get-Text @(0xC7AC, 0xAD6C, 0xD604, 0x20, 0xAE30, 0xC900, 0x20, 0xC18C, 0xC2A4))))
     $noOriginRx = '\[' + $originWord + '\s+' + (Get-Text @(0xC5C6, 0xC74C)) + '\s*' + [char]0x2014 + '\s*[^\]\s]'
     $originVerdictRx = (Get-Text @(0xC62E, 0xAE40)) + '|' + (Get-Text @(0xBBF8, 0xB8F8)) + '|' + (Get-Text @(0xC774, 0xD0C8))
+    $planTop = $null
+    try { $planTop = [string](& git -C (Split-Path -Parent (Resolve-Path -LiteralPath $PlanPath).Path) rev-parse --show-toplevel 2>$null) } catch { }
+    if ($LASTEXITCODE -ne 0 -or -not $planTop) { $planTop = $null } else { $planTop = $planTop.Trim().Replace('\', '/').TrimEnd('/') + '/' }
     foreach ($b in $blocks) {
         $tag = 'T' + $b.Id
         $items = 0
@@ -440,6 +446,19 @@ if (Find-Section $tasksTitle) {
         if (-not $verify) { Add-Problem $b.N ('task-line ' + $tag + ' verify') }
         if ($files -and -not ($files.Text.Contains('(RED)') -or $files.Text.Contains('(GREEN') -or $files.Text.Contains($exempt))) {
             Add-Problem $files.N ('case-mark ' + $tag)
+        }
+        if ($files -and $planTop) {
+            $head = $files.Text
+            $cut = $head.IndexOf($exempt)
+            if ($cut -ge 0) { $head = $head.Substring(0, $cut) }
+            $paths = @([regex]::Matches($head, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value })
+            $inside = @($paths | Where-Object {
+                -not [System.IO.Path]::IsPathRooted($_) -or
+                ($_.Replace('\', '/') + '/').StartsWith($planTop, [System.StringComparison]::OrdinalIgnoreCase)
+            })
+            if ($paths.Count -and -not $inside.Count -and -not @($b.Lines | Where-Object { $_.Text.Contains('--allow-empty') }).Count) {
+                Add-Problem $files.N ('outside-evidence ' + $tag)
+            }
         }
         if ($accept -and $accept.Text.Contains('`') -and -not $accept.Text.Contains($baseline)) {
             Add-Problem $accept.N ('acceptance-baseline ' + $tag)
