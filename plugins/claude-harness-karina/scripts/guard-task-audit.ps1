@@ -193,7 +193,10 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
     }
     $verdictRx = $lineHead + '화면:\s*(?:HEAD\s*(?:참|거짓)|미촬영\(HUMAN-VERIFY\))'
     $taggedRx = $lineHead + '화면:\s*T' + $TaskId + '\s+(?:HEAD\s*(?:참|거짓)|미촬영\(HUMAN-VERIFY\))'
-    if ($hasScreen -and -not [regex]::IsMatch($text, $verdictRx) -and -not [regex]::IsMatch(($tagged + $bodies) -join "`n", $taggedRx)) {
+    $screenMissing = $hasScreen -and -not [regex]::IsMatch($text, $verdictRx) -and -not [regex]::IsMatch(($tagged + $bodies) -join "`n", $taggedRx)
+    if ($screenMissing -and [regex]::IsMatch($Message, $lineHead + '화면:\s*(?:T[\dT~·,\-]+\s+)?묶음')) {
+        $out += "[bundle] [HARNESS] T$TaskId 화면은 묶음 대기 — 묶음 커밋(``화면 일괄 판정``)에 ``화면: T$TaskId HEAD 참|거짓 · …`` 지목 줄을 남기면 회차 끝 증거 대조를 통과합니다(skills/implement/references/screen-scenarios.md)."
+    } elseif ($screenMissing) {
         $odd = @([regex]::Matches($Message, '(?m)^\s*(?:[-*]\s*)?화면\s*[^\s:]*\s*:.*$') | ForEach-Object { $_.Value.Trim() } | Select-Object -First 1)
         $seen = if ($odd.Count) { " — 본 줄: ``$($odd[0])``" } else { '' }
         $out += "  - 화면 판정 줄 없음 — ``- **화면**:`` 줄이 있는 task 다. 본문에 ``화면: HEAD 참|거짓 — <스크린샷>`` 또는 ``화면: 미촬영(HUMAN-VERIFY) · 사유 <…>`` 줄을 둔다$seen"
@@ -202,7 +205,13 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
 }
 
 function New-TaskAuditResult([string]$TaskId, $AuditLines, $EvidenceLines, [string[]]$Extra = @()) {
-    $parts = @($Extra)
+    $bundle = @(@($EvidenceLines) | Where-Object { ([string]$_).StartsWith('[bundle] ') } | ForEach-Object { ([string]$_).Substring(9) })
+    $EvidenceLines = @(@($EvidenceLines) | Where-Object { -not ([string]$_).StartsWith('[bundle] ') })
+    if ($bundle.Count -and -not (@($AuditLines).Count + @($EvidenceLines).Count)) {
+        $msg = (@($Extra) + $bundle) -join "`n"
+        return New-HookResult -Block $false -Stderr @($msg) -Context $msg
+    }
+    $parts = @($Extra) + $bundle
     if (@($AuditLines).Count) {
         $parts += "[HARNESS] T$TaskId 완료 커밋에 AGENTS.md 「Test (감사)」 명령이 없습니다 — 필터 테스트는 이 감사를 돌리지 않습니다."
         $parts += @($AuditLines)
