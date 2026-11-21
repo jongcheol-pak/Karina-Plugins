@@ -550,6 +550,44 @@ $r = Invoke-CheckPlan $cpOutsideOnly
 Assert-Case -Name "check-plan: git 밖 plan 은 outside-evidence 를 재지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'outside-evidence'
 }
 
+if (Test-ScenarioUnit 2) {
+function New-GroupPlan([string]$Group, [string[]]$Files, [hashtable]$Extra = @{}) {
+    $tasks = ''
+    for ($i = 1; $i -le $Files.Count; $i++) {
+        $more = if ($Extra.ContainsKey($i)) { $Extra[$i] + "`n" } else { '' }
+        $tasks += "### T$i. 일`n`n- [ ] **T$i-1** 한다`n- **Files**: " + $Files[$i - 1] + "`n" + $more + "- **Acceptance**: 없음`n- **검증**: ``run`` → OK`n`n"
+    }
+    $head = if ($Group) { "> 병렬 그룹: $Group — 근거: 데모`n`n" } else { '' }
+    $start = $cpBase.IndexOf('### T1.')
+    $end = $cpBase.IndexOf('## 검증 방법')
+    return $cpBase.Substring(0, $start) + $head + $tasks + $cpBase.Substring($end)
+}
+$cpGf = @('`a.ps1` · 케이스 `ta.ps1` (RED)', '`b.ps1` · 케이스 `tb.ps1` (RED)', '`c.ps1` · 케이스 `tc.ps1` (RED)', '`d.ps1` · 케이스 `td.ps1` (RED)')
+$r = Invoke-CheckPlan (New-GroupPlan 'T1·T2·T3·T4' $cpGf)
+Assert-Case -Name "check-plan 병렬: 그룹이 넷이면 parallel-size" -R $r -ExpectExit 1 -ExpectContains 'parallel-size'
+$r = Invoke-CheckPlan (New-GroupPlan 'T1 | T2·T3' $cpGf)
+Assert-Case -Name "check-plan 병렬: task 하나뿐인 그룹은 parallel-size" -R $r -ExpectExit 1 -ExpectContains 'parallel-size'
+$r = Invoke-CheckPlan (New-GroupPlan 'T1·T3' $cpGf)
+Assert-Case -Name "check-plan 병렬: 이웃하지 않은 번호는 parallel-order" -R $r -ExpectExit 1 -ExpectContains 'parallel-order'
+$r = Invoke-CheckPlan (New-GroupPlan 'T3·T4' $cpGf[0..2])
+Assert-Case -Name "check-plan 병렬: 없는 task 는 parallel-task missing" -R $r -ExpectExit 1 -ExpectContains 'parallel-task T4 missing'
+$r = Invoke-CheckPlan (New-GroupPlan 'T1·T2' @($cpGf[0], '`a.ps1` · 케이스 `tb.ps1` (RED)'))
+Assert-Case -Name "check-plan 병렬: Files 가 겹치면 parallel-overlap" -R $r -ExpectExit 1 -ExpectContains 'parallel-overlap T1 T2'
+$r = Invoke-CheckPlan (New-GroupPlan 'T1·T2' $cpGf[0..1] @{ 2 = $cpScreen })
+Assert-Case -Name "check-plan 병렬: 화면 줄 task 는 parallel-task screen" -R $r -ExpectExit 1 -ExpectContains 'parallel-task T2 screen'
+$r = Invoke-CheckPlan (New-GroupPlan 'T1·T2' $cpGf[0..1] @{ 2 = '- **성능**: 지표 시간 · 측정 방법 교대 · 착수 기준값 1초 · 실패 수치 2초' })
+Assert-Case -Name "check-plan 병렬: 성능 줄 task 는 parallel-task perf" -R $r -ExpectExit 1 -ExpectContains 'parallel-task T2 perf'
+$cpGrRepo = Join-Path $cpRoot 'group-repo'
+New-Item -ItemType Directory -Path $cpGrRepo -Force | Out-Null
+& git -C $cpGrRepo init -q 2>$null
+$r = Invoke-CheckPlan (New-GroupPlan 'T1·T2' @($cpGf[0], '`C:\zz-outside\x.ps1` [면제 ① — 다른 레포]') @{ 2 = '- [ ] **T2-2** 증거 커밋 `git commit --allow-empty`' }) $cpGrRepo
+Assert-Case -Name "check-plan 병렬: 레포 밖 Files task 는 parallel-task outside" -R $r -ExpectExit 1 -ExpectContains 'parallel-task T2 outside'
+$r = Invoke-CheckPlan (New-GroupPlan 'T1·T2 | T3·T4' $cpGf)
+Assert-Case -Name "check-plan 병렬: 조건이 맞는 그룹 둘은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'parallel-'
+$r = Invoke-CheckPlan (New-GroupPlan '' $cpGf)
+Assert-Case -Name "check-plan 병렬: 그룹 줄이 없으면 재지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'parallel-'
+}
+
 if (Test-ScenarioUnit 4) {
 $cpPcSeq = 0
 function New-PlanCheckDir([string]$AgentsLine, [switch]$Git, [string]$Sub = '') {

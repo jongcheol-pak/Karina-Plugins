@@ -23,7 +23,13 @@
 #   outside-evidence T<N>        Files 줄 백틱 경로(첫 「[면제」 앞까지)가 하나 이상이고 전부 레포 밖(「~」 로 시작하거나, 루트 경로이면서
 #                                plan 폴더의 git 최상위 아래가 아님)인데 그 task 블록에 「--allow-empty」 가 없음 — 다른 레포만 고치는 task 는 이 레포에 커밋이 생기지
 #                                않아 회차 끝 no-task-commit 으로 늦게 잡힌다. 하위 항목으로 빈 증거 커밋을 계획에 둔다(plan 이 git 밖이면 재지 않는다)
-#   missing-section <절>         필수 절 없음 — goal·out-of-scope·investigation-log·tasks·verification·deferred
+#   parallel-size <k>            「## 작업 단계」 의 첫 「> 병렬 그룹:」 줄(첫 「—」 앞까지를 「|」 로 그룹, 그룹 안 T<N> 을 task 로 센다)에서
+#                                k 번째 그룹의 task 가 2 미만이거나 3 초과 — 조건 정본은 plan/references/parallel-groups.md
+#   parallel-order <k>           k 번째 그룹의 번호가 이웃하지 않음(앞 번호 + 1 이 아님)
+#   parallel-task T<N> <사유>    그룹의 task 가 missing(블록 없음)·screen(「- **화면**:」 줄)·perf(「- **성능**:」 줄)·
+#                                outside(Files 백틱 경로 하나라도 레포 밖 — outside-evidence 와 같은 판정)
+#   parallel-overlap T<a> T<b>   같은 그룹 두 task 의 Files 백틱 경로(첫 「[면제」 앞까지 · 대소문자·구분자 무시)가 겹침
+#   missing-section <절>       필수 절 없음 — goal·out-of-scope·investigation-log·tasks·verification·deferred
 #                                (Goal 절에 「> 경량:」 줄이 있는 경량 plan 은 out-of-scope·verification 을 재지 않는다)
 #   light-files <N>              경량 plan 의 task Files 줄 백틱 경로(줄의 첫 「[면제」 앞까지) 합집합이 2 를 넘음
 #                                (「[면제 ①」 줄은 경로가 전부 문서·이미지 확장자면 세지 않는다)
@@ -492,6 +498,48 @@ if (Find-Section $tasksTitle) {
         if ($originDeclared -and -not $origins.Count -and @($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabel }).Count -and
             -not ($files -and [regex]::IsMatch($files.Text, $noOriginRx))) {
             Add-Problem $b.N ('origin-missing ' + $tag)
+        }
+    }
+    $groupHead = '> ' + (Get-Text @(0xBCD1, 0xB82C, 0x20, 0xADF8, 0xB8F9)) + ':'    # > 병렬 그룹:
+    $group = Get-ProseLines (Find-Section $tasksTitle) | Where-Object { Test-Prefix $_.Text $groupHead } | Select-Object -First 1
+    if ($group) {
+        $perfLabel = '- **' + (Get-Text @(0xC131, 0xB2A5)) + '**:'    # - **성능**:
+        $spec = $group.Text.Substring($groupHead.Length)
+        $cut = $spec.IndexOf([char]0x2014)
+        if ($cut -ge 0) { $spec = $spec.Substring(0, $cut) }
+        $byId = @{}
+        foreach ($b in $blocks) { $byId[$b.Id] = $b }
+        $gi = 0
+        foreach ($g in $spec.Split('|')) {
+            $gi++
+            $ids = @([regex]::Matches($g, 'T(\d+)') | ForEach-Object { [int]$_.Groups[1].Value })
+            if ($ids.Count -lt 2 -or $ids.Count -gt 3) { Add-Problem $group.N ('parallel-size ' + $gi) }
+            for ($k = 1; $k -lt $ids.Count; $k++) {
+                if ($ids[$k] -ne $ids[$k - 1] + 1) { Add-Problem $group.N ('parallel-order ' + $gi); break }
+            }
+            $owner = @{}
+            foreach ($id in $ids) {
+                $tag = 'T' + $id
+                $b = $byId[$id]
+                if (-not $b) { Add-Problem $group.N ('parallel-task ' + $tag + ' missing'); continue }
+                if (@($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabel }).Count) { Add-Problem $group.N ('parallel-task ' + $tag + ' screen') }
+                if (@($b.Lines | Where-Object { Test-Prefix $_.Text $perfLabel }).Count) { Add-Problem $group.N ('parallel-task ' + $tag + ' perf') }
+                $files = $b.Lines | Where-Object { Test-Prefix $_.Text '- **Files**:' } | Select-Object -First 1
+                if (-not $files) { continue }
+                $head = $files.Text
+                $cut = $head.IndexOf($exempt)
+                if ($cut -ge 0) { $head = $head.Substring(0, $cut) }
+                $paths = @([regex]::Matches($head, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value })
+                if (@($paths | Where-Object {
+                    $_.StartsWith('~') -or ($planTop -and [System.IO.Path]::IsPathRooted($_) -and
+                    -not ($_.Replace('\', '/') + '/').StartsWith($planTop, [System.StringComparison]::OrdinalIgnoreCase))
+                }).Count) { Add-Problem $group.N ('parallel-task ' + $tag + ' outside') }
+                foreach ($p in $paths) {
+                    $key = $p.Replace('\', '/').ToLowerInvariant()
+                    if ($owner.ContainsKey($key) -and $owner[$key] -ne $tag) { Add-Problem $group.N ('parallel-overlap ' + $owner[$key] + ' ' + $tag) }
+                    else { $owner[$key] = $tag }
+                }
+            }
         }
     }
 }
