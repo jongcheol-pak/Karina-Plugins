@@ -172,7 +172,6 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
     if (-not $hasRed -and -not $hasScreen) { return @() }
 
     $bodies = @($Message)
-    $tagged = @()
     $baseLine = @($plan | Where-Object { $_ -match '^> BASE:\s*([0-9a-fA-F]{7,40})\s*$' } | Select-Object -First 1)
     if ($baseLine.Count -and $baseLine[0] -match '^> BASE:\s*([0-9a-fA-F]{7,40})') {
         $log = Invoke-CommitGit -Check 'warn-task-audit' -Dir ([System.IO.Path]::GetDirectoryName($AgentsPath)) -GitArgs @('-c', 'core.quotepath=off', '-c', 'i18n.logOutputEncoding=UTF-8', 'log', '--format=%B%x00', ($Matches[1] + '..HEAD'))
@@ -181,7 +180,7 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
             foreach ($c in ((@($log.Lines) -join "`n") -split "`0")) {
                 $c = $c.Trim()
                 if (-not $c) { continue }
-                if ([regex]::IsMatch(@($c -split "`n")[0], $titleRx)) { $bodies += $c } else { $tagged += $c }
+                if ([regex]::IsMatch(@($c -split "`n")[0], $titleRx)) { $bodies += $c }
             }
         }
     }
@@ -192,20 +191,15 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
         $out += "  - RED 줄 없음 — Files 줄에 (RED) 가 있는 task 다. 본문에 ``RED(구현 전): <실패 출력>`` (또는 ``RED: 미확인 — <사유>``) 줄을 둔다"
     }
     $verdictRx = $lineHead + '화면:\s*(?:HEAD\s*(?:참|거짓)|미촬영\(HUMAN-VERIFY\))'
-    $taggedRx = $lineHead + '화면:\s*T' + $TaskId + '\s+(?:HEAD\s*(?:참|거짓)|미촬영\(HUMAN-VERIFY\))'
-    $screenMissing = $hasScreen -and -not [regex]::IsMatch($text, $verdictRx) -and -not [regex]::IsMatch(($tagged + $bodies) -join "`n", $taggedRx)
-    if ($screenMissing -and [regex]::IsMatch($Message, $lineHead + '화면:\s*(?:T[\dT~·,\-]+\s+)?묶음')) {
-        $out += "[bundle] [HARNESS] T$TaskId 화면은 묶음 대기 — 묶음 커밋(``화면 일괄 판정``)에 ``화면: T$TaskId HEAD 참|거짓 · …`` 지목 줄을 남기면 회차 끝 증거 대조를 통과합니다(skills/implement/references/screen-scenarios.md)."
-    } elseif ($screenMissing) {
+    if ($hasScreen -and -not [regex]::IsMatch($text, $verdictRx)) {
         $odd = @([regex]::Matches($Message, '(?m)^\s*(?:[-*]\s*)?화면\s*[^\s:]*\s*:.*$') | ForEach-Object { $_.Value.Trim() } | Select-Object -First 1)
         $seen = if ($odd.Count) { " — 본 줄: ``$($odd[0])``" } else { '' }
         $out += "  - 화면 판정 줄 없음 — ``- **화면**:`` 줄이 있는 task 다. 본문에 ``화면: HEAD 참|거짓 — <스크린샷>`` 또는 ``화면: 미촬영(HUMAN-VERIFY) · 사유 <…> · 시도 <…>`` 줄을 둔다$seen"
     }
     $verify = @(Get-Content -LiteralPath $AgentsPath -Encoding UTF8 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\s*-\s*\*\*Verify \(앱 조작\)\*\*\s*:\s*(.*)$' } | Select-Object -First 1)
     $verifyOn = $verify.Count -and ($verify[0] -replace '^\s*-\s*\*\*Verify \(앱 조작\)\*\*\s*:\s*', '') -notmatch '^\W*없음'
-    $all = ($bodies + $tagged) -join "`n"
-    if ($hasScreen -and $verifyOn -and -not [regex]::IsMatch($all, $lineHead + '화면:\s*(?:T' + $TaskId + '\s+)?HEAD\s*참')) {
-        $tails = @([regex]::Matches($all, $lineHead + '화면:\s*(?:T' + $TaskId + '\s+)?미촬영\(HUMAN-VERIFY\)(.*)$') | ForEach-Object { $_.Groups[1].Value })
+    if ($hasScreen -and $verifyOn -and -not [regex]::IsMatch($text, $lineHead + '화면:\s*HEAD\s*참')) {
+        $tails = @([regex]::Matches($text, $lineHead + '화면:\s*미촬영\(HUMAN-VERIFY\)(.*)$') | ForEach-Object { $_.Groups[1].Value })
         $withReason = @($tails | Where-Object { $_ -match '·\s*사유\s+\S' })
         $attempted = @($withReason | Where-Object { $_ -match '·\s*시도\s+\S' -or $_ -match '·\s*사유\s+(?:기준선 흔들림|image-diff:\s*ERROR)' })
         if ($withReason.Count -and -not $attempted.Count) {
@@ -216,13 +210,7 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
 }
 
 function New-TaskAuditResult([string]$TaskId, $AuditLines, $EvidenceLines, [string[]]$Extra = @()) {
-    $bundle = @(@($EvidenceLines) | Where-Object { ([string]$_).StartsWith('[bundle] ') } | ForEach-Object { ([string]$_).Substring(9) })
-    $EvidenceLines = @(@($EvidenceLines) | Where-Object { -not ([string]$_).StartsWith('[bundle] ') })
-    if ($bundle.Count -and -not (@($AuditLines).Count + @($EvidenceLines).Count)) {
-        $msg = (@($Extra) + $bundle) -join "`n"
-        return New-HookResult -Block $false -Stderr @($msg) -Context $msg
-    }
-    $parts = @($Extra) + $bundle
+    $parts = @($Extra)
     if (@($AuditLines).Count) {
         $parts += "[HARNESS] T$TaskId 완료 커밋에 AGENTS.md 「Test (감사)」 명령이 없습니다 — 필터 테스트는 이 감사를 돌리지 않습니다."
         $parts += @($AuditLines)

@@ -199,10 +199,10 @@ try {
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + 'RED(구현 전): 케이스 FAIL' + "`n" + '화면: HEAD 참 — t1.png'))
     Assert-Case -Name 'task-evidence: RED·화면 판정 줄이 있으면 경고 없음' -R $r -ExpectExit 0 -ExpectSilent $true
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + 'RED(구현 전): 케이스 FAIL' + "`n" + '화면: 묶음 대기 — T1~T3'))
-    Assert-Case -Name 'task-evidence: 묶음 대기 줄이면 증거 대조 경고 대신 지목 줄 안내 한 줄 (TE-bundle)' -R $r -ExpectExit 0 -ExpectContains '화면은 묶음 대기' -ExpectNotContains '증거 대조(check-plan -Base)에 걸립니다'
-    Assert-Case -Name 'task-evidence: 묶음 대기 안내는 보충 커밋을 요구하지 않는다 (TE-bundle-nofill)' -R $r -ExpectExit 0 -ExpectNotContains '--allow-empty'
+    Assert-Case -Name 'task-evidence: 묶음 대기 줄은 화면 판정이 아니다 — 판정 줄 없음 경고 (TE-bundle)' -R $r -ExpectExit 0 -ExpectContains '화면 판정 줄 없음'
+    Assert-Case -Name 'task-evidence: 묶음 대기 안내를 내지 않는다 (TE-bundle-nonote)' -R $r -ExpectExit 0 -ExpectNotContains '화면은 묶음 대기'
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + 'RED(구현 전): 케이스 FAIL' + "`n" + '화면: T1~T6 묶음 판정으로 넘김'))
-    Assert-Case -Name 'task-evidence: 세션 원문 「화면: T1~T6 묶음 판정으로 넘김」 도 묶음 대기로 읽는다 (TE-bundle-orig)' -R $r -ExpectExit 0 -ExpectContains '화면은 묶음 대기' -ExpectNotContains '증거 대조(check-plan -Base)에 걸립니다'
+    Assert-Case -Name 'task-evidence: 「화면: T1~T6 묶음 판정으로 넘김」 도 판정 줄 없음 경고 (TE-bundle-orig)' -R $r -ExpectExit 0 -ExpectContains '화면 판정 줄 없음' -ExpectNotContains '화면은 묶음 대기'
     $r = Invoke-TaCase (New-TaCommitCmd '기능: T1-2 — 하위' $teOk)
     Assert-Case -Name 'task-evidence: 하위 ID 커밋은 RED·화면을 재지 않는다' -R $r -ExpectExit 0 -ExpectNotContains 'RED 줄'
     $r = Invoke-TaCase (New-TaCommitCmd '문서: T2 — 문서' $teOk)
@@ -224,6 +224,9 @@ try {
     Assert-Case -Name 'task-evidence: 같은 이력에 hook 도 RED·화면 경고를 낸다 (사본 정합)' -R $r -ExpectExit 0 -ExpectContains 'RED 줄 없음'
     Assert-Case -Name 'task-evidence: 같은 이력에 hook 도 화면 경고를 낸다 (사본 정합)' -R $r -ExpectExit 0 -ExpectContains '화면 판정 줄 없음'
     Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 화면 위반으로 낸다 (사본 정합)' -R @{ code = $r.code; out = "cp=$teCp" } -ExpectExit 0 -ExpectContains 'no-screen-verdict T1'
+    & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m '문서: 화면 일괄 판정 — T1' -m '화면: T1 HEAD 참 — t1.png' 2>$null
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + 'RED(구현 전): 케이스 FAIL'))
+    Assert-Case -Name 'task-evidence: 다른 커밋의 지목 줄 「화면: T1 HEAD 참」 은 T1 판정이 아니다 (TE-tagged)' -R $r -ExpectExit 0 -ExpectContains '화면 판정 줄 없음'
     & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m '기능: T1 — 앞 커밋' -m ($teOk + "`n" + 'RED(구현 전): 케이스 FAIL' + "`n" + '화면: HEAD 참 — t1.png') 2>$null
     $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
