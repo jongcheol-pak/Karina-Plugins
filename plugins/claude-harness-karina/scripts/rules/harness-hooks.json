@@ -3,6 +3,7 @@
   "names": [
     "block-destructive",
     "comment-lines",
+    "deferred-handoff",
     "guard-bash",
     "guard-comment",
     "guard-commit-comments",
