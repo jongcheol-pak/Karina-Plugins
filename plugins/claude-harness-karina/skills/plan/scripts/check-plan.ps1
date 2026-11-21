@@ -20,8 +20,8 @@
 #   open-question                Open Questions 절에 「- [ ]」 가 남음
 #   acceptance-baseline T<N>     Acceptance 줄에 백틱(판정 명령·리터럴)이 있는데 「착수」 가 없음
 #   case-mark T<N>               Files 줄에 (RED)·(GREEN·[면제 가 하나도 없음
-#   outside-evidence T<N>        Files 줄 백틱 경로(첫 「[면제」 앞까지)가 하나 이상이고 전부 레포 밖(루트 경로이면서 plan 폴더의 git 최상위
-#                                아래가 아님)인데 그 task 블록에 「--allow-empty」 가 없음 — 다른 레포만 고치는 task 는 이 레포에 커밋이 생기지
+#   outside-evidence T<N>        Files 줄 백틱 경로(첫 「[면제」 앞까지)가 하나 이상이고 전부 레포 밖(「~」 로 시작하거나, 루트 경로이면서
+#                                plan 폴더의 git 최상위 아래가 아님)인데 그 task 블록에 「--allow-empty」 가 없음 — 다른 레포만 고치는 task 는 이 레포에 커밋이 생기지
 #                                않아 회차 끝 no-task-commit 으로 늦게 잡힌다. 하위 항목으로 빈 증거 커밋을 계획에 둔다(plan 이 git 밖이면 재지 않는다)
 #   missing-section <절>         필수 절 없음 — goal·out-of-scope·investigation-log·tasks·verification·deferred
 #                                (Goal 절에 「> 경량:」 줄이 있는 경량 plan 은 out-of-scope·verification 을 재지 않는다)
@@ -453,8 +453,8 @@ if (Find-Section $tasksTitle) {
             if ($cut -ge 0) { $head = $head.Substring(0, $cut) }
             $paths = @([regex]::Matches($head, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value })
             $inside = @($paths | Where-Object {
-                -not [System.IO.Path]::IsPathRooted($_) -or
-                ($_.Replace('\', '/') + '/').StartsWith($planTop, [System.StringComparison]::OrdinalIgnoreCase)
+                -not $_.StartsWith('~') -and (-not [System.IO.Path]::IsPathRooted($_) -or
+                ($_.Replace('\', '/') + '/').StartsWith($planTop, [System.StringComparison]::OrdinalIgnoreCase))
             })
             if ($paths.Count -and -not $inside.Count -and -not @($b.Lines | Where-Object { $_.Text.Contains('--allow-empty') }).Count) {
                 Add-Problem $files.N ('outside-evidence ' + $tag)

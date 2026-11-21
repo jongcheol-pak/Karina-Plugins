@@ -544,6 +544,8 @@ $r = Invoke-CheckPlan ($cpBase.Replace($cpFilesLine, '- **Files**: `a.ps1` · `C
 Assert-Case -Name "check-plan: 레포 안 경로가 섞인 Files 는 outside-evidence 를 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'outside-evidence'
 $r = Invoke-CheckPlan ($cpBase.Replace($cpFilesLine, ('- **Files**: `' + (Join-Path $cpOutRepo 'x.ps1') + '` [면제 ① — 문서]'))) $cpOutRepo
 Assert-Case -Name "check-plan: 레포 안 절대 경로만인 Files 는 outside-evidence 를 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'outside-evidence'
+$r = Invoke-CheckPlan ($cpBase.Replace($cpFilesLine, '- **Files**: `~/.claude/CLAUDE.md` [면제 ① — 글로벌 지침]')) $cpOutRepo
+Assert-Case -Name "check-plan: ~ 로 시작하는 홈 경로만인 Files 도 레포 밖이라 outside-evidence" -R $r -ExpectExit 1 -ExpectContains 'outside-evidence T1'
 $r = Invoke-CheckPlan $cpOutsideOnly
 Assert-Case -Name "check-plan: git 밖 plan 은 outside-evidence 를 재지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'outside-evidence'
 }
