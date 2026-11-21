@@ -35,7 +35,8 @@
 #   screen-missing T<N>          AGENTS.md(아래 Plan check 와 같은 탐색)의 「- **UI 경로**: `패턴` · …」 에 Files 줄 백틱 경로가 하나라도
 #                                맞는데(-like · 패턴은 그 AGENTS.md 폴더 기준 — plan 폴더가 그 아래면 사이 경로를 붙여 맞춘다)
 #                                「- **화면**:」 줄도 Files 줄의 「[화면 없음 — <사유>]」 표지도 없음(사유가 빈 표지는 표지가 아니다)
-#                                (UI 경로 줄이 없고 Verify (앱 조작) 이 스킬을 가리키면 「check-plan: skip screen-missing no-ui-path」)
+#   ui-path-missing              서식 검사 모드만 — AGENTS.md(같은 탐색)의 「- **Verify (앱 조작)**:」 이 스킬을 가리키는데 「- **UI 경로**:」 줄이
+#                                없음(줄 1). 없으면 screen-missing 을 잴 수 없어 화면 줄 없는 UI 수정이 승인을 지난다 — 넘기지 않고 UI 경로를 단다
 #   origin-missing T<N>          AGENTS.md(같은 탐색)에 「- **UI 재구현 기준 소스**:」 줄이 있는데 「- **화면**:」 줄이 있는 task 에
 #                                「- **원본**:」 줄도 Files 줄의 「[원본 없음 — <사유>]」 표지도 없음(사유가 빈 표지는 표지가 아니다)
 #   origin-line T<N> <요소>      「- **원본**:」 줄에 path(백틱 원본 경로)·verdict(옮김·미룸·이탈 중 하나)가 없음 — 선언과 무관하게 줄이 있으면 잰다
@@ -56,8 +57,7 @@
 #   no-red-evidence T<N>         Files 줄에 (RED) 가 있는데 어느 본문에도 「RED:」·「RED(구현 전):」·「RED(사후 …):」 줄이 없음
 #                                (「RED: 미확인 — <사유>」 만 있으면 위반 대신 note red-unverified T<N>)
 #   no-screen-verdict T<N>       「- **화면**:」 줄이 있는 task 인데 어느 본문에도 「화면: HEAD 참|거짓」·「화면: 미촬영(HUMAN-VERIFY)」 줄이 없음
-#                                (그 task 의 커밋 본문 · 또는 BASE..HEAD 어느 커밋이든 본문의 지목 줄 「화면: T<N> HEAD …」·「화면: T<N> 미촬영…」 —
-#                                지목 줄은 아래 화면 셋에만 쓰이고 no-task-commit·no-commit-evidence 를 대신하지 않는다)
+#                                (그 task 의 T<N> 커밋 본문만 — 다른 커밋의 지목 줄 「화면: T<N> …」 은 받지 않는다)
 #   screen-false T<N>            화면 판정이 「HEAD 거짓」 뿐임(「HEAD 참」 이 하나라도 있으면 통과)
 #   screen-unshot T<N>           판정이 미촬영뿐이고 AGENTS.md(위 Plan check 와 같은 탐색)의 「- **Verify (앱 조작)**:」 값이
 #                                「없음」 이 아님 — 미촬영 줄에 「· 사유 <…> · 시도 <…>」 칸이 있으면 위반 대신 note screen-unshot-reason T<N>
@@ -234,32 +234,20 @@ if ($Base) {
     function Test-UnshotAttempt([string]$Tail) { return ($Tail -match $reasonRx) -and (($Tail -match $attemptRx) -or ($Tail -match $attemptFreeRx)) }
     $taskBlocks = @(Get-TaskBlocks)
     $lastText = if ($taskBlocks.Count) { (@($taskBlocks[-1].Lines | ForEach-Object { $_.Text }) -join "`n") } else { '' }
-    $taggedRx = $screenHead + 'T(\d+)\s+(.*)$'
-    $screenWord = (Get-Text @(0xD654, 0xBA74)) + ': '
     $commits = @()
     foreach ($msg in ($logText -split "`0")) {
         $msg = $msg.Trim()
         if (-not $msg) { continue }
         $parts = $msg -split "`n", 2
         $body = if ($parts.Count -gt 1) { $parts[1] } else { '' }
-        foreach ($tm in [regex]::Matches($body, $taggedRx)) {
-            $line = $screenWord + $tm.Groups[2].Value.TrimEnd()
-            $tagUnshot = [regex]::Match($line, $unshotRx)
-            $commits += [pscustomobject]@{
-                Id = [int]$tm.Groups[1].Value; Evidence = $false; Red = $false; RedUnverified = $false; Tagged = $true
-                ScreenTrue = [regex]::IsMatch($line, $screenTrueRx); ScreenFalse = [regex]::IsMatch($line, $screenFalseRx)
-                Unshot = $tagUnshot.Success; UnshotReason = ($tagUnshot.Success -and $tagUnshot.Groups[1].Value -match $reasonRx)
-                UnshotAttempt = ($tagUnshot.Success -and (Test-UnshotAttempt $tagUnshot.Groups[1].Value))
-            }
-        }
-        $m = [regex]::Match($parts[0], $titleRx)
+        $m =[regex]::Match($parts[0], $titleRx)
         $v = [regex]::Match($parts[0], $versionRx)
         if ($m.Success) { $id = [int]$m.Groups[1].Value }
         elseif ($v.Success -and $taskBlocks.Count -and $lastText.Contains($v.Groups[1].Value)) { $id = $taskBlocks[-1].Id }
         else { continue }
         $unshots = @([regex]::Matches($body, $unshotRx) | ForEach-Object { $_.Groups[1].Value })
         $commits += [pscustomobject]@{
-            Id = $id; Evidence = [regex]::IsMatch($body, $evidenceRx); Tagged = $false
+            Id = $id; Evidence = [regex]::IsMatch($body, $evidenceRx)
             Verdicts = [regex]::Matches($body, $verdictRx).Count
             Red = [regex]::IsMatch($body, $redRx); RedUnverified = [regex]::IsMatch($body, $redUnRx)
             ScreenTrue = [regex]::IsMatch($body, $screenTrueRx); ScreenFalse = [regex]::IsMatch($body, $screenFalseRx)
@@ -276,8 +264,7 @@ if ($Base) {
         if (-not $items.Count) { continue }
         if (@($items | Where-Object { $_.Text -notmatch '^- \[[xX]\]' }).Count) { continue }
         if (-not @($items | Where-Object { -not $_.Text.Contains($unneeded) }).Count) { continue }
-        $screens = @($commits | Where-Object { $_.Id -eq $b.Id })
-        $mine = @($screens | Where-Object { -not $_.Tagged })
+        $mine = @($commits | Where-Object { $_.Id -eq $b.Id })
         if (-not $mine.Count) { Add-Problem $b.N ('no-task-commit T' + $b.Id) }
         elseif (-not @($mine | Where-Object { $_.Evidence }).Count) { Add-Problem $b.N ('no-commit-evidence T' + $b.Id) }
         else {
@@ -296,12 +283,12 @@ if ($Base) {
                 if ($have -lt $want) { Add-Problem $b.N ('acceptance-evidence ' + $tag + ' ' + $have + '/' + $want) }
             }
             $hasScreen = [bool]@($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabelBase }).Count
-            if ($hasScreen -and -not @($screens | Where-Object { $_.ScreenTrue }).Count) {
-                if (@($screens | Where-Object { $_.ScreenFalse }).Count) { Add-Problem $b.N ('screen-false ' + $tag) }
-                elseif (-not @($screens | Where-Object { $_.Unshot }).Count) { Add-Problem $b.N ('no-screen-verdict ' + $tag) }
+            if ($hasScreen -and -not @($mine |Where-Object { $_.ScreenTrue }).Count) {
+                if (@($mine |Where-Object { $_.ScreenFalse }).Count) { Add-Problem $b.N ('screen-false ' + $tag) }
+                elseif (-not @($mine |Where-Object { $_.Unshot }).Count) { Add-Problem $b.N ('no-screen-verdict ' + $tag) }
                 elseif ($verifySkill) {
-                    if (@($screens | Where-Object { $_.UnshotAttempt }).Count) { $notes.Add('screen-unshot-reason ' + $tag) }
-                    elseif (@($screens | Where-Object { $_.UnshotReason }).Count) { Add-Problem $b.N ('screen-unshot-attempt ' + $tag) }
+                    if (@($mine |Where-Object { $_.UnshotAttempt }).Count) { $notes.Add('screen-unshot-reason ' + $tag) }
+                    elseif (@($mine |Where-Object { $_.UnshotReason }).Count) { Add-Problem $b.N ('screen-unshot-attempt ' + $tag) }
                     else { Add-Problem $b.N ('screen-unshot ' + $tag) }
                 }
             }
@@ -423,7 +410,7 @@ if (Find-Section $tasksTitle) {
             $uiPrefix = $planDir.Substring($agentsDir.Length + 1).Replace('\', '/') + '/'
         }
     } elseif (Test-VerifySkill $uiAgents) {
-        Write-Output 'check-plan: skip screen-missing no-ui-path'
+        Add-Problem 1 'ui-path-missing'
     }
     $uiVerifySkill = Test-VerifySkill $uiAgents
     $baselineWord = Get-Text @(0xAE30, 0xC900, 0xC120)    # 기준선

@@ -209,7 +209,7 @@ Assert-Case -Name "check-plan: [면제 뒤에 적힌 UI 경로 파일도 화면 
 $r = Invoke-CheckPlan ($cpUiPlan.Replace('(RED)', '(RED) [화면 없음]')) (New-UiPlanDir $cpUiAgents)
 Assert-Case -Name "check-plan: 사유 없는 [화면 없음] 은 면제 표지가 아니다" -R $r -ExpectExit 1 -ExpectContains 'screen-missing T1'
 $r = Invoke-CheckPlan $cpBase (New-UiPlanDir "# AGENTS.md`n`n- **Verify (앱 조작)**: ``.claude/skills/verify-demo/```n")
-Assert-Case -Name "check-plan: 검증 스킬이 있는데 UI 경로가 없으면 건너뜀을 표시한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: skip screen-missing no-ui-path'
+Assert-Case -Name "check-plan: 검증 스킬이 있는데 UI 경로가 없으면 ui-path-missing 위반이다" -R $r -ExpectExit 1 -ExpectContains 'ui-path-missing'
 $r = Invoke-CheckPlan ($cpUiPlan.Replace('- **Acceptance**:', ($cpScreen + "`n- **Acceptance**:"))) (New-UiPlanDir $cpUiAgents)
 Assert-Case -Name "check-plan: UI 경로 파일 task 에 화면 줄이 있으면 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 $r = Invoke-CheckPlan $cpBase (New-UiPlanDir $cpUiAgents)
@@ -217,13 +217,13 @@ Assert-Case -Name "check-plan: UI 경로 밖 파일만 고치면 화면 줄을 �
 $r = Invoke-CheckPlan ($cpUiPlan.Replace('(RED)', '(RED) [화면 없음 — 내부 정리]')) (New-UiPlanDir $cpUiAgents)
 Assert-Case -Name "check-plan: 사유를 단 [화면 없음] 표지는 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 $r = Invoke-CheckPlan $cpBase (New-UiPlanDir "# AGENTS.md`n`n- **Verify (앱 조작)**: 없음`n")
-Assert-Case -Name "check-plan: 검증 스킬이 없으면 UI 경로 미선언을 표시하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'skip screen-missing'
+Assert-Case -Name "check-plan: 검증 스킬이 없으면 UI 경로 미선언을 위반으로 내지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'ui-path-missing'
 $r = Invoke-CheckPlan $cpUiPlan
 Assert-Case -Name "check-plan: AGENTS.md 가 없으면 UI 경로 검사를 하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'screen-missing'
 $r = Invoke-CheckPlan $cpUiPlan (New-UiPlanDir "# AGENTS.md`n`n- **UI 경로**: ``app/ui/*```n" 'app' -Git)
 Assert-Case -Name "check-plan: plan 폴더 위의 AGENTS.md 패턴은 그 폴더 기준으로 대조한다" -R $r -ExpectExit 1 -ExpectContains 'screen-missing T1'
 $cpBaseScreen = '- **화면**: 시나리오 메뉴에서 데모 열기 · 스크린샷 demo.png · 통과 조건 기준선 일치'
-$cpVerifyAgents = "# AGENTS.md`n`n- **Verify (앱 조작)**: ``.claude/skills/verify-demo/```n"
+$cpVerifyAgents = "# AGENTS.md`n`n- **Verify (앱 조작)**: ``.claude/skills/verify-demo/```n- **UI 경로**: ``nomatch/*```n"
 $r = Invoke-CheckPlan (New-ScreenPlan $cpBaseScreen) (New-UiPlanDir $cpVerifyAgents)
 Assert-Case -Name "check-plan: 검증 스킬이 있는 레포의 기준선 일치 task 가 T1-1 에서 기준선을 찍지 않으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-baseline T1'
 $r = Invoke-CheckPlan (New-ScreenPlan ($cpBaseScreen + ' (가림 0,0,10,10)')) (New-UiPlanDir $cpVerifyAgents)
@@ -512,18 +512,11 @@ Assert-Case -Name "check-plan 증거: Verify 줄이 없는 레포의 미촬영�
 $cpBatch = "문서: 화면 일괄 판정 — T1`n`n"
 $ev = New-EvidenceRepo @($cpOk, ($cpBatch + "화면: T1 HEAD 참" + $cpScrTail))
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
-Assert-Case -Name "check-plan 증거: 일괄 커밋의 화면: T1 HEAD 참 지목 줄을 T1 판정으로 받는다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
-$ev = New-EvidenceRepo @($cpOk, ($cpBatch + "화면: T1 HEAD 거짓" + $cpScrTail))
-$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
-Assert-Case -Name "check-plan 증거: 일괄 커밋의 지목 거짓뿐이면 screen-false 로 잡는다" -R $r -ExpectExit 1 -ExpectContains 'screen-false T1'
+Assert-Case -Name "check-plan 증거: 일괄 커밋의 화면: T1 HEAD 참 지목 줄은 T1 판정이 아니다" -R $r -ExpectExit 1 -ExpectContains 'no-screen-verdict T1'
 $ev = New-EvidenceRepo @($cpOk, ($cpBatch + "화면: T1 미촬영(HUMAN-VERIFY) · 사유 Launch 가 세 번 실패 · 시도 karina-browser-use" + $cpScrTail))
 Set-EvidenceAgents $ev.dir $cpVerifyOn
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
-Assert-Case -Name "check-plan 증거: 일괄 커밋의 사유·시도 단 지목 미촬영은 note 로 낸다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note screen-unshot-reason T1'
-$ev = New-EvidenceRepo @($cpOk, ($cpBatch + "화면: T1 미촬영(HUMAN-VERIFY) · 사유 Launch 가 세 번 실패" + $cpScrTail))
-Set-EvidenceAgents $ev.dir $cpVerifyOn
-$r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
-Assert-Case -Name "check-plan 증거: 일괄 커밋의 시도 칸 없는 지목 미촬영도 잡는다 (CP-attempt-batch)" -R $r -ExpectExit 1 -ExpectContains 'screen-unshot-attempt T1'
+Assert-Case -Name "check-plan 증거: 일괄 커밋의 지목 미촬영 줄도 T1 판정이 아니다" -R $r -ExpectExit 1 -ExpectContains 'no-screen-verdict T1'
 $ev = New-EvidenceRepo @($cpOk + "`n화면: T2 HEAD 참" + $cpScrTail)
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: T1 커밋 안의 화면: T2 지목 줄은 T1 판정이 아니다" -R $r -ExpectExit 1 -ExpectContains 'no-screen-verdict T1'
