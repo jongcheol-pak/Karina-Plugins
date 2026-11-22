@@ -324,6 +324,27 @@ $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ("cat > fresh-msg.txt <<'X'`nT3:
 Assert-Case -Name "rf: 같은 명령의 cat > 파일 heredoc 본문을 -F 메시지로 받는다(파일 미존재) → 차단 (RF20)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'git commit -F "$UNSET_DIR/msg.txt"')
 Assert-Case -Name "rf: 대입 없는 변수 -F 경로는 기존대로 경고·통과 (RF21)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('git commit -F "$TEMP/' + $rfTmpName + '"'))
+Assert-Case -Name "rf: -F `"`$TEMP/…`" 를 환경변수로 펼쳐 첫 줄 T3 + 미완료 → 차단 (RF22)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('S="$TEMP"; git commit -F "$S/' + $rfTmpName + '"'))
+Assert-Case -Name "rf: 값에 `$TEMP 를 품은 대입 S=`"`$TEMP`" 도 펼친다 → 차단 (RF23)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('git commit -F "${TMP}/' + $rfTmpName + '"'))
+Assert-Case -Name "rf: `${TMP} 꼴 환경변수도 펼친다 → 차단 (RF24)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$rfHomeSaved = $env:HOME
+$env:HOME = $EvalIso
+"T3: 검색 요약" | Set-Content (Join-Path $EvalIso 'rf-home-msg.txt')
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'git commit -F ~/rf-home-msg.txt')
+$env:HOME = $rfHomeSaved
+Assert-Case -Name "rf: -F ~/… 를 HOME 으로 펼친다 → 차단 (RF25)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'git commit -F "$PATH/msg.txt"')
+Assert-Case -Name "rf: 목록 밖 환경변수(`$PATH)는 펼치지 않고 기존대로 경고·통과 (RF26)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfOk ('git commit -F "$TEMP/' + $rfTmpName + '"'))
+Assert-Case -Name "rf: -F `"`$TEMP/…`" 첫 줄 T3 + 완료 [x] → 통과(무출력) (RF27 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+$rfTmpPlain = 'karina-rf-plain-' + [guid]::NewGuid().ToString('N') + '.txt'
+"정리: 문서" | Set-Content (Join-Path $env:TEMP $rfTmpPlain)
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('git commit -F "$TEMP/' + $rfTmpPlain + '"'))
+Assert-Case -Name "rf: -F `"`$TEMP/…`" 첫 줄이 T 아님 → 통과(무출력) (RF28 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+Remove-Item -LiteralPath (Join-Path $env:TEMP $rfTmpPlain) -ErrorAction SilentlyContinue
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'printf x | git commit -F -')
 Assert-Case -Name "rf: -F - 인데 같은 명령에 본문 없음 + plan 있음 → 경고·통과 (RF14)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfNoPlan 'git commit -m $msg')

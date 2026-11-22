@@ -524,12 +524,26 @@ function Invoke-WarnBaseWorktree {
     return New-HookResult
 }
 
-function Expand-CommitMsgVars([string]$Text, [string]$Cmd) {
+function Get-ShellPathEnv([string]$Name) {
+    if ($Name -notin @('TEMP', 'TMP', 'HOME', 'USERPROFILE', 'LOCALAPPDATA')) { return $null }
+    $v = [Environment]::GetEnvironmentVariable($Name)
+    if (-not $v -and $Name -eq 'HOME') { $v = $env:USERPROFILE }
+    if ($v) { return $v } else { return $null }
+}
+
+# 경로 속 셸 변수 펼치기 — 근거는 `rules/bash-guard-rationale.md` §14
+function Expand-ShellPathVars([string]$Text, [string]$Cmd) {
+    $limit = $Cmd.IndexOf($Text)
+    if ($limit -lt 0) { $limit = $Cmd.Length }
     $vals = @{}
-    foreach ($m in [regex]::Matches($Cmd, '(?:^|[\s;&|(])(?<n>[A-Za-z_]\w*)=(?:"(?<v>[^"$`]*)"|''(?<v>[^'']*)''|(?<v>[^\s;&|"''$`]*))(?=[\s;&|)]|$)')) {
-        $vals[$m.Groups['n'].Value] = $m.Groups['v'].Value
+    $varRx = '\$(?:\{(?<n>\w+)\}|(?<n>[A-Za-z_]\w*))'
+    $sub = { param($s) [regex]::Replace($s, $varRx, { param($m) $n = $m.Groups['n'].Value; if ($vals.ContainsKey($n)) { $vals[$n] } elseif ($null -ne ($e = Get-ShellPathEnv $n)) { $e } else { $m.Value } }) }
+    foreach ($m in [regex]::Matches($Cmd, '(?:^|[\s;&|(])(?<n>[A-Za-z_]\w*)=(?:"(?<d>[^"`]*)"|''(?<s>[^'']*)''|(?<d>[^\s;&|"''`]*))(?=[\s;&|)]|$)')) {
+        if ($m.Index -ge $limit) { break }
+        $vals[$m.Groups['n'].Value] = if ($m.Groups['s'].Success) { $m.Groups['s'].Value } else { & $sub $m.Groups['d'].Value }
     }
-    $out = [regex]::Replace($Text, '\$(?:\{(?<n>\w+)\}|(?<n>[A-Za-z_]\w*))', { param($m) if ($vals.ContainsKey($m.Groups['n'].Value)) { $vals[$m.Groups['n'].Value] } else { $m.Value } })
+    $out = & $sub $Text
+    if ($out -match '^~(?=[/\\]|$)') { $h = Get-ShellPathEnv 'HOME'; if ($h) { $out = $h + $out.Substring(1) } }
     if ($out.Contains('$')) { return $null }
     return $out
 }
@@ -566,12 +580,12 @@ function Get-CommitMessage([string]$cmd, [string]$baseDir) {
         if ($null -ne $hereStrBody) { return $hereStrBody }
         return $false
     }
-    if ($path.Contains('$')) { $path = Expand-CommitMsgVars $path $cmd; if ($null -eq $path) { return $false } }
+    if ($path.Contains('$') -or $path.StartsWith('~')) { $path = Expand-ShellPathVars $path $cmd; if ($null -eq $path) { return $false } }
     foreach ($hm in [regex]::Matches($cmd, $script:HeredocBlockRx)) {
         $ht = [regex]::Match($hm.Groups['line'].Value, '(?:^|[\s;&|(])cat\b[^>\r\n]*?>\s*(?<t>"[^"]+"|''[^'']+''|[^\s;&|<>]+)')
         if (-not $ht.Success) { continue }
         $tp = $ht.Groups['t'].Value.Trim('"', "'")
-        if ($tp.Contains('$')) { $tp = Expand-CommitMsgVars $tp $cmd }
+        if ($tp.Contains('$') -or $tp.StartsWith('~')) { $tp = Expand-ShellPathVars $tp $cmd }
         if ($tp -eq $path) { return $hm.Groups['body'].Value }
     }
     if ($path -match '^/tmp(/.*)?$') { $path = $env:TEMP + ($Matches[1] -replace '/', '\') }
