@@ -11,7 +11,6 @@ function Get-DiffHeadAdded {
     $gitArgs = @('-c', 'core.quotepath=off', 'diff', '--unified=0', '--no-color', '--no-ext-diff', 'HEAD')
     if ($PathArgs.Count) { $gitArgs += @('--') + $PathArgs }
     $run = Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs $gitArgs
-    $out = @($run.Lines)
     if ($run.Code -ne 0) {
         $scope = if ($PathArgs.Count) { ($PathArgs -join ' ') } else { '전체' }
         # ⚠ `Write-Warning`을 쓰지 않는다 — 근거는 `rules/commit-secrets-rationale.md` §3
@@ -22,13 +21,31 @@ function Get-DiffHeadAdded {
         }
         return @()
     }
-    return @($out | Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
+    return (Select-NewAddedText $run.Lines)
+}
+
+# 같은 파일 블록은 여러 diff 에 나와도 한 번만 스캔한다 — 근거는 `rules/commit-secrets-rationale.md` §20
+function Select-NewAddedText($Lines) {
+    if ($null -eq $Lines -or -not $script:ScanSourceSeen.Add($Lines)) { return @() }
+    $out = @()
+    foreach ($block in ((@($Lines) -join "`n") -split '(?m)^(?=diff --git )')) {
+        $kept = ("`n" + $block) -replace '\n(?:\+\+\+[^\n]*|[^+\n][^\n]*)?(?=\n|$)', ''
+        if ($kept.Length -lt 2) { continue }
+        $added = ($kept -replace '\n\+', "`n") -replace '^\n', ''
+        $key = ($block -split "`n", 2)[0] + "`n" + $added
+        if ($null -ne $script:ScanBlockSeen[$key]) { continue }
+        $script:ScanBlockSeen[$key] = $true
+        $out += $added
+    }
+    return $out
 }
 
 function Invoke-WarnCommitSecrets {
     param($data)
     # 실패 경고 1회 억제 플래그를 **호출마다 리셋**한다 — 근거는 `rules/commit-secrets-rationale.md` §4
     $script:diffHeadFailNotified = $false
+    $script:ScanBlockSeen = [hashtable]::new([System.StringComparer]::Ordinal)
+    $script:ScanSourceSeen = [System.Collections.Generic.HashSet[object]]::new()
     $cmd = $data.tool_input.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return New-HookResult }
 
@@ -51,8 +68,7 @@ function Invoke-WarnCommitSecrets {
         if ($gitDirRun.TimedOut -and $env:CLAUDE_HARNESS_ALLOW_SECRET -ne '1') { return New-HookResult -Block $true -Stderr (Get-CommitGitTimeoutLines '커밋 시크릿 검사') }
         if ($gitDirRun.Code -ne 0 -or -not @($gitDirRun.Lines).Count) { return New-HookResult }
 
-        $addedLines = @(@((Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('-c', 'core.quotepath=off', 'diff', '--unified=0', '--no-color', '--no-ext-diff', '--cached')).Lines) |
-            Where-Object { $_.StartsWith('+') -and -not $_.StartsWith('+++') })
+        $addedLines = @(Select-NewAddedText (Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('-c', 'core.quotepath=off', 'diff', '--unified=0', '--no-color', '--no-ext-diff', '--cached')).Lines)
 
         # -a/-am/--all이면 추적 파일 자동 스테이징분 — 근거는 `rules/commit-secrets-rationale.md` §5
         $cmdFlags = $cmd -replace '(?i)(^|\s)(-[a-zA-Z]*m|--message)(=|\s+)("[^"]*"|''[^'']*''|\S+)', '$1$2'
@@ -65,13 +81,13 @@ function Invoke-WarnCommitSecrets {
         $commitFlags = $commitSeg -join ' '
         $autoStage = ($commitFlags -match '(^|\s)-[a-zA-Z]*a[a-zA-Z]*(\s|$)') -or ($commitFlags -match '(^|\s)--all(\s|$)')
         if ($autoStage) {
-            $addedLines += Get-DiffHeadAdded
+            $addedLines += @(Get-DiffHeadAdded)
         }
         # `git commit -- <경로>` 는 스테이징 없이 그 경로의 작업 트리를 커밋한다 — 근거는 `rules/commit-secrets-rationale.md` §18
         $pathspecM = [regex]::Match($commitFlags, '(^|\s)--\s+(?<paths>.+)$')
         if ($pathspecM.Success) {
             $pathArgs = @($pathspecM.Groups['paths'].Value -split '\s+' | Where-Object { $_ } | ForEach-Object { $_.Trim('"', "'") })
-            if ($pathArgs.Count) { $addedLines += Get-DiffHeadAdded -PathArgs $pathArgs }
+            if ($pathArgs.Count) { $addedLines += @(Get-DiffHeadAdded -PathArgs $pathArgs) }
         }
 
         # 선행 스테이징 인지 — 근거는 `rules/commit-secrets-rationale.md` §7
@@ -85,7 +101,7 @@ function Invoke-WarnCommitSecrets {
             $capNotified = $false
             if ($addArgs -match '(^|\s)(-A|--all|-u|--update|\.)(\s|$)') {
                 $addTargets = @((Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('-c', 'core.quotepath=off', 'ls-files', '--others', '--exclude-standard')).Lines)
-                $addedLines += Get-DiffHeadAdded
+                $addedLines += @(Get-DiffHeadAdded)
             } else {
                 # 경로 나열: 플래그를 뺀 인자만 대상으로 본다. — 근거는 `rules/commit-secrets-rationale.md` §9
                 $rawTargets = @($addArgs -split '\s+' | Where-Object { $_ -and -not $_.StartsWith('-') } |
@@ -102,7 +118,7 @@ function Invoke-WarnCommitSecrets {
                     if (Test-Path -LiteralPath $rt -PathType Leaf) {
                         # 추적 파일은 diff HEAD 추가 라인만 스캔 — 이력에 이미 있는 내용 — 근거는 `rules/commit-secrets-rationale.md` §10
                         if (@((Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('ls-files', '--', $rt)).Lines).Count -gt 0) {
-                            $addedLines += Get-DiffHeadAdded -PathArgs @($rt)
+                            $addedLines += @(Get-DiffHeadAdded -PathArgs @($rt))
                             $scanned++
                         } else {
                             $addTargets += $rt
@@ -110,7 +126,7 @@ function Invoke-WarnCommitSecrets {
                         continue
                     }
                     $addTargets += @((Invoke-CommitGit -Check 'warn-commit-secrets' -GitArgs @('-c', 'core.quotepath=off', 'ls-files', '--others', '--exclude-standard', '--', $rt)).Lines)
-                    $addedLines += Get-DiffHeadAdded -PathArgs @($rt)
+                    $addedLines += @(Get-DiffHeadAdded -PathArgs @($rt))
                     $scanned++
                 }
             }
@@ -131,13 +147,13 @@ function Invoke-WarnCommitSecrets {
                     if (-not (Test-Path -LiteralPath $tf -PathType Leaf)) { continue }
                     if ((Get-Item -LiteralPath $tf).Length -gt 1MB) { continue }   # 대용량·바이너리 회피
                     $txt = Get-Content -LiteralPath $tf -Raw -Encoding UTF8 -ErrorAction Stop
-                    if ($txt) { $addedLines += ('+' + ($txt -replace '\r?\n', "`n+")) }
+                    if ($txt) { $addedLines += ($txt -replace '\r?\n', "`n+") }
                     $scanned++
                 } catch { continue }   # 바이너리·읽기 실패는 조용히 스킵
             }
         }
 
-        $scanText = (@($addedLines | ForEach-Object { $_.Substring(1) }) -join "`n")
+        $scanText = $addedLines -join "`n"
 
         . (Join-Path $PSScriptRoot 'secret-patterns.ps1')
         $hits = @(Get-SecretMatches $scanText)

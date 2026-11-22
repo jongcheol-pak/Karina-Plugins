@@ -517,6 +517,15 @@ if ($gitOk) {
     }
 
     if (Test-ScenarioUnit 2) {
+    $wcsDup = New-WcsRepo 'wcsdup'
+    Push-Location $wcsDup; Add-Content app.js $credLine; git add app.js; Pop-Location
+    foreach ($dc in @('git add -A && git commit -am x', 'git add app.js && git commit -m x')) {
+        $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsDup; tool_input = @{ command = $dc } } | ConvertTo-Json -Compress)
+        Assert-Case -Name "commit-secrets: 스테이징한 추적 파일의 자격증명이 여러 diff 경로에 겹쳐도 차단 ($dc)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+    }
+    }
+
+    if (Test-ScenarioUnit 2) {
     $wcs = New-WcsRepo 'wcsrepo-dispatch'
     $wcsJson = @{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = 'git commit -m test' } } | ConvertTo-Json -Compress
     Push-Location $wcs; Set-Content secret2.js $fakeApi; git add secret2.js; Pop-Location
