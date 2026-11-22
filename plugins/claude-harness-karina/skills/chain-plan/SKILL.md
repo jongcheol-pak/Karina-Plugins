@@ -90,7 +90,7 @@ python "<skill>/scripts/wait-worker.py" --cli <CLI> --dispatch <dispatch id> --r
 - **`question` 이 오면 질문 원문을 메시지의 `subject` 에서 읽고(`body` 는 비어 있어 키째 빠진다) 아래 「답하는 기준」으로 답하고 `reply --id <메시지 id> --body "$(cat <<'EOF' …)"` 로 보낸 뒤 `check --ack <deliveryId>` 한다** — 메시지 id 는 각 메시지의 `id`, `deliveryId` 는 배치의 id 다. 배치를 다 처리하기 전에 ack 하면 남은 메시지를 잃는다.
 - **`worker_done` 의 `succeeded` 면 `--body` 를 보고의 정본으로 받고, 곧바로(병렬 그룹은 `references/parallel.md`「닫기」 — 병합 커밋 뒤) `references/release.md`「닫기」 로 탭을 닫고 다음 계획으로 간다**.
   - **병렬 밖이면 닫은 뒤 `references/continuation.md`「코디네이터 검증」 부터 한다** — `--body` 의 검증은 작성자의 주장이다.
-  - **`남은 일` 이 「없음」이 아니면 다음 계획 전에 `references/continuation.md`「남은 일 판정」 을 따른다** — `succeeded` 라도 계획이 미완일 수 있다.
+  - **`남은 일` 이 「없음」이 아니면 다음 계획 전에 `references/continuation.md`「남은 일 판정」 을 따른다 — 넘김 사유·대장 표지가 없는 남은 일은 뒤 계획에 넘기지 않고 이어받기로 이 계획 안에서 끝낸다** — `succeeded` 라도 계획이 미완일 수 있다.
 - **`failed` 면 `worker-retain --dispatch <id>` 로 탭을 남기고 체인을 멈춘다 — 다음 계획은 띄우지 않는다** — 계획이 순서 의존이라 N 이 미완인 채로 N+1 을 시작할 수 없고, 남긴 탭은 사용자가 들여다본다.
 - **`status` 의 제목이 `사후 완료 — ` 로 시작하면 `references/manual-resume.md`「사후 완료」 를 따른다.**
 - **그 밖의 메시지 유형은 요지를 한 줄 알리고 ack 한 뒤 대기를 다시 띄운다.**
