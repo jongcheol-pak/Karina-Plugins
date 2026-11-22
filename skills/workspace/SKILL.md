@@ -1,21 +1,22 @@
 ---
 name: karina-workspace
 description: >-
-  Operate Karina-managed repos, worktrees, and terminals on Windows through the
-  `karina-cli` repo, worktree, and terminal commands: list and register repos,
+  Operate Karina-managed repos, worktrees, and terminals on Windows through
+  `karina-cli`: list and register repos,
   create, inspect, update, and remove worktrees, start a coding agent in a new
   worktree, and list, read, wait on, send to, create, split, rename, focus, or
   close Karina terminals. Also reads app status, runs shortcut commands
-  (`command run`), and sets a screen cover per monitor (`cover`). Use for full
-  handoffs ("hand off", "handover", "give this to another agent", "another
-  worktree", "spawn claude/codex in a worktree"), for reading or waiting on
+  (`command run`), sets a per-monitor screen cover (`cover`), and lists a
+  workspace's listening ports (`ports`). Use for handoffs ("hand off",
+  "handover", "give this to another agent", "another worktree", "spawn
+  claude/codex in a worktree"), for reading or waiting on
   another agent's terminal, for keeping a worktree's status comment current, and
   for searching what agents said in earlier sessions. Prefer it over raw git
   worktree or ad hoc terminals when Karina state is involved. Use
   karina-orchestration for supervised multi-agent coordination,
   karina-browser-use for Karina's browser tabs, and karina-computer-use only
   when a visible window needs GUI control.
-version: 1.2.0
+version: 1.3.0
 ---
 
 # Karina Workspace (Windows)
