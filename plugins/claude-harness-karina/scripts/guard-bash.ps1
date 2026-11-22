@@ -537,18 +537,18 @@ function Test-ShellAssignUnconditional([string]$Prefix) {
     $stack = New-Object System.Collections.Generic.List[string]
     $sep = ';'
     $cmdPos = $true
-    foreach ($t in [regex]::Matches($p, '\$\(|;;|&&|\|\||[|&;\n(){}]|(?:[<>]&|&>|[^\s;&|(){}])+')) {
+    foreach ($t in [regex]::Matches($p, '\$\(|;;|&&|\|\||[|&;\n(){}]|(?:\$\{[^}]*\}|[<>]&|&>|[^\s;&|(){}])+')) {
         $v = $t.Value
         $top = if ($stack.Count) { $stack[$stack.Count - 1] } else { '' }
         if ($v -in @('$(', '(')) { $stack.Add('('); $cmdPos = $true; continue }
         if ($v -eq ')') { if ($top -eq '(') { $stack.RemoveAt($stack.Count - 1) }; $cmdPos = ($top -eq 'c'); continue }
         if ($v -in @(';', "`n", ';;', '&&', '||', '|', '&')) { $sep = $v; $cmdPos = $true; continue }
+        if ($v -eq '{') { $stack.Add('b'); $cmdPos = $true; continue }
         if (-not $cmdPos) { continue }
-        $cmdPos = $v -in @('then', 'do', 'else', 'elif', '!', '{')
+        $cmdPos = $v -in @('then', 'do', 'else', 'elif', '!')
         switch ($v) {
-            { $_ -in @('if', 'while', 'until', 'for') } { $stack.Add('k'); $cmdPos = $_ -ne 'for' }
+            { $_ -in @('if', 'while', 'until', 'for', 'select') } { $stack.Add('k'); $cmdPos = $_ -notin @('for', 'select') }
             'case' { $stack.Add('c') }
-            '{' { $stack.Add('b') }
             { $_ -in @('fi', 'done') } { if ($top -eq 'k') { $stack.RemoveAt($stack.Count - 1) } }
             'esac' { if ($top -eq 'c') { $stack.RemoveAt($stack.Count - 1) } }
             '}' { if ($top -eq 'b') { $stack.RemoveAt($stack.Count - 1) } }

@@ -576,7 +576,10 @@ $snCondBlock = @(
     @{ Id = 'SN-cond-subshell-inner'; Cmd = "S=src; (echo; S=`"`$TEMP`"); cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-case'; Cmd = "S=src; case x in a) S=`"`$TEMP`";; esac; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-if-echo-fi'; Cmd = "S=src; if false; then echo fi; S=`"`$TEMP`"; fi; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
-    @{ Id = 'SN-cond-brace-echo'; Cmd = "S=src; false && { echo }; S=`"`$TEMP`"; }; cat > `"`$S/Probe.cs`" <<'X'$snCls" }
+    @{ Id = 'SN-cond-brace-echo'; Cmd = "S=src; false && { echo }; S=`"`$TEMP`"; }; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-func'; Cmd = "S=src; f() { S=`"`$TEMP`"; }; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-func-kw'; Cmd = "S=src; function f { S=`"`$TEMP`"; }; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-select'; Cmd = "S=src; select y in a; do S=`"`$TEMP`"; break; done; cat > `"`$S/Probe.cs`" <<'X'$snCls" }
 )
 foreach ($c in $snCondBlock) {
     $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
@@ -587,7 +590,8 @@ $snCondPass = @(
     @{ Id = 'SN-cond-quoted'; Cmd = "echo `"a && b`"; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-pipe-before'; Cmd = "ls | head; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-after-case'; Cmd = "case x in a) echo;; esac; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
-    @{ Id = 'SN-cond-redirect-amp'; Cmd = "ls 2>&1; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-brace-var'; Cmd = "T=`${TEMP}; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-redirect-amp'; Cmd ="ls 2>&1; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-closed-subshell'; Cmd ="(cd x); S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-heredoc-tokens'; Cmd = "cat > `"`$TEMP/a.txt`" <<'Y'`nif (x) {`nY`nS=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" }
 )
