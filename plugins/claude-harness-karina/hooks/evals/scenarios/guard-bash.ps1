@@ -586,6 +586,14 @@ $snCondPass = @(
     @{ Id = 'SN-cond-closed-subshell'; Cmd = "(cd x); S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-heredoc-tokens'; Cmd = "cat > `"`$TEMP/a.txt`" <<'Y'`nif (x) {`nY`nS=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" }
 )
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > D:/proj/AppData/Local/Temp/src/Probe.cs <<'X'$snCls")
+Assert-Case -Name "셸 새 코드: 사용자 폴더 밖 AppData/Local/Temp 는 임시 폴더가 아니다 → 차단 (SN-appdata-mid)" -R $r -ExpectExit 2 -ExpectContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'EOF'`nopen('D:/proj/AppData/Local/Temp/src/a.rs','w').write('''/// d`nfn x() {}`n''')`nEOF")
+Assert-Case -Name "python 새 코드: 사용자 폴더 밖 AppData/Local/Temp 는 임시 폴더가 아니다 → 차단 (PN-appdata-mid)" -R $r -ExpectExit 2 -ExpectContains $pnMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > C:/Users/u/AppData/Local/Temp/probe/Probe.cs <<'X'$snCls")
+Assert-Case -Name "셸 새 코드 (음성): 사용자 폴더 아래 AppData/Local/Temp 는 통과 (SN-appdata-user)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > /c/Users/u/AppData/Local/Temp/probe/Probe.cs <<'X'$snCls")
+Assert-Case -Name "셸 새 코드 (음성): Git Bash 꼴 사용자 Temp 도 통과 (SN-appdata-gitbash)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
 foreach ($c in $snCondPass) {
     $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
     Assert-Case -Name "셸 새 코드 (음성): 무조건 실행되는 대입은 그대로 펼쳐 통과 ($($c.Id))" -R $r -ExpectExit 0 -ExpectNotContains $snMsg

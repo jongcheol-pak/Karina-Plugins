@@ -60,7 +60,7 @@ function Get-PythonLiteralLines([string]$Literal) {
 function Test-PythonTempPath([string]$Path) {
     $p = $Path -replace '\\', '/'
     if ($p -match '(^|/)\.\.(/|$)') { return $false }
-    if ($p -match '(?i)(^/tmp/|/AppData/Local/Temp/)') { return $true }
+    if ($p -match '(?i)^(/tmp/|(?:[a-z]:|/[a-z]|/mnt/[a-z])/Users/[^/]+/AppData/Local/Temp/)') { return $true }
     $tmp = ([System.IO.Path]::GetTempPath() -replace '\\', '/').TrimEnd('/')
     return ($tmp -and $p.StartsWith($tmp + '/', [System.StringComparison]::OrdinalIgnoreCase))
 }
