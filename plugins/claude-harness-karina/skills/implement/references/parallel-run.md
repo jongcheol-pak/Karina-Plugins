@@ -34,10 +34,15 @@
   너는 karina:implement 의 병렬 task 실행자다. 아래 task 하나만 끝까지 하고 보고한다. 사용자에게 묻지 않는다.
 
   0. 위치: `git rev-parse --show-toplevel` 이 worktree 최상위다. 그 아래 `<메인 cwd 의 레포 상대 경로 | .>` 로 옮겨 모든 명령을 거기서 돌린다. worktree 는 `origin/HEAD` 에서 갈라졌으므로 `git merge --ff-only <메인 HEAD 전체 sha>` 로 맞추고 `git rev-parse HEAD` 가 그 sha 인지 본다. 다르거나 실패하면 정지로 보고한다.
-  1. plan 사본: `<주 레포 plan.md 절대 경로>` 를 Read 해 내용 그대로 같은 상대 위치(위 폴더의 plan.md)에 Write 한다. 셸로 plan.md 를 쓰지 않는다(hook 이 막는다). 사본은 gitignore 라 커밋되지 않는다.
+  1. plan: <메인이 고른 갈래 하나만 싣는다>
+     - (추적 파일) plan.md 는 0단계로 이미 같은 내용이다 — 사본을 만들지 않고 체크박스만 Edit 한다. 완료 커밋은 `git add <Files 경로…>` 와 경로 한정 커밋으로 plan.md 를 빼고, 커밋 뒤 `git checkout -- plan.md` 로 되돌린다.
+     - (ignored) 주 plan.md 를 Read 하지 않고, 아래 두 줄과 `## task` 블록만 위 폴더의 plan.md 에 Write 한다 — `> BASE:` 는 worktree 의 커밋 hook(`guard-task-audit`·주석 게이트)이 읽는다.
+       > BASE: <주 plan.md 의 값>
+       > 승인: <주 plan.md 의 줄 원문>
+     셸로 plan.md 를 쓰지 않는다(hook 이 막는다).
   2. 규약: `<플러그인 루트>/skills/implement/SKILL.md` 의 「자율 루프」 1~4·「검증」·「커밋」 절과 `AGENTS.md` 를 Read 해 이 task 하나에 그대로 따른다 — RED→GREEN · Acceptance·검증 줄 전부 · 체크박스 [x] 는 사본에 · 완료 커밋 제목 `{유형}: T<N> — …` · 본문의 `Acceptance:`·`RED(구현 전):`·`GREEN:`·`검증 결과`.
   3. 하지 않는 것: 다른 task · Files 에 없는 README 갱신 · Progress Log · 회차 끝 단계 · push · 0단계 밖의 병합 · worktree 정리.
-  4. git 명령은 한 호출에 하나씩, `;`·`&&` 로 잇지 않는다(worktree 샌드박스가 거부한다).
+  4. git 명령은 한 호출에 하나씩, `;`·`&&` 로 잇지 않는다(worktree 샌드박스가 거부한다). 다른 레포를 읽을 때는 `git -C <경로> …` 한 호출로 하고 `cd` 와 git 을 한 호출에 섞지 않는다.
   5. 멈춤: 2의 SKILL.md 「멈추는 넷」 에 걸리거나 hook 이 안내 경로로 풀리지 않게 막으면 그 자리에서 멈추고 보고한다. 우회하지 않는다.
 
   보고(마지막 메시지):
@@ -53,10 +58,12 @@
   ```
 
   - **`<플러그인 루트>`** 는 `../../READONLY-SUBAGENTS.md`「플러그인 루트」 와 같은 값이다 — 하니스 루트면 레포, 아니면 설치본.
+  - **1단계 갈래는 메인이 `git ls-files --error-unmatch plan.md` 로 고른다 — 성공이면 (추적 파일), 실패면 (ignored) 를 싣고 BASE·승인 줄 원문을 채운다** — 추적 레포에서 사본을 Write 해 커밋하면 완료 커밋마다 plan.md 전체가 실려 병합 때 주 plan.md 와 부딪친다(Karina plan 5 — T5·T6 완료 커밋에 plan.md 489줄). ignored 레포에서 전량을 Read·Write 하면 서브에이전트마다 33KB 를 두 번 옮긴다.
 
 ## 대기
 
 - **`loop-pacing.md`「검증 대기」 와 같다 — 기다리는 동안 그룹 뒤 task 를 읽기만 하고, 편집·커밋·체크박스는 하지 않는다. 읽을 것이 다하면 turn 을 끝내고 알림을 기다린다** — 서브에이전트가 도는 동안 `loop-continue` 는 turn 종료를 대기로 본다(`../../../scripts/rules/loop-continue-rationale.md`). 주 트리를 고치면 「병합」 ⓐ 가 서지 않는다.
+- **그룹 밖 순차 task 를 대기 중에 병행하지 않는다 — 코디네이터·배정문이 병행을 지시해도 같다** — 병행할 수 있는 task 였다면 계획 단계에서 그룹에 들어갔어야 하고, 대기 중 커밋은 「병합」 ⓐ 의 깨끗한 주 트리를 깨고 서브에이전트가 갈라진 HEAD 를 옮긴다(Karina plan 5 — 대기 중 T2·T3·T11 진행).
 - **그룹의 모든 서브에이전트 보고가 온 뒤에 병합한다** — 경과는 가장 긴 task 가 정하므로 도착 순 병합으로 줄일 시간이 작고, 번호 순이면 판정이 재현된다.
 
 ## 병합
@@ -64,6 +71,7 @@
 task 번호 순으로 하나씩 한다. 보고가 `성공` 이 아니면 그 task 는 병합하지 않고 「순차 전환」 으로 넘긴다.
 
 - **ⓐ 주 트리가 깨끗하고 현재 브랜치가 루프 시작 브랜치인지 본다** — 아니면 병합하지 않는다. 미커밋 변경이 있으면 `merge --abort` 가 그 변경을 되살리지 못할 수 있다.
+  - **미커밋이 추적 `plan.md` 하나뿐이면 `git commit -m "설정: plan 진행" -- plan.md` 로 진행 커밋을 한 뒤 병합한다 — `git stash` 로 비키지 않는다** — 되살리기를 잊거나 충돌하면 plan 편집을 잃는다(Karina plan 5 — stash 두 번, 그중 하나는 목록에서 사라졌다). 「진입」 의 깨끗한 주 트리 조건도 같은 진행 커밋 뒤에 잰다.
 - **ⓑ `git merge --no-ff --no-commit <브랜치>` — 충돌(exit ≠ 0)이면 `git merge --abort` 뒤 그 task 를 「순차 전환」** — 두 task 의도를 메인이 혼자 섞지 않는다.
 - **ⓒ 그 task 의 `**검증**` 줄을 합친 트리에서 다시 돈다 — 실패하면 `git merge --abort` 뒤 「순차 전환」** — 각자 worktree 에서 통과했어도 합친 결과는 아무도 재지 않았다.
 - **ⓓ 경로 없는 `git commit` 으로 끝낸다 — 제목 `설정: 병합 — T<N> <한 줄>`, 본문에 ⓒ 출력 원문 · heredoc `-m` · 끝에 `2>&1`** — 병합 중에는 git 이 경로 한정 커밋을 거부해 레포의 「병행 세션의 커밋」 규약의 예외다. 제목이 `T<N> —` 로 시작하지 않아 완료 커밋 체크박스 검사에 걸리지 않는다 — 완료 커밋은 서브에이전트 커밋이다.
