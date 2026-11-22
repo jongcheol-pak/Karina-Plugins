@@ -584,6 +584,14 @@ $r = Invoke-SvCase $bwRepo ('& "' + $bwRepo + '\.claude\skills\verify-app\helper
 Assert-Case -Name "screen-verifier: 역슬래시 절대 경로의 & 호출도 경고" -R $r -ExpectExit 0 -ExpectContains $svMark
 $r = Invoke-SvCase $bwRepo 'cd x; bash .claude/skills/verify-app/run.sh'
 Assert-Case -Name "screen-verifier: 앞 세그먼트 뒤의 bash 실행도 경고" -R $r -ExpectExit 0 -ExpectContains $svMark
+$r = Invoke-SvCase $bwRepo 'S=.claude/skills/verify-app/helpers; pwsh -NoProfile -File $S/launch.ps1 -Fresh'
+Assert-Case -Name "screen-verifier: 같은 명령의 변수 대입으로 넘긴 스킬 경로 실행도 경고" -R $r -ExpectExit 0 -ExpectContains $svMark
+$r = Invoke-SvCase $bwRepo 'S=".claude/skills/verify-app/helpers" && bash "${S}/run.sh"'
+Assert-Case -Name "screen-verifier: 따옴표 대입과 중괄호 변수 꼴도 경고" -R $r -ExpectExit 0 -ExpectContains $svMark
+$r = Invoke-SvCase $bwRepo 'S=.claude/skills/verify-app/helpers; grep -n Fresh $S/launch.ps1'
+Assert-Case -Name "screen-verifier (음성): 변수 경로를 grep 으로 읽기만 하면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
+$r = Invoke-SvCase $bwRepo 'S=.claude/other; pwsh -NoProfile -File $S/launch.ps1'
+Assert-Case -Name "screen-verifier (음성): 변수가 스킬 폴더 밖을 가리키면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
 $r = Invoke-SvCase $bwRepo 'pwsh -NoProfile -File .claude/skills/verify-app/helpers/launch.ps1' -AgentId 'a1'
 Assert-Case -Name "screen-verifier (음성): 서브에이전트 실행은 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
 $r = Invoke-SvCase $bwRepo 'pwsh -NoProfile -File .claude/skills/verify-app/helpers/launch.ps1' -Sid 'sv-off'

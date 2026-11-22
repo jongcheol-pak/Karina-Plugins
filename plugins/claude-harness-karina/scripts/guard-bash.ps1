@@ -448,13 +448,16 @@ function Invoke-WarnScreenVerifier {
     if (-not $sm.Success) { return New-HookResult }
     $key = $sm.Value.ToLower() + '/'
     $hit = $false
+    $vars = @{}
     foreach ($seg in Get-TopLevelSegments (Get-HeredocSinkStripped $cmd)) {
-        $toks = @([regex]::Matches(($seg -replace '^[\s(&]+', ''), '"[^"]*"|''[^'']*''|\S+') | ForEach-Object { $_.Value.Trim('"', "'") })
+        $toks = @([regex]::Matches(($seg -replace '^[\s(&]+', ''), '"[^"]*"|''[^'']*''|\S+') | ForEach-Object { $_.Value })
         $i = 0
-        while ($i -lt $toks.Count -and $toks[$i] -match '^[A-Za-z_]\w*=') { $i++ }
+        while ($i -lt $toks.Count -and $toks[$i] -match '^([A-Za-z_]\w*)=(.*)$') { $vars[$Matches[1]] = $Matches[2].Trim('"', "'"); $i++ }
         if ($i -ge $toks.Count) { continue }
+        $toks = @($toks | ForEach-Object { $_.Trim('"', "'") })
         $cands = if ($toks[$i] -match '^(?i)(pwsh|powershell|bash|sh|python3?|py|node|cmd)(\.exe)?$') { @($toks[($i + 1)..($toks.Count - 1)]) } else { @($toks[$i]) }
         foreach ($c in $cands) {
+            $c = [regex]::Replace($c, '\$\{?([A-Za-z_]\w*)\}?', { param($m) if ($vars.ContainsKey($m.Groups[1].Value)) { $vars[$m.Groups[1].Value] } else { $m.Value } })
             $n = ($c -replace '\\', '/').ToLower()
             if ($n.Contains($key) -and $n -match '\.(ps1|sh|py|cmd|bat|js)$') { $hit = $true; break }
         }

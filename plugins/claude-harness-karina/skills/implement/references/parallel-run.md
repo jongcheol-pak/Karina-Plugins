@@ -40,7 +40,7 @@
        > BASE: <주 plan.md 의 값>
        > 승인: <주 plan.md 의 줄 원문>
      셸로 plan.md 를 쓰지 않는다(hook 이 막는다).
-  2. 규약: `<플러그인 루트>/skills/implement/SKILL.md` 의 「자율 루프」 1~4·「검증」·「커밋」 절과 `AGENTS.md` 를 Read 해 이 task 하나에 그대로 따른다 — RED→GREEN · Acceptance·검증 줄 전부 · 체크박스 [x] 는 사본에 · 완료 커밋 제목 `{유형}: T<N> — …` · 본문의 `Acceptance:`·`RED(구현 전):`·`GREEN:`·`검증 결과`.
+  2. 규약: `<플러그인 루트>/skills/implement/SKILL.md` 의 「자율 루프」 1~4·「검증」·「커밋」 절과 `AGENTS.md` 를 Read 해 이 task 하나에 그대로 따른다 — RED→GREEN · Acceptance·검증 줄 전부 · 체크박스 [x] 는 worktree 의 plan.md 에 · 완료 커밋 제목 `{유형}: T<N> — …` · 본문의 `Acceptance:`·`RED(구현 전):`·`GREEN:`·`검증 결과`.
   3. 하지 않는 것: 다른 task · Files 에 없는 README 갱신 · Progress Log · 회차 끝 단계 · push · 0단계 밖의 병합 · worktree 정리.
   4. git 명령은 한 호출에 하나씩, `;`·`&&` 로 잇지 않는다(worktree 샌드박스가 거부한다). 다른 레포를 읽을 때는 `git -C <경로> …` 한 호출로 하고 `cd` 와 git 을 한 호출에 섞지 않는다.
   5. 멈춤: 2의 SKILL.md 「멈추는 넷」 에 걸리거나 hook 이 안내 경로로 풀리지 않게 막으면 그 자리에서 멈추고 보고한다. 우회하지 않는다.
