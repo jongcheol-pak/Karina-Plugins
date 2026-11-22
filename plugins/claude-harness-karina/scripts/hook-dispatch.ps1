@@ -4,7 +4,7 @@ param(
     [switch]$Blocking,
     [int]$AdvisoryBudgetMs = 20000,
     [int]$AdvisoryDeadlineMs = 45000,
-    [int]$SlowMarkMs = 55000,
+    [int]$SlowMarkMs = 50000,
     [Parameter(Position = 0, ValueFromRemainingArguments = $true)][string[]]$Scripts
 )
 
@@ -60,10 +60,25 @@ $hdWatch = $null
 $hdWatchState = $null
 if ($Blocking -and $SlowMarkMs -gt 0) {
     try {
-        $hdWatchState = [hashtable]::Synchronized(@{ At = '(시작)'; Done = New-Object System.Threading.ManualResetEvent($false) })
+        $hdWatchState = [hashtable]::Synchronized(@{ At = '(시작)'; Adv = $false; Done = New-Object System.Threading.ManualResetEvent($false) })
         $hdProcStart = [System.Diagnostics.Process]::GetCurrentProcess().StartTime
         $hdWatch = [powershell]::Create()
-        $null = $hdWatch.AddScript('param($start, $limit, $st, $log, $sid) $wait = [int][Math]::Max(0, $limit - ([DateTime]::Now - $start).TotalMilliseconds); if ($st.Done.WaitOne($wait)) { return }; . $log; Write-HookEvent ''hook-dispatch'' ''slow'' ("deadline-near elapsed_ms=" + [long]([DateTime]::Now - $start).TotalMilliseconds + " at=" + $st.At) -SessionId $sid').AddArgument($hdProcStart).AddArgument($SlowMarkMs).AddArgument($hdWatchState).AddArgument((Join-Path $PSScriptRoot 'hook-event-log.ps1')).AddArgument($hdSid)
+        $hdWatchScript = @'
+param($start, $limit, $st, $log, $sid)
+$wait = [int][Math]::Max(0, $limit - ([DateTime]::Now - $start).TotalMilliseconds)
+if ($st.Done.WaitOne($wait)) { return }
+try { . $log; Write-HookEvent 'hook-dispatch' 'slow' ("deadline-near elapsed_ms=" + [long]([DateTime]::Now - $start).TotalMilliseconds + " at=" + $st.At) -SessionId $sid } catch {}
+if ($st.Adv -or $st.Done.WaitOne(0)) { return }
+$msg = "[HARNESS] BLOCKED: 차단 검사($($st.At))가 hook 시한 전에 끝나지 않았습니다 — 프로세스 시작 뒤 $limit ms 에서 막았습니다.`n" +
+    "  - 같은 명령을 다시 내세요 — 일시적인 부하(동시 빌드·백신 검사)면 다음 시도는 통과합니다.`n" +
+    "  - 아주 큰 커밋이면 나눠 커밋하세요. 계속 막히면 멈추고 사용자에게 보고하세요.`n"
+$bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($msg)
+$err = [Console]::OpenStandardError()
+$err.Write($bytes, 0, $bytes.Length)
+$err.Flush()
+[Environment]::Exit(2)
+'@
+        $null = $hdWatch.AddScript($hdWatchScript).AddArgument($hdProcStart).AddArgument($SlowMarkMs).AddArgument($hdWatchState).AddArgument((Join-Path $PSScriptRoot 'hook-event-log.ps1')).AddArgument($hdSid)
         $hdWatchHandle = $hdWatch.BeginInvoke()
     } catch { $hdWatch = $null }
 }
@@ -85,7 +100,7 @@ try {
         $hdAdv = $hdRun.Advisory
         if ($hdAdv -and (@($hdCodes | Where-Object { $_ -ne 0 }).Count -gt 0 -or $hdClock.ElapsedMilliseconds -ge $AdvisoryBudgetMs)) { break }
         $hdLeaf = Split-Path -Leaf $hdPath
-        if ($hdWatchState) { $hdWatchState.At = $hdLeaf }
+        if ($hdWatchState) { $hdWatchState.At = $hdLeaf; $hdWatchState.Adv = $hdAdv }
         $hdBuf = New-Object System.IO.StringWriter
         $hdErrBuf = New-Object System.IO.StringWriter
         $hdPipe = ''

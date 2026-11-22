@@ -150,10 +150,17 @@ function Get-HdDeadlineMarks {
     if (-not (Test-Path -LiteralPath $dir)) { return @() }
     return @(Get-ChildItem -LiteralPath $dir -Filter '*.jsonl' | ForEach-Object { Get-Content -LiteralPath $_.FullName -Encoding UTF8 } | Where-Object { $_ -match '"hook":"hook-dispatch"' -and $_ -match 'deadline-near' })
 }
+'[System.Threading.Thread]::Sleep(15000); exit 0' | Set-Content -LiteralPath (Join-Path $hdFake 'f-sleep-long.ps1') -Encoding UTF8
 $hdMarks0 = @(Get-HdDeadlineMarks).Count
-$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '3000', '-Blocking', 'f-ctx.ps1', 'f-sleep.ps1') -Process
+$hdDlClock = [System.Diagnostics.Stopwatch]::StartNew()
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '3000', '-Blocking', 'f-ctx.ps1', 'f-sleep-long.ps1') -Process
+$hdDlMs = $hdDlClock.ElapsedMilliseconds
 $hdNew = @(Get-HdDeadlineMarks | Select-Object -Skip $hdMarks0)
-Assert-Case -Name "hook-dispatch: 시한 표지 — 차단 묶음이 -SlowMarkMs 를 넘기면 도는 스크립트 이름과 함께 slow 줄을 남긴다" -R @{ code = $r.code; out = "n=$($hdNew.Count) " + ($hdNew -join ' ') } -ExpectExit 0 -ExpectContains 'at=f-sleep.ps1'
+Assert-Case -Name "hook-dispatch: 시한 표지 — 차단 묶음이 -SlowMarkMs 를 넘기면 도는 스크립트 이름과 함께 slow 줄을 남긴다" -R @{ code = 0; out = "n=$($hdNew.Count) " + ($hdNew -join ' ') } -ExpectExit 0 -ExpectContains 'at=f-sleep-long.ps1'
+Assert-Case -Name "hook-dispatch: 마감 — 차단 구간이 마감을 넘기면 늦은 스크립트 이름과 안내를 stderr 에 내고 exit 2" -R $r -ExpectExit 2 -ExpectContains '차단 검사(f-sleep-long.ps1)가 hook 시한 전에 끝나지 않았습니다'
+Assert-Case -Name "hook-dispatch: 마감 — 잠든 스크립트(15초)를 기다리지 않고 마감에서 끝낸다" -R @{ code = 0; out = "fast=$($hdDlMs -lt 10000) ms=$hdDlMs" } -ExpectExit 0 -ExpectContains 'fast=True'
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '3000', '-Blocking', 'f-ctx.ps1', 'advisory:', 'f-sleep.ps1') -Process
+Assert-Case -Name "hook-dispatch: 마감 (음성) — 권고 구간에서 마감에 닿으면 막지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'hook 시한 전에 끝나지 않았습니다'
 $hdMarks0 = @(Get-HdDeadlineMarks).Count
 $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '20000', '-Blocking', 'f-ctx.ps1') -Process
 Assert-Case -Name "hook-dispatch: 시한 표지 — 시한 전에 끝난 차단 묶음은 표지를 남기지 않는다" -R @{ code = $r.code; out = "n=$(@(Get-HdDeadlineMarks).Count - $hdMarks0)" } -ExpectExit 0 -ExpectContains 'n=0'
