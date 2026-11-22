@@ -531,16 +531,34 @@ function Get-ShellPathEnv([string]$Name) {
     if ($v) { return $v } else { return $null }
 }
 
+# 무조건 실행되는 대입 자리인가(묶음 깊이 0 · 앞 구분자 ; 줄바꿈) — 근거는 `rules/bash-guard-rationale.md` §14
+function Test-ShellAssignUnconditional([string]$Prefix) {
+    $p = [regex]::Replace((Remove-HeredocBodyForJudge $Prefix), '"[^"]*"|''[^'']*''', '""')
+    $depth = 0
+    $sep = ';'
+    foreach ($t in [regex]::Matches($p, '\$\(|[(){}]|&&|\|\||(?<![<>])&(?!>)|[|;\n]|\b(?:if|while|until|for|case|fi|done|esac)\b')) {
+        switch -Regex ($t.Value) {
+            '^(\$\(|\(|\{|if|while|until|for|case)$' { $depth++; break }
+            '^(\)|\}|fi|done|esac)$' { $depth--; break }
+            default { $sep = $t.Value }
+        }
+    }
+    return ($depth -eq 0 -and $sep -in @(';', "`n"))
+}
+
 # 경로 속 셸 변수 펼치기 — 근거는 `rules/bash-guard-rationale.md` §14
 function Expand-ShellPathVars([string]$Text, [string]$Cmd) {
     $limit = $Cmd.IndexOf($Text)
     if ($limit -lt 0) { $limit = $Cmd.Length }
     $vals = @{}
+    $tainted = @{}
     $varRx = '\$(?:\{(?<n>\w+)\}|(?<n>[A-Za-z_]\w*))'
-    $sub = { param($s) [regex]::Replace($s, $varRx, { param($m) $n = $m.Groups['n'].Value; if ($vals.ContainsKey($n)) { $vals[$n] } elseif ($null -ne ($e = Get-ShellPathEnv $n)) { $e } else { $m.Value } }) }
+    $sub = { param($s) [regex]::Replace($s, $varRx, { param($m) $n = $m.Groups['n'].Value; if ($tainted.ContainsKey($n)) { $m.Value } elseif ($vals.ContainsKey($n)) { $vals[$n] } elseif ($null -ne ($e = Get-ShellPathEnv $n)) { $e } else { $m.Value } }) }
     foreach ($m in [regex]::Matches($Cmd, '(?:^|[\s;&|(])(?<n>[A-Za-z_]\w*)=(?:"(?<d>[^"`]*)"|''(?<s>[^'']*)''|(?<d>[^\s;&|"''`]*))(?=[\s;&|)]|$)')) {
         if ($m.Index -ge $limit) { break }
-        $vals[$m.Groups['n'].Value] = if ($m.Groups['s'].Success) { $m.Groups['s'].Value } else { & $sub $m.Groups['d'].Value }
+        $n = $m.Groups['n'].Value
+        if (-not (Test-ShellAssignUnconditional $Cmd.Substring(0, $m.Groups['n'].Index))) { $tainted[$n] = $true; continue }
+        $vals[$n] = if ($m.Groups['s'].Success) { $m.Groups['s'].Value } else { & $sub $m.Groups['d'].Value }
     }
     $out = & $sub $Text
     if ($out -match '^~(?=[/\\]|$)') { $h = Get-ShellPathEnv 'HOME'; if ($h) { $out = $h + $out.Substring(1) } }

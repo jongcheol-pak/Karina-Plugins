@@ -349,6 +349,8 @@ $rfTmpPlain = 'karina-rf-plain-' + [guid]::NewGuid().ToString('N') + '.txt'
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('git commit -F "$TEMP/' + $rfTmpPlain + '"'))
 Assert-Case -Name "rf: -F `"`$TEMP/…`" 첫 줄이 T 아님 → 통과(무출력) (RF28 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 Remove-Item -LiteralPath (Join-Path $env:TEMP $rfTmpPlain) -ErrorAction SilentlyContinue
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('S=x; false && S="$TEMP"; git commit -F "$S/' + $rfTmpName + '"'))
+Assert-Case -Name "rf: 실행되지 않을 수 있는 대입이 가리킨 -F 파일은 읽지 않는다 → 경고·통과 (RF30)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'printf x | git commit -F -')
 Assert-Case -Name "rf: -F - 인데 같은 명령에 본문 없음 + plan 있음 → 경고·통과 (RF14)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfNoPlan 'git commit -m $msg')
@@ -565,6 +567,29 @@ $env:KARINA_SN_OUTSIDE = $env:TEMP
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > `"`$KARINA_SN_OUTSIDE/Probe.cs`" <<'X'$snCls")
 Remove-Item Env:KARINA_SN_OUTSIDE
 Assert-Case -Name "셸 새 코드: 값이 임시 폴더인 목록 밖 환경변수는 펼치지 않아 차단 (SN-outside-env)" -R $r -ExpectExit 2 -ExpectContains $snMsg
+$snCondBlock = @(
+    @{ Id = 'SN-cond-subshell'; Cmd = "S=src; (S=`"`$TEMP`"); cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-and'; Cmd = "S=src; false && S=`"`$TEMP`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-or'; Cmd = "S=src; true || S=`"`$TEMP`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-if'; Cmd = "S=src; if false; then S=`"`$TEMP`"; fi; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-if-inner'; Cmd = "S=src; if false; then echo; S=`"`$TEMP`"; fi; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-subshell-inner'; Cmd = "S=src; (echo; S=`"`$TEMP`"); cat > `"`$S/Probe.cs`" <<'X'$snCls" }
+)
+foreach ($c in $snCondBlock) {
+    $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
+    Assert-Case -Name "셸 새 코드: 실행되지 않을 수 있는 대입은 풀지 않아 차단 ($($c.Id))" -R $r -ExpectExit 2 -ExpectContains $snMsg
+}
+$snCondPass = @(
+    @{ Id = 'SN-cond-and-after'; Cmd = "S=`"`$TEMP/p`"; mkdir -p `"`$S`" && cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-quoted'; Cmd = "echo `"a && b`"; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-pipe-before'; Cmd = "ls | head; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-closed-subshell'; Cmd = "(cd x); S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-heredoc-tokens'; Cmd = "cat > `"`$TEMP/a.txt`" <<'Y'`nif (x) {`nY`nS=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" }
+)
+foreach ($c in $snCondPass) {
+    $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
+    Assert-Case -Name "셸 새 코드 (음성): 무조건 실행되는 대입은 그대로 펼쳐 통과 ($($c.Id))" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
+}
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'EOF'`nopen('/tmp/../repo/src/a.rs','w').write('pub fn x() {}\n')`nEOF")
 Assert-Case -Name "python 새 코드: /tmp/../ 로 빠지는 경로는 임시 폴더가 아니다 → 차단 (PN-dotdot)" -R $r -ExpectExit 2 -ExpectContains $pnMsg
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'EOF'`nopen('/tmp/../a.rs','w').write('x = 1')`nEOF")
