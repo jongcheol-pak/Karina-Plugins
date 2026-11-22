@@ -1054,6 +1054,36 @@ Assert-Case -Name "commit-comments: 다른 파일 BASE 의 doc 을 그 파일에
 Set-CcFile $d 'm.rs' $ccMoveA
 $r = Invoke-CcCommit $d 'git commit -m x -- n.rs' 'cc-copy'
 Assert-Case -Name "commit-comments: 원래 파일에 남은 doc 의 복사 커밋은 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+
+$ccBig = ((1..20001 | ForEach-Object { "`$v$_ = $_" }) -join "`n") + "`n"
+$ccUnity = ((1..25000 | ForEach-Object { "  m_Field${_}: {fileID: $_}" }) -join "`n") + "`n"
+$ccHalf = ((1..12000 | ForEach-Object { "`$w$_ = $_" }) -join "`n") + "`n"
+$d = New-CcRepo
+Set-CcFile $d 'big.ps1' $ccBig; git -C $d add big.ps1
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-line-cap'
+Assert-Case -Name "commit-comments: 대상 파일 추가 줄이 상한(20000)을 넘으면 알리고 통과" -R $r -ExpectExit 0 -ExpectContains '추가 줄 20001'
+$d = New-CcRepo
+Set-CcFile $d 'Big.unity' $ccUnity; Set-CcFile $d 'a.cs' "// 기존 설명`n// 큰 비대상 옆 새 설명`nint a;`n"; git -C $d add .
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-big-nontarget'
+Assert-Case -Name "commit-comments: 큰 비대상 파일과 함께 스테이징한 대상 파일의 새 주석은 차단" -R $r -ExpectExit 2 -ExpectContains '큰 비대상 옆 새 설명'
+$d = New-CcRepo
+Set-CcFile $d 'Big.unity' $ccUnity; Set-CcFile $d 'a.cs' "// 기존 설명`n// 큰 비대상 옆 새 설명`nint a;`n"
+$r = Invoke-CcCommit $d 'git add -A && git commit -m x' 'cc-big-nontarget-add'
+Assert-Case -Name "commit-comments: git add -A && commit 으로 큰 비대상 파일과 함께 낸 대상 파일 새 주석도 차단" -R $r -ExpectExit 2 -ExpectContains '큰 비대상 옆 새 설명'
+$d = New-CcRepo
+Set-CcFile $d 'half.ps1' $ccHalf; git -C $d add half.ps1
+Set-CcFile $d 'half.ps1' ($ccHalf + "# 작업 트리에만 더한 설명`n")
+$r = Invoke-CcCommit $d 'git add -A && git commit -m x' 'cc-index-worktree'
+Assert-Case -Name "commit-comments: 같은 파일의 index·작업 트리 줄을 두 번 세지 않아 상한 아래면 새 주석을 차단" -R $r -ExpectExit 2 -ExpectContains '작업 트리에만 더한 설명'
+$d = New-CcRepo
+Set-CcFile $d 'notes.txt' "# 옮겨 갈 설명`n`$n = 1`n"; git -C $d add notes.txt; git -C $d commit -qm notes
+git -C $d mv notes.txt notes.ps1
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-rename'
+Assert-Case -Name "commit-comments: 비대상 파일을 대상 확장자로 이름만 바꾼 커밋은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$d = New-CcRepo
+Set-CcFile $d 'fresh.ps1' $ccBig
+$r = Invoke-CcCommit $d 'git add -A && git commit -m x' 'cc-untracked-cap'
+Assert-Case -Name "commit-comments: git add -A 로 넣는 untracked 대상 파일이 상한을 넘으면 알리고 통과" -R $r -ExpectExit 0 -ExpectContains '추가 줄 20001'
 }
 
 if (Test-ScenarioUnit 8) {

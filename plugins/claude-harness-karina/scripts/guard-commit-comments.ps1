@@ -32,7 +32,20 @@ function Get-CommitCommentEntry($Files, [string]$Path, [string]$Source) {
     return $Files[$Path]
 }
 
+function Select-CommentTargetDiffLines($Lines) {
+    if ($null -eq $Lines) { return @() }
+    $kept = @()
+    foreach ($block in ((@($Lines) -join "`n") -split '(?m)^(?=diff --git )')) {
+        if (-not ($block -match '(?m)^\+\+\+ (.*)$')) { continue }
+        if (-not (Test-CommentTarget ($Matches[1] -replace '^b/', ''))) { continue }
+        $kept += $block.TrimEnd("`n") -split "`n"
+    }
+    return $kept
+}
+
 function Add-CommitCommentDiff($Files, $Lines, [string]$Source) {
+    # 비대상 파일 블록은 줄 처리 전에 거른다 — 근거는 `rules/comment-gate-rationale.md` §4
+    $Lines = Select-CommentTargetDiffLines $Lines
     $entry = $null
     $hunk = $null
     $inHeader = $false
