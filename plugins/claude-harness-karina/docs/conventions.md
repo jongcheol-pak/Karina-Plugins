@@ -375,6 +375,8 @@
 
 ### acceptance 설계
 
+- [2026-11-22] **task 검증 줄은 Files 의 경로마다 `docs/verification-mapping.md` 의 해당 행을 찾아 그 행의 명령을 전부 옮긴다 — 경로 하나라도 행 대조를 건너뛰면 그 행의 검사가 회차 끝 전체 검증에서야 돈다** — 3.54.0 회차는 `scripts/*.ps1` 행의 `check-block-coverage.py` 를 빠뜨려 벽시계 단언이 회차 끝 WALLCLOCK 으로 걸렸고(4a823076), 3.55.1 회차는 `*.md` 행의 Test(JSON 3종)를 빠뜨려 계획 리뷰 MAJOR 가 됐다 (실측)
+
 - [2026-10-22] **스킬 트리거 eval(`skills/evals/trigger_eval.py`)은 레포 작업 트리를 `--plugin-dir` 로 싣는다 — 새 스킬을 만드는 회차는 다른 스킬의 회귀 착수값(`--filter <인접 스킬>`)을 새 `SKILL.md` 를 만들기 전에 재고, 새 스킬 발동 케이스의 RED 는 그 `SKILL.md` 를 레포 밖으로 잠시 옮긴 상태에서 잰다** — 만든 뒤 재면 착수값에 새 description 의 영향이 섞이고, 케이스가 스킬보다 늦게 생기면 「스킬 없음」 상태가 따로 없다. 옮겨 둔 동안 `check-harness-consistency.py` 는 README 「Skills」 목록 불일치를 내므로 정합 판정은 복원 뒤에 한다 (실측)
 
 - [2026-10-21] **`evals/run-evals.py --filter` 는 케이스 id 가 아니라 checker 이름(`harness`·`truncation`·`stale`)을 받는다 — 케이스 하나를 재는 acceptance 는 `--filter harness` 출력의 `[PASS] <id> ` 줄을 grep 한다** — id 를 넘기면 「케이스 없음」으로 exit 1 이다. description 합계 회차의 계획이 id 로 적어 계획 리뷰 BLOCKER 가 됐다(착수값을 돌려 보지 않은 탓). (실측)
