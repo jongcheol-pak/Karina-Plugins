@@ -1087,10 +1087,16 @@ CRITICAL_LITERALS = [
     ("skills/plan/references/interview.md",
      "[C] 계획 체인으로 넘기기",
      "승인 화면의 체인 선택지 — 체인 질문에 아니오로 답한 뒤 다 쓴 계획을 보고 체인으로 돌아갈 유일한 자리다"),
+    ("skills/chain-plan/references/continuation.md",
+     "넘김 항목인지 애매하면 이어받는다",
+     "체인 남은 일의 넘김 여부가 애매할 때의 처분(2026-11-22 「애매하면 멈춘다」 번복) — 옛 문면으로 돌아가면 미완을 보고로 넘겨 그 일이 어디서도 돌지 않는다"),
+    ("skills/chain-plan/references/continuation.md",
+     "뒤 계획에 넘기지 않고 이 계획에서 이어받는다",
+     "뒤 계획을 가리키는 남은 일의 처분(2026-11-22 「plan M 이 받음」 번복) — 뒤 계획 워커는 자기 spec 만 계획해 넘긴 일을 모른다"),
 ]
 
 # 리터럴 총량 기준선(= 목록 길이) — 근거는 `harness-consistency-rationale.md` §9
-CRITICAL_LITERALS_BASELINE = 5
+CRITICAL_LITERALS_BASELINE = 7
 
 
 # 축 11이 대장 실재로 인정하는 파일. 종결된 항목은 `deferred-closed.md` 로 옮겨지므로

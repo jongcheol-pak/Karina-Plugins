@@ -1824,6 +1824,42 @@
     "why": "**plan 본문의 회차 체인 질문 문면이 지워지면 축 ⑩ 이 red 를 낸다.** 질문이 참조 문서에만 있으면 그 Read 를 건너뛴 회차가 묻지 않고 [다음 회차] 로 간다 — 본문 문면이 그 유일한 그물이다."
   },
   {
+    "id": "harness-chain-ambiguous-takeover-literal-lost",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "skills/chain-plan/references/continuation.md",
+        "find": "넘김 항목인지 애매하면 이어받는다",
+        "replace": "넘김 항목인지 애매하면 멈춘다"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "핵심 리터럴이 출처에서 사라졌다: skills/chain-plan/references/continuation.md"
+    ],
+    "why": "**체인 남은 일의 넘김 여부가 애매할 때 이어받는다는 문면이 지워지면 축 ⑩ 이 red 를 낸다.** 2026-11-22(3.55.0) 「애매하면 멈춘다」 를 뒤집은 결정이라, 옛 문면으로 돌아가면 미완을 보고로 넘겨 그 일이 어디서도 돌지 않는다."
+  },
+  {
+    "id": "harness-chain-later-plan-takeover-literal-lost",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "skills/chain-plan/references/continuation.md",
+        "find": "뒤 계획에 넘기지 않고 이 계획에서 이어받는다",
+        "replace": "뒤 계획에 넘긴다"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "핵심 리터럴이 출처에서 사라졌다: skills/chain-plan/references/continuation.md"
+    ],
+    "why": "**뒤 계획을 가리키는 남은 일도 이 계획에서 이어받는다는 문면이 지워지면 축 ⑩ 이 red 를 낸다.** 2026-11-22(3.55.0) 「plan M 이 받음」 을 뒤집은 결정이라, 뒤 계획 워커는 자기 spec 만 계획해 넘긴 일을 모른다."
+  },
+  {
     "id": "harness-critical-literal-ok",
     "checker": "harness",
     "fixture": "minimal-repo",
@@ -1843,13 +1879,13 @@
     "mutate": [
       {
         "file": "evals/check-harness-consistency.py",
-        "find": "CRITICAL_LITERALS_BASELINE = 5",
-        "replace": "CRITICAL_LITERALS_BASELINE = 6"
+        "find": "CRITICAL_LITERALS_BASELINE = 7",
+        "replace": "CRITICAL_LITERALS_BASELINE = 8"
       }
     ],
     "expect_keywords": [
       "[MISMATCH]",
-      "핵심 리터럴 총량이 기준선과 다르다: 5 != 6",
+      "핵심 리터럴 총량이 기준선과 다르다: 7 != 8",
       "CRITICAL_LITERALS_BASELINE"
     ]
   },
