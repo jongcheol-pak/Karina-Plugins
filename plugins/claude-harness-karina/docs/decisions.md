@@ -3,6 +3,7 @@
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
 - [2026-11-22] 응답 언어 판정형 주입(v3.52.0) — 번복: 2026-11-07 의 「셸·쓰기 도구 20회마다 같은 줄 주입」 을 걷고, 셸·쓰기 PreToolUse 마다 전사 꼬리의 직전 assistant 텍스트를 Stop 과 같은 판정식으로 봐 영문 위주면 그 텍스트(uuid)에 한 번 교정 줄을 싣는다 — Karina plan 5 워커에서 주기 주입 직후 네 줄 안에 영문 메모가 다시 났다(`scripts/rules/reply-language-rationale.md` §2).
+  - 같은 회차(reflect ac63cf7d 하니스 후보) 기각: guard-bash `block-plan-write` 에 worktree plan 사본 복사 면제 — 차단 hook 에 명령 문자열 면제를 넣지 않는다(`docs/conventions.md` 2026-11-20) · 대신 추적 레포는 사본 없음, ignored 레포는 승인 줄 + task 블록 Write(사용자 답 「요약 사본」) · 서브에이전트 worktree 의 cd+git 사전 경고 — 샌드박스가 같은 시점에 이유를 담아 거부해 중복이다(사용자 답 「프롬프트만」) · `chain-plan/references/parallel.md` 병합 ⓐ 의 같은 처방 — 코디네이터 주 레포는 plan.md 를 고치지 않는다
   - 기각: 주기 주입을 남기고 판정형을 보탬 — 셸·쓰기마다 카운터 쓰기와 전사 읽기가 겹친다 · Stop 재작성 형태 변경 — 실세션에서 turn 을 잇는 것이 확인됐고(Tiny-Swords 2026-11-19), 이번 영문 최종 보고는 탭이 먼저 닫힌 경우다(§4)
 
 - [2026-11-21] 독립 task 병렬 실행 — plan 병렬 그룹(v3.51.0) — 번복: 2026-11-10 사례로 들인 「task 를 서브에이전트에 하나씩 차례로 맡기지 않는다」(fe7f1a78)에 예외를 둔다. plan 의 `> 병렬 그룹:` 줄이 묶은 독립 task(이웃한 2~3개 · Files 겹침 없음 · 새 체크아웃에서 검증이 돈다 · 화면·성능·레포 밖 task 아님)는 worktree 격리 서브에이전트로 동시에 돌리고, 메인이 task 번호 순 `--no-ff` 로 병합한 뒤 그 task 검증을 다시 돈다. 충돌·실패한 task 는 주 트리에서 순차로 다시 돈다(사용자 답 「worktree 격리 (권장)」·「plan 이 정함 (권장)」·「3 (권장)」). 승인 때 사용자가 「화면 검증 등 문제가 발생하지 않도록」 을 달아, 화면·성능 task 는 그룹에서 빼고 나머지 장치는 `skills/implement/references/parallel-run.md`「기존 장치와의 관계」 에 정본과 대조해 적었다. 구현 커밋 a65c4901 · 0c19f05b · a335de17.
