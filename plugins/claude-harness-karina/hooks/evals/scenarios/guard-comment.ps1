@@ -510,6 +510,12 @@ $r = Invoke-GcEditAt $doMd 'fn a() {}' "fn b() {}`nfn a() {}"
 Assert-Case -Name "doc-owner (음성): 대상이 .md 면 보지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
 $r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'do-write'; tool_name = 'Write'; cwd = $doDir; tool_input = @{ file_path = $doRs; content = $doBody.Replace('pub fn a() {}', "fn b() {}`npub fn a() {}") } } | ConvertTo-Json -Compress -Depth 5)
 Assert-Case -Name "doc-owner (음성): Write 는 대상 밖" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+$doTwin = Join-Path $doDir 'twin.rs'
+[System.IO.File]::WriteAllText($doTwin, "impl A {`n    /// A 를 만든다`n    pub fn from_params(params: &Value) -> Self {`n        A`n    }`n}`n`nimpl B {`n    /// B 를 만든다`n    pub fn from_params(params: &Value) -> Self {`n        B`n    }`n}`n")
+$r = Invoke-GcEditAt $doTwin "    pub fn from_params(params: &Value) -> Self {`n        B" "    pub fn from_params(_params: &Value) -> Self {`n        B"
+Assert-Case -Name "doc-owner (음성): 같은 시그니처가 둘인 파일에서 하나의 이름만 바꾸면 통과" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+$r = Invoke-GcEditAt $doTwin "    pub fn from_params(params: &Value) -> Self {`n        B" "    fn helper() {}`n`n    pub fn from_params(params: &Value) -> Self {`n        B"
+Assert-Case -Name "doc-owner: 같은 시그니처가 둘인 파일에서도 앞에 새 fn 을 끼우면 차단" -R $r -ExpectExit 2 -ExpectContains $doBlock
 
 if ($gitOk) {
 $mv = Join-Path $gc 'movegit'; New-Item -ItemType Directory -Force -Path (Join-Path $mv 'src') | Out-Null

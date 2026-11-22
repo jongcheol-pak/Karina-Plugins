@@ -25,6 +25,12 @@ function Get-DocOwnerBlocks([string]$File, [string[]]$Lines) {
     return $blocks
 }
 
+function Get-DocOwnerCount([string]$Text, [string]$Needle) {
+    $c = 0; $at = $Text.IndexOf($Needle, [System.StringComparison]::Ordinal)
+    while ($at -ge 0) { $c++; $at = $Text.IndexOf($Needle, $at + $Needle.Length, [System.StringComparison]::Ordinal) }
+    return $c
+}
+
 function Invoke-GuardDocOwner($Data, [string]$File) {
     $pass = @{ Block = $false; Lines = @() }
     $tool = [string]$Data.tool_name
@@ -74,7 +80,8 @@ function Invoke-GuardDocOwner($Data, [string]$File) {
         if ($before[$k].Count -ne 1 -or -not $after.ContainsKey($k) -or $after[$k].Count -ne 1) { continue }
         $x = $before[$k][0].Owner
         $y = $after[$k][0].Owner
-        if (-not $x -or -not $y -or $x -eq $y -or $text.IndexOf($x, [System.StringComparison]::Ordinal) -lt 0) { continue }
+        if (-not $x -or -not $y -or $x -eq $y) { continue }
+        if ((Get-DocOwnerCount $text $x) -lt (Get-DocOwnerCount $pre $x)) { continue }
         $touched = $false
         foreach ($l in ($k -split "`n")) { if ($oldLines.Contains($l)) { $touched = $true; break } }
         if ($touched) { continue }
