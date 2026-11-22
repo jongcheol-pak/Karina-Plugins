@@ -537,7 +537,7 @@ function Test-ShellAssignUnconditional([string]$Prefix) {
     $stack = New-Object System.Collections.Generic.List[string]
     $sep = ';'
     $cmdPos = $true
-    foreach ($t in [regex]::Matches($p, '\$\(|;;|&&|\|\||[|&;\n(){}]|(?:\$\{[^}]*\}|[<>]&|&>|[^\s;&|(){}])+')) {
+    foreach ($t in [regex]::Matches($p, '\$\(|;;|&&|\|\||(?:\$\{[^}]*\}|\{[^\s{}]*\}|[<>]&|&>|[^\s;&|(){}])+|[|&;\n(){}]')) {
         $v = $t.Value
         $top = if ($stack.Count) { $stack[$stack.Count - 1] } else { '' }
         if ($v -in @('$(', '(')) { $stack.Add('('); $cmdPos = $true; continue }

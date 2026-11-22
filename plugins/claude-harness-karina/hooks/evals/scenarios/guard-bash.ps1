@@ -590,7 +590,10 @@ $snCondPass = @(
     @{ Id = 'SN-cond-quoted'; Cmd = "echo `"a && b`"; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-pipe-before'; Cmd = "ls | head; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-after-case'; Cmd = "case x in a) echo;; esac; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
-    @{ Id = 'SN-cond-brace-var'; Cmd = "T=`${TEMP}; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-brace-exp'; Cmd = "mkdir -p {a,b}; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-brace-exp-suffix'; Cmd = "cp x{,.bak}; echo {1..3}; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-group-closed'; Cmd = "{ echo a; }; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-brace-var'; Cmd ="T=`${TEMP}; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-redirect-amp'; Cmd ="ls 2>&1; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-closed-subshell'; Cmd ="(cd x); S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-heredoc-tokens'; Cmd = "cat > `"`$TEMP/a.txt`" <<'Y'`nif (x) {`nY`nS=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" }
