@@ -236,6 +236,19 @@ if ($gitOk) {
     Push-Location $wcsH; 'r=2' | Set-Content README.md; Pop-Location
     $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcsH; tool_input = @{ command = 'git commit -m docs -- README.md' } } | ConvertTo-Json -Compress)
     Assert-Case -Name "commit-secrets: 스테이징 없는 -- 경로 커밋의 깨끗한 변경은 무출력 (음성 짝)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+    $wcsBig = New-WcsRepo 'wcs-big-unity'
+    $wcsBigLines = [string[]](1..50000 | ForEach-Object { "  m_LocalPosition: {x: $_, y: 0, z: 0}" })
+    New-Item -ItemType Directory (Join-Path $wcsBig 'Assets') -Force | Out-Null
+    [System.IO.File]::WriteAllLines((Join-Path $wcsBig 'Assets/Big.unity'), [string[]]($wcsBigLines + $credLine))
+    Push-Location $wcsBig; git add -A; Pop-Location
+    $wcsBigJson = @{ tool_name = 'Bash'; cwd = $wcsBig; tool_input = @{ command = 'git commit -m scene' } } | ConvertTo-Json -Compress
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBigJson
+    Assert-Case -Name "commit-secrets: 대형 스테이징 생성 YAML(5만 줄 .unity) 끝줄의 자격증명도 끝까지 스캔해 차단" -R $r -ExpectExit 2 -ExpectContains '커밋될 변경에 자격증명으로 보이는 값이 있습니다'
+    [System.IO.File]::WriteAllLines((Join-Path $wcsBig 'Assets/Big.unity'), $wcsBigLines)
+    Push-Location $wcsBig; git add -A; Pop-Location
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBigJson
+    Assert-Case -Name "commit-secrets: 대형 스테이징 생성 YAML(5만 줄 .unity) 자격증명 없음 → 통과·무출력 (음성 짝)" -R $r -ExpectExit 0 -ExpectSilent $true
     }
 
     if (Test-ScenarioUnit 2) {
