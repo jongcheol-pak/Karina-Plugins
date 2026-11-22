@@ -338,6 +338,10 @@ $env:HOME = $rfHomeSaved
 Assert-Case -Name "rf: -F ~/… 를 HOME 으로 펼친다 → 차단 (RF25)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'git commit -F "$PATH/msg.txt"')
 Assert-Case -Name "rf: 목록 밖 환경변수(`$PATH)는 펼치지 않고 기존대로 경고·통과 (RF26)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
+$env:KARINA_RF_OUTSIDE = $env:TEMP
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('git commit -F "$KARINA_RF_OUTSIDE/' + $rfTmpName + '"'))
+Assert-Case -Name "rf: 값이 임시 폴더인 목록 밖 환경변수도 펼치지 않는다 → 경고·통과 (RF29)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
+Remove-Item Env:KARINA_RF_OUTSIDE
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfOk ('git commit -F "$TEMP/' + $rfTmpName + '"'))
 Assert-Case -Name "rf: -F `"`$TEMP/…`" 첫 줄 T3 + 완료 [x] → 통과(무출력) (RF27 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
 $rfTmpPlain = 'karina-rf-plain-' + [guid]::NewGuid().ToString('N') + '.txt'
@@ -557,6 +561,10 @@ foreach ($c in $snBlock) {
     $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
     Assert-Case -Name "셸 새 코드: 임시 폴더 밖으로 풀리는 쓰기는 차단 ($($c.Id))" -R $r -ExpectExit 2 -ExpectContains $snMsg
 }
+$env:KARINA_SN_OUTSIDE = $env:TEMP
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > `"`$KARINA_SN_OUTSIDE/Probe.cs`" <<'X'$snCls")
+Remove-Item Env:KARINA_SN_OUTSIDE
+Assert-Case -Name "셸 새 코드: 값이 임시 폴더인 목록 밖 환경변수는 펼치지 않아 차단 (SN-outside-env)" -R $r -ExpectExit 2 -ExpectContains $snMsg
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'EOF'`nopen('/tmp/../repo/src/a.rs','w').write('pub fn x() {}\n')`nEOF")
 Assert-Case -Name "python 새 코드: /tmp/../ 로 빠지는 경로는 임시 폴더가 아니다 → 차단 (PN-dotdot)" -R $r -ExpectExit 2 -ExpectContains $pnMsg
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'EOF'`nopen('/tmp/../a.rs','w').write('x = 1')`nEOF")
