@@ -146,6 +146,7 @@ if ($gitOk) {
     $r = Invoke-Hook 'guard-bash.ps1' $wcsJson
     Assert-Case -Name "commit-secrets: staged 시크릿 경고" -R $r -ExpectExit 0 -ExpectContains 'COMMIT SECRET'
     Assert-Case -Name "commit-secrets: 경고 문구가 커밋이 이미 실행됐을 수 있다고 알리고 다음 커밋 전 정지를 안내" -R $r -ExpectExit 0 -ExpectContains '이미 실행됐을 수 있습니다'
+    Assert-Case -Name "commit-secrets: 경고 문구가 명백한 오탐이면 판정 근거를 남기고 진행하는 경로를 안내" -R $r -ExpectExit 0 -ExpectContains '명백한 오탐'
 
     foreach ($gc in @('git --no-pager commit -m x', 'git -P commit -m x')) {
         $r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wcs; tool_input = @{ command = $gc } } | ConvertTo-Json -Compress)

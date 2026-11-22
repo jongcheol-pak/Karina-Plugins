@@ -251,7 +251,8 @@ function Invoke-WarnCommitSecrets {
         }
         $lines.Add("")
         $lines.Add("실제 값을 커밋하지 말고, .env(gitignore)로 분리하거나 스테이징에서 제외(git restore --staged <파일>)하세요.")
-        $lines.Add("이 경고는 차단이 아니라 이 커밋은 이미 실행됐을 수 있습니다 — 다음 커밋·push 전에 멈추고 커밋 SHA 와 걸린 줄을 사용자에게 보고하세요(실제 값이면 git reset --soft HEAD~1 로 되돌려 분리).")
+        $lines.Add("이 경고는 차단이 아니라 이 커밋은 이미 실행됐을 수 있습니다 — 커밋 diff 에서 걸린 값을 보고, 명백한 오탐(IP 가 아닌 숫자열·예시 값·자리표시자·변수 참조)이면 판정 근거를 보고에 남기고 진행하세요(karina:implement loop-exceptions「시크릿 경고 오탐」).")
+        $lines.Add("실제 값이거나 애매하면 다음 커밋·push 전에 멈추고 커밋 SHA 와 걸린 줄을 사용자에게 보고하세요(실제 값이면 git reset --soft HEAD~1 로 되돌려 분리).")
         $msg = ($lines -join "`n")
         return New-HookResult -Block $false -Stderr @($msg) -Context $msg
     } finally {
