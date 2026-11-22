@@ -26,16 +26,23 @@ Assert-Case -Name "inject-reply-language: 깨진 stdin 은 exit 0 무출력" -R 
 $r = Invoke-Hook 'inject-reply-language.ps1' (@{ session_id = 'rl-n3'; hook_event_name = 'SessionStart'; source = 'startup' } | ConvertTo-Json -Compress)
 Assert-Case -Name "inject-reply-language: 다른 이벤트는 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
 
-function Invoke-RlPost([string]$sid, [int]$n, [string]$agentId = '', [string]$hookEvent = 'PreToolUse', [string]$tool = 'Bash') {
-    $hits = @(); $last = $null
-    for ($i = 1; $i -le $n; $i++) {
-        $o = @{ hook_event_name = $hookEvent; tool_name = $tool; tool_input = @{ command = 'ls' } }
-        if ($sid) { $o.session_id = $sid }
-        if ($agentId) { $o.agent_id = $agentId }
-        $r = Invoke-Hook 'inject-reply-language.ps1' ($o | ConvertTo-Json -Compress)
-        if (-not [string]::IsNullOrWhiteSpace([string]$r.out)) { $hits += $i; $last = $r }
-    }
-    return @{ code = 0; out = "hits=[$($hits -join ',')]"; last = $last }
+$rlRun = [guid]::NewGuid().ToString('N').Substring(0, 8)
+$rlTxDir = Join-Path $work 'rl-transcripts'; New-Item -ItemType Directory $rlTxDir -Force | Out-Null
+function New-RlRow([string]$uuid, [string]$type, $content) {
+    return (@{ type = $type; uuid = $uuid; message = @{ role = $type; content = $content } } | ConvertTo-Json -Compress -Depth 6)
+}
+function New-RlTranscript([string]$name, [string[]]$rows) {
+    $p = Join-Path $rlTxDir "$name.jsonl"
+    [System.IO.File]::WriteAllText($p, (($rows -join "`n") + "`n"))
+    return $p
+}
+function Add-RlRow([string]$path, [string]$row) { [System.IO.File]::AppendAllText($path, $row + "`n") }
+function Invoke-RlPre([string]$sid, [string]$tx, [string]$tool = 'Bash', [string]$agentId = '', [string]$hookEvent = 'PreToolUse') {
+    $o = @{ hook_event_name = $hookEvent; tool_name = $tool; tool_input = @{ command = 'ls' } }
+    if ($sid) { $o.session_id = $sid }
+    if ($tx) { $o.transcript_path = $tx }
+    if ($agentId) { $o.agent_id = $agentId }
+    return (Invoke-Hook 'inject-reply-language.ps1' ($o | ConvertTo-Json -Compress))
 }
 function Invoke-RlSkill([string]$sid, [string]$agentId = '') {
     $o = @{ hook_event_name = 'PreToolUse'; tool_name = 'Skill'; tool_input = @{ skill = 'karina:implement' } }
@@ -43,27 +50,30 @@ function Invoke-RlSkill([string]$sid, [string]$agentId = '') {
     if ($agentId) { $o.agent_id = $agentId }
     return (Invoke-Hook 'inject-reply-language.ps1' ($o | ConvertTo-Json -Compress))
 }
-
-$p = Invoke-RlPost 'rl-p1' 40
-Assert-Case -Name "inject-reply-language: PreToolUse 셸 도구는 20회째마다 주입한다" -R $p -ExpectContains 'hits=[20,40]'
-$pCtx = if ($p.last) { Get-RlContext $p.last } else { @{ code = 0; out = 'none' } }
-Assert-Case -Name "inject-reply-language: PreToolUse 주입은 같은 한글 줄이다" -R $pCtx -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어]'
-Assert-Case -Name "inject-reply-language: PreToolUse 쓰기 도구도 20회째에 주입한다" -R (Invoke-RlPost 'rl-w1' 20 '' 'PreToolUse' 'Write') -ExpectContains 'hits=[20]'
-Assert-Case -Name "inject-reply-language: PostToolUse 는 세지도 주입하지도 않는다" -R (Invoke-RlPost 'rl-post' 40 '' 'PostToolUse') -ExpectContains 'hits=[]'
-$null = Invoke-RlPost 'rl-p2' 15
-$null = Invoke-RlSkill 'rl-p2'
-Assert-Case -Name "inject-reply-language: Skill 주입이 카운터를 0으로 되돌린다" -R (Invoke-RlPost 'rl-p2' 20) -ExpectContains 'hits=[20]'
-Assert-Case -Name "inject-reply-language: session_id 없는 PreToolUse 셸 호출은 무출력" -R (Invoke-RlPost '' 20) -ExpectContains 'hits=[]'
+$rlUser = New-RlRow 'u1' 'user' 'T3 진행해'
+$rlToolUse = New-RlRow 'a9' 'assistant' @(@{ type = 'tool_use'; id = 't1'; name = 'Bash'; input = @{ command = 'ls' } })
+$rlEnMemo = 'Waiting for the server launch to finish before checking the log output.'
+$rlTxEn = New-RlTranscript 'en' @($rlUser, (New-RlRow 'a1' 'assistant' @(@{ type = 'text'; text = $rlEnMemo })), $rlToolUse)
+$r = Invoke-RlPre "rl-t1-$rlRun" $rlTxEn
+Assert-Case -Name "inject-reply-language: 직전 assistant 텍스트가 영문 메모면 셸 PreToolUse 에 교정 줄을 싣는다" -R (Get-RlContext $r) -ExpectExit 0 -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어] 직전'
+Assert-Case -Name "inject-reply-language: 같은 텍스트(uuid)에는 두 번 싣지 않는다" -R (Invoke-RlPre "rl-t1-$rlRun" $rlTxEn) -ExpectExit 0 -ExpectSilent $true
+Add-RlRow $rlTxEn (New-RlRow 'a10' 'assistant' @(@{ type = 'text'; text = 'Now the build is running again and the output looks fine so far.' }))
+Assert-Case -Name "inject-reply-language: 새 영문 텍스트(다른 uuid)에는 다시 싣는다" -R (Get-RlContext (Invoke-RlPre "rl-t1-$rlRun" $rlTxEn)) -ExpectExit 0 -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어] 직전'
+Assert-Case -Name "inject-reply-language: 쓰기 도구도 영문 메모에 교정 줄을 싣는다" -R (Get-RlContext (Invoke-RlPre "rl-t2-$rlRun" $rlTxEn 'Write')) -ExpectExit 0 -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어] 직전'
+$rlTxKo = New-RlTranscript 'ko' @($rlUser, (New-RlRow 'a1' 'assistant' @(@{ type = 'text'; text = '서버가 뜰 때까지 기다린 뒤 `launch.log` 출력을 봅니다.' })), $rlToolUse)
+Assert-Case -Name "inject-reply-language: 한글 메모는 무출력" -R (Invoke-RlPre "rl-t3-$rlRun" $rlTxKo) -ExpectExit 0 -ExpectSilent $true
+$rlTxShort = New-RlTranscript 'short' @($rlUser, (New-RlRow 'a1' 'assistant' @(@{ type = 'text'; text = 'Done. All good.' })), $rlToolUse)
+Assert-Case -Name "inject-reply-language: 라틴 낱말 4개 이하의 짧은 메모는 무출력" -R (Invoke-RlPre "rl-t4-$rlRun" $rlTxShort) -ExpectExit 0 -ExpectSilent $true
+Assert-Case -Name "inject-reply-language: 서브에이전트 PreToolUse 는 무출력" -R (Invoke-RlPre "rl-t5-$rlRun" $rlTxEn 'Bash' 'sub-1') -ExpectExit 0 -ExpectSilent $true
+Assert-Case -Name "inject-reply-language: transcript_path 없는 셸 호출은 무출력" -R (Invoke-RlPre "rl-t6-$rlRun" '') -ExpectExit 0 -ExpectSilent $true
+Assert-Case -Name "inject-reply-language: 전사 파일을 읽지 못하면 무출력" -R (Invoke-RlPre "rl-t7-$rlRun" (Join-Path $rlTxDir 'missing.jsonl')) -ExpectExit 0 -ExpectSilent $true
+$rlTxNone = New-RlTranscript 'none' @($rlUser, $rlToolUse)
+Assert-Case -Name "inject-reply-language: 전사 꼬리에 assistant 텍스트가 없으면 무출력" -R (Invoke-RlPre "rl-t8-$rlRun" $rlTxNone) -ExpectExit 0 -ExpectSilent $true
+Assert-Case -Name "inject-reply-language: session_id 없는 셸 호출은 무출력" -R (Invoke-RlPre '' $rlTxEn) -ExpectExit 0 -ExpectSilent $true
+Assert-Case -Name "inject-reply-language: PostToolUse 는 무출력" -R (Invoke-RlPre "rl-t9-$rlRun" $rlTxEn 'Bash' '' 'PostToolUse') -ExpectExit 0 -ExpectSilent $true
 Assert-Case -Name "inject-reply-language: session_id 없는 Skill 도 주입한다" -R (Get-RlContext (Invoke-RlSkill '')) -ExpectExit 0 -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어]'
-$null = Invoke-RlPost 'rl-p3' 10 'sub-1'
-Assert-Case -Name "inject-reply-language: 서브에이전트 PreToolUse 는 세지 않는다 — 메인 10회째 무출력" -R (Invoke-RlPost 'rl-p3' 10) -ExpectContains 'hits=[]'
-Assert-Case -Name "inject-reply-language: 서브에이전트 호출을 뺀 메인 20회째에 주입한다" -R (Invoke-RlPost 'rl-p3' 10) -ExpectContains 'hits=[10]'
-$null = Invoke-RlPost 'rl-p4' 15
-$sub = Invoke-RlSkill 'rl-p4' 'sub-2'
-Assert-Case -Name "inject-reply-language: 서브에이전트 Skill 도 주입한다" -R (Get-RlContext $sub) -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어]'
-Assert-Case -Name "inject-reply-language: 서브에이전트 Skill 은 메인 카운터를 되돌리지 않는다" -R (Invoke-RlPost 'rl-p4' 5) -ExpectContains 'hits=[5]'
+Assert-Case -Name "inject-reply-language: 서브에이전트 Skill 도 주입한다" -R (Get-RlContext (Invoke-RlSkill 'rl-p4' 'sub-2')) -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어]'
 
-$rlRun = [guid]::NewGuid().ToString('N').Substring(0, 8)
 function Invoke-RlStop([string]$sid, $msg, [bool]$active = $false) {
     $o = @{ session_id = "$sid-$rlRun"; hook_event_name = 'Stop'; cwd = $pluginRoot; stop_hook_active = $active; background_tasks = @() }
     if ($null -ne $msg) { $o.last_assistant_message = $msg }
@@ -92,7 +102,7 @@ $rlCounter = Join-Path $env:USERPROFILE ".claude/.state/reply-language/rl-st10-$
 New-Item -Force -ItemType Directory -Path (Split-Path -Parent $rlCounter) | Out-Null
 Set-Content -LiteralPath $rlCounter -Value 7 -NoNewline
 $null = Invoke-RlStop 'rl-st10' $rlEn
-Assert-Case -Name "inject-reply-language: Stop 은 셸·쓰기 카운터를 바꾸지 않는다" -R @{ code = 0; out = 'counter=' + (Get-Content -LiteralPath $rlCounter -Raw) } -ExpectContains 'counter=7'
+Assert-Case -Name "inject-reply-language: Stop 은 셸·쓰기 상태 파일을 바꾸지 않는다" -R @{ code = 0; out = 'counter=' + (Get-Content -LiteralPath $rlCounter -Raw) } -ExpectContains 'counter=7'
 
 $rlHooks = Get-Content -LiteralPath (Join-Path $pluginRoot 'hooks/hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $rlStop = @($rlHooks.hooks.Stop | ForEach-Object { @($_.hooks) } | Where-Object { [string]$_.command -match 'hook-dispatch\.ps1"? loop-continue\.ps1 inject-reply-language\.ps1' })

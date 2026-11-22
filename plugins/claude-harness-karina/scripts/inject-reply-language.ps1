@@ -1,4 +1,4 @@
-﻿# inject-reply-language.ps1 — 스킬 발동 때와 셸·쓰기 도구 20회마다 「사용자 보고는 한글」 한 줄을 컨텍스트에 주입하고, turn 끝 응답이 영문 위주면 한 번 다시 쓰게 한다 — 근거는 `rules/reply-language-rationale.md` §1
+﻿# inject-reply-language.ps1 — 스킬 발동 때 「사용자 보고는 한글」 한 줄을 주입하고, 셸·쓰기 도구 직전 assistant 텍스트가 영문 위주면 그 텍스트에 한 번 교정 줄을 싣고, turn 끝 응답이 영문 위주면 한 번 다시 쓰게 한다 — 근거는 `rules/reply-language-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -11,8 +11,40 @@ $StopLine = '[karina 응답 언어] 방금 응답의 산문이 한글이 아니�
 try { $data = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin } else { [Console]::In.ReadToEnd() }) | ConvertFrom-Json -ErrorAction Stop } catch { exit 0 }
 if (-not $data) { exit 0 }
 
-# Skill 발동 주입과 PreToolUse 셸·쓰기 20회 주기 주입 — 근거는 `rules/reply-language-rationale.md` §2
-$Every = 20
+$PreLine = '[karina 응답 언어] 직전 진행 메모가 영문 위주였습니다 — 이어지는 안내·메모·보고는 한글로 쓴다. 코드 식별자·명령·원문 인용은 원래 표기를 유지한다.'
+
+function Test-LatinProse([string]$Text) {
+    $prose = $Text -replace '(?ms)^ {0,3}(```|~~~).*?(^ {0,3}\1[^\n]*$|\z)', ' '
+    $prose = $prose -replace '`[^`\r\n]*`', ' ' -replace 'https?://\S+', ' '
+    $latin = [regex]::Matches($prose, '[A-Za-z]{2,}').Count
+    $hangul = [regex]::Matches($prose, '[가-힣ㄱ-ㆎ]').Count
+    return ($latin -ge 5 -and $hangul -lt $latin)
+}
+
+# 전사 꼬리의 마지막 assistant 텍스트 — 근거는 `rules/reply-language-rationale.md` §2
+function Get-LastAssistantText([string]$Path) {
+    $fs = [System.IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
+    try {
+        $size = $fs.Length
+        $len = [int][Math]::Min(262144, $size)
+        $null = $fs.Seek(-$len, 'End')
+        $buf = New-Object byte[] $len
+        $got = $fs.Read($buf, 0, $len)
+    } finally { $fs.Dispose() }
+    $rows = [System.Text.Encoding]::UTF8.GetString($buf, 0, $got) -split "`n"
+    $first = if ($len -lt $size) { 1 } else { 0 }
+    for ($i = $rows.Count - 1; $i -ge $first; $i--) {
+        $row = $rows[$i]
+        if ($row -notmatch '"type":\s*"assistant"' -or $row -notmatch '"type":\s*"text"') { continue }
+        try { $o = $row | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+        if ([string]$o.type -ne 'assistant') { continue }
+        $texts = @($o.message.content | Where-Object { $_.type -eq 'text' } | ForEach-Object { [string]$_.text })
+        if ($texts.Count -gt 0) { return @{ Uuid = [string]$o.uuid; Text = ($texts -join "`n") } }
+    }
+    return $null
+}
+
+# Skill 발동 주입과 PreToolUse 셸·쓰기 판정형 주입 — 근거는 `rules/reply-language-rationale.md` §2
 $hookEvent = [string]$data.hook_event_name
 # Stop 영문 산문 응답의 한글 재작성 1회 — 근거는 `rules/reply-language-rationale.md` §4
 if ($hookEvent -eq 'Stop') {
@@ -25,11 +57,7 @@ if ($hookEvent -eq 'Stop') {
         Remove-Item -LiteralPath $stopMark -Force -ErrorAction SilentlyContinue
         if ($data.stop_hook_active -eq $true) { exit 0 }
     }
-    $prose = $msg -replace '(?ms)^ {0,3}(```|~~~).*?(^ {0,3}\1[^\n]*$|\z)', ' '
-    $prose = $prose -replace '`[^`\r\n]*`', ' ' -replace 'https?://\S+', ' '
-    $latin = [regex]::Matches($prose, '[A-Za-z]{2,}').Count
-    $hangul = [regex]::Matches($prose, '[가-힣ㄱ-ㆎ]').Count
-    if ($latin -lt 5 -or $hangul -ge $latin) { exit 0 }
+    if (-not (Test-LatinProse $msg)) { exit 0 }
     try {
         New-Item -Force -ItemType Directory -Path (Split-Path -Parent $stopMark) -ErrorAction Stop | Out-Null
         Set-Content -LiteralPath $stopMark -Value '1' -NoNewline -ErrorAction Stop
@@ -39,30 +67,26 @@ if ($hookEvent -eq 'Stop') {
     exit 0
 }
 if ($hookEvent -ne 'PreToolUse') { exit 0 }
-$isSkill = [string]$data.tool_name -eq 'Skill'
-$sid = [string]$data.session_id
-$isSub = -not [string]::IsNullOrEmpty([string]$data.agent_id)
-if (-not $isSkill -and ($isSub -or [string]::IsNullOrWhiteSpace($sid))) { exit 0 }
-
-$count = 0
-if (-not [string]::IsNullOrWhiteSpace($sid) -and -not $isSub) {
-    $base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
-    $stateDir = Join-Path $base '.claude/.state/reply-language'
-    $statePath = Join-Path $stateDir (($sid -replace '[^A-Za-z0-9._-]', '_') + '.txt')
-    if (-not $isSkill) {
-        $raw = $null
-        try { $raw = (Get-Content -LiteralPath $statePath -Raw -ErrorAction Stop).Trim() } catch {}
-        if (-not [int]::TryParse([string]$raw, [ref]$count)) { $count = 0 }
-        $count++
-        if ($count -ge $Every) { $count = 0 }
-    }
-    try {
-        New-Item -Force -ItemType Directory -Path $stateDir -ErrorAction Stop | Out-Null
-        Set-Content -LiteralPath $statePath -Value $count -NoNewline -ErrorAction Stop
-    } catch {}
-    if (-not $isSkill -and $count -ne 0) { exit 0 }
+if ([string]$data.tool_name -eq 'Skill') {
+    $out = @{ hookSpecificOutput = @{ hookEventName = $hookEvent; additionalContext = $Line } }
+    Write-Output ($out | ConvertTo-Json -Compress -Depth 4)
+    exit 0
 }
+$sid = [string]$data.session_id
+$tx = [string]$data.transcript_path
+if (-not [string]::IsNullOrEmpty([string]$data.agent_id) -or [string]::IsNullOrWhiteSpace($sid) -or [string]::IsNullOrWhiteSpace($tx)) { exit 0 }
+try { $last = Get-LastAssistantText $tx } catch { exit 0 }
+if (-not $last -or -not $last.Uuid -or -not (Test-LatinProse $last.Text)) { exit 0 }
+$base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+$statePath = Join-Path (Join-Path $base '.claude/.state/reply-language') (($sid -replace '[^A-Za-z0-9._-]', '_') + '.txt')
+$seen = $null
+try { $seen = (Get-Content -LiteralPath $statePath -Raw -ErrorAction Stop).Trim() } catch {}
+if ($seen -eq $last.Uuid) { exit 0 }
+try {
+    New-Item -Force -ItemType Directory -Path (Split-Path -Parent $statePath) -ErrorAction Stop | Out-Null
+    Set-Content -LiteralPath $statePath -Value $last.Uuid -NoNewline -ErrorAction Stop
+} catch { exit 0 }
 
-$out = @{ hookSpecificOutput = @{ hookEventName = $hookEvent; additionalContext = $Line } }
+$out = @{ hookSpecificOutput = @{ hookEventName = $hookEvent; additionalContext = $PreLine } }
 Write-Output ($out | ConvertTo-Json -Compress -Depth 4)
 exit 0

@@ -230,4 +230,4 @@
 
 ## §41 compact 직후 응답 언어 줄
 
-**compact 분기는 응답 언어 줄(`[karina 응답 언어] …`)도 싣는다.** 압축은 그때까지 실린 응답 언어 주입을 요약 속으로 지우는데, 그 줄은 스킬 발동 때와 셸·쓰기 도구 20회마다만 다시 실려(`reply-language-rationale.md` §2) 압축 직후 첫 보고가 영문으로 섞였다(2026-11-18 · reflect 0dbc67aa). **문구는 `inject-reply-language.ps1` 의 `$Line = '…'` 한 줄을 텍스트로 읽어 쓴다** — 두 벌을 두면 한쪽만 고쳐진다(`python-newcode.ps1` 이 `comment-lines.ps1` 두 줄을 같은 방식으로 읽는 선례). 읽지 못하면 침묵한다 — 다른 compact 줄의 출력을 막지 않는다. `inject-reply-language.ps1` 을 SessionStart 에도 거는 안은 hook 이벤트 배선 하나와 그 스크립트의 판정 갈래를 늘려 기각했다.
+**compact 분기는 응답 언어 줄(`[karina 응답 언어] …`)도 싣는다.** 압축은 그때까지 실린 응답 언어 주입을 요약 속으로 지우는데, 그 줄은 스킬 발동 때만 다시 실리고 셸·쓰기 도구에는 영문 메모가 난 뒤의 교정 줄뿐이라(`reply-language-rationale.md` §2) 압축 직후 첫 보고가 영문으로 섞였다(2026-11-18 · reflect 0dbc67aa). **문구는 `inject-reply-language.ps1` 의 `$Line = '…'` 한 줄을 텍스트로 읽어 쓴다** — 두 벌을 두면 한쪽만 고쳐진다(`python-newcode.ps1` 이 `comment-lines.ps1` 두 줄을 같은 방식으로 읽는 선례). 읽지 못하면 침묵한다 — 다른 compact 줄의 출력을 막지 않는다. `inject-reply-language.ps1` 을 SessionStart 에도 거는 안은 hook 이벤트 배선 하나와 그 스크립트의 판정 갈래를 늘려 기각했다.
