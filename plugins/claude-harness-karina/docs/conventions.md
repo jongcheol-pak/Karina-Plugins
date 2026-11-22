@@ -149,6 +149,8 @@
 
 ### hook 검사·차단
 
+- [2026-11-22] **`guard-bash` 가 부르는 커밋 검사 함수(`Invoke-WarnCommitSecrets` 등)가 예외를 던지면 디스패처의 `try { } catch { }` 가 삼켜 그 검사가 통째로 통과(fail-open)로 떨어진다 — 출력도 경고도 없다** — 시크릿 검사를 `List` 로 바꾸다 `$list.AddRange(@(함수))` 가 「리스트 하나짜리 배열」을 넘겨 예외가 났고, 자격증명 차단 케이스 26개가 조용히 exit 0 이 됐다(골든이 잡음). 반환 형태(배열·`return , $x`·`@()` 감싸기)를 바꾸면 그 함수만 dot-source 한 프로브에서 `$ErrorActionPreference='Stop'` 으로 한 번 불러 예외가 없는지 먼저 보고, 골든 `-Filter` 를 돈다
+
 - [2026-11-20] **차단 hook 에 「명령 문자열을 읽어 안전한 대상이면 뺀다」 는 면제를 넣지 않는다 — hook 은 그 쓰기가 실제로 닿는 파일을 실행 전에 맞힐 수 없다** — `block-plan-write` 의 Temp `plan.md` 면제를 넣었다가 뺐다. 판정기와 셸의 읽기가 갈리는 자리(따옴표·heredoc·굽은 따옴표·NBSP 공백)와 파일시스템 상태(미리 있는 junction·하드링크·Cygwin식 심링크·`.exe` 접미)마다 우회가 나와 완료 리뷰가 12차까지 매번 새 꼴을 재현했다. 오차단은 면제가 아니라 차단 메시지의 통과 방법 안내로 푼다. 같은 갈래의 지적이 세 번 나오면 한 꼴씩 막지 말고 멈춰 설계를 묻는다. 차단 판정의 정규식을 요청 없이 갈아 끼우지도 않는다 — 면제 작업에 얹은 미탐 보완 둘이 앞 판이 막던 꼴을 놓쳐 13~15차에 회귀 셋을 냈고 전부 되돌렸다 (실측)
 
 - [2026-11-02] **`scripts/` 에 dot-source 전용 스크립트를 새로 만들면 등록 자리가 넷이다 — `scripts/rules/harness-hooks.json` 이름 집합(`validate.ps1` 의 헬퍼 목록도 이 집합에서 나온다) · 시나리오 `$scenarioGroups`·`GoldenFilterNames` · 커밋 시점 라이브러리면 `hooks/evals/scenarios/guard-bash.ps1` LZ 의 가짜 라이브러리 목록** — 둘은 부분 골든(`-Filter`)이 잡지 못하고 무인자 전체에서야 빨개졌다(`guard-task-audit` 회차: LZ 「로드 실패」 경고 · `guard-harness` 8.3 전수 `missing=guard-task-audit`). 새 스크립트 task 의 Files 에 넷을 함께 적는다 (실측)
@@ -412,6 +414,8 @@
 - [2026-09-17] **`/plugin update` 는 버전마다 캐시 폴더를 새로 만들고 예전 것을 지우지 않아 단조 증가한다** — 실측 55버전·36,718파일·192.1MB 로, 다른 플러그인 캐시 전체 합(72.6MB)의 2.6배였다. 캐시를 손으로 지울 때는 **레포 `plugin.json` 의 현행 버전과 `installed_plugins.json` 의 설치본 버전** 둘을 남긴다 — 후자가 빠지면 지금 돌고 있는 세션의 hook 이 사라져 위의 fail-open 상태가 된다. 버전 정렬은 문자열이 아니라 `[version]` 이다(문자열은 1.9.0 을 1.10.0 뒤에 둔다). (실측)
 
 ### 실행 환경 함정
+
+- [2026-11-22] **pwsh 7.6(.NET 10)에서는 큰 문자열을 인자로 받는 .NET 메서드 호출(`[regex]::Replace`·`[regex]::Matches`·`IsMatch`·`StringBuilder.Append` 등)이 하나에 약 1.8초(1,200만 자) 걸린다 — 같은 정규식을 `-replace`·`-match`·`-split`·`-join` 연산자로 쓰면 16~65ms 다** — Windows PowerShell 5.1 에서는 둘 다 100ms 안팎이다(원인은 모름). 줄마다 도는 `foreach` 에서 메서드를 부르는 것도 25만 줄에 수 초다. hook 처럼 큰 diff 를 다루는 코드는 출력 전체에 연산자를 쓴다 — 재는 스크립트는 같은 문자열로 두 형태를 나란히 잰다(`commit-secrets-rationale.md` §20 실측)
 
 - [2026-11-12] **hook 시간 예산을 정할 때 CIM 비용과 pwsh 기동을 주석·문서 수치로 믿지 말고 그 자리에서 잰다** — 문서에 「CIM 평균 272ms」로 적혀 있었는데 같은 기기에서 `Get-CimInstance` 1회가 5.3~7.5초였다. 기동 비용도 예산 밖에서 붙는다(`pwsh -NoProfile` 빈 실행 1561ms · 회수 억제한 `session-end-cleanup.ps1` 2628ms). hook timeout 에서 이 둘을 빼고 예산을 잡는다 (실측)
 

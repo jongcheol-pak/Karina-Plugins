@@ -2,6 +2,9 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-22] 큰 diff 커밋의 차단 hook 60초 초과(v3.53.1) — 기각: 시크릿 검사에 줄 수 상한을 두는 안(넘으면 차단·경고 두 형태 모두) — 사용자 답 「속도만 개선」. 차단형은 큰 커밋을 늘 막고, 경고형은 검사하지 않은 줄의 자격증명을 통과시켜 「검사 못 하면 차단」(`commit-secrets-rationale.md` §15)과 어긋난다. 대신 같은 diff 중복 스캔 제거·연산자 처리로 25만 줄 커밋 차단 묶음을 중앙값 8~10초로 줄였다
+  - 기각: 새 주석 검사를 `--numstat` 으로 먼저 재고 대상 경로 pathspec 으로만 diff 를 받는 안(사용자가 고른 안의 원래 방식) — index·작업 트리 같은 경로를 두 번 세고, rename 이 `{a => b.ps1}` 로 나와 대상 판정이 깨지고, untracked 새 파일 줄이 빠져 판정이 바뀐다(계획 리뷰 지적 · 사용자 승인). 대신 diff 는 그대로 받고 비대상 블록만 걸렀다 · 생성 파일 확장자(`.unity`·`.prefab`)를 시크릿 검사에서 빼는 안 — 검사 범위 축소다
+
 - [2026-11-22] 응답 언어 판정형 주입(v3.52.0) — 번복: 2026-11-07 의 「셸·쓰기 도구 20회마다 같은 줄 주입」 을 걷고, 셸·쓰기 PreToolUse 마다 전사 꼬리의 직전 assistant 텍스트를 Stop 과 같은 판정식으로 봐 영문 위주면 그 텍스트(uuid)에 한 번 교정 줄을 싣는다 — Karina plan 5 워커에서 주기 주입 직후 네 줄 안에 영문 메모가 다시 났다(`scripts/rules/reply-language-rationale.md` §2).
   - 같은 회차(reflect ac63cf7d 하니스 후보) 기각: guard-bash `block-plan-write` 에 worktree plan 사본 복사 면제 — 차단 hook 에 명령 문자열 면제를 넣지 않는다(`docs/conventions.md` 2026-11-20) · 대신 추적 레포는 사본 없음, ignored 레포는 승인 줄 + task 블록 Write(사용자 답 「요약 사본」) · 서브에이전트 worktree 의 cd+git 사전 경고 — 샌드박스가 같은 시점에 이유를 담아 거부해 중복이다(사용자 답 「프롬프트만」) · `chain-plan/references/parallel.md` 병합 ⓐ 의 같은 처방 — 코디네이터 주 레포는 plan.md 를 고치지 않는다
   - 기각: 주기 주입을 남기고 판정형을 보탬 — 셸·쓰기마다 카운터 쓰기와 전사 읽기가 겹친다 · Stop 재작성 형태 변경 — 실세션에서 turn 을 잇는 것이 확인됐고(Tiny-Swords 2026-11-19), 이번 영문 최종 보고는 탭이 먼저 닫힌 경우다(§4)
