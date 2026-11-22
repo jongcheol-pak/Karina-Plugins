@@ -569,6 +569,33 @@ $r = Invoke-BwCase $bwRepo ('cd "' + $bwNone + '"; git worktree add ../b HEAD')
 Assert-Case -Name "base-worktree: cd 로 Verify 없는 레포에 옮겨 가면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $bwMark
 $r = Invoke-BwCase $bwRepo ('git worktree add --detach "' + $work + '/sp ace/chain-parent-3" abc1234')
 Assert-Case -Name "base-worktree: 공백 든 따옴표 경로의 chain-parent-* 도 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $bwMark
+$svMark = '[SCREEN VERIFIER WARNING]'
+$svState = Join-Path $env:USERPROFILE '.claude/.state/loop-continue'
+New-Item -ItemType Directory $svState -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $svState 'sv-on.active'), '')
+function Invoke-SvCase([string]$Cwd, [string]$Command, [string]$Sid = 'sv-on', [string]$AgentId = '') {
+    $o = @{ session_id = $Sid; tool_name = 'Bash'; cwd = $Cwd; tool_input = @{ command = $Command } }
+    if ($AgentId) { $o.agent_id = $AgentId }
+    return Invoke-Hook 'guard-bash.ps1' ($o | ConvertTo-Json -Compress)
+}
+$r = Invoke-SvCase $bwRepo 'pwsh -NoProfile -File .claude/skills/verify-app/helpers/launch.ps1 -Fresh'
+Assert-Case -Name "screen-verifier: implement 루프 중 메인이 Verify 스킬 스크립트를 -File 로 실행하면 경고 + exit 0" -R $r -ExpectExit 0 -ExpectContains $svMark
+$r = Invoke-SvCase $bwRepo ('& "' + $bwRepo + '\.claude\skills\verify-app\helpers\shot.ps1"')
+Assert-Case -Name "screen-verifier: 역슬래시 절대 경로의 & 호출도 경고" -R $r -ExpectExit 0 -ExpectContains $svMark
+$r = Invoke-SvCase $bwRepo 'cd x; bash .claude/skills/verify-app/run.sh'
+Assert-Case -Name "screen-verifier: 앞 세그먼트 뒤의 bash 실행도 경고" -R $r -ExpectExit 0 -ExpectContains $svMark
+$r = Invoke-SvCase $bwRepo 'pwsh -NoProfile -File .claude/skills/verify-app/helpers/launch.ps1' -AgentId 'a1'
+Assert-Case -Name "screen-verifier (음성): 서브에이전트 실행은 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
+$r = Invoke-SvCase $bwRepo 'pwsh -NoProfile -File .claude/skills/verify-app/helpers/launch.ps1' -Sid 'sv-off'
+Assert-Case -Name "screen-verifier (음성): implement 발동 마커가 없으면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
+$r = Invoke-SvCase $bwNone 'pwsh -NoProfile -File .claude/skills/verify-app/helpers/launch.ps1'
+Assert-Case -Name "screen-verifier (음성): Verify (앱 조작) 이 없음이면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
+$r = Invoke-SvCase $bwBare 'pwsh -NoProfile -File .claude/skills/verify-app/helpers/launch.ps1'
+Assert-Case -Name "screen-verifier (음성): Verify 줄 없는 레포는 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
+$r = Invoke-SvCase $bwRepo 'grep -n Fresh .claude/skills/verify-app/helpers/launch.ps1'
+Assert-Case -Name "screen-verifier (음성): 스킬 스크립트를 grep 으로 읽기만 하면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
+$r = Invoke-SvCase $bwRepo 'cat .claude/skills/verify-app/helpers/launch.ps1'
+Assert-Case -Name "screen-verifier (음성): 스킬 스크립트를 cat 으로 읽기만 하면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
 }
 
 if (Test-ScenarioUnit 1) {

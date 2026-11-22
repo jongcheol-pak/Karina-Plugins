@@ -3,10 +3,10 @@
 > `guard-bash.ps1`의 주석에서 옮긴 판정 근거다. 스크립트에는 각 자리에 이 문서의 절을 가리키는 1줄만 남겼다.
 > **문면을 요약하지 않고 이동만 했다** — 이관은 이동이지 요약이 아니다.
 
-## §1 검사 13종을 한 프로세스에서 수행하는 이유
+## §1 검사 14종을 한 프로세스에서 수행하는 이유
 
 ```
-# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 13종 검사를 한 프로세스에서 수행
+# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 14종 검사를 한 프로세스에서 수행
 #
 # 담당 조항(정본: `skills/DESIGN.md`의 hook 담당 조항 표):
 #   E2 외부·비가역 작업 승인 · E3 커밋 시크릿 · E7 task 체크박스 갱신 · E18 Windows Bash 도구 역슬래시 축소(heredoc·python -c 차단 · 그 밖 경고) · E19 task 완료 커밋의 소스 감사 누락 경고 · E21 python 으로 소스에 새 코드·주석 쓰기 차단 · E22 앱 조작 검증 레포의 BASE worktree 경고.
@@ -26,7 +26,7 @@
 
 **코드에서 옮긴 주석(2026-10-17 — 예산 처방 ③ 이동)**: 아래 검사 함수 8종(2026-11-02 에 더한 `Invoke-WarnTaskAudit` 은 `task-audit-rationale.md`, `Invoke-BashBackslash` 는 이 문서 §21)의 판정 근거는 이 문서가 정본이다(v1.225.0에 삭제된 `bash-hook-lib.ps1` 의 주석을 옮긴 것).
 
-## §2 검사 13종을 한 프로세스에 담는 구조
+## §2 검사 14종을 한 프로세스에 담는 구조
 
 v1.225.0이 Bash 계열 hook 을 `guard-bash.ps1` 하나로 통폐합하며 공유 모듈 `bash-hook-lib.ps1` 을 삭제했다.
 종전에는 검사 로직을 그 모듈에 두고 ① 검사마다 standalone 래퍼 ② 단일 디스패처
@@ -35,8 +35,8 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 
 현행 구조:
 
-- **검사 13종 중 9종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
-  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-BlockInstalledAssetWrite`(§23) · `Invoke-WarnGlobalFind` · `Invoke-BashBackslash` · `Invoke-WarnDangerousAssignment` · `Invoke-BlockPythonNewCode`(I/O — 인자 `.py` 파일 읽기 — 만 여기 있고 판정은 `python-newcode.ps1` 의 순수 함수다, §22) · `Invoke-WarnBaseWorktree`(§24).
+- **검사 14종 중 10종이 `guard-bash.ps1` 안의 함수다** — `Invoke-WarnExternalOps` ·
+  `Invoke-RequireTaskCheckbox` · `Invoke-BlockPlanWrite` · `Invoke-BlockInstalledAssetWrite`(§23) · `Invoke-WarnGlobalFind` · `Invoke-BashBackslash` · `Invoke-WarnDangerousAssignment` · `Invoke-BlockPythonNewCode`(I/O — 인자 `.py` 파일 읽기 — 만 여기 있고 판정은 `python-newcode.ps1` 의 순수 함수다, §22) · `Invoke-WarnBaseWorktree`(§24) · `Invoke-WarnScreenVerifier`(§25).
   **나머지 넷 — `Invoke-WarnCommitSecrets`(`guard-commit-secrets.ps1`) · `Invoke-WarnStaleDocs`
   (`guard-stale-docs.ps1`) · `Invoke-WarnTaskAudit`(`guard-task-audit.ps1`) · `Invoke-BlockCommitComments`(`guard-commit-comments.ps1` — 근거는 `comment-gate-rationale.md` §4) — 은 별도 파일에 있고 dot-source 한다** — 커밋 시점 검사는 스캔 캡·
   우회 변수·시크릿 패턴 연동을 담아 크기가 따로 놀고, 분리해 두어야 골든이 그 파일만 단독
@@ -367,3 +367,11 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 `cd` 대상이 Git Bash 꼴(`/c/…`)이면 드라이브 경로로 바꿔 읽고, 폴더가 아니면 그 `cd` 를 무시해 직전 기준 폴더로 판정한다 — 바꾸지 않으면 cwd 로 뜨던 경고가 `cd` 한 번에 사라진다.
 
 **한계.** 경로를 변수로 넘기는 `cd "$R"`·`-C "$R"` 는 그 문자열 그대로 찾아 대개 AGENTS.md 를 못 찾고 침묵한다(fail-open — 경고 전용). 앞선 도구 호출에서 옮긴 폴더는 hook 입력의 cwd 로만 안다.
+
+## §25 warn-screen-verifier: implement 루프 중 메인 세션의 Verify 스킬 직접 실행에 screen-verifier 안내
+
+**왜 경고인가.** `implement/references/screen-scenarios.md`「화면 시나리오 실행」 은 task 루프의 화면 조작을 `karina:screen-verifier` 에 맡긴다 — 앱 출력·스크린샷이 메인 컨텍스트에 쌓이지 않고, 판정이 통과 조건과 대조된 JSON 으로 돌아온다. 그런데도 Karina 체인 plan 5 워커(ac63cf7d · 2026-11-22 reflect)는 screen-verifier 를 한 번도 부르지 않고 메인이 검증 스킬의 `helpers/launch.ps1` 을 직접 실행했다(전사 요약에 `launch.ps1` 이 든 줄 22). 문면만으로 막지 못한 회귀라 경고로 그 자리에 알린다. 시한 초과로 screen-verifier 를 쓸 수 없는 경우와 디버깅 재현은 정당하므로 막지 않는다.
+
+**판정.** 서브에이전트 호출(`agent_id` 있음)이 아니고, 명령에 `skills/`·`skills\` 가 있고, `loop-continue` 의 implement 발동 마커(`~/.claude/.state/loop-continue/<sid>.active` — `loop-continue-rationale.md` §6)가 있고, cwd 에서 위로 `.git` 경계까지 처음 만난 `AGENTS.md` 의 `- **Verify (앱 조작)**:` 값이 「없음」 이 아니면(§24 와 같은 함수 `Get-VerifyAppSkill`), 그 값에서 `skills/<이름>` 을 뽑는다. 최상위 세그먼트마다 따옴표 묶음을 한 토큰으로 읽어 머리의 `(`·`&`·환경변수 대입을 벗긴 첫 토큰이 그 폴더 아래 스크립트(`.ps1 .sh .py .cmd .bat .js`)이거나, 첫 토큰이 인터프리터(`pwsh`·`powershell`·`bash`·`sh`·`python`·`py`·`node`·`cmd`)이고 뒤 인자 중 하나가 그런 스크립트면 경고한다. 첫 토큰이 `grep`·`cat` 같은 읽기 명령이면 인자를 보지 않으므로 스킬 파일을 읽기만 하는 호출은 걸리지 않는다. 대상은 스크립트 이름(`launch.ps1`)이 아니라 폴더다 — 검증 스킬마다 파일 이름이 다르고 하니스 규약에는 이름이 없다. AGENTS.md 는 앞의 세 조건을 통과한 뒤에만 읽는다.
+
+**한계.** AGENTS.md 는 hook 입력의 cwd 로만 찾는다 — cwd 가 그 레포 밖이면 절대 경로로 실행해도 침묵한다. 앞 세그먼트의 `cd <스킬 폴더>` 뒤 상대 경로 실행은 폴더 이름이 명령에 남지 않으면 침묵한다(fail-open — 경고 전용). 마커는 implement 발동 때 서고 plan 발동 때 지워지므로, 같은 세션에서 implement 회차를 끝낸 뒤 디버깅으로 검증 스킬을 돌리면 경고가 뜬다 — 메시지가 그 경우를 「그대로 진행」 으로 안내한다.

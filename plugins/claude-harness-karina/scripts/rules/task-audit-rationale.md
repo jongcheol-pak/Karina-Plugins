@@ -65,4 +65,4 @@ CR(-F 파일의 CRLF 줄 끝)을 걷고 공백을 정규화한 메시지에서 �
 
 - **커밋마다(T 번호와 무관하게) `plan.md` 가 있는 폴더 이름과 그 `> BASE:` sha7 로 스냅숏을 찾고, 있으면 이번 커밋에 들어갈 새 파일과 교집합을 경고한다** — 들어갈 새 파일은 이미 stage 된 추가(`git diff --cached --diff-filter=A`)와 같은 명령의 `git add` 범위 안 아직 untracked 파일(`ls-files --others --full-name` — 범위는 §3 의 `Get-TaskAuditScope`)의 합이다. PreToolUse 시점에는 같은 명령의 `git add docs` 가 아직 돌지 않아 cached 만 보면 실해 형태를 놓친다.
 - **스냅숏 줄은 `plan.md` 폴더 기준 경로라 `rev-parse --show-prefix` 를 붙여 최상위 기준으로 맞춘다** — 하니스처럼 plan 폴더가 레포 하위인 세션에서는 두 목록의 기준이 갈려 교집합이 늘 빈다(계획 리뷰 지적 · 골든 UT-subdir).
-- **스냅숏·BASE·plan 이 없으면 침묵하고 막지 않는다** — 스냅숏은 implement 회차에만 있고, 회차 전 untracked 를 일부러 커밋하는 경우도 있어 판단은 경고를 읽는 쪽이 한다. 별도 검사로 등록하지 않고 `Invoke-WarnTaskAudit` 안에서 부른다 — 등록하면 「검사 13종」 사본 여섯 곳이 함께 바뀐다.
+- **스냅숏·BASE·plan 이 없으면 침묵하고 막지 않는다** — 스냅숏은 implement 회차에만 있고, 회차 전 untracked 를 일부러 커밋하는 경우도 있어 판단은 경고를 읽는 쪽이 한다. 별도 검사로 등록하지 않고 `Invoke-WarnTaskAudit` 안에서 부른다 — 등록하면 「검사 14종」 사본 여섯 곳이 함께 바뀐다.

@@ -1,4 +1,4 @@
-﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 13종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
+﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 14종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
 
 # 공용 헬퍼 New-HookResult·Remove-HeredocBodyForJudge 는 여기 둔다 — 근거는 `rules/bash-guard-rationale.md` §2
 function New-HookResult {
@@ -408,6 +408,67 @@ function Invoke-WarnExternalOps {
     return New-HookResult -Block $false -Stderr @($msg) -Context $msg
 }
 
+function Get-VerifyAppSkill([string]$Dir) {
+    $agents = $null
+    $cur = $Dir
+    while ($cur -and (Test-Path -LiteralPath $cur -PathType Container)) {
+        $cand = Join-Path $cur 'AGENTS.md'
+        if (Test-Path -LiteralPath $cand -PathType Leaf) { $agents = $cand; break }
+        if (Test-Path -LiteralPath (Join-Path $cur '.git')) { break }
+        $parent = [System.IO.Path]::GetDirectoryName($cur.TrimEnd('\', '/'))
+        if (-not $parent -or $parent -eq $cur) { break }
+        $cur = $parent
+    }
+    if (-not $agents) { return $null }
+    foreach ($l in @(Get-Content -LiteralPath $agents -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+        $vm = [regex]::Match([string]$l, '^- \*\*Verify \(앱 조작\)\*\*:\s*(.*)$')
+        if (-not $vm.Success) { continue }
+        $verify = $vm.Groups[1].Value.Trim()
+        if (-not $verify -or $verify -match '^\W*없음') { return $null }
+        return $verify
+    }
+    return $null
+}
+
+# warn-screen-verifier: implement 루프 중 메인의 Verify 스킬 직접 실행 경고 — 근거는 `rules/bash-guard-rationale.md` §25
+function Invoke-WarnScreenVerifier {
+    param($data)
+    if ($data.agent_id) { return New-HookResult }
+    $cmd = [string]$data.tool_input.command
+    if ($cmd -notmatch '(?i)skills[\\/]') { return New-HookResult }
+    $sid = [string]$data.session_id
+    if ([string]::IsNullOrWhiteSpace($sid)) { return New-HookResult }
+    $userHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+    $marker = Join-Path $userHome ('.claude/.state/loop-continue/' + ($sid -replace '[^A-Za-z0-9._-]', '_') + '.active')
+    if (-not (Test-Path -LiteralPath $marker)) { return New-HookResult }
+    $cwd = if ($data.cwd) { [string]$data.cwd } else { (Get-Location).Path }
+    $verify = Get-VerifyAppSkill $cwd
+    if (-not $verify) { return New-HookResult }
+    $sm = [regex]::Match(($verify -replace '\\', '/'), 'skills/[^/\s`"'']+')
+    if (-not $sm.Success) { return New-HookResult }
+    $key = $sm.Value.ToLower() + '/'
+    $hit = $false
+    foreach ($seg in Get-TopLevelSegments (Get-HeredocSinkStripped $cmd)) {
+        $toks = @([regex]::Matches(($seg -replace '^[\s(&]+', ''), '"[^"]*"|''[^'']*''|\S+') | ForEach-Object { $_.Value.Trim('"', "'") })
+        $i = 0
+        while ($i -lt $toks.Count -and $toks[$i] -match '^[A-Za-z_]\w*=') { $i++ }
+        if ($i -ge $toks.Count) { continue }
+        $cands = if ($toks[$i] -match '^(?i)(pwsh|powershell|bash|sh|python3?|py|node|cmd)(\.exe)?$') { @($toks[($i + 1)..($toks.Count - 1)]) } else { @($toks[$i]) }
+        foreach ($c in $cands) {
+            $n = ($c -replace '\\', '/').ToLower()
+            if ($n.Contains($key) -and $n -match '\.(ps1|sh|py|cmd|bat|js)$') { $hit = $true; break }
+        }
+        if ($hit) { break }
+    }
+    if (-not $hit) { return New-HookResult }
+    $msg = (@(
+        "[SCREEN VERIFIER WARNING] implement 루프 중 메인 세션이 Verify (앱 조작) 검증 스킬 스크립트를 직접 실행합니다 — task 루프의 화면 조작은 karina:screen-verifier 에 맡깁니다(implement 스킬 references/screen-scenarios.md 「화면 시나리오 실행」).",
+        "  - 메인이 직접 띄우면 앱 출력·스크린샷이 이 세션 컨텍스트에 쌓이고, 판정이 통과 조건과 대조되지 않습니다.",
+        "  - 시한 초과로 screen-verifier 를 쓸 수 없거나 디버깅 재현이면 그대로 진행하세요. 이 경고는 차단이 아닙니다."
+    ) -join "`n")
+    return New-HookResult -Block $false -Stderr @($msg) -Context $msg
+}
+
 # warn-base-worktree: 화면 기준선 worktree 경고 — 근거는 `rules/bash-guard-rationale.md` §24
 function Invoke-WarnBaseWorktree {
     param($data)
@@ -449,23 +510,7 @@ function Invoke-WarnBaseWorktree {
             else { $added = $toks[$i].Trim('"', "'") }
         }
         if ($added -and ((($added -replace '[\\/]+$', '') -replace '^.*[\\/]', '') -like 'chain-parent-*')) { continue }
-        $agents = $null
-        $cur = $dir
-        while ($cur -and (Test-Path -LiteralPath $cur -PathType Container)) {
-            $cand = Join-Path $cur 'AGENTS.md'
-            if (Test-Path -LiteralPath $cand -PathType Leaf) { $agents = $cand; break }
-            if (Test-Path -LiteralPath (Join-Path $cur '.git')) { break }
-            $parent = [System.IO.Path]::GetDirectoryName($cur.TrimEnd('\', '/'))
-            if (-not $parent -or $parent -eq $cur) { break }
-            $cur = $parent
-        }
-        if (-not $agents) { continue }
-        $verify = $null
-        foreach ($l in @(Get-Content -LiteralPath $agents -Encoding UTF8 -ErrorAction SilentlyContinue)) {
-            $vm = [regex]::Match([string]$l, '^- \*\*Verify \(앱 조작\)\*\*:\s*(.*)$')
-            if ($vm.Success) { $verify = $vm.Groups[1].Value.Trim(); break }
-        }
-        if (-not $verify -or $verify -match '^\W*없음') { continue }
+        if (-not (Get-VerifyAppSkill $dir)) { continue }
         $msg = (@(
             "[SCREEN BASELINE WARNING] 이 레포는 AGENTS.md 에 「Verify (앱 조작)」 가 있습니다 — 화면 기준선은 같은 작업 트리에서 편집 전에 찍습니다. BASE worktree 금지(implement 스킬 references/screen-scenarios.md 「화면 시나리오 실행」).",
             "  - 빌드 산출물 폴더를 공유하면 HEAD 판이 BASE 산출물을 물어 거짓 판정이 납니다(Karina 3회 재발).",
@@ -717,7 +762,7 @@ function Write-GbSlowEvent {
     } catch {}
 }
 
-# 검사 13종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
+# 검사 14종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
 # 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md` §8
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },
@@ -732,7 +777,8 @@ $checks = @(
     @{ fn = 'Invoke-WarnTaskAudit';       name = 'warn-task-audit' },
     @{ fn = 'Invoke-BlockCommitComments'; name = 'block-commit-comments' },
     @{ fn = 'Invoke-BlockPythonNewCode';  name = 'block-python-newcode' },
-    @{ fn = 'Invoke-WarnBaseWorktree';    name = 'warn-base-worktree' }
+    @{ fn = 'Invoke-WarnBaseWorktree';    name = 'warn-base-worktree' },
+    @{ fn = 'Invoke-WarnScreenVerifier';  name = 'warn-screen-verifier' }
 )
 $results = New-Object System.Collections.Generic.List[object]
 foreach ($c in $checks) {
