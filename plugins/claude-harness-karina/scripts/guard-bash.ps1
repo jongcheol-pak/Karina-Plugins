@@ -534,16 +534,27 @@ function Get-ShellPathEnv([string]$Name) {
 # 무조건 실행되는 대입 자리인가(묶음 깊이 0 · 앞 구분자 ; 줄바꿈) — 근거는 `rules/bash-guard-rationale.md` §14
 function Test-ShellAssignUnconditional([string]$Prefix) {
     $p = [regex]::Replace((Remove-HeredocBodyForJudge $Prefix), '"[^"]*"|''[^'']*''', '""')
-    $depth = 0
+    $stack = New-Object System.Collections.Generic.List[string]
     $sep = ';'
-    foreach ($t in [regex]::Matches($p, '\$\(|[(){}]|&&|\|\||(?<![<>])&(?!>)|[|;\n]|\b(?:if|while|until|for|case|fi|done|esac)\b')) {
-        switch -Regex ($t.Value) {
-            '^(\$\(|\(|\{|if|while|until|for|case)$' { $depth++; break }
-            '^(\)|\}|fi|done|esac)$' { $depth--; break }
-            default { $sep = $t.Value }
+    $cmdPos = $true
+    foreach ($t in [regex]::Matches($p, '\$\(|;;|&&|\|\||[|&;\n(){}]|(?:[<>]&|&>|[^\s;&|(){}])+')) {
+        $v = $t.Value
+        $top = if ($stack.Count) { $stack[$stack.Count - 1] } else { '' }
+        if ($v -in @('$(', '(')) { $stack.Add('('); $cmdPos = $true; continue }
+        if ($v -eq ')') { if ($top -eq '(') { $stack.RemoveAt($stack.Count - 1) }; $cmdPos = ($top -eq 'c'); continue }
+        if ($v -in @(';', "`n", ';;', '&&', '||', '|', '&')) { $sep = $v; $cmdPos = $true; continue }
+        if (-not $cmdPos) { continue }
+        $cmdPos = $v -in @('then', 'do', 'else', 'elif', '!', '{')
+        switch ($v) {
+            { $_ -in @('if', 'while', 'until', 'for') } { $stack.Add('k'); $cmdPos = $_ -ne 'for' }
+            'case' { $stack.Add('c') }
+            '{' { $stack.Add('b') }
+            { $_ -in @('fi', 'done') } { if ($top -eq 'k') { $stack.RemoveAt($stack.Count - 1) } }
+            'esac' { if ($top -eq 'c') { $stack.RemoveAt($stack.Count - 1) } }
+            '}' { if ($top -eq 'b') { $stack.RemoveAt($stack.Count - 1) } }
         }
     }
-    return ($depth -eq 0 -and $sep -in @(';', "`n"))
+    return ($stack.Count -eq 0 -and $sep -in @(';', "`n"))
 }
 
 # 경로 속 셸 변수 펼치기 — 근거는 `rules/bash-guard-rationale.md` §14

@@ -573,7 +573,10 @@ $snCondBlock = @(
     @{ Id = 'SN-cond-or'; Cmd = "S=src; true || S=`"`$TEMP`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-if'; Cmd = "S=src; if false; then S=`"`$TEMP`"; fi; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-if-inner'; Cmd = "S=src; if false; then echo; S=`"`$TEMP`"; fi; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
-    @{ Id = 'SN-cond-subshell-inner'; Cmd = "S=src; (echo; S=`"`$TEMP`"); cat > `"`$S/Probe.cs`" <<'X'$snCls" }
+    @{ Id = 'SN-cond-subshell-inner'; Cmd = "S=src; (echo; S=`"`$TEMP`"); cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-case'; Cmd = "S=src; case x in a) S=`"`$TEMP`";; esac; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-if-echo-fi'; Cmd = "S=src; if false; then echo fi; S=`"`$TEMP`"; fi; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-brace-echo'; Cmd = "S=src; false && { echo }; S=`"`$TEMP`"; }; cat > `"`$S/Probe.cs`" <<'X'$snCls" }
 )
 foreach ($c in $snCondBlock) {
     $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
@@ -583,7 +586,9 @@ $snCondPass = @(
     @{ Id = 'SN-cond-and-after'; Cmd = "S=`"`$TEMP/p`"; mkdir -p `"`$S`" && cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-quoted'; Cmd = "echo `"a && b`"; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-pipe-before'; Cmd = "ls | head; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
-    @{ Id = 'SN-cond-closed-subshell'; Cmd = "(cd x); S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-after-case'; Cmd = "case x in a) echo;; esac; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-redirect-amp'; Cmd = "ls 2>&1; S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-cond-closed-subshell'; Cmd ="(cd x); S=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
     @{ Id = 'SN-cond-heredoc-tokens'; Cmd = "cat > `"`$TEMP/a.txt`" <<'Y'`nif (x) {`nY`nS=`"`$TEMP/p`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" }
 )
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "cat > D:/proj/AppData/Local/Temp/src/Probe.cs <<'X'$snCls")
