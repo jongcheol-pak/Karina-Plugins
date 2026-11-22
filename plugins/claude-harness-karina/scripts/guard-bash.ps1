@@ -750,7 +750,13 @@ function Invoke-BlockPythonNewCode {
             '  - 기계적 치환은 바꿀 줄과 같은 꼴의 검색 리터럴을 두거나 한 줄 리터럴로 하세요.',
             '  - 같은 명령을 다시 내도 통과하지 않습니다. 이 판정이 틀렸으면 멈추고 사용자에게 보고하세요.')
     }
-    foreach ($w in (Get-ShellNewCodeWrites ([string]$data.tool_input.command) $script:HeredocBlockRx)) {
+    $cmdRaw = [string]$data.tool_input.command
+    foreach ($w in (Get-ShellNewCodeWrites $cmdRaw $script:HeredocBlockRx)) {
+        $t = [string]$w.Target
+        if ($t.Contains('$') -or $t.StartsWith('~')) {
+            $x = Expand-ShellPathVars $t $cmdRaw
+            if ($null -ne $x) { $w.Target = $x }
+        }
         $line = Test-ShellNewCode $w
         if ($null -eq $line) { continue }
         return New-HookResult -Block $true -Stderr @(

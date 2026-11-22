@@ -535,6 +535,32 @@ $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i '140s| origin_url: None,
 Assert-Case -Name "셸 새 코드 (음성): 같은 이름 필드의 값을 다줄로 바꾸는 sed 는 통과 (SN-sed-samefield)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "printf -- '- a\n- b\n' >> docs/x.md")
 Assert-Case -Name "셸 새 코드 (음성): 대상 확장자 밖(.md) printf 는 통과 (SN-printf-md)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
+$snCls = "`npublic class Probe { static void Main() { } }`nX"
+$snTempPass = @(
+    @{ Id = 'SN-temp-assign'; Cmd = "S=`"`$TEMP/karina-plugin/scratch`"; cat > `"`$S/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-temp-env'; Cmd = "cat > `"`$TEMP/probe/Probe.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-tmp-tee'; Cmd = "tee `"`${TMP}/probe/a.rs`" <<'X'`npub fn added() {}`nX" },
+    @{ Id = 'SN-tmp-literal'; Cmd = "cat > /tmp/probe/a.cs <<'X'$snCls" },
+    @{ Id = 'SN-dotdot-nontarget'; Cmd = "cat > /tmp/../x.txt <<'X'$snCls" }
+)
+foreach ($c in $snTempPass) {
+    $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
+    Assert-Case -Name "셸 새 코드 (음성): 임시 폴더 쓰기는 변수를 펼쳐 통과 ($($c.Id))" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
+}
+$snBlock = @(
+    @{ Id = 'SN-dotdot-literal'; Cmd = "cat > /tmp/../../repo/src/Probe.cs <<'X'$snCls" },
+    @{ Id = 'SN-dotdot-var'; Cmd = "S=`"`$TEMP`"; cat > `"`$S/../../repo/src/a.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-unset-var'; Cmd = "cat > `"`$UNSET_DIR/src/a.cs`" <<'X'$snCls" },
+    @{ Id = 'SN-assign-after'; Cmd = "cat > `"`$S/a.cs`" <<'X'$snCls`nS=`"`$TEMP`"" }
+)
+foreach ($c in $snBlock) {
+    $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson $c.Cmd)
+    Assert-Case -Name "셸 새 코드: 임시 폴더 밖으로 풀리는 쓰기는 차단 ($($c.Id))" -R $r -ExpectExit 2 -ExpectContains $snMsg
+}
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'EOF'`nopen('/tmp/../repo/src/a.rs','w').write('pub fn x() {}\n')`nEOF")
+Assert-Case -Name "python 새 코드: /tmp/../ 로 빠지는 경로는 임시 폴더가 아니다 → 차단 (PN-dotdot)" -R $r -ExpectExit 2 -ExpectContains $pnMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "python - <<'EOF'`nopen('/tmp/../a.rs','w').write('x = 1')`nEOF")
+Assert-Case -Name "python 새 코드 (음성): /tmp/../ 경로라도 한 줄 리터럴은 통과 (PN-dotdot-oneline)" -R $r -ExpectExit 0 -ExpectNotContains $pnMsg
 }
 
 if (Test-ScenarioUnit 3) {
