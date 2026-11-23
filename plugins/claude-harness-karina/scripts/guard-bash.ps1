@@ -1,4 +1,4 @@
-﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 14종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
+﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 15종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
 
 # 공용 헬퍼 New-HookResult·Remove-HeredocBodyForJudge 는 여기 둔다 — 근거는 `rules/bash-guard-rationale.md` §2
 function New-HookResult {
@@ -430,6 +430,31 @@ function Get-VerifyAppSkill([string]$Dir) {
     return $null
 }
 
+# warn-reference-cat: 스킬 참조 문서·SKILL.md 통째 읽기 경고 — 근거는 `rules/bash-guard-rationale.md` §26
+function Invoke-WarnReferenceCat {
+    param($data)
+    $cmd = [string]$data.tool_input.command
+    if ($cmd -notmatch '(?i)(SKILL|references[\\/][^\s"'']+)\.md') { return New-HookResult }
+    $names = New-Object System.Collections.Generic.List[string]
+    foreach ($piece in ((Get-HeredocSinkStripped $cmd) -split '&&|\|\||;|\r?\n')) {
+        if ($piece -match '\|') { continue }
+        $toks = @([regex]::Matches(($piece -replace '^[\s(&]+', ''), '"[^"]*"|''[^'']*''|\S+') | ForEach-Object { $_.Value.Trim('"', "'") })
+        if ($toks.Count -lt 2 -or $toks[0] -notmatch '^(?i)(cat|gc|get-content)$') { continue }
+        if ($toks[0] -notmatch '^(?i)cat$' -and @($toks | Where-Object { $_ -match '^(?i)-(TotalCount|Head|Tail|First|Last)$' }).Count -gt 0) { continue }
+        foreach ($t in $toks[1..($toks.Count - 1)]) {
+            $n = $t -replace '\\', '/'
+            if ($n -match '(?i)(^|/)skills/[^/]+/(references/[^/]+|SKILL)\.md$') { $names.Add([System.IO.Path]::GetFileName($n)) }
+        }
+    }
+    if ($names.Count -eq 0) { return New-HookResult }
+    $msg = (@(
+        "[REFERENCE CAT WARNING] 스킬 문서를 셸로 통째 읽습니다($($names -join ' · ')) — 출력이 크면 파일로 빠져 같은 내용을 Read 로 다시 읽게 됩니다.",
+        "  - Read 도구로 읽고, 목차가 있는 문서는 grep -n '^## ' 로 줄 번호를 얻어 필요한 절만 offset·limit 으로 읽으세요.",
+        "  - 이 경고는 차단이 아닙니다."
+    ) -join "`n")
+    return New-HookResult -Block $false -Stderr @($msg) -Context $msg
+}
+
 # warn-screen-verifier: implement 루프 중 메인의 Verify 스킬 직접 실행 경고 — 근거는 `rules/bash-guard-rationale.md` §25
 function Invoke-WarnScreenVerifier {
     param($data)
@@ -814,7 +839,7 @@ function Write-GbSlowEvent {
     } catch {}
 }
 
-# 검사 14종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
+# 검사 15종을 한 프로세스에 담는 구조 — 근거는 `rules/bash-guard-rationale.md` §2
 # 순서: 원 hooks.json 순서에서 block-destructive — 근거는 `rules/bash-guard-rationale.md` §8
 $checks = @(
     @{ fn = 'Invoke-WarnExternalOps';     name = 'warn-external-ops' },
@@ -830,7 +855,8 @@ $checks = @(
     @{ fn = 'Invoke-BlockCommitComments'; name = 'block-commit-comments' },
     @{ fn = 'Invoke-BlockPythonNewCode';  name = 'block-python-newcode' },
     @{ fn = 'Invoke-WarnBaseWorktree';    name = 'warn-base-worktree' },
-    @{ fn = 'Invoke-WarnScreenVerifier';  name = 'warn-screen-verifier' }
+    @{ fn = 'Invoke-WarnScreenVerifier';  name = 'warn-screen-verifier' },
+    @{ fn = 'Invoke-WarnReferenceCat';    name = 'warn-reference-cat' }
 )
 $results = New-Object System.Collections.Generic.List[object]
 foreach ($c in $checks) {

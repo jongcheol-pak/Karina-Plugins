@@ -698,6 +698,25 @@ $r = Invoke-SvCase $bwRepo 'pwsh -NoProfile -File .claude/skills/verify-app/help
 Assert-Case -Name "screen-verifier (음성): implement 발동 마커가 없으면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
 $r = Invoke-SvCase $bwNone 'pwsh -NoProfile -File .claude/skills/verify-app/helpers/launch.ps1'
 Assert-Case -Name "screen-verifier (음성): Verify (앱 조작) 이 없음이면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
+$rcMark = '[REFERENCE CAT WARNING]'
+$rcRef = 'C:/Users/u/.claude/plugins/cache/karina-plugins/karina/3.56.0/skills/implement/references/loop-pacing.md'
+function Invoke-RcCase([string]$Command, [string]$Tool = 'Bash') {
+    return Invoke-Hook 'guard-bash.ps1' (@{ session_id = 'rc'; tool_name = $Tool; cwd = $work; tool_input = @{ command = $Command } } | ConvertTo-Json -Compress)
+}
+$r = Invoke-RcCase ('cat "' + $rcRef + '"')
+Assert-Case -Name "reference-cat: 스킬 참조 문서를 통째 cat 하면 Read 안내 경고 + exit 0" -R $r -ExpectExit 0 -ExpectContains $rcMark
+$r = Invoke-RcCase 'cat skills/implement/SKILL.md skills/implement/references/loop-stop-patterns.md'
+Assert-Case -Name "reference-cat: SKILL.md 를 통째 cat 해도 경고" -R $r -ExpectExit 0 -ExpectContains $rcMark
+$r = Invoke-RcCase 'Get-Content C:\x\skills\plan\references\interview.md' 'PowerShell'
+Assert-Case -Name "reference-cat: PowerShell 의 범위 없는 Get-Content 도 경고" -R $r -ExpectExit 0 -ExpectContains $rcMark
+$r = Invoke-RcCase ('cat "' + $rcRef + '" | grep -n Wait')
+Assert-Case -Name "reference-cat (음성): 파이프로 넘기는 cat 은 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $rcMark
+$r = Invoke-RcCase ("grep -n '^## ' " + $rcRef + "; sed -n 1,40p " + $rcRef)
+Assert-Case -Name "reference-cat (음성): grep 목차·sed 범위 읽기는 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $rcMark
+$r = Invoke-RcCase 'Get-Content skills/plan/references/interview.md -TotalCount 40' 'PowerShell'
+Assert-Case -Name "reference-cat (음성): 범위 인자가 있는 Get-Content 는 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $rcMark
+$r = Invoke-RcCase 'cat README.md docs/conventions.md'
+Assert-Case -Name "reference-cat (음성): 스킬 참조·SKILL.md 패턴 밖 md 는 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $rcMark
 $r = Invoke-SvCase $bwBare 'pwsh -NoProfile -File .claude/skills/verify-app/helpers/launch.ps1'
 Assert-Case -Name "screen-verifier (음성): Verify 줄 없는 레포는 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
 $r = Invoke-SvCase $bwRepo 'grep -n Fresh .claude/skills/verify-app/helpers/launch.ps1'
