@@ -2,6 +2,9 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-23] Karina 세션 46c9c1b1 reflect 하니스 개선 2건(v3.58.0) — 기각: doc 주인 이동 게이트가 doc 문구를 고치면서 사이에 새 항목을 끼우는 꼴까지 잡는 것 — 블록 문구가 바뀌면 편집 전·후 같은 블록으로 대조할 기준이 없다(`scripts/rules/doc-owner-rationale.md` §3 한계)
+  - 기각: reflect 원인 추정 ②(`pub mod x;` 를 주인으로 판정하지 못함) — 프로브와 골든에서 `pub mod` 앵커 꼴은 이전에도 막혔고, 놓친 lib.rs 건은 doc 을 앵커에 넣은 ① 꼴이었다
+
 - [2026-11-23] Karina-Mobile 세션 ee7ecb4d reflect 하니스 후보 6건(v3.57.0) — 채택: 주석 보존·감사 pathspec 의 폴더·`.` 판정(git pathspec 의미) · `--auto-split` 처방 0건이어도 인덱스 분할 신호면 `build_index` 연쇄(dry-run 은 `index 분할 예정`) · 스킬 문서 통째 `cat` 비차단 경고(`warn-reference-cat`) · 완료 보고 버림 건마다 요지 · 줄 수·시각이 바뀌는 목록 화면은 요소 조건
   - 기각: 후보 2 응답 언어 차단 승격 — v3.56.0(ebec3de0)이 같은 처방(세 번째 영문 메모부터 셸·쓰기 exit 2)을 이미 넣었고, 교정 20회는 그 이전 설치본의 동작이다 · 후보 3 의 허브 예산 초과(13079/13000) — 인덱스 분할과 원인이 다르다: `## 최근 주요 변경` 5개 이하라 롤오버 대상이 아니고 project 허브는 산문 하위 분리 대상이 아니라 스크립트 처방이 없으며, 절차(`procedures-content.md` B-3)가 세션 처방으로 정해 두었다 · 후보 4 의 「규칙 줄을 implement 도 읽는 공용 자리로」 — implement 은 이미 Read 를 지시하고(`implement/SKILL.md` 루프 진입) 어긴 것은 수단이라 경고가 규칙을 싣는다 · `implement/SKILL.md` 는 12,000자 게이트에 1자 남았다
 
