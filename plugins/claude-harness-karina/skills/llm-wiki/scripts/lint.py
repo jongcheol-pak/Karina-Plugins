@@ -2284,6 +2284,9 @@ PRESCRIPTIONS.append(relocate_sections)
 
 
 def _index_split_targets(vault):
+    idx, _bom, _nl = _read_page(os.path.join(vault, "index.md"))
+    if idx is None or AUTO_INDEX_BEGIN not in idx or AUTO_INDEX_END not in idx:
+        return []
     out = []
     for p in [os.path.join(vault, "index.md")] + sorted(
             glob.glob(os.path.join(glob.escape(vault), "index-*.md"))):
