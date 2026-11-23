@@ -1,6 +1,6 @@
 # Notes 검증 지도
 
-> 생성할 기능 지도의 형태 예시다 — `../../SKILL.md` 3단계가 가리킨다. 원문은 pstack `create-verification-skill/references/feature-map-example/README.md`(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/create-verification-skill/references/feature-map-example/README.md`) · Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮겼고, 기능 파일의 절 이름과 명령은 원문 그대로다(이 색인의 절 이름은 옮겼다) — 단 `NOTES_DATA_DIR` 과 증거 경로는 원문 `/tmp/notes-verify-$RUN_ID` 를 하니스 임시 폴더 규약(`../../../TEMP-FILES.md`)의 찾는 순서에 맞춰 바꿨다.
+> 생성할 기능 지도의 형태 예시다 — `../../SKILL.md` 3단계가 가리킨다. 원문은 pstack `create-verification-skill/references/feature-map-example/README.md`(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/create-verification-skill/references/feature-map-example/README.md`) · Copyright (c) 2026 Lauren Tan · MIT(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/LICENSE`). 한글로 옮겼고, 기능 파일의 절 이름과 명령은 원문 그대로다(이 색인의 절 이름은 옮겼다) — 단 `NOTES_DATA_DIR` 과 증거 경로는 원문 `/tmp/notes-verify-$RUN_ID` 를 하니스 임시 폴더 규약(`../../../TEMP-FILES.md`)의 찾는 순서에 맞춰 바꿨고, 「기능」 색인을 링크 목록에서 `닿는 코드` 열이 있는 표로 바꿨다(그 경로는 예시로 지은 것이다).
 
 이 폴더는 Notes 의 사용자 기능을 검증하는 유지 대상 정본이다. 앱을 조작하기 전에 이 색인을 읽고, 맞는 기능 파일을 조작법으로 쓴다.
 
@@ -41,9 +41,11 @@
 3. `Driving it with <harness>` — `Preconditions:` 로 시작하고, 사용자 조작마다 정확한 명령과 관측 가능한 결과를 짝지은 라벨 불릿
 4. `Gotchas` — 검증 실행을 허비하거나 무효로 만들 함정
 
-구현 세부는 지도에 넣지 않는다. 사용자 경로·안정된 손잡이·필요한 상태·명령·관측 가능한 증명만 적는다.
+구현 세부는 지도에 넣지 않는다. 사용자 경로·안정된 손잡이·필요한 상태·명령·관측 가능한 증명만 적는다. 소스 경로는 아래 색인의 `닿는 코드` 열에만 둔다 — 변경 검증이 바뀐 파일로 돌 기능을 고르는 근거다.
 
 ## 기능
 
-- [노트 만들기](./create-note.md) — 브라우저·CLI 생성, 취소, 저장 유지, 정리
-- [노트 검색](./search.md) — 툴바·키보드·CLI 검색과 매치·빈 상태·지우기 상태
+| 기능 | 무엇을 | 닿는 코드(바뀌면 이 기능을 돈다) |
+|---|---|---|
+| [노트 만들기](./create-note.md) | 브라우저·CLI 생성, 취소, 저장 유지, 정리 | `src/editor/*` · `src/notes/store.*` · `cli/create.*` |
+| [노트 검색](./search.md) | 툴바·키보드·CLI 검색과 매치·빈 상태·지우기 상태 | `src/search/*` · `src/toolbar/*` · `cli/search.*` |
