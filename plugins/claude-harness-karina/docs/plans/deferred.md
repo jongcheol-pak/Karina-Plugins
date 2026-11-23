@@ -76,6 +76,4 @@
 - [1회 실패 2026-11-20] 문서 정리 스크립트가 출력 파일을 `open(path, 'wb')` 로 먼저 연 뒤 쓸 바이트를 만들다 예외가 나 `docs/conventions.md` 가 0바이트가 됐다 — 커밋된 판으로 되돌리고 쓸 바이트를 다 만든 뒤 파일을 열도록 고쳐 다시 돌렸다
 - [1회 실패 2026-11-23] 골든 `comment-scope.ps1` 에 새 케이스를 쓰며 `Invoke-Cs` 에 `-Out` 을 빼 「인자 누락 — -Out <파일>」 로 RED 가 재려는 동작 밖에서 났다 — 다른 케이스처럼 `-Out (Join-Path $csRoot '<이름>-out.txt')` 를 넘겼다
 - [1회 실패 2026-11-23] 골든 `guard-bash.ps1` 커밋 케이스의 `Set-CcFile` 이 하위 폴더를 만들지 않아 `mobile/src/a.cs` 쓰기가 「Could not find a part of the path」 로 시나리오 예외가 됐다 — 앞 줄에 `New-Item -ItemType Directory -Force` 를 두었다
-- [1회 실패 2026-11-24] plan `**Acceptance**` 한 줄에 ` · ` 로 이은 조건(「drive-recipes ≥2 · create ≥1 · maintain ≥1」)을 커밋 본문 판정 줄 하나로 적어 `guard-task-audit` 가 「Acceptance 판정 줄 4/6」 을 경고했다 — check-plan 은 ` · ` 마다 항목으로 센다. 항목마다 한 줄씩 보충 커밋(9017a849)으로 풀었다
 - [1회 실패 2026-11-24] 유지 스킬 문면에 폐기된 화면 표지의 원문(괄호 포함)을 적어 `check-stale-refs.py` 가 DEAD 이름으로 [FAIL] 을 냈다 — 괄호 없는 서술로 바꿔 풀었다(3419d62)
-- [1회 실패 2026-11-24] 생성 스킬 문면의 생성물 경로 `features/README.md` 뒤에 「닿는 코드」 를 붙여 `check-harness-consistency.py` 포인터 도달성이 절 포인터로 읽어 「포인터 해석 실패」 를 냈다 — 열 이름을 백틱으로 바꿔 풀었다(f4a9a53d)
