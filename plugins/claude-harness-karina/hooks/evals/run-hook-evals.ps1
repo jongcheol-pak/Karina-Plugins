@@ -123,6 +123,7 @@ $scenarioGroups = @(
     @('check-plan-4'),
     @('record-work-start'),
     @('inject-reply-language'),
+    @('warn-worktree-delegation'),
     @('guard-comment'),
     @('comment-scope'),
     @('hook-dispatch')
@@ -136,7 +137,7 @@ $groupCostSec = @{
     'screen-cover' = 88; 'session-context' = 53; 'post-write-checks' = 106; 'guard-harness' = 52; 'guard-write' = 44
     'guard-stale-docs' = 52; 'guard-task-audit' = 110; 'warn-version-drift' = 15; 'work-clock' = 19; 'image-diff' = 18; 'loop-continue' = 6
     'guard-harness-content' = 5; 'guard-harness-installed+hook-event-log' = 8; 'suggest-agents-record' = 12
-    'session-end-cleanup' = 12; 'record-work-start' = 4; 'inject-reply-language' = 16; 'guard-comment' = 79; 'comment-scope' = 91
+    'session-end-cleanup' = 12; 'record-work-start' = 4; 'inject-reply-language' = 16; 'warn-worktree-delegation' = 5; 'guard-comment' = 79; 'comment-scope' = 91
     'hook-dispatch' = 65
 }
 $launchGroups = @(

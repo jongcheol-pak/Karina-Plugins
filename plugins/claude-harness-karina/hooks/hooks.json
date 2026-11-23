@@ -36,6 +36,17 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/warn-worktree-delegation.ps1\"; exit $LASTEXITCODE",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [
