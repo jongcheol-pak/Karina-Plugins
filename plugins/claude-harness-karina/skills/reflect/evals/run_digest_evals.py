@@ -625,6 +625,58 @@ def background_bash_short_not_slow():
     assert bash_lines(out) == ['# Bash 소요: 시험 0초 0회 · 검사·형식 0초 0회 · 기동·빌드 0초 0회 · 기타 30초 1회'], out
 
 
+def reply(tid, start, done, name='SendMessage'):
+    note = ('<task-notification>\n<task-id>a1</task-id>\n<tool-use-id>%s</tool-use-id>\n'
+            '<status>completed</status>\n<summary>Agent "verify" finished</summary>\n</task-notification>' % tid)
+    return [at(rec_assistant([tool_use(tid, name, 'verify')]), start), at(rec_user(note), done)]
+
+
+def timer_lines(out):
+    return [l for l in out.splitlines() if l.startswith('TIMER: ')]
+
+
+def timer_head(out):
+    return [l for l in out.splitlines() if l.startswith('# 응답 뒤 끝난 시한 타이머: ')]
+
+
+@case
+def timer_finished_after_reply_marked():
+    recs = background_bash('s1', 0, 1, 1200, 'sleep 1200')
+    recs = recs[:2] + reply('m1', 2, 300) + recs[2:]
+    out = run_timed(recs, extra=['--audit'])
+    assert len(timer_lines(out)) == 1 and timer_lines(out)[0].startswith('TIMER: sleep 1200 '), out
+    assert timer_head(out) == ['# 응답 뒤 끝난 시한 타이머: 1'], out
+
+
+@case
+def echo_timer_finished_after_reply_marked():
+    recs = background_bash('s1', 0, 1, 1500, 'sleep 1500; echo timer-done')
+    recs = recs[:2] + reply('m1', 2, 300) + recs[2:]
+    out = run_timed(recs, extra=['--audit'])
+    assert len(timer_lines(out)) == 1 and timer_lines(out)[0].startswith('TIMER: sleep 1500; echo timer-done '), out
+
+
+@case
+def timer_stopped_after_reply_not_marked():
+    recs = background_bash('s1', 0, 1, 1200, 'sleep 1200')[:2] + reply('m1', 2, 300)
+    out = run_timed(recs, extra=['--audit'])
+    assert timer_lines(out) == [] and timer_head(out) == ['# 응답 뒤 끝난 시한 타이머: 0'], out
+
+
+@case
+def timer_timeout_without_reply_not_marked():
+    out = run_timed(background_bash('s1', 0, 1, 1200, 'sleep 1200') + reply('m1', 1190, 1300), extra=['--audit'])
+    assert timer_lines(out) == [], out
+
+
+@case
+def non_sleep_background_after_reply_not_marked():
+    recs = background_bash('s1', 0, 1, 900, 'cargo test')
+    recs = recs[:2] + reply('m1', 2, 300, 'Agent') + recs[2:]
+    out = run_timed(recs, extra=['--audit'])
+    assert timer_lines(out) == [], out
+
+
 @case
 def audit_has_no_bash_line():
     out = run_timed(tool_pair('b1', 'Bash', 0, 100, 'cargo test'), extra=['--audit'])

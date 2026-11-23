@@ -38,6 +38,11 @@ Bash 소요 줄 — 구간 줄 앞에 `# Bash 소요: 시험 <N>초 <k>회 · �
 머리에 `# 모드: audit` 을 싣는다.
   한글 음절(가-힣)이 하나도 없는 A: 줄은 `A: [한글 없음] …` 으로 표지하고 그 수를 머리 `# 한글 없는 A: <N>` 에 싣는다
   — implement·pr 의 「상태 메모도 한글로」 위반을 완료 리뷰가 세는 재료는 대조 범위 안의 표지 줄이고, 머리 수는 세션 전체 값이다.
+  본 전사의 백그라운드 `Bash` 중 명령이 `sleep <N>`(뒤에 `; echo …` 하나까지)뿐인 시한 타이머가 완료(`<status>completed</status>`) 알림으로 끝났는데,
+  그 타이머 시작 뒤·완료 알림 앞에 `SendMessage`·`Agent`·`Task` 의 완료 알림(검증 응답)이 왔으면 타이머 완료 알림 자리에
+  `TIMER: <명령> 응답 <HH:MM:SS> 뒤 <N>초에 끝남` 을 싣고 그 수를 머리 `# 응답 뒤 끝난 시한 타이머: <N>` 에 싣는다
+  — 응답이 오면 타이머를 `TaskStop` 으로 끄라는 implement screen-scenarios 「화면 시나리오 실행」 위반을 완료 리뷰가 세는 재료다.
+  `TaskStop` 으로 끈 타이머는 완료 알림이 없어 싣지 않는다.
   audit 은 Bash 아닌 SLOW: 줄·Bash 소요 줄·구간 줄을 내지 않는다.
 
 종료 코드: 0 정상 · 2 세션 판정 실패(ID 없음·파일 0개·2개 이상) · 3 인식한 레코드 0(전사 형식이 바뀌었을 수 있다).
@@ -78,6 +83,11 @@ BACKGROUND_RESULT = 'Command running in background with ID'
 BACKGROUND_MARK = '(백그라운드)'
 NOTIFICATION = '<task-notification>'
 NOTIFIED_TOOL = re.compile(r'<tool-use-id>([^<]+)</tool-use-id>')
+NOTIFIED_STATUS = re.compile(r'<status>([^<]+)</status>')
+REPLY_TOOLS = ('SendMessage', 'Agent', 'Task')
+TIMER_COMMAND = re.compile(r'^\s*sleep\s+\d+\s*(?:;\s*echo\b[^;&|]*)?$')
+TIMER_MARK = 'TIMER: '
+TIMER_HEAD = '# 응답 뒤 끝난 시한 타이머: '
 GIT_COMMAND = re.compile(r'''^\s*(?:cd\s+(?:"[^"]*"|'[^']*'|\S+)\s*(?:;|&&)\s*)*git\b''')
 HANGUL = re.compile('[가-힣]')
 HANGUL_FREE_MARK = 'A: [한글 없음] '
@@ -90,7 +100,7 @@ def is_image_read(line):
 def audit_keep(line):
     if line.startswith('U: '):
         return '<command-name>' in line
-    return (line.startswith(('A: ', AUDIT_SUB_HEAD)) or line.startswith(AUDIT_TOOLS) or line.startswith(AUDIT_SLOW)
+    return (line.startswith(('A: ', AUDIT_SUB_HEAD, TIMER_MARK)) or line.startswith(AUDIT_TOOLS) or line.startswith(AUDIT_SLOW)
             or is_image_read(line))
 
 
@@ -172,6 +182,30 @@ def background_slow_lines(text, tools, ts):
         if ts is not None and start is not None and (ts - start).total_seconds() >= SLOW_SEC:
             out.append(('SLOW: Bash %d초 %s %s' % (round((ts - start).total_seconds()), BACKGROUND_MARK,
                                                    cut(hint, BIG_HEAD))).rstrip())
+    return out
+
+
+def timer_lines(d, tools, replies):
+    if d.get('type') != 'user' or not isinstance(d.get('message'), dict):
+        return []
+    ts = parse_ts(d)
+    c = d['message'].get('content')
+    out = []
+    for text in ([c] if isinstance(c, str) else [b.get('text', '') for b in c or [] if isinstance(b, dict)]):
+        if NOTIFICATION not in str(text) or ts is None:
+            continue
+        status = NOTIFIED_STATUS.search(text)
+        if not status or status.group(1) != 'completed':
+            continue
+        for tid in NOTIFIED_TOOL.findall(text):
+            name, start, hint, _ = tools.get(tid, ('?', None, '', False))
+            if name in REPLY_TOOLS:
+                replies.append(ts)
+            elif name == 'Bash' and start is not None and TIMER_COMMAND.match(str(hint)):
+                after = [r for r in replies if start <= r <= ts]
+                if after:
+                    out.append('%s%s 응답 %s 뒤 %d초에 끝남' % (TIMER_MARK, cut(hint, BIG_HEAD), after[0].strftime('%H:%M:%S'),
+                                                         round((ts - after[0]).total_seconds())))
     return out
 
 
@@ -329,7 +363,7 @@ class Segments:
 
 
 def digest_file(path, counts, segments, bash):
-    lines, recognized, tools = [], 0, {}
+    lines, recognized, tools, replies = [], 0, {}, []
     with open(path, encoding='utf-8', errors='replace') as f:
         for raw in f:
             try:
@@ -344,6 +378,7 @@ def digest_file(path, counts, segments, bash):
             got = record_lines(d, tools)
             if got is None:
                 continue
+            got = got + timer_lines(d, tools, replies)
             recognized += 1
             for line in got:
                 counts[line.split(':', 1)[0]] = counts.get(line.split(':', 1)[0], 0) + 1
@@ -419,6 +454,7 @@ def main(argv=None):
         kinds = AUDIT_KINDS
         head.append('# 모드: audit')
         head.append('# 한글 없는 A: %d' % sum(1 for line in body if line.startswith(HANGUL_FREE_MARK)))
+        head.append(TIMER_HEAD + '%d' % sum(1 for line in body if line.startswith(TIMER_MARK)))
     head.append('# 줄 수: ' + ' · '.join('%s %d' % (k, counts.get(k, 0)) for k in kinds))
     total = len(head) + 1 + len(body)
     text = '\n'.join(head + ['# 총 줄 수: %d' % total] + body) + '\n'
