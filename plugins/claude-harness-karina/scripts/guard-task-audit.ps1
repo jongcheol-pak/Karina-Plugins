@@ -156,7 +156,7 @@ function Get-TaskAuditGrowth([string]$RuleDir, $Rule, $Scope) {
     return @{ Net = $net; Capped = $capped }
 }
 
-# RED·화면 판정 줄 대조 — `skills/plan/scripts/check-plan.ps1` -Base 판정의 사본이다 · 근거는 `rules/task-audit-rationale.md` §7
+# RED·화면·Acceptance 판정 줄 대조 — `skills/plan/scripts/check-plan.ps1` -Base 판정의 사본이다 · 근거는 `rules/task-audit-rationale.md` §7
 function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Message) {
     $planPath = Join-Path ([System.IO.Path]::GetDirectoryName($AgentsPath)) 'plan.md'
     if (-not (Test-Path -LiteralPath $planPath -PathType Leaf)) { return @() }
@@ -169,7 +169,8 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
     }
     $hasRed = [bool]@($block | Where-Object { $_.StartsWith('- **Files**:') -and $_.Contains('(RED)') }).Count
     $hasScreen = [bool]@($block | Where-Object { $_.StartsWith('- **화면**:') }).Count
-    if (-not $hasRed -and -not $hasScreen) { return @() }
+    $acceptRow = @($block | Where-Object { $_.StartsWith('- **Acceptance**:') } | Select-Object -First 1)
+    if (-not $hasRed -and -not $hasScreen -and -not $acceptRow.Count) { return @() }
 
     $bodies = @($Message)
     $baseLine = @($plan | Where-Object { $_ -match '^> BASE:\s*([0-9a-fA-F]{7,40})\s*$' } | Select-Object -First 1)
@@ -187,6 +188,15 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
     $text = $bodies -join "`n"
     $lineHead = '(?m)^\s*(?:[-*]\s*)?'
     $out = @()
+    if ($acceptRow.Count -and @($bodies | Where-Object { [regex]::IsMatch($_, '검증\s*(?:결과|:)') }).Count) {
+        $criteria = [regex]::Replace($acceptRow[0].Substring('- **Acceptance**:'.Length), '`[^`]*`', 'x')
+        do { $prev = $criteria; $criteria = [regex]::Replace($criteria, '\([^()]*\)', '') } while ($criteria -ne $prev)
+        $want = @($criteria -split '\s·\s' | Where-Object { $_.Trim() }).Count
+        $have = [regex]::Matches($text, $lineHead + 'Acceptance\s*:\s*\S').Count
+        if ($have -lt $want) {
+            $out += "  - Acceptance 판정 줄 $have/$want — ``- **Acceptance**:`` 항목마다 본문에 ``Acceptance: <항목> — 참`` 줄을 둔다"
+        }
+    }
     if ($hasRed -and -not [regex]::IsMatch($text, $lineHead + 'RED(?:\((?:구현 전|사후[^)\r\n]*)\))?\s*:\s*\S')) {
         $out += "  - RED 줄 없음 — Files 줄에 (RED) 가 있는 task 다. 본문에 ``RED(구현 전): <실패 출력>`` (또는 ``RED: 미확인 — <사유>``) 줄을 둔다"
     }

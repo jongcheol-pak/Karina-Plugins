@@ -74,7 +74,7 @@
 #   screen-unshot-attempt T<N>   위 screen-unshot 에서 사유 칸은 있는데 「· 시도 <…>」 칸이 없음 — 사유가 「기준선 흔들림」·
 #                                「image-diff: ERROR」 로 시작하면(조작은 성공) 시도 칸 없이 note
 #                                (판정 사본: scripts/guard-task-audit.ps1 Get-TaskEvidenceLines)
-#   no-red-evidence·no-screen-verdict 판정의 사본이 scripts/guard-task-audit.ps1 의 Get-TaskEvidenceLines 에 있다 —
+#   acceptance-evidence·no-red-evidence·no-screen-verdict 판정의 사본이 scripts/guard-task-audit.ps1 의 Get-TaskEvidenceLines 에 있다 —
 #                                한쪽을 고치면 다른 쪽도 고친다(골든 guard-task-audit 의 「사본 정합」 케이스가 대조한다)
 #   remaining-issue <종류>       task 단위가 아니라 「## Deferred / Follow-up」 항목 단위 — 넘김 사유 없이 남은 항목(줄 번호는 그 항목).
 #                                종류: no-marker(마커 없음) · unjudged([미판정]) · no-reason([등재]·[미등재:대장 없음] 에 「넘김 사유 ①·②·

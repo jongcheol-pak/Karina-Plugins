@@ -252,6 +252,24 @@ try {
     ('# AGENTS.md' + $nl + $taRule + $nl) | Set-Content (Join-Path $taRoot 'AGENTS.md')
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teUnshot)
     Assert-Case -Name 'task-evidence: Verify 줄이 없는 레포는 시도 칸 없어도 경고 없음 (TE-attempt-off)' -R $r -ExpectExit 0 -ExpectNotContains '시도 칸 없음'
+
+    Reset-TaRepo
+    $teBase = (& git -C $taRoot rev-parse HEAD 2>$null)
+    @('# plan', '', '## Goal', '', ('> BASE: ' + $teBase), '', '## 작업 단계', '', '### T1. 항목', '',
+      '- [x] **T1-1** 항목을 더한다', '- **Files**: `src/lib.rs`', '- **Acceptance**: `a · b` 참 (착수 0 · 기대 1) · 둘째 기준', '',
+      '### T2. 문서', '', '- [x] **T2-1** 문서', '- **Files**: `README.md` — `[면제 ①]` 문서') | Set-Content -LiteralPath $tePlan -Encoding UTF8
+    $teAcc1 = $teOk + "`n" + 'Acceptance: 첫째 — 참'
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teAcc1)
+    Assert-Case -Name 'task-evidence: Acceptance 항목 2개에 판정 줄 1개면 경고 (TE-accept)' -R $r -ExpectExit 0 -ExpectContains 'Acceptance 판정 줄 1/2'
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle 'Acceptance: 첫째 — 참')
+    Assert-Case -Name 'task-evidence: 검증 기록이 없는 커밋은 Acceptance 를 재지 않는다 (TE-accept-noevidence)' -R $r -ExpectExit 0 -ExpectNotContains 'Acceptance 판정 줄'
+    & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m $taTitle -m $teAcc1 2>$null
+    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '
+    Assert-Case -Name 'task-evidence: 같은 이력을 check-plan -Base 도 acceptance-evidence T1 1/2 로 낸다 (사본 정합)' -R @{ code = 0; out = "cp=$teCp" } -ExpectExit 0 -ExpectContains 'acceptance-evidence T1 1/2'
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
+    Assert-Case -Name 'task-evidence: 같은 이력에 hook 도 Acceptance 1/2 경고를 낸다 (사본 정합)' -R $r -ExpectExit 0 -ExpectContains 'Acceptance 판정 줄 1/2'
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + '- Acceptance: 둘째 — 참'))
+    Assert-Case -Name 'task-evidence: 앞 T1 커밋과 합쳐 판정 줄이 항목 수면 경고 없음 (TE-accept-ok)' -R $r -ExpectExit 0 -ExpectSilent $true
 } finally {
     if (Test-Path $taRoot) { Remove-Item $taRoot -Recurse -Force -ErrorAction SilentlyContinue }
 }

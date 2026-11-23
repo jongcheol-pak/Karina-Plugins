@@ -10,7 +10,7 @@
 
 - [2026-10-14] **Bash 도구 10분 캡 동작 서술 재검증** — `golden-runner.md` 「고아 콘솔 프로세스는 자동 회수된다」 불릿·`guard-bash.ps1` 의 `find /` 경고 주석·`rules/bash-guard-rationale.md`·`rules/orphan-cleanup-rationale.md`·`README.md` 「끝나지 않을 검색 경고」가 「캡에 걸리면 셸이 죽어 `find` 가 고아로 남는다」고 서술하나, Claude Code 2.1.299 에서 timeout 600000 전경 실행은 시한에 백그라운드로 넘어가 완주했다. 판·시한 지정·`find /` 경로 차이를 재실측해 맞춘다(고아를 만드는 실험 세션 필요 · `guard-bash` 는 골든 실증) (출처: v1.371.0 회차 T1) (실해: 2026-10-14 golden-runner.md 안에서 「캡에 걸리면 셸이 죽는다」와 새 전경 완주 관측이 갈린다)
 
-**▶ 현행 잔량(기계 대조 대상)**: 대기 18 / 종결 89
+**▶ 현행 잔량(기계 대조 대상)**: 대기 17 / 종결 89
 
 > 이 한 줄만 기계 대조 대상이다 — `evals/check-harness-consistency.py` 가 두 파일을 각각 세어 이 값과 대조한다. 대장을 편집한 task 는 **이 줄만** 갱신한다(절대값 — 증분 로그가 아니다).
 >
@@ -36,7 +36,6 @@
 - [2026-10-23] **chain-plan 코디네이터 검증 명령을 `run-verify.py` 밖에서 띄우면 guard-bash 가 경고** — `continuation.md`「코디네이터 검증」 은 명령마다 래퍼로 띄우라고 하지만 코디네이터가 어기면 감시가 빠진다. 명령줄로 잴 수 있는 것은 「래퍼를 거쳤는가」뿐이다(규칙대로면 `cargo` 는 스크립트 파일 안에 있다). 체인 실행 중 판정·`run_in_background` 판정과 골든 실증이 필요하다 (출처: 2026-10-23 karina-ea 요청 ④ — 사용자 「4는 대장」) (실해: 2026-10-23 run_34c092d3 plan 6 검증이 정리 명령과 검증 셋을 시한 없이 한 백그라운드에 묶어 80분 넘게 섰다)
 - [2026-11-20] **승인된 push 의 `warn-external-ops` 와 grep 정규식의 역슬래시 경고 줄이기** — 승인된 계획·스킬 안의 push 에도 `guard-bash` 의 외부 작업 경고가 붙고, grep·`sed -n` 정규식의 역슬래시 둘에 축소 경고가 붙어 읽을 것이 는다. 경고 조건을 좁힐지와 좁히는 기준을 정한다 — 넘김 사유 ②(의도된 경고 동작 변경 · 사용자 「보류」) (출처: 체인 run_8ec4012a plan 3 후보 12 — 사용자 「보류」) (실해: 2026-11-20 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 14일 로그 집계에서 `bash-backslash` 차단 41건 중 커밋 heredoc 은 3건이고 경고 건수는 재지 않았다)
 - [2026-11-14] **차단 로그에 막은 줄 미리보기** — hook-events 의 block 이벤트(`scripts/hook-event-log.ps1` `Write-HookEvent`)는 차단 사유 첫 줄과 명령 앞부분만 남겨, 오탐 리뷰 때 어느 줄이 걸렸는지 다시 재현해야 한다. 막힌 판정 줄(예: 체크박스 미완 줄·새 주석 줄)을 이벤트에 함께 남기는 안 — 넘김 사유 ② 기능 추가 — 사용자 보류 (출처: 체인 run_dc17831b plan 1 후보 라운드 ③ — 사용자 「보류」) (실해: 2026-11-14 사용자 보류 결정(deferred-rules 사용자 결정 예외) — 2026-11 hook-events 차단 리뷰에서 제기 · 재현 비용은 재지 않았다)
-- [2026-11-23] **완료 커밋 경고가 Acceptance 판정 줄 수도 대조한다** — `scripts/guard-task-audit.ps1` `Get-TaskEvidenceLines` 는 `check-plan -Base` 의 RED·화면 판정만 사본으로 두고 `acceptance-evidence`(본문 `Acceptance: … — <판정>` 줄 수 < plan `- **Acceptance**:` 항목 수)는 빠져 회차 끝에야 걸린다. 같은 사본에 항목 수 대조를 더하고 `rules/task-audit-rationale.md` §7·골든 「사본 정합」 케이스를 맞춘다 (출처: reflect 9720e31f) (실해: 2026-11-23 T2·T3 가 회차 끝 `acceptance-evidence 1/2` 로 걸려 빈 보충 커밋 둘 19654e1f·2ac4417a)
 - [2026-11-23] **골든 러너의 블록 단위 선택** — `hooks/evals/run-hook-evals.ps1` `-Filter` 는 시나리오 그룹 단위라 새 케이스 몇 건의 RED·GREEN 확인에도 guard-bash 1030 케이스를 매번 다 돈다. 자기 픽스처를 새로 만드는 `Test-ScenarioUnit <k>` 블록을 고르는 인자를 더해 RED·GREEN 반복은 블록만, task 닫기는 그룹 필터, 회차 끝은 무인자 전체로 둔다(`docs/golden-runner.md` · `harness-conventions.md`「골든 부분 실행의 판정 자격」) (출처: reflect 9720e31f) (실해: 2026-11-23 `-Filter guard-bash` 단독 111·109·111초 포함 필터 실행 약 890초 · 시험 Bash 합 1897초)
 
 
