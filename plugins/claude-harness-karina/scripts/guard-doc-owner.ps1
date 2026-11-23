@@ -25,9 +25,13 @@ function Get-DocOwnerBlocks([string]$File, [string[]]$Lines) {
     return $blocks
 }
 
+function Test-DocOwnerSameItem([string]$A, [string]$B) {
+    return ($A -ceq $B) -or $A.EndsWith(' ' + $B, [System.StringComparison]::Ordinal) -or $B.EndsWith(' ' + $A, [System.StringComparison]::Ordinal)
+}
+
 function Get-DocOwnerCount([string[]]$Lines, [string]$Owner) {
     $c = 0
-    foreach ($l in $Lines) { if (([string]$l).Trim() -ceq $Owner) { $c++ } }
+    foreach ($l in $Lines) { if (Test-DocOwnerSameItem ([string]$l).Trim() $Owner) { $c++ } }
     return $c
 }
 
@@ -80,7 +84,7 @@ function Invoke-GuardDocOwner($Data, [string]$File) {
         if ($before[$k].Count -ne 1 -or -not $after.ContainsKey($k) -or $after[$k].Count -ne 1) { continue }
         $x = $before[$k][0].Owner
         $y = $after[$k][0].Owner
-        if (-not $x -or -not $y -or $x -eq $y) { continue }
+        if (-not $x -or -not $y -or (Test-DocOwnerSameItem $x $y)) { continue }
         if ((Get-DocOwnerCount $postLines $x) -lt (Get-DocOwnerCount $preLines $x)) { continue }
         $touched = $false
         foreach ($l in ($k -split "`n")) { if ($oldLines.Contains($l)) { $touched = $true; break } }

@@ -543,6 +543,8 @@ $r = Invoke-GcEditAt $doVis 'fn tick() {}' 'pub fn tick() {}'
 Assert-Case -Name "doc-owner (음성): 주인 줄 앞에 pub 를 붙이는 가시성 변경은 통과" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
 $r = Invoke-GcEditAt $doVis "/// tick 설명`nfn tick() {}" "/// tick 설명`npub fn tick() {}"
 Assert-Case -Name "doc-owner (음성): doc 줄을 앵커에 넣은 가시성 변경도 통과" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+$r = Invoke-GcEditAt $doVis 'fn tick() {}' "fn helper() {}`n`npub fn tick() {}"
+Assert-Case -Name "doc-owner: 새 fn 을 끼우면서 주인에 pub 를 붙여도 차단" -R $r -ExpectExit 2 -ExpectContains $doBlock
 $doFix = Join-Path $doDir 'fix.rs'
 [System.IO.File]::WriteAllText($doFix, "/// x 설명`nfn helper() {}`n`nfn x() {}`n")
 $r = Invoke-GcEditAt $doFix "/// x 설명`nfn helper() {}`n`nfn x() {}" "fn helper() {}`n`n/// x 설명`nfn x() {}"
