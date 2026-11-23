@@ -154,7 +154,7 @@
 
 - [2026-11-20] **차단 hook 에 「명령 문자열을 읽어 안전한 대상이면 뺀다」 는 면제를 넣지 않는다 — hook 은 그 쓰기가 실제로 닿는 파일을 실행 전에 맞힐 수 없다** — `block-plan-write` 의 Temp `plan.md` 면제를 넣었다가 뺐다. 판정기와 셸의 읽기가 갈리는 자리(따옴표·heredoc·굽은 따옴표·NBSP 공백)와 파일시스템 상태(미리 있는 junction·하드링크·Cygwin식 심링크·`.exe` 접미)마다 우회가 나와 완료 리뷰가 12차까지 매번 새 꼴을 재현했다. 오차단은 면제가 아니라 차단 메시지의 통과 방법 안내로 푼다. 같은 갈래의 지적이 세 번 나오면 한 꼴씩 막지 말고 멈춰 설계를 묻는다. 차단 판정의 정규식을 요청 없이 갈아 끼우지도 않는다 — 면제 작업에 얹은 미탐 보완 둘이 앞 판이 막던 꼴을 놓쳐 13~15차에 회귀 셋을 냈고 전부 되돌렸다 (실측)
 
-- [2026-11-02] **`scripts/` 에 dot-source 전용 스크립트를 새로 만들면 등록 자리가 넷이다 — `scripts/rules/harness-hooks.json` 이름 집합(`validate.ps1` 의 헬퍼 목록도 이 집합에서 나온다) · 시나리오 `$scenarioGroups`·`GoldenFilterNames` · 커밋 시점 라이브러리면 `hooks/evals/scenarios/guard-bash.ps1` LZ 의 가짜 라이브러리 목록** — 둘은 부분 골든(`-Filter`)이 잡지 못하고 무인자 전체에서야 빨개졌다(`guard-task-audit` 회차: LZ 「로드 실패」 경고 · `guard-harness` 8.3 전수 `missing=guard-task-audit`). 새 스크립트 task 의 Files 에 넷을 함께 적는다 (실측)
+- [2026-11-23] **`scripts/` 에 스크립트(hook·dot-source 전용 모두)를 새로 만들면 등록 자리가 넷이다 — `scripts/rules/harness-hooks.json` 이름 집합(`validate.ps1` 의 헬퍼 목록도 이 집합에서 나온다) · 시나리오 `$scenarioGroups`·`GoldenFilterNames` · 커밋 시점 라이브러리면 `hooks/evals/scenarios/guard-bash.ps1` LZ 의 가짜 라이브러리 목록** — 둘은 부분 골든(`-Filter`)이 잡지 못하고 무인자 전체에서야 빨개졌다(`guard-task-audit` 회차: LZ 「로드 실패」 경고 · `guard-harness` 8.3 전수 `missing=guard-task-audit` · 재발 2026-11-23 v3.56.0 `missing=warn-worktree-delegation`). 새 스크립트 task 의 Files 에 넷을 함께 적는다 (실측)
 
 - [2026-10-20] **파괴적 명령 문자열을 담은 골든 케이스·시나리오를 Bash 도구 인라인(heredoc·`python -c`)으로 고치면 지금 도는 `block-destructive` 가 명령 문자열 전체를 보고 막는다** — 케이스 텍스트 안의 `git push --force-with-lease origin main` 이 실제 명령으로 읽힌다. 편집 스크립트는 Write 도구로 파일에 쓰고 `python <파일>` 로 돌린다 (실측)
 
