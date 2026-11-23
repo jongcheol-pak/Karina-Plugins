@@ -21,6 +21,8 @@ lint-cases.json의 각 case를 evals/fixtures/<fixture> vault에 대해 lint.py�
                          "--fix가 건드리지 않아야 하는 위반의 잔존"(보수 동작)을 검증한다.
   - expect_file_not_contains → (auto_split 보조) {파일: [문자열]} — 1회 수행 뒤 그 파일에
                          하나라도 있으면 FAIL. 「무엇이 사라졌는가」가 동작인 처방을 잰다.
+  - expect_dry_keywords → (auto_split 보조) --dry-run 출력에 전부 있어야 PASS — 미리보기가
+                         실제 수행과 같은 일을 예고하는지 잰다.
 
 lint.py 자체는 수정하지 않고 subprocess로 호출만 한다(실사용 경로와 동일). 표준 라이브러리만
 사용하며(테스트 프레임워크 없음 — AGENTS.md 정합), lint.py를 부른 것과 같은 인터프리터
@@ -343,6 +345,31 @@ def prepare_chunk_split_vault(fixture_dir, feature_count, stale_names):
     tmp = tempfile.mkdtemp(prefix="lint-eval-chunk-")
     dest = os.path.join(tmp, os.path.basename(fixture_dir))
     shutil.copytree(fixture_dir, dest)
+    write_bulk_features(dest, feature_count)
+    for name in stale_names:
+        with open(os.path.join(dest, name), "w", encoding="utf-8", newline="") as fh:
+            fh.write("---\ntype: index\ntags: [index]\n---\n\n# 옛 순번 파일\n\n"
+                     "## 기능별 인덱스\n\n| 기능 | 플랫폼 | 프로젝트 | 상세 |\n"
+                     "|------|--------|----------|------|\n")
+    # 델타 음성: 이름은 index-*.md지만 type이 index가 아니다 — 삭제되면 안 된다.
+    with open(os.path.join(dest, "index-notes.md"), "w", encoding="utf-8", newline="") as fh:
+        fh.write("---\ntype: guide\nguide_kind: recipe\nplatform: cross\n"
+                 "origin: human-validated\nconfidence: high\nupdated: 2026-07-02\n"
+                 "tags: [guide]\n---\n\n# 사용자 메모\n\n## 목적\n생성물이 아니다.\n")
+    return tmp, dest
+
+
+def write_oversized_sub_index(dest, name, rows):
+    with open(os.path.join(dest, name), "w", encoding="utf-8", newline="") as fh:
+        fh.write("---\ntype: index\ntags: [index]\n---\n\n# 낡은 sub-index\n\n"
+                 "## 기능별 인덱스\n\n| 기능 | 플랫폼 | 프로젝트 | 상세 |\n"
+                 "|------|--------|----------|------|\n")
+        for i in range(1, rows + 1):
+            fh.write("| 대량 %03d (bulk %03d) | windows-desktop | Demo | "
+                     "[[20_projects/personal/demo/feat-bulk-%03d]] |\n" % (i, i, i))
+
+
+def write_bulk_features(dest, feature_count):
     demo = os.path.join(dest, "20_projects", "personal", "demo")
     os.makedirs(demo, exist_ok=True)
     for i in range(1, feature_count + 1):
@@ -357,17 +384,6 @@ def prepare_chunk_split_vault(fixture_dir, feature_count, stale_names):
                 "## 메모\n- 없음[^src-b]\n\n"
                 "[^src-b]: [[10_sources/personal/src-demo|소스: Demo]] — `src/Demo/Bulk%03d.cs`\n"
                 % (i, i, i, i, i, i))
-    for name in stale_names:
-        with open(os.path.join(dest, name), "w", encoding="utf-8", newline="") as fh:
-            fh.write("---\ntype: index\ntags: [index]\n---\n\n# 옛 순번 파일\n\n"
-                     "## 기능별 인덱스\n\n| 기능 | 플랫폼 | 프로젝트 | 상세 |\n"
-                     "|------|--------|----------|------|\n")
-    # 델타 음성: 이름은 index-*.md지만 type이 index가 아니다 — 삭제되면 안 된다.
-    with open(os.path.join(dest, "index-notes.md"), "w", encoding="utf-8", newline="") as fh:
-        fh.write("---\ntype: guide\nguide_kind: recipe\nplatform: cross\n"
-                 "origin: human-validated\nconfidence: high\nupdated: 2026-07-02\n"
-                 "tags: [guide]\n---\n\n# 사용자 메모\n\n## 목적\n생성물이 아니다.\n")
-    return tmp, dest
 
 
 def _read_bytes(root, rel):
@@ -702,6 +718,9 @@ def check_case(case):
         tmp = tempfile.mkdtemp(prefix="lint-eval-split-")
         dest = os.path.join(tmp, os.path.basename(vault))
         shutil.copytree(vault, dest)
+        write_bulk_features(dest, case.get("feature_count", 0))
+        for name, rows in case.get("oversized_sub_index", {}).items():
+            write_oversized_sub_index(dest, name, rows)
         # **`git init` 전**이다 — 커밋이 담는 것이 LF여야 원복 왕복(인덱스 LF → 체크아웃
         #  CRLF)이 재현된다. 뒤에 두면 커밋에는 CRLF가 들어가 그 왕복이 항등이 된다.
         apply_lf_paths(dest, case.get("lf_paths", []))
@@ -723,6 +742,10 @@ def check_case(case):
         if rc_dry != 0:
             rmtree_force(tmp)
             return False, "--auto-split --dry-run 종료코드 %d: %s" % (rc_dry, (err_dry or out_dry)[:200])
+        missing_dry = [kw for kw in case.get("expect_dry_keywords", []) if kw not in out_dry]
+        if missing_dry:
+            rmtree_force(tmp)
+            return False, "--auto-split --dry-run 출력에 없음: %s | 출력: %s" % (missing_dry, out_dry[:300])
         # 실패 주입은 dry-run 무변경 확인 **뒤**에 건다 — dry-run은 실패 경로와 무관한
         #  계약이고, 앞에 걸면 그 계약이 「쓰지 못해서 안 바뀐 것」과 구분되지 않는다.
         restore = inject_split_failures(dest, case)

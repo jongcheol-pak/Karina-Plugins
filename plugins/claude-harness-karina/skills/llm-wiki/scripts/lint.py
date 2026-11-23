@@ -2283,6 +2283,18 @@ PRESCRIPTIONS.append(relocate_sections)
 
 
 
+def _index_split_targets(vault):
+    out = []
+    for p in [os.path.join(vault, "index.md")] + sorted(
+            glob.glob(os.path.join(glob.escape(vault), "index-*.md"))):
+        text, _bom, _nl = _read_page(p)
+        if text is None:
+            continue
+        if text.count("\n") + 1 > INDEX_BODY_LINES or feature_index_rows(text) > INDEX_FEAT_ROWS:
+            out.append(os.path.basename(p))
+    return out
+
+
 def auto_split(vault, dry_run):
     # 진입 가드 — `SplitSession` 생성 **전**이다. 그 생성자가 체크포인트 커밋을 찍으므로,
     #  뒤에 두면 삼킬 것을 이미 삼킨 뒤가 된다.
@@ -2304,8 +2316,9 @@ def auto_split(vault, dry_run):
             print(f"  [정리 실패] {f}")
 
     _run_prescriptions(ses)
+    index_over = _index_split_targets(vault)
 
-    if not ses.actions:
+    if not ses.actions and not index_over:
         print("== --auto-split: 수행 대상 없음 ==")
         for n in ses.notes:
             print(f"  {n}")
@@ -2315,6 +2328,8 @@ def auto_split(vault, dry_run):
         print("== --auto-split --dry-run (파일 미변경) ==")
         for kind, target, created in ses.actions:
             print(f"  {kind} — {target}: {'·'.join(created) if created else '(신설 없음)'}")
+        for name in index_over:
+            print(f"  index 분할 예정 — {name}")
         for n in ses.notes:
             print(f"  {n}")
         return 0
