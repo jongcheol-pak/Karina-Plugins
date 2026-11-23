@@ -8,7 +8,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" -Blocking block-destructive.ps1 guard-bash.ps1 advisory: suggest-agents-record.ps1 inject-reply-language.ps1; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" -Blocking block-destructive.ps1 guard-bash.ps1 inject-reply-language.ps1 advisory: suggest-agents-record.ps1; exit $LASTEXITCODE",
             "timeout": 60,
             "onFailure": "block"
           }
@@ -20,7 +20,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" -Blocking guard-write.ps1 guard-harness.ps1 advisory: inject-reply-language.ps1; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" -Blocking guard-write.ps1 guard-harness.ps1 inject-reply-language.ps1; exit $LASTEXITCODE",
             "timeout": 60,
             "onFailure": "block"
           }

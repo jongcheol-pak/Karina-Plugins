@@ -1,4 +1,4 @@
-﻿# inject-reply-language.ps1 — 스킬 발동 때 「사용자 보고는 한글」 한 줄을 주입하고, 셸·쓰기 도구 직전 assistant 텍스트가 영문 위주면 그 텍스트에 한 번 교정 줄을 싣고, turn 끝 응답이 영문 위주면 한 번 다시 쓰게 한다 — 근거는 `rules/reply-language-rationale.md` §1
+﻿# inject-reply-language.ps1 — 스킬 발동 때 「사용자 보고는 한글」 한 줄을 주입하고, 셸·쓰기 도구 직전 assistant 텍스트가 영문 위주면 그 텍스트에 한 번 교정 줄을 싣고(같은 세션 세 번째부터는 그 호출을 한 번 막고), turn 끝 응답이 영문 위주면 한 번 다시 쓰게 한다 — 근거는 `rules/reply-language-rationale.md` §1
 
 $ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
@@ -12,6 +12,8 @@ try { $data = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin
 if (-not $data) { exit 0 }
 
 $PreLine = '[karina 응답 언어] 직전 진행 메모가 영문 위주였습니다 — 이어지는 안내·메모·보고는 한글로 쓴다. 코드 식별자·명령·원문 인용은 원래 표기를 유지한다.'
+$BlockAfter = 2
+$BlockLine = "[차단] 영문 진행 메모 세 번째 — 이 도구 호출을 한 번 막았습니다" + ' [karina 응답 언어] 이 세션에서 영문 메모 교정이 이미 두 번 나갔습니다. 방금 메모를 한글로 다시 쓴 뒤 같은 도구 호출을 다시 내십시오 — 코드 식별자·명령·원문 인용은 원래 표기를 유지합니다.'
 
 function Test-LatinProse([string]$Text) {
     $prose = $Text -replace '(?ms)^ {0,3}(```|~~~).*?(^ {0,3}\1[^\n]*$|\z)', ' '
@@ -86,6 +88,17 @@ try {
     New-Item -Force -ItemType Directory -Path (Split-Path -Parent $statePath) -ErrorAction Stop | Out-Null
     Set-Content -LiteralPath $statePath -Value $last.Uuid -NoNewline -ErrorAction Stop
 } catch { exit 0 }
+
+# 같은 세션 세 번째 영문 메모부터 다음 셸·쓰기 호출을 한 번 막는다 — 근거는 `rules/reply-language-rationale.md` §5
+$countPath = [System.IO.Path]::ChangeExtension($statePath, '.count')
+$n = 0
+try { $n = [int](Get-Content -LiteralPath $countPath -Raw -ErrorAction Stop).Trim() } catch { $n = 0 }
+$counted = $true
+try { Set-Content -LiteralPath $countPath -Value ($n + 1) -NoNewline -ErrorAction Stop } catch { $counted = $false }
+if ($counted -and $n -ge $BlockAfter) {
+    [Console]::Error.WriteLine($BlockLine)
+    exit 2
+}
 
 $out = @{ hookSpecificOutput = @{ hookEventName = $hookEvent; additionalContext = $PreLine } }
 Write-Output ($out | ConvertTo-Json -Compress -Depth 4)

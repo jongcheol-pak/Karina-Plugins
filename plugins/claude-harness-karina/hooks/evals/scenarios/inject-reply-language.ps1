@@ -71,6 +71,26 @@ $rlTxNone = New-RlTranscript 'none' @($rlUser, $rlToolUse)
 Assert-Case -Name "inject-reply-language: 전사 꼬리에 assistant 텍스트가 없으면 무출력" -R (Invoke-RlPre "rl-t8-$rlRun" $rlTxNone) -ExpectExit 0 -ExpectSilent $true
 Assert-Case -Name "inject-reply-language: session_id 없는 셸 호출은 무출력" -R (Invoke-RlPre '' $rlTxEn) -ExpectExit 0 -ExpectSilent $true
 Assert-Case -Name "inject-reply-language: PostToolUse 는 무출력" -R (Invoke-RlPre "rl-t9-$rlRun" $rlTxEn 'Bash' '' 'PostToolUse') -ExpectExit 0 -ExpectSilent $true
+function Invoke-RlBlock([string]$sid, [string]$tx, [string]$tool = 'Bash', [string]$agentId = '') {
+    $o = @{ session_id = $sid; transcript_path = $tx; hook_event_name = 'PreToolUse'; tool_name = $tool; tool_input = @{ command = 'ls' } }
+    if ($agentId) { $o.agent_id = $agentId }
+    return (Invoke-Hook 'inject-reply-language.ps1' ($o | ConvertTo-Json -Compress) -SplitStreams)
+}
+$rlB = "rl-b-$rlRun"
+$rlTxB = New-RlTranscript 'block' @($rlUser, (New-RlRow 'b1' 'assistant' @(@{ type = 'text'; text = 'Now the registry methods are next, stubs first for the failing case.' })), $rlToolUse)
+Assert-Case -Name "inject-reply-language: 세션 첫 영문 메모는 교정 줄만 싣는다" -R (Get-RlContext (Invoke-RlBlock $rlB $rlTxB)) -ExpectExit 0 -ExpectContains 'ctx=[karina 응답 언어]'
+Add-RlRow $rlTxB (New-RlRow 'b2' 'assistant' @(@{ type = 'text'; text = 'Now the intercept in the frame handler goes in after the stub.' }))
+Assert-Case -Name "inject-reply-language: 세션 둘째 영문 메모도 교정 줄만 싣는다" -R (Get-RlContext (Invoke-RlBlock $rlB $rlTxB)) -ExpectExit 0 -ExpectContains 'ctx=[karina 응답 언어]'
+Add-RlRow $rlTxB (New-RlRow 'b3' 'assistant' @(@{ type = 'text'; text = 'Now the workspace handler and the flag wiring for the run path.' }))
+$r = Invoke-RlBlock $rlB $rlTxB
+Assert-Case -Name "inject-reply-language: 세션 셋째 영문 메모 뒤 셸 호출을 exit 2 로 막는다" -R @{ code = $r.code; out = $r.err } -ExpectExit 2 -ExpectContains '영문 진행 메모 세 번째 — 이 도구 호출을 한 번 막았습니다'
+Assert-Case -Name "inject-reply-language: 차단 사유가 한글로 다시 쓰라고 지시한다" -R @{ code = $r.code; out = $r.err } -ExpectExit 2 -ExpectContains '한글로 다시'
+Assert-Case -Name "inject-reply-language: 막은 메모 그대로 다시 부른 호출은 통과한다" -R (Invoke-RlBlock $rlB $rlTxB) -ExpectExit 0 -ExpectSilent $true
+Add-RlRow $rlTxB (New-RlRow 'b4' 'assistant' @(@{ type = 'text'; text = '워크스페이스 핸들러와 `run()` 배선을 고칩니다.' }))
+Assert-Case -Name "inject-reply-language: 차단 단계에서도 한글 메모는 무출력" -R (Invoke-RlBlock $rlB $rlTxB 'Write') -ExpectExit 0 -ExpectSilent $true
+Add-RlRow $rlTxB (New-RlRow 'b5' 'assistant' @(@{ type = 'text'; text = 'Now the status bar segment and the ports filter for remote hosts.' }))
+Assert-Case -Name "inject-reply-language: 차단 단계의 서브에이전트 호출은 무출력" -R (Invoke-RlBlock $rlB $rlTxB 'Bash' 'sub-9') -ExpectExit 0 -ExpectSilent $true
+Assert-Case -Name "inject-reply-language: 차단 단계에서도 Skill 은 주입만 한다" -R (Get-RlContext (Invoke-RlSkill $rlB)) -ExpectExit 0 -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어]'
 Assert-Case -Name "inject-reply-language: session_id 없는 Skill 도 주입한다" -R (Get-RlContext (Invoke-RlSkill '')) -ExpectExit 0 -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어]'
 Assert-Case -Name "inject-reply-language: 서브에이전트 Skill 도 주입한다" -R (Get-RlContext (Invoke-RlSkill 'rl-p4' 'sub-2')) -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어]'
 
@@ -118,8 +138,8 @@ $rlPreHit = @('Skill', 'Bash', 'PowerShell', 'Write', 'Edit', 'MultiEdit', 'Note
     }).Count -gt 0
 })
 Assert-Case -Name "inject-reply-language: PreToolUse 블록이 Skill·셸·쓰기 도구만 받는다" -R @{ code = 0; out = "blocks=$($rlPre.Count) hits=[$($rlPreHit -join ',')]" } -ExpectContains 'blocks=3 hits=[Skill,Bash,PowerShell,Write,Edit,MultiEdit,NotebookEdit]'
-$rlPreAdv = @($rlPre | Where-Object { [string]$_.matcher -ne 'Skill' } | ForEach-Object { @($_.hooks) } | Where-Object { [string]$_.command -match 'advisory:.*inject-reply-language' })
-Assert-Case -Name "inject-reply-language: 셸·쓰기 PreToolUse 에서는 권고(advisory:) 뒤에 선다" -R @{ code = 0; out = "adv=$($rlPreAdv.Count)" } -ExpectContains 'adv=2'
+$rlPreBlk = @($rlPre | Where-Object { [string]$_.matcher -ne 'Skill' } | ForEach-Object { @($_.hooks) } | Where-Object { ([string]$_.command -match '-Blocking [^:]*inject-reply-language') -and ([string]$_.command -notmatch 'advisory:.*inject-reply-language') })
+Assert-Case -Name "inject-reply-language: 셸·쓰기 PreToolUse 에서는 차단 구간(advisory: 앞)에 선다" -R @{ code = 0; out = "blk=$($rlPreBlk.Count)" } -ExpectContains 'blk=2'
 $rlPost = @($rlHooks.hooks.PostToolUse | Where-Object { ($_.hooks.command -join ' ') -match 'inject-reply-language' })
 Assert-Case -Name "inject-reply-language: PostToolUse 블록이 이 스크립트를 부르지 않는다" -R @{ code = 0; out = "blocks=$($rlPost.Count)" } -ExpectContains 'blocks=0'
 

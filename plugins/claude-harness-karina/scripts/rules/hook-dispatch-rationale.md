@@ -68,7 +68,7 @@
 
 ## §7 권고 스크립트
 
-인자 안의 구분 토큰 `advisory:` 뒤에 둔 스크립트는 **권고 스크립트**다. 차단 묶음 뒤에 붙여, 도구 호출마다 pwsh 를 하나 더 띄우던 PostToolUse 권고 묶음(`suggest-agents-record`·`inject-reply-language`)을 같은 프로세스로 옮기려고 둔다(2026-11-12 — 셸 호출당 pwsh 2 → 1).
+인자 안의 구분 토큰 `advisory:` 뒤에 둔 스크립트는 **권고 스크립트**다. 차단 묶음 뒤에 붙여, 도구 호출마다 pwsh 를 하나 더 띄우던 PostToolUse 권고 묶음(`suggest-agents-record`·`inject-reply-language`)을 같은 프로세스로 옮기려고 둔다(2026-11-12 — 셸 호출당 pwsh 2 → 1). `inject-reply-language` 는 재발 차단(`reply-language-rationale.md` §5)을 들이며 2026-11-23 차단 구간으로 옮겼다.
 
 - **이름 있는 매개변수가 아니라 나머지 인자 안의 토큰이다** — `hooks.json` 은 `-Command` 문맥(`& "…hook-dispatch.ps1" …`)이고 골든 프로세스 경로는 `pwsh -File` 이다. `-Advisory a.ps1,b.ps1` 은 `-File` 에서 문자열 하나가 되고, 골든 프로세스 안 바인더(`hooks/evals/eval-common.ps1`)는 값 없는 `-이름` 을 스위치로 바꾼다. 대시 없는 토큰은 두 경로에서 같은 배열로 들어온다(2026-11-12 실측). 토큰은 한 번만, 앞뒤에 스크립트가 있어야 하고 어기면 `1` 이다.
 - **앞 스크립트가 모두 `0` 이고 디스패처 시작부터의 경과가 `-AdvisoryBudgetMs`(기본 20000) 안일 때만 돈다** — 차단된 호출은 도구가 돌지 않아 권고(기록 제안·응답 언어 카운트)가 뜻이 없다. 예산은 차단 묶음 timeout 60초에서 차단 스크립트 몫(동시 부하 최대 27.2초 — 2026-11 `slow` 기록)을 남기려는 것이다. 시각은 디스패처의 Stopwatch 로 잰다 — 프로세스 시작 시각은 골든 프로세스 안 실행에서 러너의 시작 시각이라 늘 소진된다(`rules/event-log-rationale.md` §2 「골든」).
