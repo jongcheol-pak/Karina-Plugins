@@ -146,7 +146,7 @@ if ($hookEvent -eq 'PreToolUse') {
 if ($hookEvent -eq 'UserPromptExpansion') {
     $cmdName = [string]$data.command_name
     if ($cmdName -match $ImplementRx) { Set-ActiveMarker }
-    elseif ($cmdName -match $PlanRx) { Clear-ActiveMarker }
+    elseif ($cmdName -match $PlanRx -or $cmdName -match '^karina:') { Clear-ActiveMarker }
     exit 0
 }
 if ($hookEvent -ne 'Stop') { exit 0 }

@@ -229,7 +229,7 @@ $hdExpect['Stop|'] = 'inject-reply-language,loop-continue'
 foreach ($s in 'startup', 'resume', 'clear') { $hdExpect["SessionStart|$s"] = 'session-context,warn-version-drift' }
 foreach ($s in 'compact', 'fork') { $hdExpect["SessionStart|$s"] = 'session-context' }
 foreach ($c in 'plan', 'karina:plan') { $hdExpect["UserPromptExpansion|$c"] = 'loop-continue,record-work-start' }
-foreach ($c in 'implement', 'karina:implement') { $hdExpect["UserPromptExpansion|$c"] = 'loop-continue' }
+foreach ($c in 'implement', 'karina:implement', 'karina:reflect') { $hdExpect["UserPromptExpansion|$c"] = 'loop-continue' }
 foreach ($c in 'chain-plan', 'karina:chain-plan') { $hdExpect["UserPromptExpansion|$c"] = 'loop-continue,record-work-start' }
 $hdOver = @(); $hdSetDiff = @()
 foreach ($k in $hdExpect.Keys) {

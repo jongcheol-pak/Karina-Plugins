@@ -113,7 +113,7 @@
         ]
       },
       {
-        "matcher": "^(karina:)?implement$",
+        "matcher": "^((karina:)?implement|karina:(?!(chain-)?plan$).+)$",
         "hooks": [
           {
             "type": "command",

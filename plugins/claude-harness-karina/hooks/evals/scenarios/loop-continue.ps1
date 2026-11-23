@@ -79,6 +79,15 @@ $null = Invoke-Hook 'loop-continue.ps1' (@{ session_id = 'lc-s8'; hook_event_nam
 $r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-s8' $lcProj)
 Assert-Case -Name "loop-continue: /chain-plan 직접 입력 뒤에는 침묵(마커 제거)" -R $r -ExpectExit 0 -ExpectSilent $true
 
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-s9' 'karina:implement')
+$null = Invoke-Hook 'loop-continue.ps1' (@{ session_id = 'lc-s9'; hook_event_name = 'UserPromptExpansion'; command_name = 'karina:reflect' } | ConvertTo-Json -Compress)
+$r = Invoke-Hook 'loop-continue.ps1' (New-LcStopJson 'lc-s9' $lcProj)
+Assert-Case -Name "loop-continue: implement 밖 karina 스킬 직접 입력 뒤에는 침묵(마커 제거)" -R $r -ExpectExit 0 -ExpectSilent $true
+
+$null = Invoke-Hook 'loop-continue.ps1' (New-LcSkillJson 'lc-s10' 'karina:implement')
+$null = Invoke-Hook 'loop-continue.ps1' (@{ session_id = 'lc-s10'; hook_event_name = 'UserPromptExpansion'; command_name = 'loop' } | ConvertTo-Json -Compress)
+Assert-Case -Name "loop-continue: karina 밖 명령 직접 입력은 마커를 지우지 않는다" -R (Test-LcMarker 'lc-s10') -ExpectContains 'marker=True'
+
 $r = Invoke-Hook 'loop-continue.ps1' 'not json {'
 Assert-Case -Name "loop-continue: 잘못된 stdin 은 침묵" -R $r -ExpectExit 0 -ExpectSilent $true
 
@@ -296,13 +305,13 @@ Remove-Item -Recurse -Force $lcFin, $lcNoGit, $lcGate, $lcGateNone, $lcGateSub, 
 
 $lcHooks = Get-Content -LiteralPath (Join-Path $pluginRoot 'hooks/hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $lcUpeMatchers = @($lcHooks.hooks.UserPromptExpansion | Where-Object { ($_.hooks.command -join ' ') -match 'loop-continue' } | ForEach-Object { [string]$_.matcher })
-$lcHit = @('karina:implement', 'implement', 'karina:plan', 'plan' | Where-Object {
+$lcHit = @('karina:implement', 'implement', 'karina:plan', 'plan', 'karina:reflect' | Where-Object {
     $cmd = $_
     @($lcUpeMatchers | Where-Object {
         if ($_ -match '^[A-Za-z0-9_ ,|-]*$') { ($_ -split '[|,]' | ForEach-Object { $_.Trim() }) -contains $cmd } else { $cmd -match $_ }
     }).Count -gt 0
 })
-Assert-Case -Name "loop-continue: UserPromptExpansion matcher 가 karina: 접두·무접두 두 형태를 모두 받는다" -R @{ code = 0; out = "hits=$($lcHit.Count)" } -ExpectContains 'hits=4'
+Assert-Case -Name "loop-continue: UserPromptExpansion matcher 가 karina: 접두·무접두 두 형태와 다른 karina 스킬을 받는다" -R @{ code = 0; out = "hits=$($lcHit.Count)" } -ExpectContains 'hits=5'
 
 $lcIdProj = Join-Path $work 'lc-identity'; New-Item -ItemType Directory $lcIdProj -Force | Out-Null
 $lcIdPlan = Join-Path $lcIdProj 'plan.md'
