@@ -190,6 +190,16 @@ Assert-Case -Name "comment-scope: doc 대상 — 되살림·회차 삭제 수" -
 $drA = [System.IO.File]::ReadAllText((Join-Path $dr 'a.rs'))
 Assert-Case -Name "comment-scope: doc 대상 — 되살린 doc 은 제자리에 있다" -R @{ code = 0; out = ('match=' + ($drA -eq "/// 옛 설명을 고침.`nfn old_doc() {}`nfn no_doc() {}`n/// 이름 바꿀 함수 설명을 고침.`nfn renamed_after() {}`n/// 시험 설명을 고침.`n#[test]`nfn t_case() {}`n/// 시그니처 설명을 고침.`nfn sig_changed(a: u8) -> bool {}`n/// 같은 이름 설명.`nfn dup() {}`nfn dup(x: u8) {}`n/// 이름 바꾼 상수 함수 설명.`npub const fn const_new() -> u8 { 0 }`nfn caller() {`n    let _ = sig_changed(1);`n    match sig_changed(2) { _ => {} }`n}`n")) } -ExpectExit 0 -ExpectContains 'match=True'
 
+$kr = New-CsRepo 'keep-dir'
+Set-CsFile $kr 'AGENTS.md' "# AGENTS`n`n- **Comment (보존)**: ``.`` · 경로: ``mobile/```n"
+Set-CsFile $kr 'mobile/src/a.rs' "fn a() {}`n"
+git -C $kr add .; git -C $kr commit -qm base
+$krBase = (git -C $kr rev-parse HEAD).Trim()
+Set-CsFile $kr 'mobile/src/a.rs' "// 상류 머리 주석`nfn a() {}`n"
+git -C $kr commit -qam round
+$r = Invoke-Cs @('-Base', $krBase, '-Out', (Join-Path $csRoot 'keep-dir-out.txt'), '-Repo', $kr)
+Assert-Case -Name "comment-scope: Comment (보존) 폴더 pathspec 아래 파일의 주석은 보존으로 뺀다" -R $r -ExpectExit 0 -ExpectContains 'RESULT: 대상 0 · 회차 전 0 · 감사 0 · 보존 1'
+
 $mr = New-CsRepo 'many'
 $mrNames = @(for ($i = 1; $i -le 50; $i++) { '{0}/f{1:D2}.rs' -f $(if ($i -le 25) { 'one' } else { 'two' }), $i })
 foreach ($n in $mrNames) { Set-CsFile $mr $n "fn f() {}`n" }

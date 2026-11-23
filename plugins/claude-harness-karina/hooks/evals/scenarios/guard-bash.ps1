@@ -950,6 +950,12 @@ $d = New-CcRepo
 Set-CcFile $d 'mod.psm1' "#Requires -Version 7`n`$m = 1`n"; git -C $d add mod.psm1
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-psm1'
 Assert-Case -Name "commit-comments: .psm1 #Requires 만 staged 한 커밋 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$d = New-CcRepo
+[System.IO.File]::WriteAllText((Join-Path $d 'AGENTS.md'), "# A`n`n- **Comment (보존)**: ``.`` · 경로: ``mobile/```n")
+New-Item -ItemType Directory -Force -Path (Join-Path $d 'mobile/src') | Out-Null
+Set-CcFile $d 'mobile/src/a.cs' "// 상류 머리 주석`nint a;`n"; git -C $d add .
+$r = Invoke-CcCommit $d 'git commit -m x' 'cc-keep-dir'
+Assert-Case -Name "commit-comments: Comment (보존) 폴더 pathspec 아래 파일의 새 주석 커밋 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 $d = New-CcRepo
 [System.IO.File]::WriteAllText((Join-Path $d 'AGENTS.md'), "# A`n`n- **Test (감사)**: ``cargo test`` · 증가: ``^\s*pub\s+(fn|enum|struct)\b`` · 경로: ``*.rs```n")

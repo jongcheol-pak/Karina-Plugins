@@ -295,7 +295,9 @@ function Get-CommentSearchDirs([string]$Dir, [string]$Root) {
 function Test-CommentPathLike([string]$File, [string]$Base, [string]$Pattern) {
     $rel = try { [System.IO.Path]::GetRelativePath($Base, $File) -replace '\\', '/' } catch { '' }
     $leaf = [System.IO.Path]::GetFileName($File)
-    return ($rel -like $Pattern) -or ($leaf -like $Pattern)
+    $p = (($Pattern -replace '\\', '/') -replace '^\./', '').TrimEnd('/')
+    if ($p -eq '' -or $p -eq '.') { return [bool]$rel -and -not $rel.StartsWith('../') }
+    return ($rel -like $p) -or ($rel -like "$p/*") -or ($leaf -like $p)
 }
 
 function Test-CommentLineExempt([string]$Line, [string]$Path, [string]$Dir, [string]$Root) {

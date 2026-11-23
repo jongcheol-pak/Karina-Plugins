@@ -220,6 +220,17 @@ $r = Invoke-GcWrite (Join-Path $gc 'rw_h.cs') $gcBigNew
 Assert-Case -Name "guard-comment: 유사도 예산을 넘는 전면 재작성은 순서대로 봐주고 마지막 줄을 막는다" -R $r -ExpectExit 2 -ExpectContains '#45 렌더러' -ExpectNotContains 'qqq xxx'
 $r = Invoke-GcEditAt (Join-Path $gcKeep 'scripts/head.ps1') '$h = 1' "# 정본 머리 표`n`$h = 1"
 Assert-Case -Name "guard-comment: AGENTS.md Comment (보존) 경로·정규식에 맞는 주석 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$gcKeepDir = New-GcRepo 'keep-dir' @{ 'AGENTS.md' = "# K`n`n- **Comment (보존)**: ``.`` · 경로: ``mobile/```n"; 'mobile/src/a.ps1' = "`$a = 1`n"; 'other/b.ps1' = "`$b = 1`n" }
+$r = Invoke-GcEditAt (Join-Path $gcKeepDir 'mobile/src/a.ps1') '$a = 1' "# 상류 머리 주석`n`$a = 1"
+Assert-Case -Name "guard-comment: Comment (보존) 폴더 pathspec(끝 /) 아래 파일의 주석 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-GcEditAt (Join-Path $gcKeepDir 'other/b.ps1') '$b = 1' "# 상류 머리 주석`n`$b = 1"
+Assert-Case -Name "guard-comment: Comment (보존) 폴더 pathspec 밖 파일의 주석은 차단" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
+$gcKeepBare = New-GcRepo 'keep-bare' @{ 'AGENTS.md' = "# K`n`n- **Comment (보존)**: ``.`` · 경로: ``mobile```n"; 'mobile/src/a.ps1' = "`$a = 1`n" }
+$r = Invoke-GcEditAt (Join-Path $gcKeepBare 'mobile/src/a.ps1') '$a = 1' "# 상류 머리 주석`n`$a = 1"
+Assert-Case -Name "guard-comment: Comment (보존) 폴더 pathspec(끝 / 없음) 아래 파일의 주석 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$gcAuditAll = New-GcRepo 'audit-all' @{ 'Cargo.toml' = "[package]`nname = `"d`"`npublish = false`n"; 'src/lib.rs' = ''; 'src/q.rs' = "pub enum FollowUp {}`n"; 'AGENTS.md' = "# A`n`n- **Test (감사)**: ``cargo test --lib -- doc_audit`` · 증가: ``^\s*pub\s+(fn|struct|enum)\b```n" }
+$r = Invoke-GcEditAt (Join-Path $gcAuditAll 'src/q.rs') 'pub enum FollowUp {}' "/// 작업 중 보낸 메시지가 가는 곳.`npub enum FollowUp {}"
+Assert-Case -Name "guard-comment: Test (감사) 경로 생략(.)은 하위 파일 pub 항목 doc 을 통과시킨다" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 
 $gcRw = '기존 주석의 문구만 고쳤습니다'
 $r = Invoke-GcEdit 'rw1.cs' "// 합계를 센다`nint s = 0;" "// 합계를 다시 센다`nint s = 1;"
