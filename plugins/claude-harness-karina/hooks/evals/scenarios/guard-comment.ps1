@@ -527,6 +527,32 @@ $r = Invoke-GcEditAt $doTwin "    pub fn from_params(params: &Value) -> Self {`n
 Assert-Case -Name "doc-owner (음성): 같은 시그니처가 둘인 파일에서 하나의 이름만 바꾸면 통과" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
 $r = Invoke-GcEditAt $doTwin "    pub fn from_params(params: &Value) -> Self {`n        B" "    fn helper() {}`n`n    pub fn from_params(params: &Value) -> Self {`n        B"
 Assert-Case -Name "doc-owner: 같은 시그니처가 둘인 파일에서도 앞에 새 fn 을 끼우면 차단" -R $r -ExpectExit 2 -ExpectContains $doBlock
+$doFn = Join-Path $doDir 'relaunch.rs'
+[System.IO.File]::WriteAllText($doFn, "fn prev() {}`n`n/// relaunch 설명`n/// 둘째 줄`npub fn relaunch() {}`n")
+$r = Invoke-GcEditAt $doFn '/// 둘째 줄' "/// 둘째 줄`nfn helper() {}`n"
+Assert-Case -Name "doc-owner: doc 마지막 줄을 앵커로 그 뒤에 새 fn 을 끼우면 차단" -R $r -ExpectExit 2 -ExpectContains $doBlock
+$r = Invoke-GcEditAt $doFn "/// relaunch 설명`n/// 둘째 줄`npub fn relaunch() {}" "/// relaunch 설명`n/// 둘째 줄`nfn helper() {}`n`npub fn relaunch() {}"
+Assert-Case -Name "doc-owner: doc 과 주인을 앵커로 잡아 그 사이에 새 fn 을 끼우면 차단" -R $r -ExpectExit 2 -ExpectContains $doBlock
+$r = Invoke-GcEditAt $doFn '/// 둘째 줄' '/// 둘째 줄 고침'
+Assert-Case -Name "doc-owner (음성): doc 문구만 고치면 통과" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+$r = Invoke-GcEditAt $doFn "/// 둘째 줄`npub fn relaunch() {}" "/// 둘째 줄`npub fn relaunch(x: u8) {}"
+Assert-Case -Name "doc-owner (음성): doc 줄을 앵커에 넣고 주인 시그니처를 고치면 통과" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+$doVis = Join-Path $doDir 'vis.rs'
+[System.IO.File]::WriteAllText($doVis, "fn prev() {}`n`n/// tick 설명`nfn tick() {}`n")
+$r = Invoke-GcEditAt $doVis 'fn tick() {}' 'pub fn tick() {}'
+Assert-Case -Name "doc-owner (음성): 주인 줄 앞에 pub 를 붙이는 가시성 변경은 통과" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+$r = Invoke-GcEditAt $doVis "/// tick 설명`nfn tick() {}" "/// tick 설명`npub fn tick() {}"
+Assert-Case -Name "doc-owner (음성): doc 줄을 앵커에 넣은 가시성 변경도 통과" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+$doFix = Join-Path $doDir 'fix.rs'
+[System.IO.File]::WriteAllText($doFix, "/// x 설명`nfn helper() {}`n`nfn x() {}`n")
+$r = Invoke-GcEditAt $doFix "/// x 설명`nfn helper() {}`n`nfn x() {}" "fn helper() {}`n`n/// x 설명`nfn x() {}"
+Assert-Case -Name "doc-owner (음성): 잘못 붙은 doc 을 기존 항목으로 되돌리면 통과" -R $r -ExpectExit 0 -ExpectNotContains $doBlock
+$doMod = Join-Path $doDir 'lib.rs'
+[System.IO.File]::WriteAllText($doMod, "//! crate`n`n/// a 모듈`npub mod a;`n/// b 모듈`npub mod b;`n")
+$r = Invoke-GcEditAt $doMod "/// b 모듈`npub mod b;" "/// b 모듈`npub mod n;`npub mod b;"
+Assert-Case -Name "doc-owner: doc 과 pub mod 를 앵커로 잡아 그 사이에 pub mod 를 끼우면 차단" -R $r -ExpectExit 2 -ExpectContains $doBlock
+$r = Invoke-GcEditAt $doMod 'pub mod b;' "pub mod n;`npub mod b;"
+Assert-Case -Name "doc-owner: pub mod 줄을 앵커로 그 앞에 pub mod 를 끼우면 차단" -R $r -ExpectExit 2 -ExpectContains $doBlock
 
 if ($gitOk) {
 $mv = Join-Path $gc 'movegit'; New-Item -ItemType Directory -Force -Path (Join-Path $mv 'src') | Out-Null
