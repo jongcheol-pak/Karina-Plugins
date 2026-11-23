@@ -2,6 +2,8 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-24] 검증 스킬 생성·유지 스킬에 verify-karina 실측 노하우 9건(v3.59.0) — 기각: verify-karina 헬퍼(launch·doctor·cleanup·shot 등)를 하니스 공용 헬퍼로 옮기기 — 생성 스킬은 레포마다 그 앱에 맞는 헬퍼를 짓게 하고(2단계 Helpers), 요청은 규칙 반영이었다. 격리 불가 앱 규칙은 `drive-recipes.md` 절로, 모든 앱에 걸리는 Doctor 빌드 일치·Cleanup 자식 프로세스는 생성 스킬 본문으로 나눴다(계획 리뷰 1R).
+
 - [2026-11-23] Karina 세션 46c9c1b1 reflect 하니스 개선 2건(v3.58.0) — 기각: doc 주인 이동 게이트가 doc 문구를 고치면서 사이에 새 항목을 끼우는 꼴까지 잡는 것 — 블록 문구가 바뀌면 편집 전·후 같은 블록으로 대조할 기준이 없다(`scripts/rules/doc-owner-rationale.md` §3 한계)
   - 기각: reflect 원인 추정 ②(`pub mod x;` 를 주인으로 판정하지 못함) — 프로브와 골든에서 `pub mod` 앵커 꼴은 이전에도 막혔고, 놓친 lib.rs 건은 doc 을 앵커에 넣은 ① 꼴이었다
 
