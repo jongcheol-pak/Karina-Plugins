@@ -2,6 +2,10 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-24] 검토 권장 수정(hook 지연 계측 · 반복 차단 안내 · worktree 경고 · omitClaudeMd · 캐시 정리) — 번복: 2026-11-20 보류 「승인된 push 의 `warn-external-ops` 줄이기」 중 push 부분을 시행했다(사용자 답 「실행 중엔 생략」 — worktree 에서 본 레포 plan 을 따라가고 세션 실행 마커가 있으면 생략). 역슬래시 경고 부분은 대장에 남는다.
+  - 보류: hook 런타임 교체(상주 데몬·컴파일 실행 파일) — 지연이 기동·로드·검사 중 어디서 느는지 재지 않아, slow 줄 분해 계측만 넣고 처방은 7일 계측 뒤 고른다(사용자 「진행」 · 대장 「hook 지연 처방 선택」).
+  - 기각: plan-reviewer·completion-reviewer·comment-reviewer·wiki-page-writer 의 `omitClaudeMd` — 글로벌 지침의 범위·주석·문서 규칙으로 판정·작성할 수 있어 빼면 판정이 바뀐다. screen-verifier·reflect-reviewer 둘만 적용했다.
+
 - [2026-11-24] 이웃 task 합치기 규칙·원본 줄 이탈 기계 검사(v3.61.0) — 번복: 2026-11-24 보류 두 건(task 합치기 규칙 · 원본 줄 이탈의 `check-plan` 검사)을 시행했다(사용자 요청 「보류로 남긴 것 수정」). 합치기는 새 참조 `plan/references/task-merge.md` 로 두어 `plan-template.md` 예산을 비켰고, 이탈 검사는 `origin-deviation`(Log 주장 칸 `이탈 T<N>` 행 요구)이다.
   - 기각: 합치기 후보를 `check-plan` 이 Files 동일로 찾기 — Karina 원 계획 이웃 16쌍에서 같은 Files 집합은 0쌍이라 걸리는 것이 없고, 「따로 재야 할 이유」 는 문면 판단이다.
 
