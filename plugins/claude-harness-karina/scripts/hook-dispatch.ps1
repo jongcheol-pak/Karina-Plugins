@@ -8,7 +8,9 @@ param(
     [Parameter(Position = 0, ValueFromRemainingArguments = $true)][string[]]$Scripts
 )
 
+$global:KarinaHookT0 = [DateTime]::Now
 $hdClock = [System.Diagnostics.Stopwatch]::StartNew()
+$hdScriptMs = New-Object System.Collections.Generic.List[string]
 # 우선순위·시한 표지 — 근거는 `rules/hook-dispatch-rationale.md` §8
 try { [System.Diagnostics.Process]::GetCurrentProcess().PriorityClass = [System.Diagnostics.ProcessPriorityClass]::AboveNormal } catch {}
 $ErrorActionPreference = 'Continue'
@@ -100,6 +102,7 @@ try {
         $hdAdv = $hdRun.Advisory
         if ($hdAdv -and (@($hdCodes | Where-Object { $_ -ne 0 }).Count -gt 0 -or $hdClock.ElapsedMilliseconds -ge $AdvisoryBudgetMs)) { break }
         $hdLeaf = Split-Path -Leaf $hdPath
+        $hdRunAt = $hdClock.ElapsedMilliseconds
         if ($hdWatchState) { $hdWatchState.At = $hdLeaf; $hdWatchState.Adv = $hdAdv }
         $hdBuf = New-Object System.IO.StringWriter
         $hdErrBuf = New-Object System.IO.StringWriter
@@ -141,6 +144,7 @@ try {
             [Console]::SetError($hdErr)
             Set-Location -LiteralPath $hdStart
         }
+        $hdScriptMs.Add($hdLeaf + ':' + ($hdClock.ElapsedMilliseconds - $hdRunAt))
         if ($hdTimedOut) {
             $hdErrs.Add([pscustomobject]@{ Code = $null; Text = "hook-dispatch: $hdLeaf 마감 초과 — 권고를 버리고 묶음을 끝냅니다`n" })
             break
@@ -179,6 +183,14 @@ try {
         if (-not $hdTimedOut) { try { $null = $hdWatch.EndInvoke($hdWatchHandle) } catch {}; $hdWatch.Dispose() }
     }
 }
+
+if ($Blocking -and -not $hdTimedOut) {
+    try {
+        . (Join-Path $PSScriptRoot 'hook-event-log.ps1')
+        Write-HookSlowEvent 'hook-dispatch' -SessionId $hdSid -Detail ('scripts=' + ($hdScriptMs -join ','))
+    } catch {}
+}
+Remove-Variable -Name KarinaHookT0 -Scope Global -ErrorAction SilentlyContinue
 
 if ($hdContexts.Count -gt 0) {
     if ($hdFirstEvent) { $hdEvent = $hdFirstEvent }

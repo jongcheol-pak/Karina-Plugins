@@ -167,6 +167,20 @@ $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '20000', '-Bl
 Assert-Case -Name "hook-dispatch: 시한 표지 — 시한 전에 끝난 차단 묶음은 표지를 남기지 않는다" -R @{ code = $r.code; out = "n=$(@(Get-HdDeadlineMarks).Count - $hdMarks0)" } -ExpectExit 0 -ExpectContains 'n=0'
 $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-SlowMarkMs', '3000', 'f-ctx.ps1', 'f-sleep.ps1') -Process
 Assert-Case -Name "hook-dispatch: 시한 표지 — 비차단 묶음은 감시를 띄우지 않는다" -R @{ code = $r.code; out = "n=$(@(Get-HdDeadlineMarks).Count - $hdMarks0)" } -ExpectExit 0 -ExpectContains 'n=0'
+function Get-HdBundleSlow {
+    $dir = Join-Path $env:USERPROFILE '.claude/.state/hook-events'
+    if (-not (Test-Path -LiteralPath $dir)) { return @() }
+    return @(Get-ChildItem -LiteralPath $dir -Filter '*.jsonl' | ForEach-Object { Get-Content -LiteralPath $_.FullName -Encoding UTF8 } | Where-Object { $_ -match '"hook":"hook-dispatch"' -and $_ -match '"decision":"slow"' -and $_ -notmatch 'deadline-near' })
+}
+$hdSlow0 = @(Get-HdBundleSlow).Count
+$hdPrevSlow = $env:KARINA_HOOK_SLOW_MS
+$env:KARINA_HOOK_SLOW_MS = '0'
+try { $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-Blocking', 'f-ctx.ps1') -Process } finally { $env:KARINA_HOOK_SLOW_MS = $hdPrevSlow }
+$hdSlowNew = @(Get-HdBundleSlow | Select-Object -Skip $hdSlow0)
+Assert-Case -Name "hook-dispatch: 느린 묶음 — 기준 이상이면 startup_ms 와 스크립트별 ms 를 slow 줄로 남긴다" -R @{ code = $r.code; out = "n=$($hdSlowNew.Count) " + ($hdSlowNew -join ' ') } -ExpectExit 0 -ExpectContains 'scripts=f-ctx.ps1:'
+$hdSlow0 = @(Get-HdBundleSlow).Count
+$r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-Blocking', 'f-ctx.ps1') -Process
+Assert-Case -Name "hook-dispatch: 느린 묶음 (음성) — 기준 밑이면 slow 줄이 없다" -R @{ code = $r.code; out = "n=$(@(Get-HdBundleSlow).Count - $hdSlow0)" } -ExpectExit 0 -ExpectContains 'n=0'
 $r = Invoke-Hook $hdFakeDispatch $hdIn -Arguments @('-Blocking', 'f-prio.ps1') -Process
 Assert-Case -Name "hook-dispatch: 우선순위 — 차단 묶음 프로세스는 AboveNormal 로 돈다" -R $r -ExpectExit 0 -ExpectContains 'prio=AboveNormal'
 

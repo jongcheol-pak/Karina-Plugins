@@ -6,6 +6,7 @@
 #
 # ⚠️ 이 hook은 항상 동작한다 (끌 수 없음). CLAUDE_HARNESS_QUICK도 무시한다.
 #   파괴적 명령 차단은 마지막 방어선이라 우회 경로를 두지 않는다.
+$script:BdEntryAt = [DateTime]::Now
 
 $ErrorActionPreference = 'Stop'
 
@@ -54,7 +55,7 @@ function Write-BdEvent {
 }
 function Write-BdSlowEvent {
     try {
-        if (Get-Command Write-HookSlowEvent -ErrorAction SilentlyContinue) { Write-HookSlowEvent 'block-destructive' $script:cmd -SessionId ([string]$data.session_id) }
+        if (Get-Command Write-HookSlowEvent -ErrorAction SilentlyContinue) { Write-HookSlowEvent 'block-destructive' $script:cmd -SessionId ([string]$data.session_id) -EntryAt $script:BdEntryAt }
     } catch {}
 }
 function Deny {

@@ -28,7 +28,7 @@ function Write-HookEvent {
             ts       = (Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')
             hook     = $Hook
             decision = $Decision
-            rule     = if ($Rule -and $Rule.Length -gt 120) { $Rule.Substring(0, 120) } else { $Rule }
+            rule     = if ($Rule -and $Rule.Length -gt $(if ($Decision -eq 'slow') { 400 } else { 120 })) { $Rule.Substring(0, $(if ($Decision -eq 'slow') { 400 } else { 120 })) } else { $Rule }
         }
         if (-not [string]::IsNullOrWhiteSpace($SessionId)) {
             $sid = $SessionId -replace '[^\w.-]', '_'
@@ -60,12 +60,18 @@ function Write-HookEvent {
 
 # 느린 실행 기록 — 근거는 `rules/event-log-rationale.md` §2
 function Write-HookSlowEvent {
-    param([string]$Hook, [string]$CommandText = '', [string]$SessionId = '')
+    param([string]$Hook, [string]$CommandText = '', [string]$SessionId = '', [Nullable[datetime]]$EntryAt = $null, [string]$Detail = '')
     try {
         $limitMs = [long]5000
         $parsed = [long]0
         if ([long]::TryParse([string]$env:KARINA_HOOK_SLOW_MS, [ref]$parsed) -and $parsed -ge 0) { $limitMs = $parsed }
-        $elapsedMs = [long]([DateTime]::Now - [System.Diagnostics.Process]::GetCurrentProcess().StartTime).TotalMilliseconds
-        if ($elapsedMs -ge $limitMs) { Write-HookEvent $Hook 'slow' "elapsed_ms=$elapsedMs" $CommandText -SessionId $SessionId }
+        $procStart = [System.Diagnostics.Process]::GetCurrentProcess().StartTime
+        $elapsedMs = [long]([DateTime]::Now - $procStart).TotalMilliseconds
+        if ($elapsedMs -lt $limitMs) { return }
+        $entry = if ($global:KarinaHookT0 -is [datetime]) { $global:KarinaHookT0 } elseif ($null -ne $EntryAt) { [datetime]$EntryAt } else { [DateTime]::Now }
+        $startupMs = [long][Math]::Max(0, ($entry - $procStart).TotalMilliseconds)
+        $rule = "elapsed_ms=$elapsedMs startup_ms=$startupMs"
+        if ($Detail) { $rule += ' ' + $Detail }
+        Write-HookEvent $Hook 'slow' $rule $CommandText -SessionId $SessionId
     } catch {}
 }

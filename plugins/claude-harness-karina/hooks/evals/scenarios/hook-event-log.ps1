@@ -52,7 +52,7 @@ function Get-EvLines {
     try { return @(Get-ChildItem -LiteralPath $evDir -Filter '*.jsonl' -ErrorAction Stop | ForEach-Object { Get-Content -LiteralPath $_.FullName }) } catch { return @() }
 }
 function Test-SlowDelta {
-    param([string]$Name, [string]$Hook, [string]$Command, [int]$ExpectExit, [string]$SlowMs, [bool]$ExpectSlow)
+    param([string]$Name, [string]$Hook, [string]$Command, [int]$ExpectExit, [string]$SlowMs, [bool]$ExpectSlow, [string]$RuleRx = '"rule":"elapsed_ms=\d+ startup_ms=\d+')
     $before = (Get-EvLines).Count
     $prevSlow = $env:KARINA_HOOK_SLOW_MS
     $env:KARINA_HOOK_SLOW_MS = $SlowMs
@@ -60,7 +60,7 @@ function Test-SlowDelta {
     finally { $env:KARINA_HOOK_SLOW_MS = $prevSlow }
     $hookName = $Hook -replace '\.ps1$', ''
     $new = @(Get-EvLines | Select-Object -Skip $before)
-    $slow = @($new | Where-Object { $_ -match ('"hook":"' + [regex]::Escape($hookName) + '"') -and $_ -match '"decision":"slow"' -and $_ -match '"rule":"elapsed_ms=\d+"' })
+    $slow = @($new | Where-Object { $_ -match ('"hook":"' + [regex]::Escape($hookName) + '"') -and $_ -match '"decision":"slow"' -and $_ -match $RuleRx })
     $ok = ($r.code -eq $ExpectExit) -and ((($slow.Count -eq 1) -and $ExpectSlow) -or (($slow.Count -eq 0) -and -not $ExpectSlow))
     $tag = if ($ok) { 'PASS' } else { 'FAIL' }
     $script:results.Add(@{ ok = $ok; line = "[$tag] event-log slow: $Name (exit=$($r.code), 새 slow 줄 $($slow.Count))" })
@@ -69,6 +69,7 @@ Test-SlowDelta -Name 'guard-bash 통과 경로가 기준 이상이면 slow 1줄'
 Test-SlowDelta -Name 'guard-bash 차단 경로도 slow 1줄 · 차단 유지' -Hook 'guard-bash.ps1' -Command 'cp notes.md plan.md' -ExpectExit 2 -SlowMs '0' -ExpectSlow $true
 Test-SlowDelta -Name 'block-destructive 통과 경로가 기준 이상이면 slow 1줄' -Hook 'block-destructive.ps1' -Command 'ls -la' -ExpectExit 0 -SlowMs '0' -ExpectSlow $true
 Test-SlowDelta -Name 'block-destructive 차단 경로도 slow 1줄 · 차단 유지' -Hook 'block-destructive.ps1' -Command 'rm -rf /' -ExpectExit 2 -SlowMs '0' -ExpectSlow $true
+Test-SlowDelta -Name 'guard-bash slow 줄에 startup_ms·load_ms·checks' -Hook 'guard-bash.ps1' -Command 'ls -la' -ExpectExit 0 -SlowMs '0' -ExpectSlow $true -RuleRx '"rule":"elapsed_ms=\d+ startup_ms=\d+ load_ms=\d+ checks='
 Test-SlowDelta -Name '기준 밑이면 slow 줄 없음 (음성 짝)' -Hook 'guard-bash.ps1' -Command 'ls -la' -ExpectExit 0 -SlowMs '86400000' -ExpectSlow $false
 
 function Invoke-EvSessionCase {

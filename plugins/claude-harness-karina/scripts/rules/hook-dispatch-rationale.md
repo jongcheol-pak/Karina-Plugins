@@ -66,6 +66,8 @@
 
 비차단 묶음 timeout 은 묶음 안 스크립트의 종전 timeout 합으로 잡는다 — 이제 한 프로세스 안에서 차례로 돌고, Claude Code 는 timeout 에 걸린 hook 의 출력을 통째로 버린다. 2026-11-12 첫 판은 「합 이하」로 Skill 묶음 셋에 15초를 줘, 하나만 늦어도 셋의 컨텍스트가 모두 사라질 수 있었다. 차단 묶음은 종전처럼 60초다. `hook-event-log.ps1` 의 `slow` 줄은 「지금 − 프로세스 시작」이라, 묶음 뒤쪽 스크립트가 남기면 앞 스크립트가 쓴 시간도 들어간다. 그 값의 용도가 timeout 을 다시 정하는 것이고 timeout 이 이제 묶음 단위라 그대로 둔다.
 
+**차단 묶음 끝의 slow 줄(2026-11-24).** 차단 묶음(`-Blocking`)이 마감 없이 끝나면 `Write-HookSlowEvent 'hook-dispatch'` 를 부른다 — 기준(`KARINA_HOOK_SLOW_MS`, 기본 5000ms) 이상이면 `scripts=<스크립트:ms,…>`(권고 스크립트 포함)를 담은 줄이 남는다. 묶음 안 스크립트의 slow 줄은 앞 스크립트 시간을 포함해, 어느 스크립트가 늦었는지는 이 줄로만 갈린다. 진입 시각 `$global:KarinaHookT0` 는 첫 줄에서 두고 이 기록 뒤에 지운다(근거 `event-log-rationale.md` §2 「지연 분해 필드」).
+
 ## §7 권고 스크립트
 
 인자 안의 구분 토큰 `advisory:` 뒤에 둔 스크립트는 **권고 스크립트**다. 차단 묶음 뒤에 붙여, 도구 호출마다 pwsh 를 하나 더 띄우던 PostToolUse 권고 묶음(`suggest-agents-record`·`inject-reply-language`)을 같은 프로세스로 옮기려고 둔다(2026-11-12 — 셸 호출당 pwsh 2 → 1). `inject-reply-language` 는 재발 차단(`reply-language-rationale.md` §5)을 들이며 2026-11-23 차단 구간으로 옮겼다.

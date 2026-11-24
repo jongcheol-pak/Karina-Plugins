@@ -1,5 +1,7 @@
 ﻿# guard-bash.ps1 — PreToolUse hook: Bash/PowerShell 도구 호출 시 15종 검사를 한 프로세스에서 수행 — 근거는 `rules/bash-guard-rationale.md` §1
 
+$script:GbEntryAt = [DateTime]::Now
+
 # 공용 헬퍼 New-HookResult·Remove-HeredocBodyForJudge 는 여기 둔다 — 근거는 `rules/bash-guard-rationale.md` §2
 function New-HookResult {
     param([bool]$Block = $false, [string[]]$Stderr = @(), [string]$Context = $null)
@@ -835,7 +837,10 @@ function Write-DispatchEvent {
 }
 function Write-GbSlowEvent {
     try {
-        if (Test-Path function:Write-HookSlowEvent) { Write-HookSlowEvent 'guard-bash' $script:cmdText -SessionId ([string]$data.session_id) }
+        if (Test-Path function:Write-HookSlowEvent) {
+            $detail = 'load_ms=' + $script:GbLoadMs + ' checks=' + ((@($script:GbCheckMs | Where-Object { $_.Ms -ge 10 } | ForEach-Object { $_.Name + ':' + $_.Ms })) -join ',')
+            Write-HookSlowEvent 'guard-bash' $script:cmdText -SessionId ([string]$data.session_id) -EntryAt $script:GbEntryAt -Detail $detail
+        }
     } catch {}
 }
 
@@ -859,13 +864,18 @@ $checks = @(
     @{ fn = 'Invoke-WarnReferenceCat';    name = 'warn-reference-cat' }
 )
 $results = New-Object System.Collections.Generic.List[object]
+$script:GbLoadMs = [long]([DateTime]::Now - $script:GbEntryAt).TotalMilliseconds
+$script:GbCheckMs = New-Object System.Collections.Generic.List[object]
+$gbWatch = [System.Diagnostics.Stopwatch]::new()
 foreach ($c in $checks) {
     if (-not (Test-Path ("function:" + $c.fn))) { continue }
+    $gbWatch.Restart()
     try {
         $r = & $c.fn $data
         if ($r) { $r['Name'] = $c.name; $results.Add($r) }
     } catch {
     }
+    $script:GbCheckMs.Add([pscustomobject]@{ Name = $c.name; Ms = $gbWatch.ElapsedMilliseconds })
 }
 
 $blocked = @($results | Where-Object { $_.Block })
