@@ -38,8 +38,7 @@ tools: Read, Grep, Glob, Bash
 - **증거 대조 출력에 위반 코드(`final-review.md`「절차」 — note 제외)가 남았으면 BLOCKER 다. 「미실행」 줄이 오면 `git log BASE..HEAD` 로 `[x]` task 마다 그 커밋 본문을 직접 대조한다** — 증거 없는 `[x]` 는 검증 전 `[x]` 와 같다.
 - **`[x]` task 표본(최소 1개)의 커밋 본문에 적힌 판정용 명령을 다시 돌려 본문 기록과 대조한다(표본 재실행) — 러너 밖 명령(`grep`·계수·파일 실재)만 돌리고, 그런 명령이 없으면 그 사실을 적는다. 어긋나면 BLOCKER 다** — 고른 표본과 결과를 적는다.
 - **이 회차가 이름·번호·조건을 바꿨으면, 그 옛 표현을 레포 전체(기록 문서 `docs/plans/` 제외)에서 grep 한 0건 출력이 커밋 본문 또는 Progress Log 에 있는지 보고, 없으면 지적한다** — 검사기는 산문 안의 이름·번호 인용을 재지 않는다.
-- **`**성능**` 줄이 있는 task 는 `skills/PERF-MEASUREMENT.md`「완료 리뷰 대조」 대로 본다** — 그 줄의 task 에만 쓴다.
-- **`**화면**` 줄이 있는 task 는 `skills/implement/references/screen-scenarios.md`「완료 리뷰 대조」 대로 본다** — 그 줄의 task 에만 쓴다.
+- **`**성능**` 은 `skills/PERF-MEASUREMENT.md`「완료 리뷰 대조」, `**화면**` 은 `skills/implement/references/screen-scenarios.md`「완료 리뷰 대조」, `**원본**` 은 `skills/implement/references/code-style.md`「원본을 옮길 때」 대로 본다** — 그 줄 task 만 본다.
 
 ### Goal 성공 기준
 
