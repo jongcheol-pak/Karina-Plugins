@@ -242,8 +242,13 @@ $cpOriginAgents = "# AGENTS.md`n`n- **UI 재구현 기준 소스**: ``docs/port.
 $cpOrigin = '- **원본**: `upstream/ui/menu.tsx` — 메뉴 목록 옮김 · 단축키 표시 미룸(키 체계가 다르다) · 열림 애니메이션 이탈(미지원)'
 $r = Invoke-CheckPlan (New-ScreenPlan $cpScreen) (New-UiPlanDir $cpOriginAgents)
 Assert-Case -Name "check-plan: 원본 이식 레포의 화면 task 에 원본 줄이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-missing T1'
+$cpDeviationLog = '| 크기 | `wc -c a.ps1` | 10 |' + "`n" + '| 이탈 T1 — 열림 애니메이션 | `rg -n transition src/ui` | 0건 |'
+$r = Invoke-CheckPlan ((New-ScreenPlan ($cpScreen + "`n" + $cpOrigin)).Replace('| 크기 | `wc -c a.ps1` | 10 |', $cpDeviationLog)) (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 원본 이식 레포의 화면 task 에 원본 줄이 있으면 통과한다(이탈 조각은 Log 의 이탈 T1 행이 받친다)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 $r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n" + $cpOrigin)) (New-UiPlanDir $cpOriginAgents)
-Assert-Case -Name "check-plan: 원본 이식 레포의 화면 task 에 원본 줄이 있으면 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+Assert-Case -Name "check-plan: 원본 줄에 이탈 조각이 있는데 Log 에 이탈 T1 실측 행이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-deviation T1'
+$r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n- **원본**: ``upstream/ui/menu.tsx`` — 메뉴 목록 옮김 · 단축키 표시 미룸(키 체계가 다르다)")) (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 옮김·미룸만 있는 원본 줄은 이탈 실측 행을 요구하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'origin-deviation'
 $r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n- **원본**: ``upstream/ui/menu.tsx`` — 메뉴 목록")) (New-UiPlanDir $cpOriginAgents)
 Assert-Case -Name "check-plan: 원본 줄에 옮김·미룸·이탈이 하나도 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-line T1 verdict'
 $r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n- **원본**: 메뉴 목록 옮김")) (New-UiPlanDir $cpOriginAgents)

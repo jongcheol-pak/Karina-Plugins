@@ -49,6 +49,8 @@
 #   origin-missing T<N>          AGENTS.md(같은 탐색)에 「- **UI 재구현 기준 소스**:」 줄이 있는데 「- **화면**:」 줄이 있는 task 에
 #                                「- **원본**:」 줄도 Files 줄의 「[원본 없음 — <사유>]」 표지도 없음(사유가 빈 표지는 표지가 아니다)
 #   origin-line T<N> <요소>      「- **원본**:」 줄에 path(백틱 원본 경로)·verdict(옮김·미룸·이탈 중 하나)가 없음 — 선언과 무관하게 줄이 있으면 잰다
+#   origin-deviation T<N>        「- **원본**:」 줄에 「이탈」 이 있는데 Investigation Log 표의 주장 칸에 「이탈 T<N>」 이 든 행이 없음
+#                                (원본대로 할 수 없음을 보이는 실측 행 — 명령 칸이 비면 empty-command 가 따로 잡는다 · 선언과 무관)
 #   screen-baseline T<N>         Verify (앱 조작) 이 스킬을 가리키는데 화면 줄 통과 조건이 「기준선 일치」 로 시작하고
 #                                그 task 첫 하위 항목(T<N>-1) 줄에 「기준선」 이 없음(편집 전 기준선 촬영 자리)
 #   plan-check exit <n> log <파일>  plan 폴더에서 git 최상위까지 올라가며 찾은 AGENTS.md 의 「- **Plan check**: `<명령>`」 이
@@ -428,7 +430,9 @@ if (Find-Section $tasksTitle) {
     $originLabel = '- **' + $originWord + '**:'
     $originDeclared = [bool](Get-AgentsLineValue $uiAgents ('UI ' + (Get-Text @(0xC7AC, 0xAD6C, 0xD604, 0x20, 0xAE30, 0xC900, 0x20, 0xC18C, 0xC2A4))))
     $noOriginRx = '\[' + $originWord + '\s+' + (Get-Text @(0xC5C6, 0xC74C)) + '\s*' + [char]0x2014 + '\s*[^\]\s]'
-    $originVerdictRx = (Get-Text @(0xC62E, 0xAE40)) + '|' + (Get-Text @(0xBBF8, 0xB8F8)) + '|' + (Get-Text @(0xC774, 0xD0C8))
+    $deviationWord = Get-Text @(0xC774, 0xD0C8)
+    $originVerdictRx = (Get-Text @(0xC62E, 0xAE40)) + '|' + (Get-Text @(0xBBF8, 0xB8F8)) + '|' + $deviationWord
+    $logClaims = @(Get-ProseLines $log | Where-Object { $_.Text.TrimStart().StartsWith('|') } | ForEach-Object { @(Split-Row $_.Text)[0] })
     $planTop = $null
     try { $planTop = [string](& git -C (Split-Path -Parent (Resolve-Path -LiteralPath $PlanPath).Path) rev-parse --show-toplevel 2>$null) } catch { }
     if ($LASTEXITCODE -ne 0 -or -not $planTop) { $planTop = $null } else { $planTop = $planTop.Trim().Replace('\', '/').TrimEnd('/') + '/' }
@@ -494,6 +498,10 @@ if (Find-Section $tasksTitle) {
         foreach ($o in $origins) {
             if ($o.Text -notmatch '`[^`]+`') { Add-Problem $o.N ('origin-line ' + $tag + ' path') }
             if ($o.Text -notmatch $originVerdictRx) { Add-Problem $o.N ('origin-line ' + $tag + ' verdict') }
+            if ($o.Text.Contains($deviationWord) -and
+                -not @($logClaims | Where-Object { $_ -match ($deviationWord + '\s*' + $tag + '(?!\d)') }).Count) {
+                Add-Problem $o.N ('origin-deviation ' + $tag)
+            }
         }
         if ($originDeclared -and -not $origins.Count -and @($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabel }).Count -and
             -not ($files -and [regex]::IsMatch($files.Text, $noOriginRx))) {
