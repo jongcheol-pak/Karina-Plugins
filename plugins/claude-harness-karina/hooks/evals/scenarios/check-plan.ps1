@@ -242,13 +242,34 @@ $cpOriginAgents = "# AGENTS.md`n`n- **UI 재구현 기준 소스**: ``docs/port.
 $cpOrigin = '- **원본**: `upstream/ui/menu.tsx` — 메뉴 목록 옮김 · 단축키 표시 미룸(키 체계가 다르다) · 열림 애니메이션 이탈(미지원)'
 $r = Invoke-CheckPlan (New-ScreenPlan $cpScreen) (New-UiPlanDir $cpOriginAgents)
 Assert-Case -Name "check-plan: 원본 이식 레포의 화면 task 에 원본 줄이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-missing T1'
+$cpMapRows = "| ``upstream/ui/menu.tsx`` | T1 |`n| ``upstream/ui/util.ts`` | 제외 — 테스트 전용 |"
+function Add-CpMap([string]$Plan, [string]$Rows = $cpMapRows, [string]$Count = '2') {
+    $logRow = '| 크기 | `wc -c a.ps1` | 10 |'
+    if ($Count) { $Plan = $Plan.Replace($logRow, ($logRow + "`n| 원본 전량 $Count | ``git ls-files upstream/ui`` | $Count |")) }
+    return $Plan.Replace('## 작업 단계', ("## 원본 대응`n`n| 원본 파일 | 대응 |`n|---|---|`n" + $Rows + "`n`n## 작업 단계"))
+}
+$cpOriginPlain = "`n- **원본**: ``upstream/ui/menu.tsx`` — 메뉴 목록 옮김 · 단축키 표시 미룸(키 체계가 다르다)"
 $cpDeviationLog = '| 크기 | `wc -c a.ps1` | 10 |' + "`n" + '| 이탈 T1 — 열림 애니메이션 | `rg -n transition src/ui` | 0건 |'
-$r = Invoke-CheckPlan ((New-ScreenPlan ($cpScreen + "`n" + $cpOrigin)).Replace('| 크기 | `wc -c a.ps1` | 10 |', $cpDeviationLog)) (New-UiPlanDir $cpOriginAgents)
+$r = Invoke-CheckPlan (Add-CpMap ((New-ScreenPlan ($cpScreen + "`n" + $cpOrigin)).Replace('| 크기 | `wc -c a.ps1` | 10 |', $cpDeviationLog))) (New-UiPlanDir $cpOriginAgents)
 Assert-Case -Name "check-plan: 원본 이식 레포의 화면 task 에 원본 줄이 있으면 통과한다(이탈 조각은 Log 의 이탈 T1 행이 받친다)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
-$r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n" + $cpOrigin)) (New-UiPlanDir $cpOriginAgents)
+$r = Invoke-CheckPlan (Add-CpMap (New-ScreenPlan ($cpScreen + "`n" + $cpOrigin))) (New-UiPlanDir $cpOriginAgents)
 Assert-Case -Name "check-plan: 원본 줄에 이탈 조각이 있는데 Log 에 이탈 T1 실측 행이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-deviation T1'
-$r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n- **원본**: ``upstream/ui/menu.tsx`` — 메뉴 목록 옮김 · 단축키 표시 미룸(키 체계가 다르다)")) (New-UiPlanDir $cpOriginAgents)
+$r = Invoke-CheckPlan (Add-CpMap (New-ScreenPlan ($cpScreen + $cpOriginPlain))) (New-UiPlanDir $cpOriginAgents)
 Assert-Case -Name "check-plan: 옮김·미룸만 있는 원본 줄은 이탈 실측 행을 요구하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'origin-deviation'
+$r = Invoke-CheckPlan (Add-CpMap (New-ScreenPlan ($cpScreen + $cpOriginPlain))) (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 원본 전량을 task·제외로 대응시킨 표와 전량 행이 맞으면 대응표 위반이 없다" -R $r -ExpectExit 0 -ExpectNotContains 'origin-map'
+$r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + $cpOriginPlain)) (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 원본 이식 레포에서 원본 줄이 있는데 원본 대응 절이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-map-missing'
+$r = Invoke-CheckPlan (Add-CpMap (New-ScreenPlan ($cpScreen + $cpOriginPlain)) "| ``upstream/ui/list.tsx`` | T1 |`n| ``upstream/ui/util.ts`` | 제외 — 테스트 전용 |") (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 원본 줄의 경로가 대응표에 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-map-unlisted T1 upstream/ui/menu.tsx'
+$r = Invoke-CheckPlan (Add-CpMap (New-ScreenPlan ($cpScreen + $cpOriginPlain)) "| ``upstream/ui/menu.tsx`` | T1 |`n| ``upstream/ui/util.ts`` | T9 |") (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 대응 칸이 없는 task 를 가리키면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-map-row upstream/ui/util.ts'
+$r = Invoke-CheckPlan (Add-CpMap (New-ScreenPlan ($cpScreen + $cpOriginPlain)) "| ``upstream/ui/menu.tsx`` | T1 |`n| ``upstream/ui/util.ts`` | 제외 — |") (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 사유 없는 제외 대응은 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-map-row upstream/ui/util.ts'
+$r = Invoke-CheckPlan (Add-CpMap (New-ScreenPlan ($cpScreen + $cpOriginPlain)) $cpMapRows '') (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: Log 에 원본 전량 행이 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-map-count 2/none'
+$r = Invoke-CheckPlan (Add-CpMap (New-ScreenPlan ($cpScreen + $cpOriginPlain)) $cpMapRows '3') (New-UiPlanDir $cpOriginAgents)
+Assert-Case -Name "check-plan: 대응표 행 수가 원본 전량 수와 다르면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-map-count 2/3'
 $r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n- **원본**: ``upstream/ui/menu.tsx`` — 메뉴 목록")) (New-UiPlanDir $cpOriginAgents)
 Assert-Case -Name "check-plan: 원본 줄에 옮김·미룸·이탈이 하나도 없으면 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-line T1 verdict'
 $r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n- **원본**: 메뉴 목록 옮김")) (New-UiPlanDir $cpOriginAgents)

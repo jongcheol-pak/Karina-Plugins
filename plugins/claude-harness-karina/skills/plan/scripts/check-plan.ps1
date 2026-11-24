@@ -51,6 +51,11 @@
 #   origin-line T<N> <요소>      「- **원본**:」 줄에 path(백틱 원본 경로)·verdict(옮김·미룸·이탈 중 하나)가 없음 — 선언과 무관하게 줄이 있으면 잰다
 #   origin-deviation T<N>        「- **원본**:」 줄에 「이탈」 이 있는데 Investigation Log 표의 주장 칸에 「이탈 T<N>」 이 든 행이 없음
 #                                (원본대로 할 수 없음을 보이는 실측 행 — 명령 칸이 비면 empty-command 가 따로 잡는다 · 선언과 무관)
+#   아래 넷은 UI 재구현 기준 소스 선언 + 「- **원본**:」 줄이 하나 이상일 때만 잰다 — 범위 안 원본 파일 전량의 대응표(plan-template.md「작업 단계」):
+#   origin-map-missing           「## 원본 대응」 절이 없음(줄 번호는 첫 원본 줄)
+#   origin-map-row <경로>        그 절 표에서 1열 백틱 경로 행의 대응 칸이 있는 T<N> 들도 「제외 — <사유>」 도 아님
+#   origin-map-unlisted T<N> <경로>  원본 줄의 첫 「—」 앞 백틱 경로가 표 1열에 없음(대소문자·구분자 무시)
+#   origin-map-count <행>/<N|none>  Investigation Log 주장 칸 「원본 전량 <N>」 이 없거나 N 이 표의 백틱 경로 행 수와 다름
 #   screen-baseline T<N>         Verify (앱 조작) 이 스킬을 가리키는데 화면 줄 통과 조건이 「기준선 일치」 로 시작하고
 #                                그 task 첫 하위 항목(T<N>-1) 줄에 「기준선」 이 없음(편집 전 기준선 촬영 자리)
 #   plan-check exit <n> log <파일>  plan 폴더에서 git 최상위까지 올라가며 찾은 AGENTS.md 의 「- **Plan check**: `<명령>`」 이
@@ -506,6 +511,42 @@ if (Find-Section $tasksTitle) {
         if ($originDeclared -and -not $origins.Count -and @($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabel }).Count -and
             -not ($files -and [regex]::IsMatch($files.Text, $noOriginRx))) {
             Add-Problem $b.N ('origin-missing ' + $tag)
+        }
+    }
+    $originRefs = @(foreach ($b in $blocks) { foreach ($o in @($b.Lines | Where-Object { Test-Prefix $_.Text $originLabel })) { [pscustomobject]@{ Tag = 'T' + $b.Id; Line = $o } } })
+    if ($originDeclared -and $originRefs.Count) {
+        $map = Find-Section ($originWord + ' ' + (Get-Text @(0xB300, 0xC751)))    # 원본 대응
+        if (-not $map) { Add-Problem $originRefs[0].Line.N 'origin-map-missing' }
+        else {
+            $taskTags = @($blocks | ForEach-Object { 'T' + $_.Id })
+            $excludeRx = '^' + (Get-Text @(0xC81C, 0xC678)) + '\s*' + [char]0x2014 + '\s*\S'    # 제외 — <사유>
+            $mapped = New-Object System.Collections.Generic.HashSet[string]
+            $mapRows = 0
+            foreach ($row in (Get-ProseLines $map)) {
+                $cells = @(Split-Row $row.Text)
+                if ($cells.Count -lt 2) { continue }
+                $pm = [regex]::Match($cells[0], '`([^`]+)`')
+                if (-not $pm.Success) { continue }
+                $mapRows++
+                $path = $pm.Groups[1].Value.Trim()
+                $null = $mapped.Add($path.Replace('\', '/').ToLowerInvariant())
+                $refs = @([regex]::Matches($cells[1], 'T\d+') | ForEach-Object { $_.Value })
+                $ok = [regex]::IsMatch($cells[1], $excludeRx) -or ($refs.Count -and -not @($refs | Where-Object { $taskTags -notcontains $_ }).Count)
+                if (-not $ok) { Add-Problem $row.N ('origin-map-row ' + $path) }
+            }
+            foreach ($ref in $originRefs) {
+                $text = $ref.Line.Text.Substring($originLabel.Length)
+                $cut = $text.IndexOf([char]0x2014)
+                if ($cut -ge 0) { $text = $text.Substring(0, $cut) }
+                foreach ($m in [regex]::Matches($text, '`([^`]+)`')) {
+                    $path = $m.Groups[1].Value.Trim()
+                    if (-not $mapped.Contains($path.Replace('\', '/').ToLowerInvariant())) { Add-Problem $ref.Line.N ('origin-map-unlisted ' + $ref.Tag + ' ' + $path) }
+                }
+            }
+            $fullRx = $originWord + '\s*' + (Get-Text @(0xC804, 0xB7C9)) + '\s*(\d+)'    # 원본 전량 <N>
+            $want = @($logClaims | ForEach-Object { [regex]::Match([string]$_, $fullRx) } | Where-Object { $_.Success } | ForEach-Object { $_.Groups[1].Value }) | Select-Object -First 1
+            if (-not $want) { Add-Problem $map.N ('origin-map-count ' + $mapRows + '/none') }
+            elseif ([int]$want -ne $mapRows) { Add-Problem $map.N ('origin-map-count ' + $mapRows + '/' + $want) }
         }
     }
     $groupHead = '> ' + (Get-Text @(0xBCD1, 0xB82C, 0x20, 0xADF8, 0xB8F9)) + ':'    # > 병렬 그룹:
