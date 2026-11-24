@@ -10,7 +10,7 @@ description: 승인된 plan.md(`## Goal` 아래 `> 승인:` 줄에 날짜가 있
 ## 진행 중 사용자와의 소통
 
 - **자율 루프 안에서는 turn을 끝내는 업데이트를 내지 않는다 — 상태 메모는 다음 도구 호출과 같은 메시지에 싣는다** — 도구 호출 없는 메시지가 turn을 끝내 루프를 세운다. 남길 기록은 `plan.md`에 쓰고, 사용자가 결정할 것은 최종 보고에 모은다. **상태 메모·진행 안내도 한글로 쓴다** — 응답 언어 hook 은 영문 메모가 난 뒤의 다음 셸·쓰기 호출에야 실려 이미 낸 메모는 고치지 못한다.
-- **task를 시작할 때 `T<N>/T<M> 시작 — <무엇을>` 줄을 다음 도구 호출과 같은 turn에 낸다(예: `T13/T20 시작`)** — 줄만 내고 turn을 끝내면 거기서 루프가 멈춘다. `<M>`은 `plan.md`의 **마지막 task 번호**다 — 남은 수로 세면 재개 시 `T13/T8`처럼 분자가 분모를 넘는다.
+- **task를 시작할 때 `T<N>/T<M> 시작 — <무엇을>` 줄을 다음 도구 호출과 같은 turn에 낸다** — 줄만 내고 turn을 끝내면 거기서 루프가 멈춘다. `<M>`은 `plan.md`의 **마지막 task 번호**다 — 남은 수로 세면 재개 시 `T13/T8`처럼 분자가 분모를 넘는다.
 
 - **루프 진입 전 1회 `references/loop-stop-patterns.md`·`references/loop-pacing.md` 를 Read 한다** — 가이드 원문 밖의 정지 형태 셋과 그 판정, 호출 묶기가 거기 있다. plan에 미완 task가 남은 채 turn이 끝나면 `loop-continue` hook이 남은 ID를 적어 계속을 주입한다 — 그 안내가 오면 이어서 진행하고, 규약이 지목한 정지면 막힌 이유를 한 줄로 말한다.
 
@@ -25,10 +25,10 @@ description: 승인된 plan.md(`## Goal` 아래 `> 승인:` 줄에 날짜가 있
 
 > Deliver what was asked, at the scope intended. Make routine judgment calls yourself, and check in only when different readings of the request would lead to materially different work. If the request seems mistaken or a better approach exists, say so in a sentence and continue with the task as asked rather than quietly narrowing, widening, or transforming it. Finish the whole task, and stop short of actions that are clearly beyond what was asked.
 
-- **task 를 서브에이전트에 하나씩 차례로 맡기지 않는다 — 직접 실행한다. 예외는 `plan.md` 의 `> 병렬 그룹:` 줄이 묶은 task 뿐이고, 그 차례에 `references/parallel-run.md` 대로 동시에 돌린다** — 맡길 때마다 맥락을 다시 읽고 다시 빌드해 대기만 는다(2026-11-10 Karina 워커 — task 9개를 차례로 넘겨 380분 중 도구 실행 11분).
+- **task 를 서브에이전트에 하나씩 차례로 맡기지 않는다 — 직접 실행한다. 예외는 `plan.md` 의 `> 병렬 그룹:` 줄이 묶은 task 뿐이고, 그 차례에 `references/parallel-run.md` 대로 동시에 돌린다** — 맡길 때마다 맥락을 다시 읽고 다시 빌드해 대기만 는다(2026-11-10 Karina — 380분 중 도구 실행 11분).
 - **프로젝트가 다른 패턴을 명시했으면 그것이 스킬 절차를 이긴다** — `AGENTS.md`(또는 그것이 가리키는 문서)가 아키텍처·배치·도구를 정해 두었으면 그 프로젝트의 결정이 먼저다. 스킬 절차를 그대로 밀면 그 레포에서만 이질적인 코드가 남는다.
 - **루프 진입 전 1회, `plan.md` 의 승인 표지(`^> 승인: [0-9]{4}-` 줄 — 서식 정본 `../plan/references/plan-template.md` 「Goal」)를 본다** — 없으면 승인 전 초안일 수 있다. 없으면 `references/loop-exceptions.md`「승인 표지 없음」 을 Read 한다 — 확인 방식이 이 루프의 여덟 정지와 갈리는 막힘형 호출이라 그 절에 있다.
-- **루프 진입 전 1회 `references/push-flow.md`「기본 브랜치 push」 를 Read 한다** — 브랜치를 그대로 두고 지금 브랜치에 커밋하며, 회차 끝에 같은 파일 「push 전 확인」 을 거쳐 push 한다.
+- **루프 진입 전 1회 `references/push-flow.md`「기본 브랜치 push」 를 Read 한다** — 지금 브랜치에 커밋하고, 회차 끝에 같은 파일 「push 전 확인」 을 거쳐 push 한다.
 - **루프 진입 전 1회 `git ls-files --others --exclude-standard` 를 `../TEMP-FILES.md` 의 `scratch\untracked-start-<레포 폴더명>-<BASE sha7>.txt` 에 쓴다(있으면 덮지 않는다)** — 4번 clean 판정이 회차 전 untracked 를 뺀다(`references/push-flow.md`「push 전 확인」).
 
 ## 자율 루프
@@ -55,7 +55,7 @@ loop over plan.md tasks (T1 … Tn, 재개면 지정 task부터 · 순서 자율
 
 - **task 사이에서 묻지 않는다** — "다음 task로 갈까요?"는 이미 받은 승인을 다시 받는 것이다. `plan.md` 승인이 전체 작업의 위임장이다.
 - **계획이 실제 코드와 달라 그 task가 불요해졌으면 닫고 넘어간다** — `[x] (불요 — 근거)`로 적고 근거를 Progress Log에 남긴다. 계획이 실측과 어긋나는 것은 정상이고, 그것을 발견해 처리하는 것이 실행자의 일이다.
-- **외부 계약(공개 API·스키마·UX 동작)이 갈리는 지점만 plan에서 확정돼 있어야 한다** — 그 밖의 결정은 스스로 한다.
+- **외부 계약(공개 API·스키마·UX 동작)이 갈리는 지점만 plan에서 확정돼 있어야 한다** — 그 밖의 결정은 스스로 한다. 원본 이탈은 `references/code-style.md`「원본을 옮길 때」.
 - **그렇게 스스로 정한 것은 `## Progress Log`에 `판정: <무엇을> — <왜> — 근거: <파일:줄 · sha7 | 없음> — 틀리면: <무엇을 치르는가>`로 그 자리에서 적는다(sha 는 커밋 뒤 채운다). 틀린 판정은 고치지 않고 `판정(정정): <원 판정> → <새 판정> — …` 새 줄로, 버린 접근도 판정 줄로 남긴다** — 최종 보고가 이 줄을 전량 옮겨 싣는 자리라, 미루면 근거가 흐려지고 빠지면 사용자가 되돌릴 기회를 못 가진 결정이 남는다. 고쳐 쓰면 번복 이력이 사라진다.
 - **눈으로 봐야 하는 것은 `HUMAN-VERIFY`로 표기하고 계속 간다 — `AGENTS.md` 의 `Verify (앱 조작)` 줄이 검증 스킬을 가리키면 지목된 조작(`**화면**` 줄·Acceptance)만 먼저 하고(절차·판정은 `references/screen-scenarios.md`「화면 시나리오 실행」), 그래도 사람 눈이 필요한 것만 사유와 함께 표기한다(커밋 본문은 `검증 결과: HUMAN-VERIFY — <사유>`). 명령·스크립트로 돌릴 수 있는 확인은 표기하지 않고 돌린다(수단이 고장 났으면 고쳐서 돌린다)** — GUI 조작감·시각 확인은 최종 보고에서 사용자가 한 번에 확인한다. 이 표기는 정직한 보고 수단이지 정지 신호가 아니다.
 - **컨텍스트가 차 가도 멈추지 않는다** — 현재 task를 끝내고 `plan.md`에 상태를 쓴 뒤 계속 진행한다. 압축이 일어나면 첫 행동은 이 SKILL.md와 `plan.md`를 다시 읽는 것이다 — **`AGENTS.md`는 컨텍스트에 전문이 없을 때만 읽는다**(세션 시작과 `compact` 뒤에 전문이 실린다).
