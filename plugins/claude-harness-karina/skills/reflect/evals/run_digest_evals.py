@@ -821,6 +821,23 @@ def audit_skips_hangul_free_line_blocked_by_hook():
 
 
 @case
+def audit_skips_hangul_free_line_blocked_by_hook_counted_form():
+    t = Tree()
+    try:
+        block = ('PreToolUse:Bash hook error: [command hook 3]: [차단] 영문 진행 메모 4번째 — 이 도구 호출을 한 번 막았습니다'
+                 ' · 막은 메모: «Review is running.»')
+        t.session('proj-a', SID, [rec_assistant([{'type': 'text', 'text': 'Review is running.'}]),
+                                  rec_user_blocks([tool_result('b1', block, is_error=True)])])
+        rc, out, err = digest(t, ['--audit'])
+        assert rc == 0, (rc, err)
+        lines = out.splitlines()
+        assert '# 한글 없는 A: 0' in lines, lines
+        assert 'A: Review is running.' in lines, lines
+    finally:
+        t.close()
+
+
+@case
 def audit_skips_hangul_free_reply_rewritten_by_stop_hook():
     t = Tree()
     try:

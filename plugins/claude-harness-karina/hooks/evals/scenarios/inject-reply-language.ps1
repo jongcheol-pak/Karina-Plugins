@@ -83,13 +83,20 @@ Add-RlRow $rlTxB (New-RlRow 'b2' 'assistant' @(@{ type = 'text'; text = 'Now the
 Assert-Case -Name "inject-reply-language: 세션 둘째 영문 메모도 교정 줄만 싣는다" -R (Get-RlContext (Invoke-RlBlock $rlB $rlTxB)) -ExpectExit 0 -ExpectContains 'ctx=[karina 응답 언어]'
 Add-RlRow $rlTxB (New-RlRow 'b3' 'assistant' @(@{ type = 'text'; text = 'Now the workspace handler and the flag wiring for the run path.' }))
 $r = Invoke-RlBlock $rlB $rlTxB
-Assert-Case -Name "inject-reply-language: 세션 셋째 영문 메모 뒤 셸 호출을 exit 2 로 막는다" -R @{ code = $r.code; out = $r.err } -ExpectExit 2 -ExpectContains '영문 진행 메모 세 번째 — 이 도구 호출을 한 번 막았습니다'
+Assert-Case -Name "inject-reply-language: 세션 셋째 영문 메모 뒤 셸 호출을 exit 2 로 막는다" -R @{ code = $r.code; out = $r.err } -ExpectExit 2 -ExpectContains '영문 진행 메모 3번째 — 이 도구 호출을 한 번 막았습니다'
+Assert-Case -Name "inject-reply-language: 차단 사유가 막은 메모 앞부분을 싣는다" -R @{ code = $r.code; out = $r.err } -ExpectExit 2 -ExpectContains '막은 메모: «Now the workspace handler'
+$rlEvents = Join-Path $env:USERPROFILE ('.claude/.state/hook-events/' + (Get-Date).ToString('yyyy-MM') + '.jsonl')
+$rlBlockRows = @(if (Test-Path -LiteralPath $rlEvents) { Get-Content -LiteralPath $rlEvents | Where-Object { $_.Contains('"hook":"inject-reply-language"') -and $_.Contains('"decision":"block"') -and $_.Contains('"session_id":"' + $rlB + '"') } })
+Assert-Case -Name "inject-reply-language: 차단을 hook-events 에 고정 rule 로 남긴다" -R @{ code = 0; out = ('rows=' + $rlBlockRows.Count + ' ' + ($rlBlockRows -join ' ')) } -ExpectExit 0 -ExpectContains 'rows=1 '
+Assert-Case -Name "inject-reply-language: 차단 이벤트 rule 은 메모를 싣지 않는 고정 문자열이다" -R @{ code = 0; out = ($rlBlockRows -join ' ') } -ExpectExit 0 -ExpectContains '"rule":"reply-language-block"'
 Assert-Case -Name "inject-reply-language: 차단 사유가 한글로 다시 쓰라고 지시한다" -R @{ code = $r.code; out = $r.err } -ExpectExit 2 -ExpectContains '한글로 다시'
 Assert-Case -Name "inject-reply-language: 막은 메모 그대로 다시 부른 호출은 통과한다" -R (Invoke-RlBlock $rlB $rlTxB) -ExpectExit 0 -ExpectSilent $true
 Add-RlRow $rlTxB (New-RlRow 'b4' 'assistant' @(@{ type = 'text'; text = '워크스페이스 핸들러와 `run()` 배선을 고칩니다.' }))
 Assert-Case -Name "inject-reply-language: 차단 단계에서도 한글 메모는 무출력" -R (Invoke-RlBlock $rlB $rlTxB 'Write') -ExpectExit 0 -ExpectSilent $true
 Add-RlRow $rlTxB (New-RlRow 'b5' 'assistant' @(@{ type = 'text'; text = 'Now the status bar segment and the ports filter for remote hosts.' }))
 Assert-Case -Name "inject-reply-language: 차단 단계의 서브에이전트 호출은 무출력" -R (Invoke-RlBlock $rlB $rlTxB 'Bash' 'sub-9') -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-RlBlock $rlB $rlTxB
+Assert-Case -Name "inject-reply-language: 넷째 영문 메모 차단은 4번째로 센다" -R @{ code = $r.code; out = $r.err } -ExpectExit 2 -ExpectContains '영문 진행 메모 4번째'
 Assert-Case -Name "inject-reply-language: 차단 단계에서도 Skill 은 주입만 한다" -R (Get-RlContext (Invoke-RlSkill $rlB)) -ExpectExit 0 -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어]'
 Assert-Case -Name "inject-reply-language: session_id 없는 Skill 도 주입한다" -R (Get-RlContext (Invoke-RlSkill '')) -ExpectExit 0 -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어]'
 Assert-Case -Name "inject-reply-language: 서브에이전트 Skill 도 주입한다" -R (Get-RlContext (Invoke-RlSkill 'rl-p4' 'sub-2')) -ExpectContains 'event=PreToolUse ctx=[karina 응답 언어]'

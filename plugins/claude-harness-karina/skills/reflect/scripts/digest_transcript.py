@@ -93,7 +93,7 @@ TIMER_HEAD = '# 응답 뒤 끝난 시한 타이머: '
 GIT_COMMAND = re.compile(r'''^\s*(?:cd\s+(?:"[^"]*"|'[^']*'|\S+)\s*(?:;|&&)\s*)*git\b''')
 HANGUL = re.compile('[가-힣]')
 HANGUL_FREE_MARK = 'A: [한글 없음] '
-REPLY_FIX_TEXTS = ('[karina 응답 언어] 직전 진행 메모가 영문 위주였습니다', '[차단] 영문 진행 메모 세 번째',
+REPLY_FIX_TEXTS = ('[karina 응답 언어] 직전 진행 메모가 영문 위주였습니다', '[차단] 영문 진행 메모 ',
                    '[karina 응답 언어] 방금 응답의 산문이')
 
 

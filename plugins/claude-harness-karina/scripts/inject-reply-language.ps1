@@ -13,7 +13,7 @@ if (-not $data) { exit 0 }
 
 $PreLine = '[karina 응답 언어] 직전 진행 메모가 영문 위주였습니다 — 이어지는 안내·메모·보고는 한글로 쓴다. 코드 식별자·명령·원문 인용은 원래 표기를 유지한다.'
 $BlockAfter = 2
-$BlockLine = "[차단] 영문 진행 메모 세 번째 — 이 도구 호출을 한 번 막았습니다" + ' [karina 응답 언어] 이 세션에서 영문 메모 교정이 이미 두 번 나갔습니다. 방금 메모를 한글로 다시 쓴 뒤 같은 도구 호출을 다시 내십시오 — 코드 식별자·명령·원문 인용은 원래 표기를 유지합니다.'
+$BlockLine = ' [karina 응답 언어] 이 세션에서 영문 메모 교정이 이미 두 번 나갔습니다. 방금 메모를 한글로 다시 쓴 뒤 같은 도구 호출을 다시 내십시오 — 코드 식별자·명령·원문 인용은 원래 표기를 유지합니다.'
 
 function Test-LatinProse([string]$Text) {
     $prose = $Text -replace '(?ms)^ {0,3}(```|~~~).*?(^ {0,3}\1[^\n]*$|\z)', ' '
@@ -96,7 +96,13 @@ try { $n = [int](Get-Content -LiteralPath $countPath -Raw -ErrorAction Stop).Tri
 $counted = $true
 try { Set-Content -LiteralPath $countPath -Value ($n + 1) -NoNewline -ErrorAction Stop } catch { $counted = $false }
 if ($counted -and $n -ge $BlockAfter) {
-    [Console]::Error.WriteLine($BlockLine)
+    $memo = ($last.Text -replace '\s+', ' ').Trim()
+    if ($memo.Length -gt 60) { $memo = $memo.Substring(0, 60) }
+    try {
+        . (Join-Path $PSScriptRoot 'hook-event-log.ps1')
+        Write-HookEvent 'inject-reply-language' 'block' 'reply-language-block' $memo -SessionId $sid
+    } catch {}
+    [Console]::Error.WriteLine("[차단] 영문 진행 메모 $($n + 1)번째 — 이 도구 호출을 한 번 막았습니다 · 막은 메모: «$memo»" + $BlockLine)
     exit 2
 }
 
