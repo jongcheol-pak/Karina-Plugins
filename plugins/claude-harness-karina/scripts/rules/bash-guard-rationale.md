@@ -74,7 +74,8 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 ```
 # ---- warn-global-find: 루트 전역 탐색 경고 (회수 불가능한 고아를 애초에 막는다) ----
 # 왜 차단이 아니라 경고인가: 루트부터 훑어야 하는 정당한 경우를 배제할 수 없다. 다만 그 명령은
-#   Bash 도구의 10분 캡 안에 끝나지 않아 **셸만 죽고 자식 find가 고아로 남는다** — 2026-08-20에
+#   Bash 도구 시한 안에 끝나지 않는다 — 2.1.331 에서는 시한을 넘긴 전경 명령이 백그라운드로 넘어가 끝날 때까지
+#   돌고(2026-11-24 관측), 세션이 먼저 끝나면 자식 find가 고아로 남을 수 있다 — 2026-08-20에(그때 판은 캡에서 셸만 죽였다)
 #   `find / …` 12건이 15~20시간을 돌며 코어 3개를 먹고 있었고, 그중 다수는 커널에 갇혀
 #   `Stop-Process`·`taskkill`이 모두 무효였다(회수로 닫히지 않는다). 그래서 예방이 본류다.
 # 범위: `find`의 시작점만 본다 — "느린 명령 일반"을 다루는 틀을 만들지 않는다(무엇이 느린지는
@@ -206,6 +207,8 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 **검사 범위(코드 구획 제목에서 옮김 — 2026-10-17)**: warn-external-ops 는 외부·비가역 작업(push·merge·gh pr — plan·스킬 안이면 진행 / tag·gh release·배포 — 항상 승인)·로컬 비가역(reset --hard 등) 경고 를 본다.
 
 **승인된 plan 회차가 진행 중이면 `approval: context` 군(push·merge·PR 생성·코멘트·병합) 경고를 내지 않는다(2026-11-14 — 체인 run_dc17831b plan 1)** — 그 군은 「승인된 plan·발동된 스킬 안이면 묻지 않고 한다」는 작업이라, 회차 안에서는 경고가 아무것도 바꾸지 않고 소음만 됐다(2026-11 hook-events — warn-external-ops 경고 2,172건 중 스킬·plan 안 정상 push·PR 약 1,360건, 코디네이터 집계). 판정은 `scripts/plan-round.ps1` 의 `Test-ActivePlanRound` 다 — cwd 위로 찾은 `plan.md` 에 `> 승인: <날짜>` 가 있고 `> 완료: <날짜>` 가 없거나 그 날짜가 오늘이면 진행 중이다(push 는 회차 끝 push 전 확인 뒤라 완료 기록이 이미 있다). 파일만 보므로 낡은 세션 마커에 속지 않고, 어제 끝난 회차·승인 전 초안은 그대로 경고한다. **`None` 군(tag·release·배포)과 `localOps`(워킹트리 폐기)는 늘 경고한다** — 승인 범위 밖이거나 되돌릴 수 없는 작업이다. 한 명령에 두 군이 섞이면 전부 경고한다. plan 탐색(`Find-SinglePlanUpwards`·`Test-WorktreeGitFile`)도 같은 파일로 옮겨 guard-write·post-write-checks 가 사본 없이 쓴다. **그 파일이 없으면 커밋 명령을 막는다** — task 체크박스 게이트가 plan 을 못 찾아 통과시키면 설치 손상이 차단 게이트를 끈다(§18 의 커밋 판정식 부재와 같은 처리).
+
+**worktree 와 실행 마커(2026-11-24).** 생략 판정은 `Find-SinglePlanUpwards` 대신 `plan-round.ps1` 의 `Find-RoundPlan` 을 쓴다 — 시작점에서 plan 을 못 찾고 위에 worktree `.git` 파일(`gitdir: <본>/.git/worktrees/<이름>`)이 있으면, worktree 루트 기준 상대 경로를 본 레포 루트에 붙인 자리에서 다시 찾고, 없으면 worktree 루트의 부모에서 위로 찾는다(`<하니스 루트>/.claude/worktrees/<이름>` 배치). 그리고 그 세션의 `loop-continue` 실행 마커(`~/.claude/.state/loop-continue/<sid>.active`)가 있으면 plan 을 못 찾아도 생략한다. 왜: 생략 도입(11-14) 뒤에도 context 군 경고가 77건 남았고 63건이 병렬 그룹 worktree 의 `git merge --ff-only` 였다 — plan 은 gitignore 라 worktree 에 없고, 탐색이 worktree `.git` 파일에서 멈췄다. push 14건은 모노레포 루트·plan 밖 cwd 에서 났다(사용자 답 「실행 중엔 생략」). 공용 `Find-SinglePlanUpwards` 는 커밋 체크박스 게이트·G4·worktree 위임 경고도 써서 바꾸지 않는다. **인터프리터 표준입력 heredoc 본문(`python -`·`node -` 등 `<<` 앞이 python·py·node·ruby·perl)도 이 검사에서 뺀다** — 본문은 셸 명령이 아니라 프로그램 텍스트라 문자열 속 `git push` 가 경고를 냈다(2026-11-24 이벤트 로그 집계 스크립트). 셸(`bash <<`)의 본문은 그대로 잰다. 차단 검사의 heredoc 처리는 바꾸지 않았다.
 
 ## §14 완료 커밋 제목 판정
 

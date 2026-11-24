@@ -144,6 +144,46 @@ $r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $prDraft 'git push origin main')
 Assert-Case -Name "plan-round: 승인 전 초안 plan 의 git push 는 경고한다" -R $r -ExpectExit 0 -ExpectContains 'EXTERNAL OP'
 $r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $prActive 'git tag v9.9.9')
 Assert-Case -Name "plan-round: 회차 진행 중에도 git tag 는 경고한다" -R $r -ExpectExit 0 -ExpectContains 'git tag'
+function New-WtPair([string]$Name, [string]$PlanRel, [string]$Head, [string]$WtRel = '') {
+    $main = Join-Path $work $Name
+    New-Item -ItemType Directory (Join-Path $main '.git/worktrees/w') -Force | Out-Null
+    $pd = if ($PlanRel) { Join-Path $main $PlanRel } else { $main }
+    New-Item -ItemType Directory $pd -Force | Out-Null
+    ("# plan`n`n## Goal`n`n" + $Head + "`n`n- [x] **T1-1** a") | Set-Content (Join-Path $pd 'plan.md')
+    $wt = if ($WtRel) { Join-Path $main $WtRel } else { Join-Path $work ($Name + '-wt') }
+    New-Item -ItemType Directory $wt -Force | Out-Null
+    ('gitdir: ' + ((Join-Path $main '.git/worktrees/w') -replace '\\', '/')) | Set-Content (Join-Path $wt '.git')
+    return $wt
+}
+$wtRoot = New-WtPair 'wt-root' '' "> 승인: $prToday · Y`n> 완료: <implement 가 채움>"
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $wtRoot 'git merge --ff-only abc1234')
+Assert-Case -Name "plan-round: worktree 병합 — 본 레포 루트 plan 진행 중이면 경고 없음" -R $r -ExpectExit 0 -ExpectNotContains 'EXTERNAL OP'
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $wtRoot 'git push origin HEAD')
+Assert-Case -Name "plan-round: worktree push — 본 레포 루트 plan 진행 중이면 경고 없음" -R $r -ExpectExit 0 -ExpectNotContains 'EXTERNAL OP'
+$wtSub = New-WtPair 'wt-sub' 'sub' "> 승인: $prToday · Y`n> 완료: <implement 가 채움>"
+New-Item -ItemType Directory (Join-Path $wtSub 'sub') -Force | Out-Null
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd (Join-Path $wtSub 'sub') 'git merge --ff-only abc1234')
+Assert-Case -Name "plan-round: worktree 하위 폴더 cwd — 본 레포 sub/plan.md 진행 중이면 경고 없음" -R $r -ExpectExit 0 -ExpectNotContains 'EXTERNAL OP'
+$wtNested = New-WtPair 'wt-nested' 'sub' "> 승인: $prToday · Y`n> 완료: <implement 가 채움>" 'sub/.claude/worktrees/w'
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $wtNested 'git merge --ff-only abc1234')
+Assert-Case -Name "plan-round: worktree 루트 cwd(본 레포 sub/.claude/worktrees/w) — sub/plan.md 진행 중이면 경고 없음" -R $r -ExpectExit 0 -ExpectNotContains 'EXTERNAL OP'
+$wtOld = New-WtPair 'wt-old' '' "> 승인: $prYesterday · Y`n> 완료: $prYesterday 23:50 · 소요 1시간"
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $wtOld 'git merge --ff-only abc1234')
+Assert-Case -Name "plan-round: worktree 병합 — 본 레포 회차가 어제 완료이고 마커 없으면 경고 (음성 짝)" -R $r -ExpectExit 0 -ExpectContains 'EXTERNAL OP'
+$mkNoPlan = Join-Path $work 'mk-noplan'
+New-Item -ItemType Directory (Join-Path $mkNoPlan '.git') -Force | Out-Null
+$mkDir = Join-Path $env:USERPROFILE '.claude/.state/loop-continue'
+New-Item -ItemType Directory $mkDir -Force | Out-Null
+'x' | Set-Content (Join-Path $mkDir 'mk-sid.active')
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $mkNoPlan; session_id = 'mk-sid'; tool_input = @{ command = 'git push origin main' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "plan-round: 실행 마커가 있으면 plan 밖 cwd 의 push 경고 없음" -R $r -ExpectExit 0 -ExpectNotContains 'EXTERNAL OP'
+$r = Invoke-Hook 'guard-bash.ps1' (@{ tool_name = 'Bash'; cwd = $wtRoot; session_id = 'mk-sid'; tool_input = @{ command = 'git tag v9.9.9' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "plan-round: tag 는 worktree·실행 마커가 있어도 경고 (음성 짝)" -R $r -ExpectExit 0 -ExpectContains 'git tag'
+Remove-Item -LiteralPath (Join-Path $mkDir 'mk-sid.active') -Force -ErrorAction SilentlyContinue
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $mkNoPlan ("python - <<'EOF'`nprint('git push origin main')`nEOF"))
+Assert-Case -Name "external-ops: python 표준입력 heredoc 본문의 git push 문자열은 경고 없음" -R $r -ExpectExit 0 -ExpectNotContains 'EXTERNAL OP'
+$r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $mkNoPlan ("bash <<'EOF'`ngit push origin main`nEOF"))
+Assert-Case -Name "external-ops: bash heredoc 본문의 git push 는 경고 (음성 짝)" -R $r -ExpectExit 0 -ExpectContains 'EXTERNAL OP'
 $r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $prActive 'gh release create v9.9.9')
 Assert-Case -Name "plan-round: 회차 진행 중에도 gh release create 는 경고한다" -R $r -ExpectExit 0 -ExpectContains 'gh release create'
 $r = Invoke-Hook 'guard-bash.ps1' (New-PrCmd $prActive 'git reset --hard HEAD~1')

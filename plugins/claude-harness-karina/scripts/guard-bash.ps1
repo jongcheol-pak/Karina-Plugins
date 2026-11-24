@@ -144,8 +144,8 @@ function Invoke-WarnGlobalFind {
 
     if ($hits.Count -eq 0) { return New-HookResult }
     $where = (($hits | Select-Object -Unique) -join ', ')
-    $msg = "[GLOBAL FIND WARNING] 루트 전역 탐색 감지 (시작점: $where) — Bash 도구는 10분 캡이 있어 이 명령은 끝나지 않고, 캡에 걸리면 셸만 죽고 find가 고아로 남아 CPU를 계속 먹습니다(회수해도 커널에 갇히면 재부팅 전까지 안 죽습니다)."
-    $ctx = "루트 전역 탐색($where)은 Bash 10분 캡 안에 끝나지 않아 회수 불가능한 고아 프로세스를 남깁니다. 탐색 시작점을 좁히거나(예: ~/.cargo/registry), 프로젝트 안을 찾는 것이라면 Glob 도구를 쓰세요."
+    $msg = "[GLOBAL FIND WARNING] 루트 전역 탐색 감지 (시작점: $where) — 이 명령은 Bash 도구 시한 안에 끝나지 않고, 시한을 넘기면 백그라운드로 넘어가 끝날 때까지 CPU를 먹습니다. 세션이 먼저 끝나면 find가 고아로 남을 수 있고, 커널에 갇히면 재부팅 전까지 안 죽습니다."
+    $ctx = "루트 전역 탐색($where)은 Bash 도구 시한 안에 끝나지 않아 백그라운드에서 오래 돌고, 세션이 먼저 끝나면 회수 불가능한 고아 프로세스를 남길 수 있습니다. 탐색 시작점을 좁히거나(예: ~/.cargo/registry), 프로젝트 안을 찾는 것이라면 Glob 도구를 쓰세요."
     return New-HookResult -Stderr @($msg) -Context $ctx
 }
 
@@ -365,7 +365,10 @@ function Invoke-WarnExternalOps {
         return New-HookResult
     }
 
-    $src = Get-HeredocSinkStripped $scanCmd
+    $src = [regex]::Replace((Get-HeredocSinkStripped $scanCmd), $script:HeredocBlockRx, {
+        param($m)
+        if ($m.Groups['line'].Value -match '(?i)(^|[\s;&|(])(python3?|py|node|ruby|perl)(\.exe)?(\s+[^\s<]+)*\s*<<') { $m.Groups['line'].Value } else { $m.Value }
+    })
     $segments = Remove-DataQuotes (Get-TopLevelSegments $src) $src $ops
     $hits = New-Object System.Collections.Generic.List[string]
     $hitsLocal = New-Object System.Collections.Generic.List[string]
@@ -385,9 +388,15 @@ function Invoke-WarnExternalOps {
         }
     }
 
-    if ($hitContext -and -not $hitAlways -and (Test-Path function:Test-ActivePlanRound)) {
+    if ($hitContext -and -not $hitAlways) {
         $roundDir = if ($data.cwd) { [string]$data.cwd } else { (Get-Location).Path }
-        if (Test-ActivePlanRound (Find-SinglePlanUpwards -StartDir $roundDir)) { $hits.Clear(); $hitContext = $false }
+        $sid = [string]$data.session_id
+        $userHome = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+        $running = (-not [string]::IsNullOrWhiteSpace($sid)) -and (Test-Path -LiteralPath (Join-Path $userHome ('.claude/.state/loop-continue/' + ($sid -replace '[^A-Za-z0-9._-]', '_') + '.active')))
+        if (-not $running -and (Test-Path function:Test-ActivePlanRound) -and (Test-Path function:Find-RoundPlan)) {
+            $running = Test-ActivePlanRound (Find-RoundPlan -StartDir $roundDir)
+        }
+        if ($running) { $hits.Clear(); $hitContext = $false }
     }
     if ($hits.Count -eq 0 -and $hitsLocal.Count -eq 0) { return New-HookResult }
 
