@@ -22,7 +22,7 @@
   - 주 트리가 깨끗하다 — `git status --porcelain --untracked-files=no` 가 빈 값
   - `git check-ignore -q .claude/worktrees/x` 가 참이다 — 무시되지 않으면 「순차 전환」 때 남기는 worktree 가 `?? .claude/` 로 4번 clean 판정에 잡혀 push 를 세운다. 이 PC 는 전역 gitignore(`core.excludesfile`)가 무시해 줄 뿐, 레포 `.gitignore` 가 보장하지 않는다(실측 2026-11-22)
   - 그룹 앞 task 가 전부 `[x]` 이고 커밋됐다 · 원격이 있으면 `git merge-base --is-ancestor origin/HEAD HEAD` 가 참이다 — 서브에이전트 worktree 는 로컬 HEAD 가 아니라 `origin/HEAD` 에서 갈라져, 프롬프트 0단계가 메인 HEAD 로 fast-forward 한다(실측 2026-11-21 — 로컬 a335de17 · worktree 7667481d). 조상이 아니면 fast-forward 가 안 된다
-  - `../../plan/references/parallel-groups.md`「병렬 그룹」 의 넷 — 계획 이후 그룹 task 의 Files 가 앞 task 산출물을 가리키게 됐는지, `git status --ignored --short` 에 그 task 검증이 읽는 경로가 새로 생겼는지 본다
+  - `../../plan/references/parallel-groups.md`「병렬 그룹」 의 넷 — 계획 이후 그룹 task 의 Files 가 앞 task 산출물을 가리키게 됐는지, `git status --ignored --short` 에 그 task 검증이 읽는 경로나 빌드 캐시 폴더(③ 의 이름 목록 — `check-plan` `parallel-cold` 와 같은 판정)가 새로 생겼는지 본다
 - **그룹의 시작 시각을 `../scripts/work-clock.ps1` 무인자로 한 번 얻는다** — 「정리·기록」 의 경과 줄이 이 값에서 잰다.
 
 ## 띄우기

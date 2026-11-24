@@ -29,6 +29,9 @@
 #   parallel-task T<N> <사유>      그룹의 task 가 missing(블록 없음)·screen(「- **화면**:」 줄)·perf(「- **성능**:」 줄)·
 #                                outside(Files 백틱 경로 하나라도 레포 밖 — outside-evidence 와 같은 판정)
 #   parallel-overlap T<a> T<b>   같은 그룹 두 task 의 Files 백틱 경로(첫 「[면제」 앞까지 · 대소문자·구분자 무시)가 겹침
+#   parallel-cold <폴더>/        그룹 줄이 있고 plan 의 git 최상위에서 「git status --ignored --short」 의 「!!」 폴더 중 마지막 조각이
+#                                target·node_modules·obj·.venv·venv·.gradle·build·.next·Library 인 것이 있음(첫 하나) — 빌드 캐시 레포는
+#                                worktree 마다 콜드 빌드라 순차보다 느리다(parallel-groups.md ③) · git 실패는 「skip parallel-cold git-status」
 #   missing-section <절>         필수 절 없음 — goal·out-of-scope·investigation-log·tasks·verification·deferred
 #                                (Goal 절에 「> 경량:」 줄이 있는 경량 plan 은 out-of-scope·verification 을 재지 않는다)
 #   light-files <N>              경량 plan 의 task Files 줄 백틱 경로(줄의 첫 「[면제」 앞까지) 합집합이 2 를 넘음
@@ -553,6 +556,17 @@ if (Find-Section $tasksTitle) {
     $group = Get-ProseLines (Find-Section $tasksTitle) | Where-Object { Test-Prefix $_.Text $groupHead } | Select-Object -First 1
     if ($group) {
         $perfLabel = '- **' + (Get-Text @(0xC131, 0xB2A5)) + '**:'    # - **성능**:
+        if ($planTop) {
+            $coldNames = @('target', 'node_modules', 'obj', '.venv', 'venv', '.gradle', 'build', '.next', 'Library')
+            $ignored = $null
+            try { $ignored = @(& git -C $planTop status --ignored --short 2>$null) } catch { $ignored = $null }
+            if ($LASTEXITCODE -ne 0 -or $null -eq $ignored) { Write-Output 'check-plan: skip parallel-cold git-status' }
+            else {
+                $cold = $ignored | Where-Object { $_.StartsWith('!! ') } | ForEach-Object { $_.Substring(3).Trim('"') } |
+                    Where-Object { $_.EndsWith('/') -and $coldNames -ccontains ($_.TrimEnd('/') -split '/')[-1] } | Select-Object -First 1
+                if ($cold) { Add-Problem $group.N ('parallel-cold ' + $cold) }
+            }
+        }
         $spec = $group.Text.Substring($groupHead.Length)
         $cut = $spec.IndexOf([char]0x2014)
         if ($cut -ge 0) { $spec = $spec.Substring(0, $cut) }

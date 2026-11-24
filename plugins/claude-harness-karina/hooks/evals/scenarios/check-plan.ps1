@@ -612,6 +612,22 @@ $r = Invoke-CheckPlan (New-GroupPlan 'T1·T2 | T3·T4' $cpGf)
 Assert-Case -Name "check-plan 병렬: 조건이 맞는 그룹 둘은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'parallel-'
 $r = Invoke-CheckPlan (New-GroupPlan '' $cpGf)
 Assert-Case -Name "check-plan 병렬: 그룹 줄이 없으면 재지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'parallel-'
+function New-CpCacheRepo([string]$Name, [string]$Ignore, [string]$Dir) {
+    $root = Join-Path $cpRoot $Name
+    New-Item -ItemType Directory -Path (Join-Path $root $Dir) -Force | Out-Null
+    & git -C $root init -q 2>$null
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText((Join-Path $root '.gitignore'), $Ignore, $utf8)
+    [System.IO.File]::WriteAllText((Join-Path (Join-Path $root $Dir) 'x.bin'), 'x', $utf8)
+    [System.IO.File]::WriteAllText((Join-Path (Split-Path -Parent (Join-Path $root $Dir)) 'keep.txt'), 'k', $utf8)
+    return $root
+}
+$r = Invoke-CheckPlan (New-GroupPlan 'T1·T2' $cpGf[0..1]) (New-CpCacheRepo 'cold-target' "target/`n" 'target')
+Assert-Case -Name "check-plan 병렬: ignored 빌드 캐시 target/ 이 있는 레포의 그룹은 parallel-cold" -R $r -ExpectExit 1 -ExpectContains 'parallel-cold target/'
+$r = Invoke-CheckPlan (New-GroupPlan 'T1·T2' $cpGf[0..1]) (New-CpCacheRepo 'cold-node' "node_modules/`n" 'app/node_modules')
+Assert-Case -Name "check-plan 병렬: 하위 폴더의 ignored node_modules 도 parallel-cold" -R $r -ExpectExit 1 -ExpectContains 'parallel-cold app/node_modules/'
+$r = Invoke-CheckPlan (New-GroupPlan 'T1·T2' $cpGf[0..1]) (New-CpCacheRepo 'cold-py' "__pycache__/`n" '__pycache__')
+Assert-Case -Name "check-plan 병렬: ignored __pycache__ 만 있는 레포의 그룹은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'parallel-cold'
 }
 
 if (Test-ScenarioUnit 4) {
