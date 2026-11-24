@@ -882,6 +882,7 @@ $blocked = @($results | Where-Object { $_.Block })
 if ($blocked.Count -gt 0) {
     foreach ($b in $blocked) {
         foreach ($l in $b.Stderr) { [Console]::Error.WriteLine($l) }
+        try { if (Test-Path function:Get-HookRepeatNotice) { $rn = Get-HookRepeatNotice $b['Name'] ([string]$data.session_id); if ($rn) { [Console]::Error.WriteLine($rn) } } } catch {}
         Write-DispatchEvent $b['Name'] 'block' $b
     }
     Write-GbSlowEvent

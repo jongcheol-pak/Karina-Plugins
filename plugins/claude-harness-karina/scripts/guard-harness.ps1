@@ -20,6 +20,12 @@ $targetPath = $script:targetPath
 function Write-GacEvent {
     param([string]$Decision, [string]$Rule)
     try {
+        if ($Decision -eq 'block' -and (Get-Command Get-HookRepeatNotice -ErrorAction SilentlyContinue)) {
+            $rn = Get-HookRepeatNotice 'guard-harness' ([string]$script:data.session_id)
+            if ($rn) { [Console]::Error.WriteLine($rn) }
+        }
+    } catch {}
+    try {
         if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
             Write-HookEvent 'guard-harness' $Decision $Rule ([string]$script:data.tool_name + ' ' + [string]$script:targetPath) -SessionId ([string]$script:data.session_id)
         }
@@ -79,6 +85,10 @@ if ($isHookScript -or $suspect83) {
     [Console]::Error.WriteLine("하니스 수정은 개발 repo(경로에 .claude 없음)에서 plan 게이트를 거쳐 진행하세요.")
     # [이벤트 로깅] 차단 판정 완료 후 exit 직전 — 호출 실패 전면 격리(차단 동작 무영향). 로드는 파일 머리에서 한 번 한다.
     try {
+        if (Get-Command Get-HookRepeatNotice -ErrorAction SilentlyContinue) {
+            $rn = Get-HookRepeatNotice 'guard-harness' ([string]$script:data.session_id)
+            if ($rn) { [Console]::Error.WriteLine($rn) }
+        }
         if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
             Write-HookEvent 'guard-harness' 'block' $why ([string]$targetPath) -SessionId ([string]$script:data.session_id)
         }
@@ -94,6 +104,7 @@ if (Get-Command Invoke-GuardComment -ErrorAction SilentlyContinue) {
     if ($gcResult -and $gcResult.Block) {
         [Console]::Error.WriteLine("[HARNESS] BLOCKED: 새 주석을 더하는 편집을 막습니다 — " + $gcResult.Lines[0])
         foreach ($l in @($gcResult.Lines | Select-Object -Skip 1)) { [Console]::Error.WriteLine($l) }
+        try { if (Get-Command Get-HookRepeatNotice -ErrorAction SilentlyContinue) { $rn = Get-HookRepeatNotice 'guard-comment' ([string]$script:data.session_id) -IncludesCurrent; if ($rn) { [Console]::Error.WriteLine($rn) } } } catch {}
         exit 2
     }
     if ($gcResult) { foreach ($l in $gcResult.Lines) { [Console]::Error.WriteLine($l) } }
@@ -109,6 +120,7 @@ if (Get-Command Invoke-GuardDocOwner -ErrorAction SilentlyContinue) {
     if ($doResult -and $doResult.Block) {
         [Console]::Error.WriteLine("[HARNESS] BLOCKED: doc 블록과 그 주인 항목 사이에 새 항목을 끼웁니다 — " + $doResult.Lines[0])
         foreach ($l in @($doResult.Lines | Select-Object -Skip 1)) { [Console]::Error.WriteLine($l) }
+        try { if (Get-Command Get-HookRepeatNotice -ErrorAction SilentlyContinue) { $rn = Get-HookRepeatNotice 'guard-doc-owner' ([string]$script:data.session_id) -IncludesCurrent; if ($rn) { [Console]::Error.WriteLine($rn) } } } catch {}
         exit 2
     }
 } else {

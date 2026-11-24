@@ -31,6 +31,12 @@ try { . (Join-Path $PSScriptRoot 'plan-round.ps1') } catch {}
 function Write-RpEvent {
     param([string]$Decision, [string]$Rule)
     try {
+        if ($Decision -eq 'block' -and (Get-Command Get-HookRepeatNotice -ErrorAction SilentlyContinue)) {
+            $rn = Get-HookRepeatNotice 'guard-write' ([string]$script:data.session_id)
+            if ($rn) { [Console]::Error.WriteLine($rn) }
+        }
+    } catch {}
+    try {
         if (Get-Command Write-HookEvent -ErrorAction SilentlyContinue) {
             Write-HookEvent 'guard-write' $Decision $Rule ([string]$script:data.tool_name + ' ' + [string]$script:targetPath) -SessionId ([string]$script:data.session_id)
         }

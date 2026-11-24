@@ -87,5 +87,29 @@ $r = Invoke-EvSessionCase 'block-destructive.ps1' @{ session_id = ('ev sid/..:x'
 Assert-Case -Name "event-log: 파일 이름에 못 쓰는 문자·긴 값은 정리돼 실린다" -R $r -ExpectExit 2 -ExpectContains 'blocklines=1 sidhit=1'
 $r = Invoke-EvSessionCase 'block-destructive.ps1' @{} '"hook":"block-destructive"' 'session_id'
 Assert-Case -Name "event-log: session_id 없는 stdin 은 필드 없이 줄을 남긴다" -R $r -ExpectExit 2 -ExpectContains 'blocklines=1 sidhit=1'
+
+$repBd = @{ tool_name = 'Bash'; session_id = 'rep-bd'; tool_input = @{ command = 'rm -rf /' } } | ConvertTo-Json -Compress
+$r1 = Invoke-Hook 'block-destructive.ps1' $repBd
+$r2 = Invoke-Hook 'block-destructive.ps1' $repBd
+$r3 = Invoke-Hook 'block-destructive.ps1' $repBd
+Assert-Case -Name "repeat-notice: block-destructive 같은 세션 1회째는 안내 없음" -R $r1 -ExpectExit 2 -ExpectNotContains '회째'
+Assert-Case -Name "repeat-notice: block-destructive 같은 세션 2회째도 안내 없음" -R $r2 -ExpectExit 2 -ExpectNotContains '회째'
+Assert-Case -Name "repeat-notice: block-destructive 같은 세션 3회째는 횟수 안내 · 차단 유지" -R $r3 -ExpectExit 2 -ExpectContains 'block-destructive 차단 3회째'
+$r = Invoke-Hook 'block-destructive.ps1' (@{ tool_name = 'Bash'; session_id = 'rep-bd-other'; tool_input = @{ command = 'rm -rf /' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "repeat-notice: 다른 세션의 첫 차단은 안내 없음" -R $r -ExpectExit 2 -ExpectNotContains '회째'
+$repGb = @{ tool_name = 'Bash'; session_id = 'rep-gb'; tool_input = @{ command = 'cp notes.md plan.md' } } | ConvertTo-Json -Compress
+$null = Invoke-Hook 'guard-bash.ps1' $repGb
+$null = Invoke-Hook 'guard-bash.ps1' $repGb
+$r = Invoke-Hook 'guard-bash.ps1' $repGb
+Assert-Case -Name "repeat-notice: guard-bash 디스패처 차단 3회째는 검사 이름으로 안내 · 차단 유지" -R $r -ExpectExit 2 -ExpectContains 'block-plan-write 차단 3회째'
+$repNoPlan = Join-Path $work 'rep-noplan'
+New-Item -ItemType Directory (Join-Path $repNoPlan '.git') -Force | Out-Null
+$repGw = New-WriteJson $repNoPlan (Join-Path $repNoPlan 'a.cs') 'Write' @{} @{ session_id = 'rep-gw' }
+$null = Invoke-Hook 'guard-write.ps1' $repGw
+$null = Invoke-Hook 'guard-write.ps1' $repGw
+$r = Invoke-Hook 'guard-write.ps1' $repGw
+Assert-Case -Name "repeat-notice: guard-write plan 없음 차단 3회째는 횟수 안내 · 차단 유지" -R $r -ExpectExit 2 -ExpectContains 'guard-write 차단 3회째'
+$repLines = @(Get-EvLines | Where-Object { $_ -match '"session_id":"rep-bd"' -and $_ -match '"decision":"block"' })
+Assert-Case -Name "repeat-notice: 이벤트 rule 에는 안내가 실리지 않는다" -R @{ code = 0; out = "n=$($repLines.Count) " + ($repLines -join ' ') } -ExpectExit 0 -ExpectNotContains '회째'
 }
 

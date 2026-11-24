@@ -58,6 +58,36 @@ function Write-HookEvent {
     } catch {}
 }
 
+# 같은 세션 반복 차단 안내 — 근거는 `rules/event-log-rationale.md` §3
+function Get-HookRepeatNotice {
+    param([string]$Hook, [string]$SessionId, [switch]$IncludesCurrent)
+    try {
+        if ([string]::IsNullOrWhiteSpace($SessionId) -or [string]::IsNullOrWhiteSpace($Hook)) { return '' }
+        $homeBase = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
+        if ([string]::IsNullOrEmpty($homeBase)) { return '' }
+        $file = Join-Path $homeBase ('.claude/.state/hook-events/' + (Get-Date).ToString('yyyy-MM') + '.jsonl')
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return '' }
+        $sid = $SessionId -replace '[^\w.-]', '_'
+        if ($sid.Length -gt 64) { $sid = $sid.Substring(0, 64) }
+        $text = [System.IO.File]::ReadAllText($file)
+        $key = '"session_id":"' + $sid + '"'
+        $hookKey = '"hook":"' + $Hook + '"'
+        $n = 0
+        $i = 0
+        while (($i = $text.IndexOf($key, $i, [StringComparison]::Ordinal)) -ge 0) {
+            $s = $text.LastIndexOf("`n", $i) + 1
+            $e = $text.IndexOf("`n", $i)
+            if ($e -lt 0) { $e = $text.Length }
+            $line = $text.Substring($s, $e - $s)
+            if ($line.Contains($hookKey) -and $line.Contains('"decision":"block"')) { $n++ }
+            $i = $e
+        }
+        if ($IncludesCurrent) { $n-- }
+        if ($n -lt 2) { return '' }
+        return "[HARNESS] 이 세션에서 $Hook 차단 $($n + 1)회째 — 같은 수단(다른 셸·스크립트 우회 포함)으로 다시 시도하지 말고 위 안내 경로로 바꾸거나, 판정이 틀렸으면 멈추고 사용자에게 보고하세요."
+    } catch { return '' }
+}
+
 # 느린 실행 기록 — 근거는 `rules/event-log-rationale.md` §2
 function Write-HookSlowEvent {
     param([string]$Hook, [string]$CommandText = '', [string]$SessionId = '', [Nullable[datetime]]$EntryAt = $null, [string]$Detail = '')

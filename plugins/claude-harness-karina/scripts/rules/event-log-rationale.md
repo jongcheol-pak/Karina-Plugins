@@ -44,3 +44,11 @@
 ```
 
 **지연 분해 필드(2026-11-24).** slow 줄의 `rule` 은 `elapsed_ms=<N> startup_ms=<S>` 로 시작하고, 호출자가 넘긴 `-Detail` 을 뒤에 붙인다. `startup_ms` 는 진입 시각 − 프로세스 시작 시각이다 — 진입 시각은 `hook-dispatch.ps1` 첫 줄이 남긴 `$global:KarinaHookT0`, 없으면(단독 실행) 호출 스크립트 첫 줄의 시각(`-EntryAt`)이다. guard-bash 는 `load_ms=`(진입부터 검사 루프 직전까지 — 라이브러리 dot-source·입력 파싱)와 `checks=<이름:ms,…>`(10ms 이상인 검사만)를, 디스패처는 `scripts=<스크립트:ms,…>` 를 붙인다. slow 줄만 `rule` 을 400자로 자른다(다른 판정은 120자) — 검사별 목록이 120자를 넘는다. 왜: 14일 동안 5초 초과가 4,632건(p50 7초)인데 한가할 때 묶음은 1.3초라, 부하 때 늘어나는 몫이 기동인지 로드인지 검사인지를 갈라야 처방(상주 프로세스·컴파일 실행 파일·무거운 검사 건너뛰기)을 고를 수 있다. 기준 밑이면 쓰지 않으므로 평시 비용은 스톱워치뿐이다.
+
+## §3 Get-HookRepeatNotice — 같은 세션 반복 차단 안내
+
+**같은 세션에서 같은 hook 이 세 번째 막히면 차단 메시지 끝에 「이 세션에서 <hook> 차단 <N>회째 — 같은 수단(다른 셸·스크립트 우회 포함)으로 다시 시도하지 말고 …」 한 줄을 더한다(2026-11-24).** 왜: 한 세션에서 `guard-comment` 가 73번, `block-python-newcode` 가 42번 막혔다 — 차단 메시지가 이미 「같은 명령을 다시 내도 통과하지 않는다」 를 싣는데도 모델이 python·셸 우회로 같은 쓰기를 되풀이했다. 몇 번째인지를 보여 같은 수단을 버리게 한다.
+
+- **세는 법**: 그 달 이벤트 파일을 `ReadAllText` 로 읽어 `"session_id":"<sid>"` 가 든 줄 중 `"hook":"<hook>"`·`"decision":"block"` 을 함께 담은 줄을 센다(`sid` 정리는 `Write-HookEvent` 와 같다). 카운터 파일을 두지 않는다 — 정리할 상태가 생기지 않고, 차단 경로에서만 읽어 통과 경로 비용이 0이다(3.1MB 에 156ms · `Select-String` 은 391ms). 달이 바뀌면 0 부터 센다.
+- **자리**: 이벤트 기록 전에 부르고 stderr 마지막 줄로 낸다 — `Write-DispatchEvent` 가 stderr 첫 줄을 `rule` 로 남겨, 안내를 앞에 두면 로그 집계 키가 바뀐다. `guard-comment`·`guard-doc-owner` 는 판정 함수 안에서 이벤트를 먼저 쓰므로 `guard-harness` 가 `-IncludesCurrent` 로 지금 줄을 뺀다. guard-bash 는 막은 검사 이름(`block-plan-write` 등)으로 센다.
+- **판정 불변**: 차단 여부·exit 2 를 바꾸지 않는 메시지 추가다. 실패는 빈 값으로 삼킨다(§1 안전 계약 ①). session_id 가 없으면 세지 않는다.

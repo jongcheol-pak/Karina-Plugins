@@ -64,6 +64,7 @@ function Deny {
     [Console]::Error.WriteLine("Command: $Shown")
     if ($Alt) { [Console]::Error.WriteLine("대안: $Alt") }
     [Console]::Error.WriteLine("필요하다면 사용자에게 명시적 확인을 받은 뒤 직접 실행하도록 보고하세요.")
+    try { if (Get-Command Get-HookRepeatNotice -ErrorAction SilentlyContinue) { $rn = Get-HookRepeatNotice 'block-destructive' ([string]$data.session_id); if ($rn) { [Console]::Error.WriteLine($rn) } } } catch {}
     Write-BdEvent $Rule $Shown
     Write-BdSlowEvent
     exit 2
