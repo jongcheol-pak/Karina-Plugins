@@ -26,6 +26,11 @@ Assert-Case -Name "guard-comment: 새 주석 차단 메시지가 보존 등록·
 
 $r = Invoke-GcEdit 'doc.rs' 'pub fn b() {}' "/// 그 모니터 작업 영역 가운데.`npub fn b() {}"
 Assert-Case -Name "guard-comment: doc 주석(///) 추가도 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$gcRep1 = Invoke-GcEdit 'rep.rs' 'fn r() {}' "// 반복 차단`nfn r() {}" 'gc-repeat'
+$gcRep2 = Invoke-GcEdit 'rep.rs' 'fn r() {}' "// 반복 차단`nfn r() {}" 'gc-repeat'
+$gcRep3 = Invoke-GcEdit 'rep.rs' 'fn r() {}' "// 반복 차단`nfn r() {}" 'gc-repeat'
+Assert-Case -Name "repeat-notice: guard-comment 같은 세션 2회째는 안내 없음" -R $gcRep2 -ExpectExit 2 -ExpectNotContains '회째'
+Assert-Case -Name "repeat-notice: guard-comment 같은 세션 3회째는 '3회째' 안내 · 차단 유지" -R $gcRep3 -ExpectExit 2 -ExpectContains 'guard-comment 차단 3회째'
 $multiEdits = @(@{ old_string = 'const a = 0;'; new_string = 'const a = 1;' }, @{ old_string = 'const b = 2;'; new_string = "// 설명`nconst b = 2;" })
 $r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'gc-multi'; tool_name = 'MultiEdit'; cwd = $gc; tool_input = @{ file_path = (Join-Path $gc 'multi.ts'); edits = $multiEdits } } | ConvertTo-Json -Compress -Depth 5)
 Assert-Case -Name "guard-comment: MultiEdit 둘째 편집 쌍의 주석도 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock

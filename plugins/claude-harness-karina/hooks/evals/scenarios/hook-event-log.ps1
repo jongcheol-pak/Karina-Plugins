@@ -111,5 +111,6 @@ $r = Invoke-Hook 'guard-write.ps1' $repGw
 Assert-Case -Name "repeat-notice: guard-write plan 없음 차단 3회째는 횟수 안내 · 차단 유지" -R $r -ExpectExit 2 -ExpectContains 'guard-write 차단 3회째'
 $repLines = @(Get-EvLines | Where-Object { $_ -match '"session_id":"rep-bd"' -and $_ -match '"decision":"block"' })
 Assert-Case -Name "repeat-notice: 이벤트 rule 에는 안내가 실리지 않는다" -R @{ code = 0; out = "n=$($repLines.Count) " + ($repLines -join ' ') } -ExpectExit 0 -ExpectNotContains '회째'
+Assert-Case -Name "repeat-notice: 같은 세션 block 줄이 세 번 기록된다" -R @{ code = 0; out = "n=$($repLines.Count)" } -ExpectExit 0 -ExpectContains 'n=3'
 }
 

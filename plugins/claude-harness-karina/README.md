@@ -535,7 +535,7 @@ karina는 두 부분으로 나뉘며, OS 의존성이 다릅니다.
 |---|---|
 | OS | **Windows 10/11**: 완전 지원·검증. **macOS/Linux**: pwsh 7 설치 시 동작하도록 구현됐으나 **실제 환경 미검증(실험적)** |
 | 런타임 | **Windows**: 추가 설치 불요 — 실행 셸은 Claude Code가 결정(실측: pwsh 7 있으면 그쪽 우선), 스크립트는 내장 powershell.exe(5.1) 호환 유지. **macOS/Linux**: pwsh 7 필요(`brew install powershell` 등) |
-| Claude Code | **v2.1.312 이상만 지원합니다** — 안전 hook 이 PowerShell 로 `exit 2` 를 내 막는 동작(v2.1.309 수정)과, hook 이 실패하면 도구 호출을 막는 `onFailure`(v2.1.295)에 기댑니다. 그 아래 판은 고려하지 않습니다. 이 하한은 `plugin.json` 의 `engines.claude-code` 로도 선언합니다(그 필드를 읽는 판은 v2.1.323 이상) <!-- verified: 2026-10-30 --> |
+| Claude Code | **v2.1.312 이상만 지원합니다** — 안전 hook 이 PowerShell 로 `exit 2` 를 내 막는 동작(v2.1.309 수정)과, hook 이 실패하면 도구 호출을 막는 `onFailure`(v2.1.295)에 기댑니다. 그 아래 판은 고려하지 않습니다. 이 하한은 `plugin.json` 의 `engines` 필드(`claude-code` 키)로도 선언합니다(그 필드를 읽는 판은 v2.1.323 이상) <!-- verified: 2026-10-30 --> |
 | 대상 언어 | **모든 언어 동작** — .NET, Android, Node/TS, Python, Go, Rust는 표식 파일로 자동 감지·자동 설정. 그 외(Flutter·Swift·Java·C++·Ruby 등)는 빌드/테스트 명령만 입력하면 동일하게 작동 |
 
 ---
