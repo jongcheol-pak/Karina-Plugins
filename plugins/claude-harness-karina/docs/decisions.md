@@ -2,6 +2,9 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-25] reflect ab25c62c 하니스 후보 4건(원본 전량 대응표 · 빌드 캐시 병렬 차단 · 영문 메모 차단 문구·기록 · 원본 미리 풀기) — 기각: 후보 3 의 「§5 도입 전후 세션당 영문 메모 수 비교」 — §5 전에는 교정 줄도 차단도 기록되지 않아(2026-11 hook-events 0건 · `.count` 는 §5 도입일부터) 기준선이 없다
+  - 보류: 영문 메모 차단을 둘지·교정 줄로 되돌릴지·implement 루프 메모 서식으로 옮길지 — 이번 회차가 차단을 hook-events 에 남기게 했으니 7일 이상 모인 뒤 정한다(대장 「영문 메모 차단 유지 여부」) · 범위 밖: 계획 체인 단위 병렬(`chain-plan/references/parallel.md`) — 후보는 implement 의 task 병렬만 다뤘다
+
 - [2026-11-24] 검토 권장 수정(hook 지연 계측 · 반복 차단 안내 · worktree 경고 · omitClaudeMd · 캐시 정리) — 번복: 2026-11-20 보류 「승인된 push 의 `warn-external-ops` 줄이기」 중 push 부분을 시행했다(사용자 답 「실행 중엔 생략」 — worktree 에서 본 레포 plan 을 따라가고 세션 실행 마커가 있으면 생략). 역슬래시 경고 부분은 대장에 남는다.
   - 보류: hook 런타임 교체(상주 데몬·컴파일 실행 파일) — 지연이 기동·로드·검사 중 어디서 느는지 재지 않아, slow 줄 분해 계측만 넣고 처방은 7일 계측 뒤 고른다(사용자 「진행」 · 대장 「hook 지연 처방 선택」).
   - 기각: plan-reviewer·completion-reviewer·comment-reviewer·wiki-page-writer 의 `omitClaudeMd` — 글로벌 지침의 범위·주석·문서 규칙으로 판정·작성할 수 있어 빼면 판정이 바뀐다. screen-verifier·reflect-reviewer 둘만 적용했다.
