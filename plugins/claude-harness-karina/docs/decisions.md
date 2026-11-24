@@ -2,6 +2,9 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-24] 이웃 task 합치기 규칙·원본 줄 이탈 기계 검사(v3.61.0) — 번복: 2026-11-24 보류 두 건(task 합치기 규칙 · 원본 줄 이탈의 `check-plan` 검사)을 시행했다(사용자 요청 「보류로 남긴 것 수정」). 합치기는 새 참조 `plan/references/task-merge.md` 로 두어 `plan-template.md` 예산을 비켰고, 이탈 검사는 `origin-deviation`(Log 주장 칸 `이탈 T<N>` 행 요구)이다.
+  - 기각: 합치기 후보를 `check-plan` 이 Files 동일로 찾기 — Karina 원 계획 이웃 16쌍에서 같은 Files 집합은 0쌍이라 걸리는 것이 없고, 「따로 재야 할 이유」 는 문면 판단이다.
+
 - [2026-11-24] 원본 이식 task 의 원본 이탈을 실행자가 스스로 닫지 않게(v3.60.0) — 보류: task 분할 합치기 규칙(같은 화면·같은 Files 의 이웃 task 묶기) — 사용자가 「1번 먼저」를 골랐고, Karina plan 5 의 과잉 task 26개가 이탈 라운드에서 나와 이 회차 효과를 본 뒤 다시 잰다.
   - 보류: 계획 단계 원본 줄 이탈의 기계 검사(`check-plan`) — `plan-template.md` 예산 여유 0자라 중계 문면(relay-mode 하위 불릿)으로 먼저 막았다.
 
