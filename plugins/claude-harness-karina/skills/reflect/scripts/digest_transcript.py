@@ -37,7 +37,7 @@ Bash 소요 줄 — 구간 줄 앞에 `# Bash 소요: 시험 <N>초 <k>회 · �
 머리 아래 싣고, 그 줄이 없는 서브에이전트는 머리도 싣지 않는다(화면 판정을 맡은 검증 에이전트의 스크린샷 Read 대조 재료).
 머리에 `# 모드: audit` 을 싣는다.
   한글 음절(가-힣)이 하나도 없는 A: 줄은 `A: [한글 없음] …` 으로 표지하고 그 수를 머리 `# 한글 없는 A: <N>` 에 싣는다
-  — 단 그 줄 뒤, 다음 A: 줄 전에 응답 언어 hook 의 교정 H: 줄이나 차단 ERR: 줄(REPLY_FIX_TEXTS 가 든 줄)이 있으면 표지하지 않는다
+  — 단 그 줄 뒤, 다음 A: 줄 전에 응답 언어 hook 의 교정·Stop 고쳐 쓰기 H: 줄이나 차단 ERR: 줄(REPLY_FIX_TEXTS 가 든 줄)이 있으면 표지하지 않는다
   (hook 이 이미 다룬 메모다 · 판정은 audit 필터 전 body 에서 한다).
   implement·pr 의 「상태 메모도 한글로」 위반을 완료 리뷰가 세는 재료는 대조 범위 안의 표지 줄이고, 머리 수는 세션 전체 값이다.
   본 전사의 백그라운드 `Bash` 중 명령이 `sleep <N>`(뒤에 `; echo …` 하나까지)뿐인 시한 타이머가 완료(`<status>completed</status>`) 알림으로 끝났는데,
@@ -93,7 +93,8 @@ TIMER_HEAD = '# 응답 뒤 끝난 시한 타이머: '
 GIT_COMMAND = re.compile(r'''^\s*(?:cd\s+(?:"[^"]*"|'[^']*'|\S+)\s*(?:;|&&)\s*)*git\b''')
 HANGUL = re.compile('[가-힣]')
 HANGUL_FREE_MARK = 'A: [한글 없음] '
-REPLY_FIX_TEXTS = ('[karina 응답 언어] 직전 진행 메모가 영문 위주였습니다', '[차단] 영문 진행 메모 세 번째')
+REPLY_FIX_TEXTS = ('[karina 응답 언어] 직전 진행 메모가 영문 위주였습니다', '[차단] 영문 진행 메모 세 번째',
+                   '[karina 응답 언어] 방금 응답의 산문이')
 
 
 def is_image_read(line):

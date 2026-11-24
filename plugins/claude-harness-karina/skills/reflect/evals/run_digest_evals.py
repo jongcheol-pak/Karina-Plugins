@@ -785,7 +785,8 @@ def audit_marks_hangul_free_lines():
 
 
 REPLY_FIX = '[karina 응답 언어] 직전 진행 메모가 영문 위주였습니다 — 이어지는 안내·메모·보고는 한글로 쓴다.'
-REPLY_BLOCK = 'PreToolUse:Bash hook error: [command hook 3]: [차단] 영문 진행 메모 세 번째 — 이 도구 호출을 한 번 막았습니다'
+REPLY_STOP = '[karina 응답 언어] 방금 응답의 산문이 한글이 아니라 영문 위주입니다. 같은 내용을 한글로 다시 써서 답하십시오'
+REPLY_BLOCK ='PreToolUse:Bash hook error: [command hook 3]: [차단] 영문 진행 메모 세 번째 — 이 도구 호출을 한 번 막았습니다'
 
 
 @case
@@ -815,6 +816,22 @@ def audit_skips_hangul_free_line_blocked_by_hook():
         lines = out.splitlines()
         assert '# 한글 없는 A: 0' in lines, lines
         assert 'A: Review is running.' in lines, lines
+    finally:
+        t.close()
+
+
+@case
+def audit_skips_hangul_free_reply_rewritten_by_stop_hook():
+    t = Tree()
+    try:
+        t.session('proj-a', SID, [rec_assistant([{'type': 'text', 'text': 'All tasks are done.'}]),
+                                  rec_hook(REPLY_STOP),
+                                  rec_assistant([{'type': 'text', 'text': '모든 작업을 마쳤습니다'}])])
+        rc, out, err = digest(t, ['--audit'])
+        assert rc == 0, (rc, err)
+        lines = out.splitlines()
+        assert '# 한글 없는 A: 0' in lines, lines
+        assert 'A: All tasks are done.' in lines, lines
     finally:
         t.close()
 
