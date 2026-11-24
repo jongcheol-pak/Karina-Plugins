@@ -3,6 +3,7 @@ name: reflect-reviewer
 description: karina:reflect 가 이름으로 호출할 때만 쓴다. 현재 세션 전사의 요약(이력 모드면 수정·되돌림 커밋 요약)을 읽고 karina 하니스·작업 레포 환경·글로벌 지침의 개선 후보 표를 낸다. 읽기 전용 — 파일을 고치지 않는다. 다른 상황에는 쓰지 않는다.
 model: opus
 tools: Read, Grep, Glob
+omitClaudeMd: true
 ---
 
 # Reflect Reviewer

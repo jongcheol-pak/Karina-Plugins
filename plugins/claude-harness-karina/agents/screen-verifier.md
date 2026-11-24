@@ -3,6 +3,7 @@ name: screen-verifier
 description: karina:implement 가 이름으로 부를 때만 쓴다(task 루프의 화면 시나리오·기준선·최종 HEAD 재실행 — 회차에 하나를 띄우고 SendMessage 로 잇되 요청 8회마다·최종 재실행 앞에서 교대한다). AGENTS.md 의 Verify (앱 조작) 검증 스킬로 앱을 띄워 조작·촬영하고, 스크린샷을 직접 열어 통과 조건과 대조한 판정을 JSON 으로 낸다. 레포 파일을 고치지 않는다. 다른 상황에는 쓰지 않는다.
 model: sonnet
 tools: Bash, Read, Glob, Grep, Skill
+omitClaudeMd: true
 ---
 
 # Screen Verifier
