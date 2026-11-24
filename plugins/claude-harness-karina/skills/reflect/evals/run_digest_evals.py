@@ -784,6 +784,57 @@ def audit_marks_hangul_free_lines():
         t.close()
 
 
+REPLY_FIX = '[karina 응답 언어] 직전 진행 메모가 영문 위주였습니다 — 이어지는 안내·메모·보고는 한글로 쓴다.'
+REPLY_BLOCK = 'PreToolUse:Bash hook error: [command hook 3]: [차단] 영문 진행 메모 세 번째 — 이 도구 호출을 한 번 막았습니다'
+
+
+@case
+def audit_skips_hangul_free_line_corrected_by_hook():
+    t = Tree()
+    try:
+        t.session('proj-a', SID, [rec_assistant([{'type': 'text', 'text': 'Now the Log rows and tasks.'}]),
+                                  rec_hook(REPLY_FIX),
+                                  rec_assistant([{'type': 'text', 'text': '검증을 돌린다'}])])
+        rc, out, err = digest(t, ['--audit'])
+        assert rc == 0, (rc, err)
+        lines = out.splitlines()
+        assert '# 한글 없는 A: 0' in lines, lines
+        assert 'A: Now the Log rows and tasks.' in lines, lines
+    finally:
+        t.close()
+
+
+@case
+def audit_skips_hangul_free_line_blocked_by_hook():
+    t = Tree()
+    try:
+        t.session('proj-a', SID, [rec_assistant([{'type': 'text', 'text': 'Review is running.'}]),
+                                  rec_user_blocks([tool_result('b1', REPLY_BLOCK, is_error=True)])])
+        rc, out, err = digest(t, ['--audit'])
+        assert rc == 0, (rc, err)
+        lines = out.splitlines()
+        assert '# 한글 없는 A: 0' in lines, lines
+        assert 'A: Review is running.' in lines, lines
+    finally:
+        t.close()
+
+
+@case
+def audit_keeps_mark_when_correction_follows_later_memo():
+    t = Tree()
+    try:
+        t.session('proj-a', SID, [rec_assistant([{'type': 'text', 'text': 'Now reading the plan.'}]),
+                                  rec_assistant([{'type': 'text', 'text': '계획을 읽는다'}]),
+                                  rec_hook(REPLY_FIX)])
+        rc, out, err = digest(t, ['--audit'])
+        assert rc == 0, (rc, err)
+        lines = out.splitlines()
+        assert '# 한글 없는 A: 1' in lines, lines
+        assert 'A: [한글 없음] Now reading the plan.' in lines, lines
+    finally:
+        t.close()
+
+
 def read_use(tid, path):
     return {'type': 'tool_use', 'id': tid, 'name': 'Read', 'input': {'file_path': path}}
 
