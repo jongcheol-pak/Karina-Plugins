@@ -301,6 +301,9 @@
 
 ### 골든 러너 운용
 
+- [2026-11-25] **골든 부분 실행은 `pwsh -Command "& ./hooks/evals/run-hook-evals.ps1 -Filter a,b"` 로 부르고, `-Filter` 에는 그룹명(`warn-commit-secrets-1`)이 아니라 hook 기본명(`warn-commit-secrets`)을 쓴다** — `pwsh -File <스크립트> -Filter a,b` 는 쉼표 목록을 배열이 아니라 문자열 하나로 바인딩해(2026-11-20 측정 스크립트의 루트 목록 인자에 이어 재발) 「-Filter 매칭 실행 케이스 0건」 으로 끝난다. 계획의 검증 줄도 이 꼴로 적는다 (실측)
+- [2026-11-25] **시나리오 파일 앞쪽 `Test-ScenarioUnit <N>` 블록에서 정의한 변수는 다른 샤드 그룹(`warn-commit-secrets-2` 등)에서 비어 있다 — hook 단계 케이스가 쓰는 값은 그 케이스 블록 안에서 정의한다** — `$spCases` 블록의 키 문자열을 hook 단계 케이스가 썼다가 빈 `key.pem` 이 커밋돼, RED 가 재려는 동작이 아니라 빈 파일 때문에 났다(출력이 빈 FAIL) (실측)
+
 - [2026-11-16] **전체 골든은 그룹 합 ÷ `-MaxParallel` 하한에 닿아 있어 샤드 재분배로 줄지 않고, 상한을 올리면 오히려 느려진다 — 줄일 수 있는 것은 `-Filter` 부분 실행의 최대 샤드다** — 무인자 실행이 그룹 합 1258초 ÷ 8 = 157초 하한에 162초로 붙어 있었고, `-MaxParallel 12` 는 그룹마다 느려져 196초(합 1933초)였다. 샤드 안 블록별 소요는 `run-scenario.ps1 -Names <샤드> -OutJson <파일>` 을 돌리며 OutJson 줄이 도착하는 시각으로 잰다(판정이 케이스마다 즉시 덧붙여진다) — v3.29.0 이 guard-bash·warn-commit-secrets 부분 실행 최대 샤드를 이 방법으로 137→86초 · 85→56초로 줄였다.
 
 - [2026-11-15] **골든의 느린 git 래퍼(`git.cmd` + `findstr`)는 인자를 공백으로 둘러싼 낱말(`/c:" show "`)로 가르지 못한다 — `Invoke-TimedGit` 가 인자마다 따옴표를 붙여(`"show"`) 넘기므로 `/c:show`·`/c:grep` 처럼 낱말만 쓴다** — 공백 낱말로 쓰면 래퍼가 늦추지 않아, 「예산을 넘기면 막는다」를 재려던 RED 가 차단 대신 통과(exit 0)로 났다. `/c:show` 는 `rev-parse --show-toplevel` 에도 걸려 그 호출도 늦어지니 상한(`KARINA_COMMIT_GIT_TIMEOUT_MS`)을 넉넉히 둔다. 새 픽스처 `.ps1` 은 CRLF 로 써야 정합 검사의 「줄바꿈 전면 LF」 에 안 걸린다. (실측)

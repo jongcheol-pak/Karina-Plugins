@@ -2,6 +2,8 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-25] Karina 2673154b reflect 하니스 후보 2건(v3.66.2 — 채택: 개인키 머리만은 커밋 경고) — 보류: 후보 A 의 implement 메모 서식 제한(도구 호출 사이 메모를 task 시작·판정 줄로) — 대장 「영문 메모 차단 유지 여부」 의 선택지와 같아 실해(87회)만 덧붙이고 7일 기록 뒤 함께 정한다 · 후보 A 의 차단 문구 횟수 표기는 v3.63.0 에 이미 있어 대상이 아니었다
+
 - [2026-11-25] 완료 리뷰의 설계 냄새 기준(mattpocock/skills code-review smell baseline · v3.66.0) — 기각: upstream 의 표준·명세 두 축 분리 리뷰(서브에이전트 둘 병렬) — 완료 리뷰어 하나가 계획 대조를 이미 맡고, 요청은 냄새 기준 하나였다
   - 기각: 냄새를 hook·검사기로 기계 판정하는 안 — 냄새는 판단 사항이라 문자열로 갈리지 않는다. frontmatter PyYAML 검사는 같은 날 다시 꺼냈다가 접었다(2026-10-22 기각 유지 — CI 의 `claude plugin validate --strict` 가 로더 파서로 이미 파싱한다)
 
