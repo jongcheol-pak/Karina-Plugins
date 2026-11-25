@@ -282,6 +282,8 @@ $r = Invoke-CheckPlan (New-ScreenPlan $cpScreen) (New-UiPlanDir $cpVerifyAgents)
 Assert-Case -Name "check-plan: 원본 이식을 선언하지 않은 레포는 원본 줄을 요구하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'origin-'
 $r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n- **원본**: ``upstream/ui/menu.tsx`` — 메뉴 목록")) (New-UiPlanDir $cpVerifyAgents)
 Assert-Case -Name "check-plan: 원본 이식을 선언하지 않은 레포도 적힌 원본 줄의 판정 낱말은 잰다" -R $r -ExpectExit 1 -ExpectContains 'origin-line T1 verdict'
+$r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + $cpOriginPlain)) (New-UiPlanDir $cpVerifyAgents)
+Assert-Case -Name "check-plan: 원본 이식을 선언하지 않은 레포는 원본 줄이 있어도 원본 대응표를 요구하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'origin-map'
 
 # ---- 펜스 · 입력 오류 ----
 $r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', ("| 크기 | ``wc -c a.ps1`` | 10 |`n`n``````text`n| 가짜 |  | 빈 |`n## 가짜 절`n- [ ] T9-9 가짜`n```````n")))
