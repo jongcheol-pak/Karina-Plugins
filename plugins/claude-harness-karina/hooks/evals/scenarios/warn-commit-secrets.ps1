@@ -114,6 +114,8 @@ $spCases = @(
     @{ n = '개인키 들여쓴 본문 → 차단 라벨'; t = "  $pemH`n    $pemB"; e = '개인키' }
     @{ n = '개인키 암호화 머리줄+빈 줄 뒤 본문 → 차단 라벨'; t = "$pemH`nProc-Type: 4,ENCRYPTED`nDEK-Info: AES-128-CBC,0A1B2C3D`n`n$pemB"; e = '개인키' }
     @{ n = '개인키 본문 39자 → 경고 라벨'; t = "$pemH`n$pemShort"; e = '개인키 머리' }
+    @{ n = '개인키 JSON 배열·문자열 이어 붙이기 형태 → 차단 라벨'; t = ('["' + $pemH + '", "' + $pemB + '"]'); e = '개인키' }
+    @{ n = '개인키 코드 문자열 연결 형태 → 차단 라벨'; t = ("key = '" + $pemH + "' + '" + $pemB + "'"); e = '개인키' }
 )
 foreach ($sc in $spCases) {
     $got = (@(Get-SecretMatches $sc.t) -join ',')
