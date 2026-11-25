@@ -3016,5 +3016,96 @@
     "expect_absent": [
       "[MISMATCH]"
     ]
+  },
+  {
+    "id": "harness-version-task-missing-planmode",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--plan"
+    ],
+    "expect_rc": 1,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- **Files**: `.claude-plugin/plugin.json` · `README.md`",
+        "replace": "- **Files**: `README.md`"
+      }
+    ],
+    "expect_keywords": [
+      "[MISMATCH]",
+      "버전 task 동반",
+      "evals/check-harness-consistency.py"
+    ]
+  },
+  {
+    "id": "harness-version-task-ok-planmode",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--plan"
+    ],
+    "expect_rc": 0,
+    "expect_keywords": [
+      "결과: 대조 전부 일치",
+      "버전 task 동반"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  },
+  {
+    "id": "harness-version-task-relay-exempt",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--plan"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- **Files**: `.claude-plugin/plugin.json` · `README.md`",
+        "replace": "- **Files**: `README.md`"
+      },
+      {
+        "file": "plan.md",
+        "find": "# plan — 픽스처",
+        "replace": "# plan — 픽스처\r\n\r\n> 요구: 코디네이터 인터뷰 경유 — spec 원문"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
+  },
+  {
+    "id": "harness-version-task-no-runtime",
+    "checker": "harness",
+    "fixture": "minimal-repo",
+    "cli_args": [
+      "--plan"
+    ],
+    "expect_rc": 0,
+    "mutate": [
+      {
+        "file": "plan.md",
+        "find": "- **Files**: `.claude-plugin/plugin.json` · `README.md`",
+        "replace": "- **Files**: `README.md`"
+      },
+      {
+        "file": "plan.md",
+        "find": "- **Files**: `evals/check-harness-consistency.py`",
+        "replace": "- **Files**: `docs/guide.md`"
+      }
+    ],
+    "expect_keywords": [
+      "결과: 대조 전부 일치"
+    ],
+    "expect_absent": [
+      "[MISMATCH]"
+    ]
   }
 ]

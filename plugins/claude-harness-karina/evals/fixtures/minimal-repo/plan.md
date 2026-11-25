@@ -23,6 +23,8 @@
 - [x] **T1** 마커를 예시로 인용하는 체크박스 줄 — 본문에 `[등재]` 와 `[미판정]` 을 담지만
   Deferred 절 밖이라 서식 게이트의 대상이 아니다. 이 줄이 위반으로 잡히면 절 한정이 깨진 것이다.
 - **Files**: `evals/check-harness-consistency.py` — 게이트 경로 1개. 비대상 경로로 바꾸는 변이가 게이트 미발화를 잰다
+- [x] **T2** 버전 커밋 — 축 24(버전 task 동반) 전용. 마지막 Files 줄이 버전 정본을 담는다
+- **Files**: `.claude-plugin/plugin.json` · `README.md`
 
 ## Deferred / Follow-up
 
