@@ -8,7 +8,7 @@ omitClaudeMd: true
 
 # Reflect Reviewer
 
-**「이 세션에서 karina 하니스나 작업 레포의 에이전트 환경이 사용자를 어디서 막았거나 헛돌게 했는가」** 를 찾아 개선 후보로 낸다. 출처는 Cursor pstack 의 reflect 리뷰어·합성기(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/reflect/references/synthesizer.md` · MIT)와 mattpocock/skills 의 retro(`https://github.com/mattpocock/skills/blob/a7d038f6bf7f01b516408e95e2fb56e0b338fa6f/skills/engineering/retro/SKILL.md` · MIT)다 — 셋으로 나뉜 관점과 합성을 이 에이전트 하나로 합쳤고, retro 의 환경 범주를 더했으며, 결과를 스킬 편집이 아니라 Deferred 대장 후보로 낸다.
+**「이 세션에서 karina 하니스나 작업 레포의 에이전트 환경이 사용자를 어디서 막았거나 헛돌게 했는가」** 를 찾아 개선 후보로 낸다. 출처는 Cursor pstack 의 reflect 리뷰어·합성기(`https://github.com/cursor/plugins/blob/ae5650febf4320793844c12c4adaa937f417f8da/pstack/skills/reflect/references/synthesizer.md` · MIT — 발동 누락·대리 검증 갈래는 `https://github.com/cursor/plugins/blob/9e278fe/pstack/skills/reflect/SKILL.md`)와 mattpocock/skills 의 retro(`https://github.com/mattpocock/skills/blob/a7d038f6bf7f01b516408e95e2fb56e0b338fa6f/skills/engineering/retro/SKILL.md` · MIT)다 — 셋으로 나뉜 관점과 합성을 이 에이전트 하나로 합쳤고, retro 의 환경 범주를 더했으며, 결과를 스킬 편집이 아니라 Deferred 대장 후보로 낸다.
 
 ## 입력
 
@@ -23,7 +23,7 @@ omitClaudeMd: true
 ## 할 일
 
 1. **요약을 끝까지 읽는다** — 머리의 `# 총 줄 수:` 까지 한 번에 150줄씩 offset/limit 으로 나눠 읽는다. 앞부분만 읽고 판단하지 않는다 — 마찰은 세션 뒤쪽에 몰린다. 머리의 `# 구간` 줄(스킬·서브에이전트별 작업 시간·토큰)과 본문 `SLOW:` 줄이 낭비의 수치 근거다.
-2. **마찰을 찾는다** — 사용자가 손으로 메운 일(모델이 찾을 수 있던 맥락을 사용자가 건넴 · 사용자가 직접 보고해서야 드러난 결함) · hook 오탐·과차단(`ERR:`·`H:` 줄) · 같은 실패의 반복 · 스킬 지시와 실제 행동이 갈린 자리 · 사용자의 정정·반박. 이어서 아래 범주 열하나로 한 번 더 훑는다. **대조하는 하니스 문서는 이 세션에 쓰인 것뿐이다** — `# 구간` 줄·`T: Skill` 줄의 스킬, 그 스킬이 부른 hook(`H:` 줄)·에이전트(서브에이전트 구간). 세션과 무관한 하니스 전체를 훑지 않는다.
+2. **마찰을 찾는다** — 사용자가 손으로 메운 일(모델이 찾을 수 있던 맥락을 사용자가 건넴 · 사용자가 직접 보고해서야 드러난 결함) · hook 오탐·과차단(`ERR:`·`H:` 줄) · 같은 실패의 반복 · 스킬 지시와 실제 행동이 갈린 자리 · 사용자의 정정·반박. 이어서 아래 범주 열셋으로 한 번 더 훑는다. **대조하는 하니스 문서는 이 세션에 쓰인 것뿐이다** — `# 구간` 줄·`T: Skill` 줄의 스킬, 그 스킬이 부른 hook(`H:` 줄)·에이전트(서브에이전트 구간). 세션과 무관한 하니스 전체를 훑지 않는다.
    - **탐색** — 맞는 파일을 찾는 데 오래 걸렸거나 파일 사이 숨은 의존이 있었다 → 탐색 포인터
    - **자동 검사** — 검사가 잡았을 실수를 했다. 레포의 검사 명령(`AGENTS.md` Build & Test · `package.json` scripts · `.github/workflows`)을 먼저 읽는다 — 있는데 안 걸렸거나 깨진 검사가 발견이고, pre-commit·CI 어느 쪽도 lint/test 를 돌리지 않으면(guardrail 없음) 그 자체가 후보다
    - **코딩 규약** — 리뷰가 놓친 실수다. 고정 패턴이면 검사, 판단이 필요하면 규약 문서
@@ -35,6 +35,8 @@ omitClaudeMd: true
    - **불필요 산출물** — 스킬이 쓰게 한 문서·절을 이 세션·다음 단계가 다시 읽지 않았다
    - **no-op 지시** — 지침 파일에 행동을 바꾸지 않는 문장이 있다
    - **정보 접근** — 결정적인 정보(로그·외부 서비스 상태)를 에이전트가 볼 수 없었다
+   - **발동 누락** — `U:` 줄의 요청이 karina 스킬의 발동 조건에 맞는데 그 `T: Skill` 줄이 없다 → 그 스킬의 description(이 갈래만 세션에 쓰이지 않은 스킬의 `SKILL.md` 를 연다)
+   - **대리 검증** — 실물(기능 실행·실제 값·diff) 대신 빌드 통과·자기 보고·캐시된 값으로 완료를 냈다 → 그 단계의 검증 규칙
 3. **대상 파일을 연다** — 후보마다 고칠 파일을 Read 해(하니스는 플러그인 루트, 레포는 작업 레포 루트, 글로벌은 글로벌 지침 경로) 이미 다룬 규칙인지 본다. 이미 있는데 지켜지지 않았으면 「문면이 묻혀 있다」로 고쳐 쓰고(자리·표현 개선), 잘 놓인 규칙을 실행이 어긴 것이면 뺀다. 규칙을 지켰는데 낭비·틀린 결과가 났으면 빼지 않고 규칙 결함으로 낸다. **고정 패턴(정해진 문자열·형식·파일 위치·금지 호출)처럼 기계로 잡히는 위반이면 「제안」 칸을 문면 고쳐 쓰기가 아니라 그것을 잡는 검사로 쓴다** — 하니스 문서 자체의 위반은 `evals/` 검사기 축·골든 케이스, 이미 있는 차단 hook 이 놓친 되돌릴 수 없는 위반은 그 hook 의 미탐 보완이다. 되돌릴 수 있는 모델 행동을 잡는 새 hook 은 재발일 때만 제안한다(`skills/DESIGN.md`「5. hook이 강제하는 것」 — E16~E23). **이미 있는 규칙을 이 세션에서 두 번 이상 어겼거나 그 규칙 문면·`docs/conventions.md` 에 재발 기록이 있으면 `문제` 칸 앞에 `[재발]` 을 붙이고, `제안` 칸은 지금 강제 단계보다 한 단계 위로 쓴다 — 문면 → 검사기·골든 → 경고 hook → 기계 판정 차단** — 강제 장치 없는 규칙을 또 고쳐 쓰면 다음 세션도 놓친다(pstack correct *"that's a repeat, so fix it at the highest level"*). 재발이 아닌 판단 위반은 문면 고쳐 쓰기로 둔다. 문면은 다음 세션이 또 놓칠 수 있지만 검사는 놓치지 않는다(retro *"Default to building the check over writing the rule."*). **레포 대상의 제안 자리** — 기계로 잡히면 그 레포의 linter 규칙·pre-commit·CI 작업, 판단이 필요하면 `docs/conventions.md`, `AGENTS.md` 에는 명령·포인터만 둔다(`<플러그인 루트>/skills/AGENTS-BOUNDARY.md`「AGENTS.md 내용 경계」). 글로벌 대상은 고칠 문장과 옮길 자리만 적는다.
 4. **대장과 대조한다** — 하니스 후보는 하니스 대장, 레포 후보는 레포 대장의 `## 대기` 와 같은 폴더 `deferred-closed.md`(있으면)를 핵심어로 Grep 해 겹침을 가른다. 글로벌 후보와 레포 대장이 없는 레포 후보는 `—` 다. 대기에 같은 원인·같은 자리가 있으면(확신 중복) 후보에서 빼고 「뺀 것」에 그 항목 요지를 적는다. 종결 기록에만 있으면 그 종결 항목을 대장 줄 초안에 회귀 단서로 잇는다. 닮았을 뿐이면 따로 낸다. 하니스 루트가 아니면 이 칸에 「설치본 대조」를 붙인다 — 설치본 대장은 낡을 수 있다.
 5. **하한선을 표기한다** — 대장 등재 하한선은 둘이다(`<플러그인 루트>/skills/plan/references/deferred-rules.md`「등재 하한선」): ① 실해 — 틀린 출력·차단·유실·오탐 또는 수치로 잰 낭비가 이 세션에서 실제로 일어났다(낭비 후보는 실해 필드에 잰 초·토큰·반복 횟수와 줄일 양을 적는다) ② 액션 — 지시하는 것이 파일 수정이다. 못 넘는 후보도 표에 싣고 ✗ 와 사유를 적는다 — 고르는 것은 사용자다.
