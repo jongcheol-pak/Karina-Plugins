@@ -129,6 +129,11 @@ function Get-SecretMatches {
                 if ($realHit) { $found.Add($sp.label) }
                 continue
             }
+            if ($sp.label -eq '개인키') {
+                $keyBody = '-----BEGIN [A-Z ]*PRIVATE KEY-----(?:[ \t]|\r?\n|\\[rn]|\+|[A-Za-z-]+:[^\r\n\\]*)*?[A-Za-z0-9+/]{40}'
+                if ($content -match $keyBody) { $found.Add('개인키') } else { $found.Add('개인키 머리') }
+                continue
+            }
             $found.Add($sp.label)
         }
     }

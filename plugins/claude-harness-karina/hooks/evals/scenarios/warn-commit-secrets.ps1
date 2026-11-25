@@ -18,6 +18,9 @@ $spId = 'ad' + 'min'
 $spPw = 'Zq7' + '#mK21'
 $spBt = [char]96
 $spQ  = [char]39
+$pemH = '-----BEGIN RSA ' + 'PRIVATE KEY-----'
+$pemB = 'MIIEow' + ('QUJDREVG' * 6)
+$pemShort = ('QUJD' * 9) + 'QUJ'
 $spCases = @(
     @{ n = '인용 쌍 → 자격증명 쌍(고신뢰)';   t = "관리자 계정: $spBt$spId$spBt / $spBt$spPw$spBt";                  e = '자격증명 쌍' }
     @{ n = '비인용 쌍 → 경고 라벨';           t = "계정: $spId / $spPw";                                             e = '자격증명 쌍(비인용)' }
@@ -104,6 +107,13 @@ $spCases = @(
     @{ n = '회차 44 2R 양성: 연결 문자열 콜론형 실값은 차단 라벨 유지'; t = ('Ser' + 'ver' + '=' + 'db;' + 'Pwd' + '=' + 'Secret1' + ':King2' + ';'); e = 'password 값,DB 연결 문자열' },
     @{ n = '회차 44 2R 양성: URI 콜론형 실값은 차단 라벨 유지(신호 0 방지)'; t = ('post' + 'gres://app:' + 'Secret1' + ':King2' + '@host/db'); e = 'DB/서비스 URI 인증정보' },
     @{ n = '회차 44 2R 음성: 연결 문자열 값 자리의 참조형은 라벨 없음'; t = ('Ser' + 'ver' + '=' + 'db;' + 'Pwd' + '=' + '${DB_PWD}' + ';'); e = '' }
+    @{ n = '개인키 머리만 → 경고 라벨'; t = $pemH; e = '개인키 머리' }
+    @{ n = '개인키 머리+본문 → 차단 라벨'; t = "$pemH`n$pemB"; e = '개인키' }
+    @{ n = '개인키 미추적 파일 형태(줄머리 +) → 차단 라벨'; t = "$pemH`n+$pemB"; e = '개인키' }
+    @{ n = '개인키 JSON 이스케이프 형태 → 차단 라벨'; t = ('"private_key": "' + $pemH + '\n' + $pemB + '\n"'); e = '개인키' }
+    @{ n = '개인키 들여쓴 본문 → 차단 라벨'; t = "  $pemH`n    $pemB"; e = '개인키' }
+    @{ n = '개인키 암호화 머리줄+빈 줄 뒤 본문 → 차단 라벨'; t = "$pemH`nProc-Type: 4,ENCRYPTED`nDEK-Info: AES-128-CBC,0A1B2C3D`n`n$pemB"; e = '개인키' }
+    @{ n = '개인키 본문 39자 → 경고 라벨'; t = "$pemH`n$pemShort"; e = '개인키 머리' }
 )
 foreach ($sc in $spCases) {
     $got = (@(Get-SecretMatches $sc.t) -join ',')
@@ -278,10 +288,17 @@ if ($gitOk) {
     Assert-Case -Name "commit-secrets: ALLOW_SECRET=1 우회(경고, exit 0)" -R $r -ExpectExit 0 -ExpectContains 'ALLOW_SECRET'
     $env:CLAUDE_HARNESS_ALLOW_SECRET = $null
 
-    # (d) 개인키(고신뢰) → 차단
+    $keyH = '-----BEGIN RSA ' + 'PRIVATE KEY-----'
+    $keyB = 'MIIEow' + ('QUJDREVG' * 6)
     Push-Location $wcsB
     git rm -q --cached README.md; Remove-Item README.md -Force
-    Set-Content key.pem ('-----BEGIN RSA ' + 'PRIVATE KEY-----'); git add key.pem
+    Set-Content key.pem $keyH; git add key.pem
+    Pop-Location
+    $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
+    Assert-Case -Name "commit-secrets: 개인키 머리만은 경고(exit 0)" -R $r -ExpectExit 0 -ExpectContains '개인키 머리'
+
+    Push-Location $wcsB
+    Set-Content key.pem @($keyH, $keyB); git add key.pem
     Pop-Location
     $r = Invoke-Hook 'guard-bash.ps1' $wcsBJson
     Assert-Case -Name "commit-secrets: 개인키 커밋 차단(exit 2)" -R $r -ExpectExit 2 -ExpectContains 'BLOCKED'
