@@ -134,7 +134,7 @@ $groupCostSec = @{
     'warn-commit-secrets-1' = 113; 'warn-commit-secrets-2' = 52; 'warn-commit-secrets-3' = 75; 'warn-commit-secrets-4' = 84
     'check-plan-1' = 65; 'check-plan-2' = 200; 'check-plan-3' = 68; 'check-plan-4' = 202
     'guard-bash-1' = 140; 'guard-bash-2' = 77; 'guard-bash-3' = 62; 'guard-bash-4' = 67
-    'screen-cover' = 88; 'session-context' = 53; 'post-write-checks' = 106; 'guard-harness' = 52; 'guard-write' = 44
+    'screen-cover' = 88; 'session-context' = 19; 'post-write-checks' = 106; 'guard-harness' = 52; 'guard-write' = 44
     'guard-stale-docs' = 52; 'guard-task-audit' = 110; 'warn-version-drift' = 15; 'work-clock' = 19; 'image-diff' = 18; 'loop-continue' = 6
     'guard-harness-content' = 5; 'guard-harness-installed+hook-event-log' = 8; 'suggest-agents-record' = 12
     'session-end-cleanup' = 12; 'record-work-start' = 4; 'inject-reply-language' = 16; 'warn-worktree-delegation' = 5; 'guard-comment' = 79; 'comment-scope' = 91
