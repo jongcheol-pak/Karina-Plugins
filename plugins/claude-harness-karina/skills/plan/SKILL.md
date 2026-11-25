@@ -86,11 +86,11 @@ description: 코드 변경을 plan.md 하나로 계획한다 — 1문1답 인터
 
 ## Step 6. 리뷰와 승인
 
+- **먼저 승인이 필요한 항목(대상은 `references/plan-template.md`「승인 필요 항목」)이 `## 승인 필요 항목`에 있는지 확인한다** — `plan-reviewer` 는 회피 설계와 복구 불가 삭제 누락만 본다. 놓치면 실행 중 루프가 멈추고, 아래 검사·호출 판정 뒤로 미루면 둘이 더한 절을 못 본다.
 - **리뷰어를 부르기 전에 `"<skill>/scripts/check-plan.ps1" "<plan.md>"` 를 work-clock 과 같은 호출형(`../implement/references/report-format.md`「소요 기록」)으로 돌려 exit 0 을 본다 — 고치기·오탐·미해소·미실행 처리와 리뷰어 전달물은 `references/review-rounds.md`「check-plan 처리」 다** — 문자열로 갈리는 판정은 결정적 검사가 먼저 걸러야 리뷰 라운드가 판단에만 쓰인다. 코드 뜻은 스크립트 머리 주석이 정본이다.
 - **`karina:plan-reviewer` 는 `check-plan` 이 낸 `files <N>` 값이 4 이상이거나 `## 승인 필요 항목` 이 있을 때만 부른다 — 이 줄이 호출 조건의 정본이다(`check-plan` 미실행이면 부른다 · 경량 계획은 부르지 않는다 · 생략 표기 `references/review-rounds.md`「리뷰 라운드」)** — 전달: `plan.md` 경로, 대상 레포 경로, `AGENTS.md` 경로, 플러그인 루트(`../READONLY-SUBAGENTS.md`「플러그인 루트」). 부를 때마다 `plan.md` 스냅숏을 남긴다(순서 `references/review-rounds.md`「리뷰 라운드」).
 - **리뷰어는 read-only 라 고치는 것은 이 세션이다.** **호출되지 않는 환경이면 그 사실을 plan 에 적고 승인 단계로 간다** — 리뷰 부재를 통과로 적지 않는다.
 - **`plan-reviewer` 지적은 BLOCKER·MAJOR 를 고치고, 다시 부를지·3라운드 상한·기각·MINOR 는 `references/review-rounds.md`「리뷰 라운드」 대로이며, 남은 지적은 승인 제시 `남은 리뷰 지적:` 에 싣는다** — 지적이 남은 계획을 숨기고 승인받으면 그 결함이 구현 중에 드러난다.
-- **승인이 필요한 항목(대상은 `references/plan-template.md`「승인 필요 항목」)이 `## 승인 필요 항목`에 있는지 확인한다** — `plan-reviewer` 는 그 항목에 회피 설계가 있는지를 보고, 누락은 복구 경로 없는 삭제만 센다. 그 밖의 누락은 여기서 잡지 않으면 실행 시점에 루프가 멈춘다.
 - **`plan.md`를 쓴 뒤 화면에 요약을 내고 승인을 받는다** — 서식은 `references/interview.md`의 「승인 제시」. 중계 모드면 화면 대신 `ask` 로 보낸다(`references/relay-mode.md`「중계 모드」).
   - **승인 답이 `G`·`S`·`C` 면 `references/interview.md`「승인 제시」 의 그 갈래를 따른다(`G` 는 `references/grill.md`) — 셋 다 이 turn 에 `karina:implement` 를 부르지 않는다.**
 - **승인 직후 `plan.md` `## Goal` 의 `> BASE:`(그때의 HEAD)와 `> 승인:` 줄(끝에 `· 다음 회차 <N>` — 그때 `[다음 회차]` 항목 수)을 채운다 — 중계 모드면 코디네이터의 승인 답을 받은 뒤다(서식 정본 `references/plan-template.md` 「Goal」)** — `karina:implement` 가 `> 승인:` 줄 없는 `plan.md` 를 승인 전 초안으로 보고 확인을 묻는다.
