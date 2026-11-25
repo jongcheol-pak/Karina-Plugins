@@ -3,13 +3,13 @@ r"""하니스 전역 정합 셀프체크 — 문서가 서로 어긋나는 것�
 
 사용법: python evals/check-harness-consistency.py   (인자 없음 — repo 루트를 스스로 찾는다)
        python evals/check-harness-consistency.py --fix [--dry-run]
-       python evals/check-harness-consistency.py --plan [<plan 경로>]   (축 ⑲·㉒ 만 — 계획 시점)
+       python evals/check-harness-consistency.py --plan [<plan 경로>]   (축 ⑲·㉒·㉔ 만 — 계획 시점 · ㉔ 는 이 모드에만)
 
 축: ① 포인터 도달성(+하위 통지 「줄이 지워진 절」) ② Deferred 집계 ③ 볼드 마커 짝 ④ 한 줄 문장 중복 ⑤ (폐지 — 소진 batch 회고 대장 삭제로 대상 소멸)
     ⑥ 추출 앵커 도달성 ⑦ 문서 예산 ⑧ 줄바꿈 정합 ⑨ 종결 사유 명시 ⑩ 핵심 포인터 실재
     ⑪ 등재 마커 실재 ⑭ 폐기 식별자 실재 ⑮ 등재 근거 실측 ⑯ 복제 사본 동기 ⑰ 계수·버전 정합 ⑱ 규칙 근거 보유
     ⑲ 영향 검토 3축 ⑳ (폐지 — 관련 파일 절 폐지로 대상 소멸) ㉑ (폐지 — 큐 태그가 하나로 줄어 대상 소멸) ㉒ README 행 동반
-    ㉓ 참조 문서 목차
+    ㉓ 참조 문서 목차 ㉔ 버전 task 동반(--plan 만)
     (**⑫⑬ 은 결번이다** — v1.224.0 이 지운 옛 축 둘을 대장 대기 항목이 아직 그 번호로
      가리켜, 재사용하면 한 문자열이 두 축을 뜻하게 된다.)
 
@@ -1332,6 +1332,41 @@ def check_impact_axes(plan_path=PLAN_MD):
 
 
 # ─────────────────────────────────────────────────────────────
+# ㉔ 버전 task 동반 — 런타임 폴더를 고치는 회차의 마지막 task 가 버전 커밋인가
+#   규약 정본은 `docs/harness-conventions.md` 「Release (버전 커밋)」 이고,
+#   왜 계획 시점에 재는가는 `harness-consistency-rationale.md` 의 「축 ㉔ — 버전 task 동반」.
+# ─────────────────────────────────────────────────────────────
+VERSION_RUNTIME_PREFIXES = (".claude-plugin/", "agents/", "evals/", "hooks/", "scripts/", "skills/")
+VERSION_FILE = ".claude-plugin/plugin.json"
+VERSION_RELAY_MARK = "코디네이터 인터뷰 경유"
+
+
+def check_version_task(plan_path=PLAN_MD):
+    """버전 task 동반 — Files 줄이 런타임 폴더를 담으면 마지막 Files 줄이 `plugin.json` 을 담는가.
+
+    중계 계획(`> 요구:` 에 「코디네이터 인터뷰 경유」)은 면제한다 — 계획 체인은 마지막 계획의
+    첫 워커 회차만 버전 task 를 둔다. fail-open: plan 이 없으면 `([], 0)`.
+    """
+    try:
+        plan = open(plan_path, encoding="utf-8").read()
+    except OSError:
+        return [], 0
+    req = re.search(r"(?m)^> 요구:.*$", plan)
+    if req and VERSION_RELAY_MARK in req.group(0):
+        return [], 0
+    files = [m.group(1) for m in map(IMPACT_FILES_RX.match, plan.splitlines()) if m]
+    runtime = [p for f in files for p in re.findall(r"`([^`]+)`", f)
+               if p.replace("\\", "/").startswith(VERSION_RUNTIME_PREFIXES) and p != VERSION_FILE]
+    if not runtime:
+        return [], 0
+    if VERSION_FILE in files[-1]:
+        return [], 1
+    return ["버전 task 동반: Files 가 런타임 경로(`%s`)를 담는데 마지막 task 의 Files 줄에 `%s` 가 없다"
+            " — 마지막 task 를 버전 커밋(`설정: T<N> — v<버전> · <요약>`)으로 둔다"
+            " (`docs/harness-conventions.md` 「Release (버전 커밋)」)" % (runtime[0], VERSION_FILE)], 1
+
+
+# ─────────────────────────────────────────────────────────────
 # ㉒ README 행 동반 — 새 스킬·에이전트를 만드는 task 가 README 표 행을 같은 task 에 두는가
 #   README 「Skills」·「Subagents」 표 대조(축 ⑰)는 파일이 생긴 커밋에서야 red 를 낸다.
 #   왜 계획 시점에 재는가는 `harness-consistency-rationale.md` 의 「축 ㉒ — README 행 동반」.
@@ -2062,6 +2097,7 @@ def main():
         sys.exit(report([
             ("영향 검토 3축", check_impact_axes(plan_path)),
             ("README 행 동반", check_readme_companion(plan_path)),
+            ("버전 task 동반", check_version_task(plan_path)),
         ], []))
 
     conv = read(CONV_MD)
