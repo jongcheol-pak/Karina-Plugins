@@ -49,12 +49,14 @@
 #                                「- **화면**:」 줄도 Files 줄의 「[화면 없음 — <사유>]」 표지도 없음(사유가 빈 표지는 표지가 아니다)
 #   ui-path-missing              서식 검사 모드만 — AGENTS.md(같은 탐색)의 「- **Verify (앱 조작)**:」 이 스킬을 가리키는데 「- **UI 경로**:」 줄이
 #                                없거나 백틱 패턴이 하나도 없음(줄 1 · 값이 「[화면 없음 — <사유>]」 면 면제 — CLI·API 검증 스킬). 없으면 screen-missing 을 잴 수 없어 화면 줄 없는 UI 수정이 승인을 지난다 — 넘기지 않고 UI 경로를 단다
-#   origin-missing T<N>          AGENTS.md(같은 탐색)에 「- **UI 재구현 기준 소스**:」 줄이 있는데 「- **화면**:」 줄이 있는 task 에
+#   origin-missing T<N>          AGENTS.md(같은 탐색)에 「- **UI 재구현 기준 소스**:」 줄이 있는데 「- **화면**:」 줄이 있는 task 에 —
+#                                Goal 절에 「> 원본 기준:」 줄(사용자가 원본대로를 요구한 plan)이 있으면 모든 task 에 —
 #                                「- **원본**:」 줄도 Files 줄의 「[원본 없음 — <사유>]」 표지도 없음(사유가 빈 표지는 표지가 아니다)
+#   origin-basis                 Goal 절의 「> 원본 기준:」 줄에 값(원본 위치)이 없음
 #   origin-line T<N> <요소>      「- **원본**:」 줄에 path(백틱 원본 경로)·verdict(옮김·미룸·이탈 중 하나)가 없음 — 선언과 무관하게 줄이 있으면 잰다
 #   origin-deviation T<N>        「- **원본**:」 줄에 「이탈」 이 있는데 Investigation Log 표의 주장 칸에 「이탈 T<N>」 이 든 행이 없음
 #                                (원본대로 할 수 없음을 보이는 실측 행 — 명령 칸이 비면 empty-command 가 따로 잡는다 · 선언과 무관)
-#   아래 넷은 UI 재구현 기준 소스 선언 + 「- **원본**:」 줄이 하나 이상일 때만 잰다 — 범위 안 원본 파일 전량의 대응표(plan-template.md「작업 단계」):
+#   아래 넷은 UI 재구현 기준 소스 선언이나 「> 원본 기준:」 줄 + 「- **원본**:」 줄이 하나 이상일 때만 잰다 — 범위 안 원본 파일 전량의 대응표(plan-template.md「작업 단계」):
 #   origin-map-missing           「## 원본 대응」 절이 없음(줄 번호는 첫 원본 줄)
 #   origin-map-row <경로>        그 절 표에서 1열 백틱 경로 행의 대응 칸이 있는 T<N> 들도 「제외 — <사유>」 도 아님
 #   origin-map-unlisted T<N> <경로>  원본 줄의 첫 「—」 앞 백틱 경로가 표 1열에 없음(대소문자·구분자 무시)
@@ -437,6 +439,10 @@ if (Find-Section $tasksTitle) {
     $originWord = Get-Text @(0xC6D0, 0xBCF8)
     $originLabel = '- **' + $originWord + '**:'
     $originDeclared = [bool](Get-AgentsLineValue $uiAgents ('UI ' + (Get-Text @(0xC7AC, 0xAD6C, 0xD604, 0x20, 0xAE30, 0xC900, 0x20, 0xC18C, 0xC2A4))))
+    $basisLabel = '> ' + $originWord + ' ' + (Get-Text @(0xAE30, 0xC900)) + ':'    # > 원본 기준:
+    $basis = if ($goal) { Get-ProseLines $goal | Where-Object { Test-Prefix $_.Text $basisLabel } | Select-Object -First 1 }
+    $originRequested = [bool]$basis
+    if ($basis -and -not $basis.Text.Trim().Substring($basisLabel.Length).Trim()) { Add-Problem $basis.N 'origin-basis' }
     $noOriginRx = '\[' + $originWord + '\s+' + (Get-Text @(0xC5C6, 0xC74C)) + '\s*' + [char]0x2014 + '\s*[^\]\s]'
     $deviationWord = Get-Text @(0xC774, 0xD0C8)
     $originVerdictRx = (Get-Text @(0xC62E, 0xAE40)) + '|' + (Get-Text @(0xBBF8, 0xB8F8)) + '|' + $deviationWord
@@ -511,13 +517,13 @@ if (Find-Section $tasksTitle) {
                 Add-Problem $o.N ('origin-deviation ' + $tag)
             }
         }
-        if ($originDeclared -and -not $origins.Count -and @($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabel }).Count -and
+        if (-not $origins.Count -and ($originRequested -or ($originDeclared -and @($b.Lines | Where-Object { Test-Prefix $_.Text $screenLabel }).Count)) -and
             -not ($files -and [regex]::IsMatch($files.Text, $noOriginRx))) {
             Add-Problem $b.N ('origin-missing ' + $tag)
         }
     }
     $originRefs = @(foreach ($b in $blocks) { foreach ($o in @($b.Lines | Where-Object { Test-Prefix $_.Text $originLabel })) { [pscustomobject]@{ Tag = 'T' + $b.Id; Line = $o } } })
-    if ($originDeclared -and $originRefs.Count) {
+    if (($originDeclared -or $originRequested) -and $originRefs.Count) {
         $map = Find-Section ($originWord + ' ' + (Get-Text @(0xB300, 0xC751)))    # 원본 대응
         if (-not $map) { Add-Problem $originRefs[0].Line.N 'origin-map-missing' }
         else {

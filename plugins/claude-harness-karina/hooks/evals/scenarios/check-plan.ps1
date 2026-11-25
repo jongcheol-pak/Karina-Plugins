@@ -284,6 +284,18 @@ $r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + "`n- **원본**: ``upstream/u
 Assert-Case -Name "check-plan: 원본 이식을 선언하지 않은 레포도 적힌 원본 줄의 판정 낱말은 잰다" -R $r -ExpectExit 1 -ExpectContains 'origin-line T1 verdict'
 $r = Invoke-CheckPlan (New-ScreenPlan ($cpScreen + $cpOriginPlain)) (New-UiPlanDir $cpVerifyAgents)
 Assert-Case -Name "check-plan: 원본 이식을 선언하지 않은 레포는 원본 줄이 있어도 원본 대응표를 요구하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'origin-map'
+function Add-CpBasis([string]$Plan, [string]$Value = ' `upstream/`') { return $Plan.Replace('> 완료: <done>', ("> 완료: <done>`n> 원본 기준:" + $Value)) }
+$cpOriginLine = $cpOriginPlain.Substring(1)
+$r = Invoke-CheckPlan (Add-CpBasis $cpBase) (New-UiPlanDir $cpVerifyAgents)
+Assert-Case -Name "check-plan: 원본 기준 줄이 있는 plan 은 화면 줄 없는 task 에도 원본 줄을 요구한다" -R $r -ExpectExit 1 -ExpectContains 'origin-missing T1'
+$r = Invoke-CheckPlan (Add-CpBasis ($cpBase.Replace('(RED)', '(RED) [원본 없음 — 이 앱 고유 기능]'))) (New-UiPlanDir $cpVerifyAgents)
+Assert-Case -Name "check-plan: 원본 기준 plan 에서 사유를 단 [원본 없음] 표지는 원본 줄을 대신한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckPlan (Add-CpBasis (New-ScreenPlan $cpOriginLine)) (New-UiPlanDir $cpVerifyAgents)
+Assert-Case -Name "check-plan: 원본 기준 plan 은 선언이 없어도 원본 대응 절을 요구한다" -R $r -ExpectExit 1 -ExpectContains 'origin-map-missing'
+$r = Invoke-CheckPlan (Add-CpBasis (Add-CpMap (New-ScreenPlan $cpOriginLine)) '') (New-UiPlanDir $cpVerifyAgents)
+Assert-Case -Name "check-plan: 값이 빈 원본 기준 줄은 잡는다" -R $r -ExpectExit 1 -ExpectContains 'origin-basis'
+$r = Invoke-CheckPlan (Add-CpBasis (Add-CpMap (New-ScreenPlan $cpOriginLine))) (New-UiPlanDir $cpVerifyAgents)
+Assert-Case -Name "check-plan: 원본 기준 plan 이 원본 줄·대응표·전량 행을 갖추면 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
 
 # ---- 펜스 · 입력 오류 ----
 $r = Invoke-CheckPlan ($cpBase.Replace('| 크기 | `wc -c a.ps1` | 10 |', ("| 크기 | ``wc -c a.ps1`` | 10 |`n`n``````text`n| 가짜 |  | 빈 |`n## 가짜 절`n- [ ] T9-9 가짜`n```````n")))
