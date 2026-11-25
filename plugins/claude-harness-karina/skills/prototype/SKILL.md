@@ -25,7 +25,7 @@ disable-model-invocation: true
 
 - **운영 소스와 떨어진 임시 폴더에 만든다** — 화면 시안은 `%TEMP%\karina-plugin\plan-variants\<YYYYMMDD-HHmm>\`, 동작·아키텍처 스케치는 `%TEMP%\karina-plugin\scratch\` 다(`../TEMP-FILES.md`). 레포 파일을 쓰지 않는다 — 시안이 운영 코드에 섞이면 버릴 수 없다.
 - **결정 종류마다 가장 가벼운 수단을 쓴다**
-  - 화면 — vanilla HTML/CSS/JS 로 그 생각을 보이는 만큼만. 라이브러리는 CDN 에서 읽는다.
+  - 화면 — vanilla HTML/CSS/JS 로 그 생각을 보이는 만큼만. 라이브러리는 CDN 에서 읽는다. **정적 그림으로 두지 않고 결정에 걸린 조작은 눌러 볼 수 있게 한다** — 버튼·탭·입력·목록 선택이 화면을 실제로 바꾸게 한다(가짜 데이터·메모리 안 상태로 충분하고 저장·서버는 붙이지 않는다). 결정과 무관한 조작까지 다 살리지 않는다 — 시안은 이어 고쳐 가는 것이라 한 번에 전부 동작할 필요가 없고, 아직 안 붙인 컨트롤은 눌렀을 때 `미구현` 표시만 낸다.
   - 동작·타이밍 — 그 질문만 돌려 보는 가장 작은 스크립트.
   - 아키텍처 — 전례 없는 구조 결정이면 경쟁안 2~3개를 타입·시그니처·모듈 배치 스케치로 쓴다. 비교 기준은 호출자가 떠안는 복잡도다. 운영 코드는 쓰지 않는다.
 - **대안을 견줄 때는 변형을 2~3개 만들고, 화면이면 스위처 한 페이지 뒤에 둔다** — 버튼이나 키 입력으로 바꾸고 변형마다 이름표를 단다. 따로 연 파일끼리는 같은 조건으로 견주기 어렵다. 동작·타이밍 질문은 변형을 늘리지 않고 위의 가장 작은 스크립트 하나로 관측한다(원문 *"For a behavioral or timing decision, the smallest script that exercises the question"* · *"When comparing alternatives, build them behind one switcher"*).
