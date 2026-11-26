@@ -146,6 +146,7 @@ RIGHT: (판정 기준은 wiki-sync.md에 있다)
 | E21 | 새 코드·주석을 스크립트로 쓰지 않는다 | `implement` code-style「codemod 줄바꿈」 | `guard-bash` **기계 판정 차단** | 문면만으로는 한 체인에서 python 새 코드가 174회 났고, 그 경로는 E17 의 편집 게이트를 거치지 않는다 |
 | E22 | 화면 기준선은 BASE worktree 가 아니라 같은 작업 트리에서 편집 전에 찍는다 | `implement` screen-scenarios「화면 시나리오 실행」 | `guard-bash` **경고** | 문면이 금지했는데도 Karina 에서 3회 재발했다(공유 빌드 산출물로 거짓 판정 · 회당 수백 초) — 등가·성능 측정용 worktree 는 정당해 막지 않는다 |
 | E23 | task 는 직접 실행하고 worktree 위임은 병렬 그룹 task 만 | `implement` 「작업 범위」 | `warn-worktree-delegation` **경고** | Karina 에서 그룹 밖 위임 약 18회 — 서식 누락으로 git 거부·보충 커밋이 났다 |
+| E24 | 부재 예고 때 승인 자리를 미리 묻는다 | `AWAY-PRECHECK.md`「부재 사전 확인」 | `away-precheck` **주입** | 세 `SKILL.md` 에 규칙을 더할 예산이 없고, 대기 중인 코디네이터는 본문 규칙을 놓친다 |
 
 - **한 조항은 한 hook이 담당한다** — 두 hook이 같은 조항을 걸치면 한쪽을 고칠 때 다른 쪽이 낡고, 그 드리프트는 둘 다 통과하는 형태로 숨는다.
 - **차단을 직접 내는 단일 검사 hook은 다른 검사와 한 파일에 섞지 않는다** — `block-destructive`는 `AGENTS.md` DO NOT이 이름으로 지목해 차단 동작 변경을 규정하므로, 섞으면 그 규정의 대상 경계가 흐려진다. **dispatch 는 대상이 아니다** — `guard-bash`는 판정을 dot-source 로 모으는 자리라 차단원이 그 안의 개별 판정이다.

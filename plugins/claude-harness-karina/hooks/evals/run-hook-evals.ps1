@@ -122,6 +122,7 @@ $scenarioGroups = @(
     @('check-plan-3'),
     @('check-plan-4'),
     @('record-work-start'),
+    @('away-precheck'),
     @('inject-reply-language'),
     @('warn-worktree-delegation'),
     @('guard-comment'),
@@ -137,7 +138,7 @@ $groupCostSec = @{
     'screen-cover' = 88; 'session-context' = 40; 'post-write-checks' = 106; 'guard-harness' = 52; 'guard-write' = 44
     'guard-stale-docs' = 52; 'guard-task-audit' = 110; 'warn-version-drift' = 15; 'work-clock' = 19; 'image-diff' = 34; 'loop-continue' = 21
     'guard-harness-content' = 5; 'guard-harness-installed+hook-event-log' = 8; 'suggest-agents-record' = 12
-    'session-end-cleanup' = 12; 'record-work-start' = 4; 'inject-reply-language' = 9; 'warn-worktree-delegation' = 5; 'guard-comment' = 79; 'comment-scope' = 91
+    'session-end-cleanup' = 12; 'record-work-start' = 4; 'away-precheck' = 5;'inject-reply-language' = 9; 'warn-worktree-delegation' = 5; 'guard-comment' = 79; 'comment-scope' = 91
     'hook-dispatch' = 65
 }
 $launchGroups = @(
@@ -506,7 +507,7 @@ if ($deadGroups.Count) {
 Write-Host ("결과: {0}/{1} OK (FAIL {2}){3}" -f ($total - $failCount), $total, $failCount, $deadSuffix)
 Write-TimingLine -Total $total
 
-$GoldenTotalBaseline = 2513
+$GoldenTotalBaseline = 2536
 $totalDrift = -not $deadGroups.Count -and -not $Filter -and $total -ne $GoldenTotalBaseline
 if ($totalDrift) {
     Write-Host ("[WARN] 총계가 기준선과 다릅니다: {0} != {1} (`$GoldenTotalBaseline`)." -f $total, $GoldenTotalBaseline)

@@ -240,6 +240,7 @@ $hdExpect['PreToolUse|Skill'] = 'inject-reply-language,loop-continue,record-work
 $hdExpect['PostToolUse|Skill'] = ''
 $hdExpect['PreToolUse|Agent'] = 'warn-worktree-delegation'
 $hdExpect['Stop|'] = 'inject-reply-language,loop-continue'
+$hdExpect['UserPromptSubmit|'] = 'away-precheck'
 foreach ($s in 'startup', 'resume', 'clear') { $hdExpect["SessionStart|$s"] = 'session-context,warn-version-drift' }
 foreach ($s in 'compact', 'fork') { $hdExpect["SessionStart|$s"] = 'session-context' }
 foreach ($c in 'plan', 'karina:plan') { $hdExpect["UserPromptExpansion|$c"] = 'loop-continue,record-work-start' }

@@ -100,6 +100,18 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/away-precheck.ps1\"; exit $LASTEXITCODE",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
     "UserPromptExpansion": [
       {
         "matcher": "^(karina:)?(chain-)?plan$",
