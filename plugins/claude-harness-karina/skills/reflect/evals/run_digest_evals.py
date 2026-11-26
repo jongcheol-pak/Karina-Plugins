@@ -657,6 +657,15 @@ def echo_timer_finished_after_reply_marked():
 
 
 @case
+def screen_wait_timer_finished_after_reply_marked():
+    cmd = 'pwsh -NoProfile -File "C:/p/skills/implement/scripts/screen-wait.ps1" -Root "D:/r"'
+    recs = background_bash('s1', 0, 1, 1200, cmd)
+    recs = recs[:2] + reply('m1', 2, 300) + recs[2:]
+    out = run_timed(recs, extra=['--audit'])
+    assert len(timer_lines(out)) == 1 and timer_lines(out)[0].startswith('TIMER: pwsh '), out
+
+
+@case
 def timer_stopped_after_reply_not_marked():
     recs = background_bash('s1', 0, 1, 1200, 'sleep 1200')[:2] + reply('m1', 2, 300)
     out = run_timed(recs, extra=['--audit'])

@@ -1610,10 +1610,13 @@ COPY_SYNC_GROUPS = (
     ("설치본 자산 경로 정규식", "literal",
      (("guard-harness.ps1", "installedAssetRx"), ("guard-bash.ps1", "installedAssetRx"))),
     ("Test-WorktreeGitFile", "function",
-     (("guard-write.ps1", "Test-WorktreeGitFile"), ("plan-round.ps1", "Test-WorktreeGitFile"))),
+     (("guard-write.ps1", "Test-WorktreeGitFile"), ("plan-round.ps1", "Test-WorktreeGitFile"),
+      ("warn-screen-busy.ps1", "Test-WorktreeGitFile"))),
     ("임시 폴더 루트", "function",
      (("session-context.ps1", "Get-KarinaTempRoot"), ("timed-git.ps1", "Get-KarinaTempRoot"),
       ("skills/implement/scripts/screen-cover.ps1", "Get-KarinaTempRoot"),
+      ("skills/implement/scripts/screen-wait.ps1", "Get-KarinaTempRoot"),
+      ("warn-screen-busy.ps1", "Get-KarinaTempRoot"),
       ("skills/plan/scripts/check-plan.ps1", "Get-KarinaTempRoot"))),
 )
 

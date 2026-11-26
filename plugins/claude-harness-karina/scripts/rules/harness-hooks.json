@@ -31,6 +31,7 @@
     "session-ledger-signal",
     "suggest-agents-record",
     "timed-git",
+    "warn-screen-busy",
     "warn-version-drift",
     "warn-worktree-delegation",
     "write-gate-exempt",
