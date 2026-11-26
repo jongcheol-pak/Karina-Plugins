@@ -82,7 +82,7 @@ def golden_text():
     return '\n'.join(parts), cases
 
 
-HELPER_ENTRY = {'guard-commit-secrets': 'guard-bash', 'guard-commit-comments': 'guard-bash', 'write-gate-trivial': 'guard-write',
+HELPER_ENTRY = {'guard-commit-secrets': 'guard-bash', 'guard-commit-comments': 'guard-bash', 'guard-task-audit': 'guard-bash', 'write-gate-trivial': 'guard-write',
                 'secret-patterns': 'guard-bash', 'session-end-cleanup-lib': 'session-end-cleanup',
                 'session-ledger-signal': 'session-context',
                 'harness-root': 'guard-bash'}

@@ -1,6 +1,8 @@
-﻿# guard-task-audit.ps1 — PreToolUse/Bash: task 완료 커밋의 소스 감사 누락 경고 (비차단) — 근거는 `rules/task-audit-rationale.md`
+﻿# guard-task-audit.ps1 — PreToolUse/Bash: task 완료 커밋의 소스 감사 누락 경고 (RED 줄 누락만 차단) — 근거는 `rules/task-audit-rationale.md`
 
 $script:TaskAuditUntrackedMax = 50
+$script:TaskAuditRedMissing = '  - RED 줄 없음'
+$script:TaskEvidenceBaseRead = $false
 
 function Find-TaskAuditAgents([string]$Dir) {
     $topRun = Invoke-CommitGit -Check 'warn-task-audit' -Dir $Dir -GitArgs @('rev-parse', '--show-toplevel')
@@ -173,10 +175,12 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
     if (-not $hasRed -and -not $hasScreen -and -not $acceptRow.Count) { return @() }
 
     $bodies = @($Message)
-    $baseLine = @($plan | Where-Object { $_ -match '^> BASE:\s*([0-9a-fA-F]{7,40})\s*$' } | Select-Object -First 1)
+    $script:TaskEvidenceBaseRead = $false
+    $baseLine =@($plan | Where-Object { $_ -match '^> BASE:\s*([0-9a-fA-F]{7,40})\s*$' } | Select-Object -First 1)
     if ($baseLine.Count -and $baseLine[0] -match '^> BASE:\s*([0-9a-fA-F]{7,40})') {
         $log = Invoke-CommitGit -Check 'warn-task-audit' -Dir ([System.IO.Path]::GetDirectoryName($AgentsPath)) -GitArgs @('-c', 'core.quotepath=off', '-c', 'i18n.logOutputEncoding=UTF-8', 'log', '--format=%B%x00', ($Matches[1] + '..HEAD'))
         if ($log.Code -eq 0) {
+            $script:TaskEvidenceBaseRead = $true
             $titleRx = '^\s*(?:(?:기능|수정|리팩토링|문서|설정)\s*:\s*)?T' + $TaskId + '\s*(?::|—|-)'
             foreach ($c in ((@($log.Lines) -join "`n") -split "`0")) {
                 $c = $c.Trim()
@@ -198,7 +202,7 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
         }
     }
     if ($hasRed -and -not [regex]::IsMatch($text, $lineHead + 'RED(?:\((?:구현 전|사후[^)\r\n]*)\))?\s*:\s*\S')) {
-        $out += "  - RED 줄 없음 — Files 줄에 (RED) 가 있는 task 다. 본문에 ``RED(구현 전): <실패 출력>`` (또는 ``RED: 미확인 — <사유>``) 줄을 둔다"
+        $out += "$($script:TaskAuditRedMissing) — Files 줄에 (RED) 가 있는 task 다. 본문에 ``RED(구현 전): <실패 출력>`` (또는 ``RED: 미확인 — <사유>``) 줄을 둔다"
     }
     $verdictRx = $lineHead + '화면:\s*(?:HEAD\s*(?:참|거짓)|미촬영\(HUMAN-VERIFY\))'
     if ($hasScreen -and -not [regex]::IsMatch($text, $verdictRx)) {
@@ -232,6 +236,12 @@ function New-TaskAuditResult([string]$TaskId, $AuditLines, $EvidenceLines, [stri
     if (-not (@($AuditLines).Count + @($EvidenceLines).Count)) {
         if (@($Extra).Count) { return New-HookResult -Stderr @($Extra) }
         return New-HookResult
+    }
+    $redBlock = $script:TaskEvidenceBaseRead -and @($EvidenceLines | Where-Object { ([string]$_).StartsWith($script:TaskAuditRedMissing) }).Count
+    if ($redBlock) {
+        $parts = @("[HARNESS] BLOCKED: 완료 커밋에 RED 줄이 없습니다 — T$TaskId 는 Files 줄에 (RED) 가 있는 task 라 본문에 ``RED(구현 전): <실패 출력>`` 또는 ``RED: 미확인 — <사유>`` 줄을 넣어 같은 커밋을 다시 내세요(커밋 뒤 보충 커밋이 아닙니다).") + $parts
+        $parts += '위 다른 항목도 같은 메시지에 함께 넣으세요.'
+        return New-HookResult -Block $true -Stderr @(($parts | ForEach-Object { $_ }) -join "`n")
     }
     $parts += "이 경고는 커밋을 막지 않습니다. 커밋 뒤 빠진 명령·기록을 ``git commit --allow-empty`` 보충 커밋(제목 ``{유형}: T$TaskId — 검증 기록 보충``)의 본문에 남기세요. 실패하면 수정 커밋을 합니다."
     $msg = ($parts | ForEach-Object { $_ }) -join "`n"
@@ -283,7 +293,9 @@ function Invoke-WarnTaskAudit {
     if (-not $untracked.Count) { return $r }
     $msg = $untracked -join "`n"
     $ctx = if ($r -and $r.Context) { [string]$r.Context + "`n`n" + $msg } else { $msg }
-    return New-HookResult -Block $false -Stderr (@(if ($r) { $r.Stderr }) + @($msg) | Where-Object { $_ }) -Context $ctx
+    $stderr = @(if ($r) { $r.Stderr }) + @($msg) | Where-Object { $_ }
+    if ($r -and $r.Block) { return New-HookResult -Block $true -Stderr $stderr }
+    return New-HookResult -Block $false -Stderr $stderr -Context $ctx
 }
 
 function Invoke-TaskAuditOnCommit([string]$cmd, [string]$judge, $cm, [string]$commitDir) {
