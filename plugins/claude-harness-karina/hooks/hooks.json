@@ -20,7 +20,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" -Blocking guard-write.ps1 guard-harness.ps1 inject-reply-language.ps1 warn-screen-busy.ps1; exit $LASTEXITCODE",
+            "command": "& \"${CLAUDE_PLUGIN_ROOT}/scripts/hook-dispatch.ps1\" -Blocking guard-write.ps1 guard-harness.ps1 inject-reply-language.ps1 advisory: warn-screen-busy.ps1; exit $LASTEXITCODE",
             "timeout": 60,
             "onFailure": "block"
           }

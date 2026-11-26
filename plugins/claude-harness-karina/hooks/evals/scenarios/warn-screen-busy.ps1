@@ -77,7 +77,7 @@ try {
     $sw = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$swPath`"", '-Root', "`"$sbRepo`"", '-Seconds', '3', '-StateDir', "`"$swState`"") -PassThru -NoNewWindow
     $swMarker = Join-Path $swState ("$($sw.Id).json")
     $swSeen = $false
-    for ($i = 0; $i -lt 40 -and -not $swSeen; $i++) { if (Test-Path -LiteralPath $swMarker) { $swSeen = $true } else { Start-Sleep -Milliseconds 100 } }
+    while (-not $swSeen -and -not $sw.HasExited) { if (Test-Path -LiteralPath $swMarker) { $swSeen = $true } else { Start-Sleep -Milliseconds 50 } }
     $swRoot = if ($swSeen) { [string]((Get-Content -LiteralPath $swMarker -Raw | ConvertFrom-Json).root) } else { '' }
     $null = $sw.WaitForExit(15000)
     Assert-Case -Name "screen-wait: 도는 동안 자기 PID 표지에 레포 루트를 쓴다" -R @{ code = 0; out = "seen=$swSeen root=$swRoot" } -ExpectContains "seen=True root=$sbRepo"
