@@ -441,6 +441,26 @@ $ev = New-EvidenceRepo @("기능: T1 — 한다`n`n무엇을 바꿨는지만 적
 $r = Invoke-CheckEvidence $cpAcc3 $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: 본문 증거가 없는 task 에는 Acceptance 위반을 겹쳐 내지 않는다" -R $r -ExpectExit 1 -ExpectNotContains 'acceptance-evidence'
 
+$cpGoal4 = $cpDone + "`n## Progress Log`n`n- 4번 검증: abc · clean`n"
+$ev = New-EvidenceRepo @($cpOk)
+$r = Invoke-CheckEvidence $cpGoal4 $ev.dir $ev.base
+Assert-Case -Name "check-plan Goal: 4번 뒤 G1 실측 줄이 없으면 잡는다 (CG-missing)" -R $r -ExpectExit 1 -ExpectContains 'no-goal-measure G1'
+$r = Invoke-CheckEvidence ($cpGoal4 + "- G1: run → OK — 참`n") $ev.dir $ev.base
+Assert-Case -Name "check-plan Goal: Progress Log 의 「- G1:」 줄이면 통과한다 (CG-progress)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckEvidence ($cpGoal4 + "- G10: 다른 기준`n") $ev.dir $ev.base
+Assert-Case -Name "check-plan Goal: G10 줄은 G1 실측이 아니다 (CG-prefix)" -R $r -ExpectExit 1 -ExpectContains 'no-goal-measure G1'
+$evG = New-EvidenceRepo @($cpOk + "`nG1: run → OK — 참")
+$r = Invoke-CheckEvidence $cpGoal4 $evG.dir $evG.base
+Assert-Case -Name "check-plan Goal: 커밋 본문의 「G1:」 줄도 실측으로 센다 (CG-commit)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan Goal: 4번 검증 줄 전이면 위반이 아니라 note goal-pending 이다 (CG-pending)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note goal-pending G1'
+$cpGoalHv = $cpGoal4.Replace('| G1 | 참 | `run` |', "| G1 | 참 | ``run`` |`n| G2 | 눈 | HUMAN-VERIFY — 화면 배치 |") + "- G1: run → OK — 참`n"
+$r = Invoke-CheckEvidence $cpGoalHv $ev.dir $ev.base
+Assert-Case -Name "check-plan Goal: 측정 방법이 HUMAN-VERIFY 인 행은 재지 않는다 (CG-human)" -R $r -ExpectExit 0 -ExpectNotContains 'G2'
+$cpGoalOpen = $cpDash + "`n## Progress Log`n`n- 4번 검증: abc · clean`n"
+$r = Invoke-CheckEvidence $cpGoalOpen $ev.dir $ev.base
+Assert-Case -Name "check-plan Goal: 열린 task 가 있으면 재지 않고 skip 을 낸다 (CG-open)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: skip goal-measure open-task'
+
 $ev = New-EvidenceRepo @()
 [System.IO.File]::WriteAllText((Join-Path $ev.dir 'AGENTS.md'), "# AGENTS.md`n`n- **Plan check**: ``exit 3```n", (New-Object System.Text.UTF8Encoding($false)))
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base

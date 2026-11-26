@@ -88,6 +88,13 @@
 #                                (판정 사본: scripts/guard-task-audit.ps1 Get-TaskEvidenceLines)
 #   acceptance-evidence·no-red-evidence·no-screen-verdict 판정의 사본이 scripts/guard-task-audit.ps1 의 Get-TaskEvidenceLines 에 있다 —
 #                                한쪽을 고치면 다른 쪽도 고친다(골든 guard-task-audit 의 「사본 정합」 케이스가 대조한다)
+#   no-goal-measure G<N>         task 단위가 아니라 「## Goal」 표의 G<N> 행 단위 — BASE..HEAD 커밋 본문(제목 무관)과 「## Progress Log」 어디에도
+#                                줄 머리 「G<N>:」(앞 「- 」 허용 · G1 은 G10 이 아니다) 줄이 없음. 측정 방법 칸이 HUMAN-VERIFY 로 시작하는 행은 재지 않는다.
+#                                Progress Log 에 「4번 검증:」 줄이 아직 없으면 위반 대신 note goal-pending G<N> 이다 — 첫 증거 대조는 4번보다 먼저 돌아
+#                                그 기준을 완료 리뷰에 「회차 끝 대기 — G<N>」 으로 넘기고, 남은 이슈 재대조·push 전 확인에서 위반으로 닫는다.
+#                                닫는 법은 보충 커밋이 아니다 — 그 행 측정 방법을 HEAD 에서 돌려 Progress Log 에 「G<N>: <출력 요지> — 참|거짓」 을 쓰고
+#                                대조를 다시 돈다. 측정 방법과 다른 판정을 G<N> 줄로 적으면 줄은 있어도 완료 리뷰가 BLOCKER 로 잡는다(2026-11-27 Karina plan 9 G7)
+#   skip goal-measure open-task  하위 항목이 [x]·[X] 아닌 task 가 하나라도 있으면 위 축을 재지 않는다(회차가 닫히지 않았다)
 #   remaining-issue <종류>       task 단위가 아니라 「## Deferred / Follow-up」 항목 단위 — 넘김 사유 없이 남은 항목(줄 번호는 그 항목).
 #                                종류: no-marker(마커 없음) · unjudged([미판정]) · no-reason([등재]·[미등재:대장 없음] 에 「넘김 사유 ①·②·
 #                                다른 종류의 세션」 없음) · no-basis([다음 회차] 에 「(근거:」 없음) · over-approved([다음 회차] 가 승인 표지의
@@ -312,6 +319,23 @@ if ($Base) {
                     elseif (@($mine | Where-Object { $_.UnshotReason }).Count) { Add-Problem $b.N ('screen-unshot-attempt ' + $tag) }
                     else { Add-Problem $b.N ('screen-unshot ' + $tag) }
                 }
+            }
+        }
+    }
+    $goalRows = @(Get-ProseLines (Find-Section 'Goal') | Where-Object { $_.Text -match '^\|\s*G\d+\s*\|' })
+    if ($goalRows.Count) {
+        $open = @($taskBlocks | Where-Object { @($_.Lines | Where-Object { $_.Text -match '^- \[[ /~-]\]' }).Count })
+        if ($open.Count) { Write-Output 'check-plan: skip goal-measure open-task' }
+        else {
+            $progText = (@(Get-ProseLines (Find-Section 'Progress Log') | ForEach-Object { $_.Text }) -join "`n")
+            $after4 = [regex]::IsMatch($progText, $lineHead + '4' + (Get-Text @(0xBC88)) + '\s*' + $verify + '\s*:')    # 4번 검증:
+            $measured = $logText + "`n" + $progText
+            foreach ($row in $goalRows) {
+                $cells = @(Split-Row $row.Text)
+                $gid = $cells[0]
+                if ($cells.Count -ge 3 -and $cells[2] -match '^`?HUMAN-VERIFY') { continue }
+                if ([regex]::IsMatch($measured, $lineHead + [regex]::Escape($gid) + '\s*:\s*\S')) { continue }
+                if ($after4) { Add-Problem $row.N ('no-goal-measure ' + $gid) } else { $notes.Add('goal-pending ' + $gid) }
             }
         }
     }
