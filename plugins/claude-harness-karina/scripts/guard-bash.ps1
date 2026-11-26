@@ -645,13 +645,24 @@ function Get-CommitMessage([string]$cmd, [string]$baseDir) {
         if ($null -ne $hereStrBody) { return $hereStrBody }
         return $false
     }
-    if ($path.Contains('$') -or $path.StartsWith('~')) { $path = Expand-ShellPathVars $path $cmd; if ($null -eq $path) { return $false } }
-    foreach ($hm in [regex]::Matches($cmd, $script:HeredocBlockRx)) {
+    $catTargets = foreach ($hm in [regex]::Matches($cmd, $script:HeredocBlockRx)) {
         $ht = [regex]::Match($hm.Groups['line'].Value, '(?:^|[\s;&|(])cat\b[^>\r\n]*?>\s*(?<t>"[^"]+"|''[^'']+''|[^\s;&|<>]+)')
-        if (-not $ht.Success) { continue }
-        $tp = $ht.Groups['t'].Value.Trim('"', "'")
+        if ($ht.Success) { [pscustomobject]@{ Path = $ht.Groups['t'].Value.Trim('"', "'"); Body = $hm.Groups['body'].Value; End = $hm.Index + $hm.Length } }
+    }
+    # 펼치기 전 원문 대조 — 근거는 `rules/bash-guard-rationale.md` §14
+    if ($path.Contains('$')) {
+        $names = @([regex]::Matches($path, '\$(?:\{(?<n>\w+)\}|(?<n>[A-Za-z_]\w*))') | ForEach-Object { [regex]::Escape($_.Groups['n'].Value) })
+        foreach ($ct in $catTargets) {
+            if ($ct.Path -cne $path) { continue }
+            if ($names.Count -and [regex]::IsMatch($cmd.Substring($ct.End), '(?:^|[\s;&|(])(?:' + ($names -join '|') + ')=')) { continue }
+            return $ct.Body
+        }
+    }
+    if ($path.Contains('$') -or $path.StartsWith('~')) { $path = Expand-ShellPathVars $path $cmd; if ($null -eq $path) { return $false } }
+    foreach ($ct in $catTargets) {
+        $tp = $ct.Path
         if ($tp.Contains('$') -or $tp.StartsWith('~')) { $tp = Expand-ShellPathVars $tp $cmd }
-        if ($tp -eq $path) { return $hm.Groups['body'].Value }
+        if ($tp -eq $path) { return $ct.Body }
     }
     if ($path -match '^/tmp(/.*)?$') { $path = $env:TEMP + ($Matches[1] -replace '/', '\') }
     elseif ($path -match '^/([A-Za-z])/(.*)$') { $path = $Matches[1] + ':\' + ($Matches[2] -replace '/', '\') }
@@ -682,7 +693,7 @@ function Invoke-RequireTaskCheckbox {
     if ($msgTitle -isnot [bool]) { $msgTitle = @($msgTitle -split '\r?\n')[0] }
     if ($msgTitle -is [bool]) {
         if ($env:CLAUDE_HARNESS_QUICK -eq '1' -or -not (Find-SinglePlanUpwards -StartDir $startDir)) { return New-HookResult }
-        $w = '[HARNESS] 커밋 제목을 읽지 못해 task 체크박스 검사를 건너뜁니다 — heredoc -m 을 쓰세요(변수 -m · 본문 없는 -F - · 없는 -F 파일).'
+        $w = '[HARNESS] 커밋 제목을 읽지 못해 task 체크박스 검사를 건너뜁니다 — heredoc -m 을 쓰거나, Write 도구로 메시지 파일을 만든 뒤 리터럴 경로로 -F 를 쓰세요(변수 -m · 본문 없는 -F - · 없는 -F 파일).'
         return New-HookResult -Stderr @($w) -Context $w
     }
     $m = [regex]::Match($msgTitle, '^\s*(?:(?:기능|수정|리팩토링|문서|설정)\s*:\s*)?T(\d+(?:-\d+)?)\s*(?::|—|-)')

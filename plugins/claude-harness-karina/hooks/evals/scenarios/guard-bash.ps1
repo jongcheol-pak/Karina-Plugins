@@ -391,6 +391,14 @@ Assert-Case -Name "rf: -F `"`$TEMP/…`" 첫 줄이 T 아님 → 통과(무출�
 Remove-Item -LiteralPath (Join-Path $env:TEMP $rfTmpPlain) -ErrorAction SilentlyContinue
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('S=x; false && S="$TEMP"; git commit -F "$S/' + $rfTmpName + '"'))
 Assert-Case -Name "rf: 실행되지 않을 수 있는 대입이 가리킨 -F 파일은 읽지 않는다 → 경고·통과 (RF30)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('cd "' + $rfUnFwd + '" && S=' + $rfUnFwd + " && cat > `$S/rf31.txt <<'MSG'`nT3: 검색 요약`nMSG`ngit commit -F `$S/rf31.txt"))
+Assert-Case -Name "rf: && 뒤 대입 변수의 cat > heredoc 본문을 같은 원문 -F 메시지로 받는다 → 차단 (RF31)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('git add a && S=' + $rfUnFwd + "; cat > `"`$S/rf32.txt`" <<'MSG'`nT3: 검색 요약`nMSG`ngit commit -F `"`$S/rf32.txt`""))
+Assert-Case -Name "rf: 따옴표 감싼 같은 원문 경로도 heredoc 본문으로 받는다 → 차단 (RF32)" -R $r -ExpectExit 2 -ExpectContains $rfBlock
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('cd "' + $rfUnFwd + '" && S=' + $rfUnFwd + " && cat > `$S/rf33.txt <<'MSG'`n정리: 문서`nMSG`ngit commit -F `$S/rf33.txt"))
+Assert-Case -Name "rf: 같은 원문 heredoc 첫 줄이 T 아님 → 통과(무출력) (RF33 델타 음성)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn ('cd x && S=' + $rfUnFwd + " && cat > `$S/rf34.txt <<'MSG'`nT3: 검색 요약`nMSG`nS=/nonexistent-rf34; git commit -F `$S/rf34.txt"))
+Assert-Case -Name "rf: heredoc 과 commit 사이에 경로 변수를 다시 대입하면 원문 대조를 쓰지 않는다 → 경고·통과 (RF34 델타 음성)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfUn 'printf x | git commit -F -')
 Assert-Case -Name "rf: -F - 인데 같은 명령에 본문 없음 + plan 있음 → 경고·통과 (RF14)" -R $r -ExpectExit 0 -ExpectContains $rfWarn
 $r = Invoke-Hook 'guard-bash.ps1' (& $rfJ $rfNoPlan 'git commit -m $msg')
