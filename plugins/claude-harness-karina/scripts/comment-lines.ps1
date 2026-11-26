@@ -146,7 +146,7 @@ function Format-CommentGatePreview($Bodies) {
     return @($Bodies | Select-Object -First 3 | ForEach-Object { '  | ' + $(if ($_.Length -gt 100) { $_.Substring(0, 100) + '…' } else { $_ }) })
 }
 
-$script:CommentGateRule = '  통과하는 주석은 라이선스·린트 지시문 · 이슈/RFC 링크·트래커 키·실재하는 레포 .md 경로가 든 줄 · .rs SAFETY: · 레포 감사(Test (감사))가 요구하거나 라이브러리 공개 항목 위의 doc · AGENTS.md Comment (보존) 선언 · 주석만 고치는 편집의 기존 주석 문구 수정 · 그 회차 plan.md BASE 커밋에 있던 주석 줄과 BASE 때 같은 항목 doc 을 줄 수를 늘리지 않고 고친 것(복원)뿐입니다 (code-style.md「주석」).'
+$script:CommentGateRule = '  통과하는 주석은 라이선스·린트 지시문 · 이슈/RFC 링크·트래커 키·실재하는 레포 .md 경로가 든 줄 · .rs SAFETY: · 레포 감사(Test (감사))가 요구하거나 라이브러리 공개 항목 위의 doc · AGENTS.md Comment (보존) 선언 · 주석만 고치는 편집의 기존 주석 문구 수정 · 그 회차 plan.md BASE 커밋에 있던 주석 줄과 BASE 때 같은 항목 doc 을 줄 수를 늘리지 않고 고친 것(복원)뿐입니다 (code-style.md「주석」). 원본 심볼 대응(원본 X)은 doc 주석 대신 커밋 본문에 적으세요.'
 $script:CommentGateHow = '  - 문서가 정본으로 지정한 주석이면 AGENTS.md Comment (보존) 경로에 그 파일을 등록한 뒤, 근거 포인터 주석이면 가리키는 .md 문서를 먼저 만든 뒤 다시 내세요.'
 $script:CommentLinkRx = '(?i)https?://\S*(/issues/\d+|/pull/\d+|/-/issues/\d+|rfc-editor\.org)|\bRFC ?\d{3,4}\b|\b(issue|PR|GH)[ -]?#\d+|이슈 ?#\d+'
 $script:CommentTrackerRx = '\b(?!(UTF|SHA|ISO|CP|IEC|IEEE|ECMA|ANSI|CRC|AES|RSA|TLS|HTTP|MD|BASE)[A-Z0-9]*-)[A-Z]{2,}[A-Z0-9]*-\d+\b'

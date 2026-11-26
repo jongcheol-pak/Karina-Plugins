@@ -4,7 +4,7 @@
 
 ## 스크립트로 파일을 고칠 때
 
-- [2026-11-21] **rationale·README 같은 규약 문서에 새 문단을 더할 때 `cat >> 파일 <<'EOF'` heredoc 으로 덧붙이지 않는다 — 파일 끝 문단을 old_string 으로 잡아 Edit 로 더한다** — 새 문단은 Edit·Write 대상이고(`skills/implement/references/code-style.md`「codemod 줄바꿈」), heredoc 은 CRLF 워킹트리에 LF 줄을 섞는다. 같은 날 두 회차에 났다(v3.44.0 rationale §9 · v3.45.0 `task-audit-rationale.md` §8). `block-python-newcode` 의 셸 쓰기 판정은 소스 확장자만 보아 `.md` 는 막지 않는다.
+- [2026-11-21] **rationale·README 같은 규약 문서에 새 문단을 더할 때 `cat >> 파일 <<'EOF'` heredoc 으로 덧붙이지 않는다 — 파일 끝 문단을 old_string 으로 잡아 Edit 로 더한다** — 새 문단은 Edit·Write 대상이고(`skills/implement/references/code-style.md`「새 코드·주석 줄」), heredoc 은 CRLF 워킹트리에 LF 줄을 섞는다. 같은 날 두 회차에 났다(v3.44.0 rationale §9 · v3.45.0 `task-audit-rationale.md` §8). `block-python-newcode` 의 셸 쓰기 판정은 소스 확장자만 보아 `.md` 는 막지 않는다.
 
 - [2026-10-19] **PowerShell `-replace` 의 대체 문자열은 `${name}` 을 삼킨다.** 그 자리의 `$` 는 **정규식 그룹 참조**라, 치환해 넣으려는 코드에 `${head}` 같은 변수 보간이 있으면 **빈 문자열로 바뀌어** 구문이 조용히 붕괴한다. 파싱 오류가 엉뚱한 줄을 가리켜 원인 찾기에 시간이 든다. **대체 문자열에 `${...}` 가 있으면 `-replace` 가 아니라 `.Replace()` 를 쓴다** — 앵커 탐색(`-notmatch [regex]::Escape(...)`)에는 그대로 써도 된다. 삼키는 것은 **대체** 쪽이다.
 

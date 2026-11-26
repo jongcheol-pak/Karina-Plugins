@@ -26,6 +26,7 @@ Assert-Case -Name "guard-comment: 새 주석 차단 메시지가 보존 등록·
 
 $r = Invoke-GcEdit 'doc.rs' 'pub fn b() {}' "/// 그 모니터 작업 영역 가운데.`npub fn b() {}"
 Assert-Case -Name "guard-comment: doc 주석(///) 추가도 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+Assert-Case -Name "guard-comment: 차단 사유가 원본 심볼 대응을 doc 주석 대신 커밋 본문으로 안내한다" -R $r -ExpectExit 2 -ExpectContains '원본 심볼 대응(원본 X)은 doc 주석 대신 커밋 본문에'
 $gcRep1 = Invoke-GcEdit 'rep.rs' 'fn r() {}' "// 반복 차단`nfn r() {}" 'gc-repeat'
 $gcRep2 = Invoke-GcEdit 'rep.rs' 'fn r() {}' "// 반복 차단`nfn r() {}" 'gc-repeat'
 $gcRep3 = Invoke-GcEdit 'rep.rs' 'fn r() {}' "// 반복 차단`nfn r() {}" 'gc-repeat'
