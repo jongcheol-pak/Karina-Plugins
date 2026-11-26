@@ -66,6 +66,9 @@ GUESS: <내 가설과 그렇게 생각하는 근거>
 > "정당화할 필요가 없다면, 실제로는 무엇을 원하시나요?"
 
 - **이 질문이 필요한 이유** — 표준 용어는 무엇을 만들지 결정해 주지 않는데도 답변으로는 완결돼 보여, 그대로 받으면 계획이 추상적으로 흐른다.
+- **사용자가 지금 동작을 서술하면 코드와 대조하고, 어긋나면 그 사실을 다음 질문으로 올린다(「코드는 X 인데 Y 라고 하셨습니다 — 어느 쪽인가요?」)** — 틀린 전제로 한 답이 실측(Step 3) 전에 요구로 굳는다.
+- **개념 사이 관계·경계가 갈림길이면 구체 경계 시나리오(입력·상황 하나)로 묻는다** — 추상적으로 물으면 경계가 흐린 답이 오고, 시나리오 하나가 그 경계를 가른다.
+- 위 두 불릿의 외부 선례: mattpocock/skills `domain-modeling` (`https://github.com/mattpocock/skills/blob/6f7f7831a625f040a8e06a0e7954826b87ce775a/skills/engineering/domain-modeling/SKILL.md` 「Cross-reference with code」·「Discuss concrete scenarios」).
 
 ### 2-5. 언제 멈추는가
 
