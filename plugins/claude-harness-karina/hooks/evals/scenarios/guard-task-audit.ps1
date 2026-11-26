@@ -240,20 +240,20 @@ try {
 
     $teCheck = Join-Path $scriptsDir '../skills/plan/scripts/check-plan.ps1'
     & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m $taTitle -m $teOk 2>$null
-    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '
+    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '; $teCpCode = $LASTEXITCODE
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
-    Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 RED·화면 위반으로 낸다 (사본 정합)' -R @{ code = 0; out = "cp=$teCp" } -ExpectExit 0 -ExpectContains 'no-red-evidence T1'
+    Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 RED·화면 위반으로 낸다 (사본 정합)' -R @{ code = $teCpCode; out = "cp=$teCp" } -ExpectExit 1 -ExpectContains 'no-red-evidence T1'
     Assert-Case -Name 'task-evidence: 같은 이력에 hook 도 RED 누락을 차단한다 (사본 정합)' -R $r -ExpectExit 2 -ExpectContains 'RED 줄 없음'
     Assert-Case -Name 'task-evidence: 같은 이력에 hook 도 화면 누락을 함께 낸다 (사본 정합)' -R $r -ExpectExit 2 -ExpectContains '화면 판정 줄 없음'
-    Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 화면 위반으로 낸다 (사본 정합)' -R @{ code = 0; out = "cp=$teCp" } -ExpectExit 0 -ExpectContains 'no-screen-verdict T1'
+    Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 화면 위반으로 낸다 (사본 정합)' -R @{ code = $teCpCode; out = "cp=$teCp" } -ExpectExit 1 -ExpectContains 'no-screen-verdict T1'
     & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m '문서: 화면 일괄 판정 — T1' -m '화면: T1 HEAD 참 — t1.png' 2>$null
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + 'RED(구현 전): 케이스 FAIL'))
     Assert-Case -Name 'task-evidence: 다른 커밋의 지목 줄 「화면: T1 HEAD 참」 은 T1 판정이 아니다 (TE-tagged)' -R $r -ExpectExit 0 -ExpectContains '화면 판정 줄 없음'
     & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m '기능: T1 — 앞 커밋' -m ($teOk + "`n" + 'RED(구현 전): 케이스 FAIL' + "`n" + '화면: HEAD 참 — t1.png') 2>$null
-    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '
+    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '; $teCpCode = $LASTEXITCODE
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
     Assert-Case -Name 'task-evidence: 앞 T1 커밋 본문에 RED·화면 판정이 있으면 경고 없음' -R $r -ExpectExit 0 -ExpectSilent $true
-    Assert-Case -Name 'task-evidence: 그 이력을 check-plan -Base 도 통과시킨다 (사본 정합)' -R @{ code = 0; out = "cp=$teCp" } -ExpectExit 0 -ExpectContains 'no-task-commit T2' -ExpectNotContains 'T1'
+    Assert-Case -Name 'task-evidence: 그 이력을 check-plan -Base 도 통과시킨다 (사본 정합)' -R @{ code = $teCpCode; out = "cp=$teCp" } -ExpectExit 1 -ExpectContains 'no-task-commit T2' -ExpectNotContains 'T1'
 
     Reset-TaRepo
     $teBase = (& git -C $taRoot rev-parse HEAD 2>$null)
@@ -269,8 +269,8 @@ try {
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + '화면: 미촬영(HUMAN-VERIFY) · 사유 기준선 흔들림 12 px bbox 1,2,3,4'))
     Assert-Case -Name 'task-evidence: 기준선 흔들림 사유는 시도 칸 없이 경고 없음 (TE-attempt-base)' -R $r -ExpectExit 0 -ExpectSilent $true
     & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m $taTitle -m $teUnshot 2>$null
-    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '
-    Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 screen-unshot-attempt 로 낸다 (사본 정합)' -R @{ code = 0; out = "cp=$teCp" } -ExpectExit 0 -ExpectContains 'screen-unshot-attempt T1'
+    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '; $teCpCode = $LASTEXITCODE
+    Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 screen-unshot-attempt 로 낸다 (사본 정합)' -R @{ code = $teCpCode; out = "cp=$teCp" } -ExpectExit 1 -ExpectContains 'screen-unshot-attempt T1'
     ('# AGENTS.md' + $nl + $taRule + $nl) | Set-Content (Join-Path $taRoot 'AGENTS.md')
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teUnshot)
     Assert-Case -Name 'task-evidence: Verify 줄이 없는 레포는 시도 칸 없어도 경고 없음 (TE-attempt-off)' -R $r -ExpectExit 0 -ExpectNotContains '시도 칸 없음'
@@ -286,8 +286,8 @@ try {
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle 'Acceptance: 첫째 — 참')
     Assert-Case -Name 'task-evidence: 검증 기록이 없는 커밋은 Acceptance 를 재지 않는다 (TE-accept-noevidence)' -R $r -ExpectExit 0 -ExpectNotContains 'Acceptance 판정 줄'
     & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m $taTitle -m $teAcc1 2>$null
-    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '
-    Assert-Case -Name 'task-evidence: 같은 이력을 check-plan -Base 도 acceptance-evidence T1 1/2 로 낸다 (사본 정합)' -R @{ code = 0; out = "cp=$teCp" } -ExpectExit 0 -ExpectContains 'acceptance-evidence T1 1/2'
+    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '; $teCpCode = $LASTEXITCODE
+    Assert-Case -Name 'task-evidence: 같은 이력을 check-plan -Base 도 acceptance-evidence T1 1/2 로 낸다 (사본 정합)' -R @{ code = $teCpCode; out = "cp=$teCp" } -ExpectExit 1 -ExpectContains 'acceptance-evidence T1 1/2'
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
     Assert-Case -Name 'task-evidence: 같은 이력에 hook 도 Acceptance 1/2 경고를 낸다 (사본 정합)' -R $r -ExpectExit 0 -ExpectContains 'Acceptance 판정 줄 1/2'
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + '- Acceptance: 둘째 — 참'))
