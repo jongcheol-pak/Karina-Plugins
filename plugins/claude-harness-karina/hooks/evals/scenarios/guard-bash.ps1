@@ -1065,6 +1065,8 @@ Set-CcFile $d 's1.rs' "/// 설명.`nfn x() {}`n"; git -C $d add s1.rs
 Set-CcFile $d 's1.rs' "/// 설명.`npub fn x() {}`n"
 $r = Invoke-CcCommit $d 'git commit -m x' 'cc-stage-priv'
 Assert-Case -Name "commit-comments: staged 는 비공개 fn 위 ///, 작업 트리만 pub 으로 바꾼 커밋 차단" -R $r -ExpectExit 2 -ExpectContains $ccBlock
+Assert-Case -Name "commit-comments: 감사 레포 .rs 차단에 파일별 doc 통과 기준 줄을 낸다 (CC-criterion)" -R $r -ExpectExit 2 -ExpectContains 's1.rs 통과 기준(doc): 다음 코드 줄이 레포 감사 정규식'
+Assert-Case -Name "commit-comments: 커밋 게이트에는 막힌 줄만 빼고 다시 쓰라는 편집 안내가 없다 (CC-criterion-noresubmit)" -R $r -ExpectExit 2 -ExpectNotContains '막힌 주석 줄만 빼고'
 $d = New-CcAuditRepo 's2.rs' "pub fn y() {}`n"
 Set-CcFile $d 's2.rs' "/// 설명.`npub fn y() {}`n"; git -C $d add s2.rs
 Set-CcFile $d 's2.rs' "/// 설명.`nfn y() {}`n"

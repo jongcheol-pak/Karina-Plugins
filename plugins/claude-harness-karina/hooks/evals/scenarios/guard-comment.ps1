@@ -23,6 +23,10 @@ Assert-Case -Name "guard-comment: 줄 주석을 더한 Edit 첫 시도는 차단
 Assert-Case -Name "guard-comment: 차단 사유가 예외 목록과 다시 내도 통과하지 않음을 낸다" -R $r -ExpectExit 2 -ExpectContains '같은 편집을 다시 내도 통과하지 않습니다'
 Assert-Case -Name "guard-comment: 차단 사유가 낡은 옛 주석을 고치거나 지우라고 안내한다" -R $r -ExpectExit 2 -ExpectContains '새 주석만 빼고 낡은 주석을 남기지 마세요'
 Assert-Case -Name "guard-comment: 새 주석 차단 메시지가 보존 등록·rationale 선작성을 안내한다" -R $r -ExpectExit 2 -ExpectContains 'Comment (보존) 경로에 그 파일을 등록한 뒤, 근거 포인터 주석이면 가리키는 .md 문서를 먼저 만든'
+Assert-Case -Name "guard-comment: 차단 사유가 막힌 줄만 빼고 같은 내용으로 다시 내라고 안내한다 (GC-resubmit)" -R $r -ExpectExit 2 -ExpectContains '막힌 주석 줄만 빼고 나머지는 같은 내용으로 다시 내세요'
+Assert-Case -Name "guard-comment: 감사·라이브러리 없는 .rs 차단은 doc 통과 예외 없음을 낸다 (GC-criterion-none)" -R $r -ExpectExit 2 -ExpectContains 'doc 통과 예외(레포 감사·라이브러리 공개 항목)가 없어'
+$r = Invoke-GcEdit 'many.rs' 'fn m() {}' "// 하나`n// 둘`n// 셋`n// 넷`n// 다섯`nfn m() {}"
+Assert-Case -Name "guard-comment: 막힌 줄이 미리보기 3줄을 넘으면 남은 줄 수를 낸다 (GC-preview-more)" -R $r -ExpectExit 2 -ExpectContains '외 2줄'
 
 $r = Invoke-GcEdit 'doc.rs' 'pub fn b() {}' "/// 그 모니터 작업 영역 가운데.`npub fn b() {}"
 Assert-Case -Name "guard-comment: doc 주석(///) 추가도 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
@@ -39,6 +43,7 @@ $r = Invoke-GcEdit 'block.cs' 'int x = 1;' "/* 첫 줄`n * 둘째 줄`n * 셋째
 Assert-Case -Name "guard-comment: 블록 주석은 블록 안 줄까지 센다" -R $r -ExpectExit 2 -ExpectContains '주석 3줄'
 $r = Invoke-GcEdit 'tool.ps1' '$a = 1' "# 설명`n`$a = 1"
 Assert-Case -Name "guard-comment: .ps1 # 주석도 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+Assert-Case -Name "guard-comment: doc 언어가 아닌 파일의 차단에는 doc 통과 기준 줄이 없다 (GC-criterion-nondoc)" -R $r -ExpectExit 2 -ExpectNotContains '통과 기준(doc)'
 $r = Invoke-GcEdit 'word.ts' 'const r = 1;' "// 이 region 좌표는 화면 기준`nconst r = 1;"
 Assert-Case -Name "guard-comment: 지시문 낱말이 본문 중간에 있으면 제외하지 않는다" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 $r = Invoke-GcEdit 'requires.cs' 'int p = 0;' "// Requires admin rights to open the port`nint p = 0;"
@@ -137,6 +142,8 @@ Assert-Case -Name "guard-comment: 감사 레포 pub enum 위 /// 통과" -R $r -
 [System.IO.File]::WriteAllText((Join-Path $gcAudit 'src/h.rs'), "fn helper() {}`n")
 $r = Invoke-GcEditAt (Join-Path $gcAudit 'src/h.rs') 'fn helper() {}' "/// 감사 대상이 아닌 비공개 함수.`nfn helper() {}"
 Assert-Case -Name "guard-comment: 감사 레포 비공개 fn 위 /// 차단" -R $r -ExpectExit 2 -ExpectContains '주석 1줄'
+Assert-Case -Name "guard-comment: 감사 레포 차단 사유에 그 파일의 감사 정규식과 줄을 통과 기준으로 낸다 (GC-criterion-audit)" -R $r -ExpectExit 2 -ExpectContains '레포 감사 정규식 `^\s*pub(\([^)]*\))?\s+'
+Assert-Case -Name "guard-comment: 감사 통과 기준 줄이 AGENTS.md 줄 번호와 막히는 대상을 낸다 (GC-criterion-audit-line)" -R $r -ExpectExit 2 -ExpectContains 'AGENTS.md:3) 위 doc 만 통과합니다 — 그 밖의 비공개 fn·필드·trait 메서드 위 doc 과 (원본 X) doc 은 막힙니다'
 $gcNoTa = Join-Path $work 'gc-no-task-audit'; New-Item -ItemType Directory $gcNoTa -Force | Out-Null
 Copy-Item (Join-Path $scriptsDir '*') $gcNoTa -Recurse -Force -Exclude 'guard-task-audit.ps1'
 if (Test-Path -LiteralPath (Join-Path $gcNoTa 'guard-task-audit.ps1')) { throw 'guard-comment 사본에 guard-task-audit.ps1 이 남았다 — 전제 깨짐' }
@@ -177,6 +184,8 @@ $r = Invoke-Hook 'guard-harness.ps1' (@{ session_id = 'gc-ra'; tool_name = 'Edit
 Assert-Case -Name "guard-comment: replace_all: 같은 쌍이 pub fn(위쪽)과 비공개 fn(아래쪽) 두 자리에 /// 를 넣으면 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 $r = Invoke-GcEditAt (Join-Path $gcLib 'src/lib.rs') 'pub fn api() {}' "/// 공개 계약.`npub fn api() {}"
 Assert-Case -Name "guard-comment: 라이브러리 크레이트 pub fn 위 /// 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
+$r = Invoke-GcEditAt (Join-Path $gcLib 'src/lib.rs') 'fn inner() {}' "/// 내부 설명.`nfn inner() {}"
+Assert-Case -Name "guard-comment: 라이브러리 크레이트 비공개 fn 차단은 공개 항목 기준을 낸다 (GC-criterion-lib)" -R $r -ExpectExit 2 -ExpectContains '통과 기준(doc): 라이브러리 공개 항목(`pub `)'
 $r = Invoke-GcEditAt (Join-Path $gcTs 'index.ts') 'export function f() {}' "/**`n * 공개 함수.`n */`nexport function f() {}"
 Assert-Case -Name "guard-comment: export 위 /** */ 통과(private 아닌 package.json)" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 $r = Invoke-GcEditAt (Join-Path $gcCs 'A.cs') 'public class A {}' "/// <summary>공개 형식.</summary>`npublic class A {}"

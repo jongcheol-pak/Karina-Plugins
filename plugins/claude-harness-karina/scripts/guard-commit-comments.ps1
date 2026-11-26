@@ -174,6 +174,7 @@ function Invoke-BlockCommitComments {
         $top = [string](@((Invoke-CommitGit -Check 'block-commit-comments' -GitArgs @('rev-parse', '--show-toplevel')).Lines)[0])
         $found = New-Object System.Collections.Generic.List[string]
         $perFile = New-Object System.Collections.Generic.List[string]
+        $criteria = [ordered]@{}
         $baseBudget = New-CommentBaseBudget $script:CommentCommitBaseBudgetMs
         $rewriteBudget = New-CommentRewriteBudget
         foreach ($k in ($targets | Sort-Object)) {
@@ -198,14 +199,19 @@ function Invoke-BlockCommitComments {
             }
             $blocked = Get-BlockedCommentBodies $full $added $post $baseBudget ($null -ne $text)
             foreach ($c in $blocked) { $found.Add($c) }
-            if ($blocked.Count -gt 0) { $perFile.Add("  $k : 주석 $($blocked.Count)줄") }
+            if ($blocked.Count -gt 0) {
+                $perFile.Add("  $k : 주석 $($blocked.Count)줄")
+                $crit = $null
+                try { $crit = Get-CommentGateDocCriterion $full } catch {}
+                if ($crit) { if ($criteria.Contains($crit)) { $criteria[$crit] += @($k) } else { $criteria[$crit] = @($k) } }
+            }
         }
         if ($found.Count -eq 0) {
             if (Test-CommitGitTimedOut 'block-commit-comments') { return New-HookResult -Block $true -Stderr (Get-CommitGitTimeoutLines '커밋 새 주석 검사') }
             return New-HookResult
         }
 
-        $lines = @("[HARNESS] BLOCKED: 커밋에 새 주석이 있습니다 (주석 $($found.Count)줄)") + @($perFile) + @(Format-CommentGatePreview $found) + @($script:CommentGateRule) + @(
+        $lines = @("[HARNESS] BLOCKED: 커밋에 새 주석이 있습니다 (주석 $($found.Count)줄)") + @($perFile) + @($criteria.Keys | ForEach-Object { '  ' + ($criteria[$_] -join ', ') + ' ' + $_ }) + @(Format-CommentGatePreview $found) + @($script:CommentGateRule) + @(
             Get-CommentResubmitLines '커밋' '  - 같은 커밋을 다시 내도 통과하지 않습니다. 주석을 지우고 다시 커밋하고, 남길 이유는 커밋 본문에 적으세요.' $baseBudget) + @(
             '  - 고친 코드를 설명하던 옛 주석이 있으면 같은 자리(같은 hunk)에서 지우세요 — 삭제는 막지 않고, 위 통과 예외에 드는 주석만 남깁니다(code-style.md「주석」). 새 주석만 빼고 낡은 주석을 남기지 마세요.',
             $script:CommentGateHow,

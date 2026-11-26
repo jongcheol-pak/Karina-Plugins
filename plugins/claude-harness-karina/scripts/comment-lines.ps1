@@ -143,7 +143,26 @@ function Get-CommentMarkerIndexes([string[]]$Lines, [regex]$Rx) {
 }
 
 function Format-CommentGatePreview($Bodies) {
-    return @($Bodies | Select-Object -First 3 | ForEach-Object { '  | ' + $(if ($_.Length -gt 100) { $_.Substring(0, 100) + '…' } else { $_ }) })
+    $all = @($Bodies)
+    $shown = @($all | Select-Object -First 3 | ForEach-Object { '  | ' + $(if ($_.Length -gt 100) { $_.Substring(0, 100) + '…' } else { $_ }) })
+    if ($all.Count -gt 3) { $shown += "  | … 외 $($all.Count - 3)줄" }
+    return $shown
+}
+
+function Get-CommentGateDocCriterion([string]$Path) {
+    $ext = [System.IO.Path]::GetExtension($Path).ToLower()
+    if (@('.rs', '.cs', '.ts', '.tsx', '.js', '.jsx') -notcontains $ext) { return $null }
+    $ctx = Get-CommentRepoContext $Path
+    $base = if ($ctx.Agents) { Split-Path -Parent $ctx.Agents } else { $ctx.Dir }
+    $conds = @(foreach ($rule in $ctx.AuditRules) {
+        if (Test-CommentPathLike $ctx.File $base $rule.Pathspec) { "다음 코드 줄이 레포 감사 정규식 ``$($rule.Pattern)`` 에 맞는 항목(AGENTS.md:$($rule.Line))" }
+    })
+    if ($ctx.Library) {
+        $kw = switch ($ext) { '.rs' { '`pub `' } '.cs' { '`public `·`protected `' } default { '`export `' } }
+        $conds += "라이브러리 공개 항목($kw)"
+    }
+    if (-not $conds.Count) { return '통과 기준(doc): 이 파일에는 doc 통과 예외(레포 감사·라이브러리 공개 항목)가 없어 doc 주석은 모두 막힙니다 — (원본 X) doc 도 같습니다.' }
+    return '통과 기준(doc): ' + ($conds -join ' · ') + ' 위 doc 만 통과합니다 — 그 밖의 비공개 fn·필드·trait 메서드 위 doc 과 (원본 X) doc 은 막힙니다.'
 }
 
 $script:CommentGateRule = '  통과하는 주석은 라이선스·린트 지시문 · 이슈/RFC 링크·트래커 키·실재하는 레포 .md 경로가 든 줄 · .rs SAFETY: · 레포 감사(Test (감사))가 요구하거나 라이브러리 공개 항목 위의 doc · AGENTS.md Comment (보존) 선언 · 주석만 고치는 편집의 기존 주석 문구 수정 · 그 회차 plan.md BASE 커밋에 있던 주석 줄과 BASE 때 같은 항목 doc 을 줄 수를 늘리지 않고 고친 것(복원)뿐입니다 (code-style.md「주석」). 원본 심볼 대응(원본 X)은 doc 주석 대신 커밋 본문에 적으세요.'

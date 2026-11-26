@@ -31,7 +31,10 @@ function Invoke-GuardComment($Data, [string]$File) {
         $blocked = Get-BlockedCommentBodies $File $added $post $budget ([bool]$script:CommentPostImageFull)
         if ($blocked.Count -gt 0) {
             Write-GuardCommentEvent 'block' $File $Data
-            $lines = @("$File : 주석 $($blocked.Count)줄") + @(Format-CommentGatePreview $blocked) + @($script:CommentGateRule) + @(
+            $criterion = $null
+            try { $criterion = Get-CommentGateDocCriterion $File } catch {}
+            $lines = @("$File : 주석 $($blocked.Count)줄") + @(if ($criterion) { '  ' + $criterion }) + @(
+                '  - 막힌 주석 줄만 빼고 나머지는 같은 내용으로 다시 내세요 — Write 면 파일을 새로 짜지 말고 같은 content 에서 아래 줄만 지웁니다.') + @(Format-CommentGatePreview $blocked) + @($script:CommentGateRule) + @(
                 Get-CommentResubmitLines '편집' '  - 같은 편집을 다시 내도 통과하지 않습니다. 주석 없이 다시 쓰고, 남길 이유는 커밋 본문에 적으세요.' $budget) + @(
                 '  - 고친 코드를 설명하던 옛 주석이 있으면 그 주석을 old_string 에 넣어 지우세요 — 주석만 고치는 문구 수정·삭제는 막지 않습니다. 새 주석만 빼고 낡은 주석을 남기지 마세요.',
                 $script:CommentGateHow,
