@@ -5,7 +5,7 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
 
 # 부재 문구 — 근거는 `rules/away-precheck-rationale.md` §2
-$AwayRx = '(?i)(잠\s*잔다|잠\s*자러|나\s*잔다|잘게|자러\s*(간|갈)|자야겠|퇴근|자리\s*(를\s*)?비|외출|내일\s*이어|going\s+to\s+(bed|sleep)|heading\s+(home|out)|signing\s+off|\bafk\b|good\s*night)'
+$AwayRx = '(?i)(잔다|잘게|자러\s*(가|간|갈)|잠\s*자|자야겠|퇴근|자리\s*(를\s*)?비|외출|내일\s*이어|going\s+to\s+(bed|sleep)|heading\s+(home|out)|signing\s+off|\bafk\b|good\s*night)'
 
 # 판정 불가는 전부 침묵이다 — 근거는 `rules/away-precheck-rationale.md` §3
 try { $data = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin } else { [Console]::In.ReadToEnd() }) | ConvertFrom-Json -ErrorAction Stop } catch { exit 0 }

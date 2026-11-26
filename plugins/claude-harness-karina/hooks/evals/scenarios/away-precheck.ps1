@@ -17,7 +17,7 @@ function Get-ApContext([hashtable]$R) {
 }
 
 Set-ApWorkStart 'ap-plan' '{"plan":"2026-11-26 11:45"}'
-foreach ($p in '이제 나 잠잔다', '오늘은 퇴근한다', '자러 갈게 나머지 부탁해', '잠시 자리 비울게', '외출했다 올게', '내일 이어서 하자') {
+foreach ($p in '이제 나 잠잔다', '오늘은 퇴근한다', '자러 갈게 나머지 부탁해', '잠시 자리 비울게', '외출했다 올게', '내일 이어서 하자', '이제 잔다', '오늘은 그만 잔다', '저 자러 가요', '자러 가', '잠 자야지') {
     $r = Invoke-Hook 'away-precheck.ps1' (New-ApJson 'ap-plan' $p)
     Assert-Case -Name "away-precheck: 한국어 부재 문구 「$p」 에 주입한다" -R (Get-ApContext $r) -ExpectExit 0 -ExpectContains 'ctx=[karina 부재 예고]'
 }

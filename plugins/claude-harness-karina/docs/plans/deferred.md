@@ -79,6 +79,5 @@
 - [1회 실패 2026-11-23] 골든 `comment-scope.ps1` 에 새 케이스를 쓰며 `Invoke-Cs` 에 `-Out` 을 빼 「인자 누락 — -Out <파일>」 로 RED 가 재려는 동작 밖에서 났다 — 다른 케이스처럼 `-Out (Join-Path $csRoot '<이름>-out.txt')` 를 넘겼다
 - [1회 실패 2026-11-23] 골든 `guard-bash.ps1` 커밋 케이스의 `Set-CcFile` 이 하위 폴더를 만들지 않아 `mobile/src/a.cs` 쓰기가 「Could not find a part of the path」 로 시나리오 예외가 됐다 — 앞 줄에 `New-Item -ItemType Directory -Force` 를 두었다
 - [1회 실패 2026-11-24] 유지 스킬 문면에 폐기된 화면 표지의 원문(괄호 포함)을 적어 `check-stale-refs.py` 가 DEAD 이름으로 [FAIL] 을 냈다 — 괄호 없는 서술로 바꿔 풀었다(3419d62)
-- [1회 실패 2026-11-26] 새 hook 스크립트의 근거 포인터 주석을 가리킬 `rules/*-rationale.md` 보다 먼저 써서 주석 게이트가 Write 를 막았다 — rationale 문서를 먼저 만든 뒤 같은 내용으로 다시 썼다(`code-style.md`「주석」 「가리킬 문서를 먼저 만든다」)
 - [1회 실패 2026-11-26] 새로 만든 `skills/*.md` 를 백틱으로 가리킨 직후 `check-stale-refs.py` 가 「산문이 가리키는 심볼이 없습니다」 [FAIL] — 검사기가 `git ls-files` 로 실존을 재서 untracked 파일을 못 본다. `git add` 뒤 다시 돌려 통과했다
 - [1회 실패 2026-11-26] 골든 시나리오에서 주입 줄의 절대경로를 `\S+` 로 뽑아 하니스 경로의 공백(`Personal Project`)에서 잘렸다 — 앞뒤 구분자(` — `·` 「`)로 뽑아 풀었다
