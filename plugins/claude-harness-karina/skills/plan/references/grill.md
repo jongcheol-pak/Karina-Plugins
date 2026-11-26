@@ -1,7 +1,7 @@
 # 따지기
 
 > `interview.md`「승인 제시」에서 사용자가 `G` 를 골랐을 때만 읽는다 — 다 쓴 `plan.md` 를 놓고, 모델이 묻지 않고 정한 것을 사용자와 끝까지 따지는 절차다. 질문 형식은 `interview.md`「2-2. 한 번에 한 질문, 추측을 붙여서」 를 그대로 쓰고 여기서 다시 쓰지 않는다.
-> 외부 선례: mattpocock/skills `grilling` (`https://github.com/mattpocock/skills/blob/5beb35b040e3de97e54fa9e386d7e42d15c295c2/skills/productivity/grilling/SKILL.md`) — *"The session is done when the frontier is empty: every branch of the design tree visited, nothing left silently assumed."* 라운드 묶음은 `interview.md` 2-2 의 상한 3 을 그대로 쓴다(`docs/decisions-archive.md` 의 2026-10-20 항목 「인터뷰 질문 묶음」 채택).
+> 외부 선례: mattpocock/skills `grilling` (`https://github.com/mattpocock/skills/blob/5beb35b040e3de97e54fa9e386d7e42d15c295c2/skills/productivity/grilling/SKILL.md`) — *"The session is done when the frontier is empty: every branch of the design tree visited, nothing left silently assumed."* 원문은 frontier 전체를 한 라운드에 묻지만 여기서는 `interview.md` 2-2 대로 한 번에 하나다(`docs/decisions.md` 2026-11-26 — 2026-10-20 「인터뷰 질문 묶음」 채택 번복).
 
 ## 무엇을 따지는가
 
@@ -19,13 +19,13 @@
      2. …
    ```
 
-2. **가지를 라운드로 묻는다** — 형식·묶음 상한 3·가장 덜 확신하는 가정의 단독 라운드는 `interview.md` 2-2 그대로다. `GUESS:` 는 지금 plan 이 고른 답이 아니라 지금의 실제 판단이다 — 따지면서 생각이 바뀌었으면 바뀐 쪽을 낸다.
+2. **가지를 하나씩 묻는다** — 형식·한 번에 한 질문·선택지 조건·가장 덜 확신하는 가정은 `interview.md` 2-2 그대로다. `GUESS:` 는 지금 plan 이 고른 답이 아니라 지금의 실제 판단이다 — 따지면서 생각이 바뀌었으면 바뀐 쪽을 낸다.
 3. **답을 `plan.md` 에 반영한다** — 문답은 `> 요구:` 블록 아래에 `> 따지기 Q<N>: <질문> / 선택지: <이름들> / A: <답>` 으로 덧붙이고, 바뀐 결정은 `## Decisions` 근거 열에 `사용자 답(따지기)` 를 붙인다. 답이 Goal·Out of Scope·task 를 바꾸면 그 절도 고친다. 재호출된 리뷰어가 바뀐 절의 출처를 요구 블록에서 찾는다.
 4. **고칠 때마다 `check-plan.ps1` 을 다시 돌린다** — 호출과 처리는 `../SKILL.md` Step 6 첫 불릿 그대로다. 초안 모드는 돌리지 않는다(`draft-mode.md`「초안 모드」 — 진행 모드가 다시 돌린다).
 
 ## 종료 조건
 
-- **가지 목록이 비면 끝난다 — 모든 가지가 답을 받았거나 사용자가 뺐을 때다. 기본 인터뷰의 「확신도가 세 라운드 연속 오르지 않으면 멈춘다」(`interview.md` 2-5)는 쓰지 않는다** — 가지를 끝까지 닫는 것이 이 절차의 목적이다.
+- **가지 목록이 비면 끝난다 — 모든 가지가 답을 받았거나 사용자가 뺐을 때다. 기본 인터뷰의 「세 질문 연속 목록이 줄지 않으면 계속 여부를 묻는다」(`interview.md` 2-5)는 쓰지 않는다** — 가지를 끝까지 닫는 것이 이 절차의 목적이다.
 - **사용자가 도중에 `Y`·`S`·`C`·`N`(초안 모드면 `K`·`N`) 으로 답하면 거기서 끝난다** — 남은 가지는 묻지 않는다. 단 `Y`·`S` 를 받았는데 아래 재호출이 남아 있으면 재호출을 마친 뒤 승인 제시를 다시 낸다 — 리뷰받지 않은 plan 이 그 답으로 승인되지 않게 한다.
 
 ## 끝난 뒤

@@ -1897,13 +1897,13 @@
     "mutate": [
       {
         "file": "evals/check-harness-consistency.py",
-        "find": "DEPRECATED_TOKENS_BASELINE = 10",
-        "replace": "DEPRECATED_TOKENS_BASELINE = 11"
+        "find": "DEPRECATED_TOKENS_BASELINE = 11",
+        "replace": "DEPRECATED_TOKENS_BASELINE = 12"
       }
     ],
     "expect_keywords": [
       "[MISMATCH]",
-      "폐기 식별자 토큰 수가 기준선과 다르다: 10 != 11",
+      "폐기 식별자 토큰 수가 기준선과 다르다: 11 != 12",
       "DEPRECATED_TOKENS_BASELINE"
     ]
   },

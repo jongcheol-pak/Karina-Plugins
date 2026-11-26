@@ -1444,7 +1444,7 @@ DEPRECATED_QUOTE_ALLOWLIST = [
 DEPRECATED_ALLOWLIST_BASELINE = 11
 
 # `DESIGN.md` 3-1 정본 줄의 **백틱 토큰 수**(범위 표기를 접기 전 원문 개수).
-DEPRECATED_TOKENS_BASELINE = 10
+DEPRECATED_TOKENS_BASELINE = 11
 
 
 def _deprecated_targets():
