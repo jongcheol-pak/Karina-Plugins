@@ -41,9 +41,10 @@ $cdAll = [regex]::Matches($cmdScan, "(?im)(?:^|&&|;|\|)\s*cd\s+(?:'([^']+)'|`"([
 
 # ---- 카테고리별 명령 패턴 (변경형 빌드/테스트/DB만) ----
 # rx는 카테고리 간 배타적(build rx에 test 없음)이라 순서 무관. 매칭값을 '대표 토큰'으로 삼는다.
+# make 는 명령 자리에서만 — 근거는 `rules/suggest-record-rationale.md` §10
 $categories = @(
     @{ name = 'build'; section = 'Build & Test'; label = '빌드/실행';
-       rx = '(?i)\b(dotnet\s+(build|run|publish)|(npm|yarn|pnpm)\s+(run\s+)?build|go\s+build|cargo\s+build|(\./)?mvnw?\b[^\r\n]*\b(package|compile|install)|(\./)?gradlew?\b[^\r\n]*\bbuild|msbuild|cmake\s+--build|\bmake\b)' },
+       rx = '(?i)\b(dotnet\s+(build|run|publish)|(npm|yarn|pnpm)\s+(run\s+)?build|go\s+build|cargo\s+build|(\./)?mvnw?\b[^\r\n]*\b(package|compile|install)|(\./)?gradlew?\b[^\r\n]*\bbuild|msbuild|cmake\s+--build|(?<=(?:^|[\r\n]|&&|\|\||[;|(''"])\s*)make\b)' },
     @{ name = 'test'; section = 'Build & Test'; label = '테스트/검증';
        rx = '(?i)\b(dotnet\s+test|(npm|yarn|pnpm)\s+(run\s+)?test|pytest|python\s+-m\s+pytest|go\s+test|cargo\s+test|(\./)?gradlew?\b[^\r\n]*\btest|jest|vitest)\b' },
     @{ name = 'db'; section = '데이터 접근'; label = 'DB 접근';

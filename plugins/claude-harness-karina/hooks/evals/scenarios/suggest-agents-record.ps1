@@ -16,6 +16,16 @@ Assert-Case -Name "suggest: 같은 세션 2회째 억제" -R $r -ExpectExit 0 -E
 $r = Invoke-Hook 'suggest-agents-record.ps1' (@{ hook_event_name = 'PreToolUse'; tool_name = 'Bash'; cwd = $aproj; session_id = 's-pre'; tool_input = @{ command = 'dotnet build MyApp.sln' } } | ConvertTo-Json -Compress)
 Assert-Case -Name "suggest: PreToolUse 입력이면 이벤트 이름을 PreToolUse 로 낸다" -R $r -ExpectExit 0 -ExpectContains '"hookEventName":"PreToolUse"'
 Assert-Case -Name "suggest: 실행 전에 나오므로 성공했을 때만 기록하라고 쓴다" -R $r -ExpectExit 0 -ExpectContains '성공했으면'
+$mkProj = Join-Path $work 'mkproj'; New-Item -ItemType Directory $mkProj -Force | Out-Null
+"# AGENTS`n## Build & Test`n" | Set-Content (Join-Path $mkProj 'AGENTS.md')
+$r = Invoke-Hook 'suggest-agents-record.ps1' (@{ tool_name = 'Bash'; cwd = $mkProj; session_id = 'mk-sed'; tool_input = @{ command = 'sed -i -E ''s/^fn setup\(key/fn make(key/'' src/a.rs' } } | ConvertTo-Json -Compress)
+Assert-Case -Name "suggest: sed 인자 안 make 낱말은 빌드 제안이 아니다 (SR-make-arg)" -R $r -ExpectExit 0 -ExpectSilent $true
+$mkSeq = 0
+foreach ($mkCmd in @('make build', 'cargo fmt && make', 'ls; make test', 'bash -c ''make build''')) {
+    $mkSeq++
+    $r = Invoke-Hook 'suggest-agents-record.ps1' (@{ tool_name = 'Bash'; cwd = $mkProj; session_id = ('mk-' + $mkSeq); tool_input = @{ command = $mkCmd } } | ConvertTo-Json -Compress)
+    Assert-Case -Name "suggest: 명령 자리의 make 「$mkCmd」 는 빌드 제안 (SR-make-cmd)" -R $r -ExpectExit 0 -ExpectContains 'AGENTS 기록 제안'
+}
 $txProj = Join-Path $work 'txproj'; New-Item -ItemType Directory $txProj -Force | Out-Null
 "# AGENTS`n## Build & Test`n" | Set-Content (Join-Path $txProj 'AGENTS.md')
 $txFile = Join-Path $work 'tx-transcript.jsonl'
