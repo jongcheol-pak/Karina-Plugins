@@ -44,7 +44,7 @@ $cdAll = [regex]::Matches($cmdScan, "(?im)(?:^|&&|;|\|)\s*cd\s+(?:'([^']+)'|`"([
 # 빌드 명령은 명령 자리에서만 — 근거는 `rules/suggest-record-rationale.md` §10
 $categories = @(
     @{ name = 'build'; section = 'Build & Test'; label = '빌드/실행';
-       rx = '(?i)(?<=(?:^|[\r\n]|[;|(&]|\b(?:(?:ba|z)?sh|pwsh|powershell|cmd)(?:\.exe)?\s+(?:-\S+\s+(?:[^-''"\s]\S*\s+)?)*?(?:-\w*c|-Command|/c)\s+[''"]|\beval\s+[''"])\s*(?:(?:sudo|time|env|\w+=\S*)\s+)*)(dotnet\s+(build|run|publish)|(npm|yarn|pnpm)\s+(run\s+)?build|go\s+build|cargo\s+build|(\./)?mvnw?\b[^\r\n]*\b(package|compile|install)|(\./)?gradlew?\b[^\r\n]*\bbuild|msbuild|cmake\s+--build|make\b)' },
+       rx = '(?i)(?<=(?:^|[\r\n]|[;|(]|(?:^|\s)&&?|(?<![.\w/-])(?:(?:ba|z)?sh|pwsh|powershell|cmd)(?:\.exe)?\s+(?:-\S+\s+(?:[^-''"\s]\S*\s+)?)*?(?:-\w*c|-Command|/c)\s+[''"]|\beval\s+[''"])\s*(?:(?:sudo|time|env|\w+=\S*)\s+)*)(dotnet\s+(build|run|publish)|(npm|yarn|pnpm)\s+(run\s+)?build|go\s+build|cargo\s+build|(\./)?mvnw?\b[^\r\n]*\b(package|compile|install)|(\./)?gradlew?\b[^\r\n]*\bbuild|msbuild|cmake\s+--build|make\b)' },
     @{ name = 'test'; section = 'Build & Test'; label = '테스트/검증';
        rx = '(?i)\b(dotnet\s+test|(npm|yarn|pnpm)\s+(run\s+)?test|pytest|python\s+-m\s+pytest|go\s+test|cargo\s+test|(\./)?gradlew?\b[^\r\n]*\btest|jest|vitest)\b' },
     @{ name = 'db'; section = '데이터 접근'; label = 'DB 접근';

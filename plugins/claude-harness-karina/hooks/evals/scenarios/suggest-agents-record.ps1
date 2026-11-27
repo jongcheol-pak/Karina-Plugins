@@ -20,7 +20,7 @@ $mkProj = Join-Path $work 'mkproj'; New-Item -ItemType Directory $mkProj -Force 
 "# AGENTS`n## Build & Test`n" | Set-Content (Join-Path $mkProj 'AGENTS.md')
 $r = Invoke-Hook 'suggest-agents-record.ps1' (@{ tool_name = 'Bash'; cwd = $mkProj; session_id = 'mk-sed'; tool_input = @{ command = 'sed -i -E ''s/^fn setup\(key/fn make(key/'' src/a.rs' } } | ConvertTo-Json -Compress)
 Assert-Case -Name "suggest: sed 인자 안 make 낱말은 빌드 제안이 아니다 (SR-make-arg)" -R $r -ExpectExit 0 -ExpectSilent $true
-foreach ($mkData in @('grep -n ''cargo build'' x.ps1', 'grep ''make build'' Makefile', 'git grep -c ''cargo build'' docs', 'rg -c "dotnet build" .')) {
+foreach ($mkData in @('grep -n ''cargo build'' x.ps1', 'grep ''make build'' Makefile', 'git grep -c ''cargo build'' docs', 'rg -c "dotnet build" .', 'curl ''http://x/?a=1&make=2''', './run.sh -c ''make build''')) {
     $r = Invoke-Hook 'suggest-agents-record.ps1' (@{ tool_name = 'Bash'; cwd = $mkProj; session_id = ('mk-data-' + $mkData.Length); tool_input = @{ command = $mkData } } | ConvertTo-Json -Compress)
     Assert-Case -Name "suggest: 셸 실행 인자가 아닌 따옴표 안 빌드 낱말 「$mkData」 는 제안이 아니다 (SR-build-quoted)" -R $r -ExpectExit 0 -ExpectSilent $true
 }
