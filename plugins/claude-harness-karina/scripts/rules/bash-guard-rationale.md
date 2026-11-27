@@ -54,11 +54,12 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
   `require-task-checkbox` · `block-python-newcode`) + `warn-commit-secrets` 2곳(`guard-commit-secrets.ps1`
   의 시크릿 검출·스캔 캡 초과) + `block-commit-comments` 1곳(`guard-commit-comments.ps1` 의 새 주석 차단)
   + `warn-task-audit` 1곳(`guard-task-audit.ps1` 의 (RED) task 완료 커밋 RED 줄 누락 — `task-audit-rationale.md` §2).
-  `check-block-coverage.py` 가 세는 「guard-bash 경로 5 · guard-commit-secrets 경로 2 · guard-commit-comments 경로 1 ·
-  guard-task-audit 경로 1」이 그 아홉이다. 15검사 중 차단하는 것은 이 8종이고, 나머지 경고 전용 7종은 `Block` 을 세우지 않는다.
+  `check-block-coverage.py` 는 경로가 아니라 차단 사유 문자열을 세어 「guard-bash 경로 6 · guard-commit-secrets 경로 2 ·
+  guard-commit-comments 경로 1 · guard-task-audit 경로 1」(합 10)을 낸다 — `block-python-newcode` 한 경로가 python·셸 두 사유를
+  내기 때문이다. 15검사 중 차단하는 것은 이 8종이고, 나머지 경고 전용 7종은 `Block` 을 세우지 않는다.
   출력·exit 번역은 파일 하단의 단일 caller 가 하고, 각 함수는 「판정 → 결과」만 낸다.
 - **한 검사의 예외는 나머지를 막지 않는다** — `foreach` 안에서 `try/catch` 로 격리하고
-  안전측으로 통과시킨다. 열셋 중 하나가 깨져 전체가 침묵하는 것을 막는다.
+  안전측으로 통과시킨다. 열다섯 중 하나가 깨져 전체가 침묵하는 것을 막는다.
 - **`New-HookResult` 생성기는 `guard-bash.ps1` 에 있다** — 커밋 판정 라이브러리는 커밋 명령에서만
   불러오므로 거기 두면 나머지 아홉 검사가 돌 수 없다. 라이브러리를 단독 dot-source 하는 골든
   프로브는 같은 정의를 직접 둔다.
