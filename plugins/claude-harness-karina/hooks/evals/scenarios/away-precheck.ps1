@@ -30,6 +30,14 @@ foreach ($p in 'yes', '승인', 'T2 부터 계속해', '잔디 색을 바꿔줘'
     Assert-Case -Name "away-precheck: 부재 문구가 아닌 「$p」 는 무출력" -R $r -ExpectExit 0 -ExpectSilent $true
 }
 
+$apNote = "<task-notification>`n<task-id>a1</task-id>`n<status>completed</status>`n<summary>Agent `"x`" finished — 사용자가 자리를 비운 동안 퇴근 전 검증을 끝냈다</summary>`n</task-notification>"
+$r = Invoke-Hook 'away-precheck.ps1' (New-ApJson 'ap-plan' $apNote)
+Assert-Case -Name "away-precheck: task-notification 블록 안의 부재 문구는 무출력 (AP-notify)" -R $r -ExpectExit 0 -ExpectSilent $true
+$r = Invoke-Hook 'away-precheck.ps1' (New-ApJson 'ap-plan' ($apNote + "`n퇴근할게"))
+Assert-Case -Name "away-precheck: 알림 블록 뒤 사용자 부재 문구에는 주입한다 (AP-notify-user)" -R (Get-ApContext $r) -ExpectExit 0 -ExpectContains 'ctx=[karina 부재 예고]'
+$r = Invoke-Hook 'away-precheck.ps1' (New-ApJson 'ap-plan' "<task-notification>`n<summary>Agent `"x`" finished</summary>`n</task-notification>")
+Assert-Case -Name "away-precheck: 부재 문구 없는 알림은 무출력 (AP-notify-plain)" -R $r -ExpectExit 0 -ExpectSilent $true
+
 $r = Invoke-Hook 'away-precheck.ps1' (New-ApJson 'ap-plan' '나 잔다')
 Assert-Case -Name "away-precheck: hookEventName 이 UserPromptSubmit 이다" -R (Get-ApContext $r) -ExpectContains 'event=UserPromptSubmit ctx='
 $apCtx = (Get-ApContext $r).out

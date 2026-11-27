@@ -12,7 +12,7 @@ try { $data = $(if ($null -ne $global:KarinaHookStdin) { $global:KarinaHookStdin
 if (-not $data) { exit 0 }
 $sid = [string]$data.session_id
 if ([string]::IsNullOrWhiteSpace($sid)) { exit 0 }
-if ([string]$data.prompt -notmatch $AwayRx) { exit 0 }
+if (([string]$data.prompt -replace '(?s)<task-notification>.*?</task-notification>', '') -notmatch $AwayRx) { exit 0 }
 
 $base = if ([string]::IsNullOrEmpty($env:USERPROFILE)) { $HOME } else { $env:USERPROFILE }
 $sidSafe = $sid -replace '[^A-Za-z0-9._-]', '_'

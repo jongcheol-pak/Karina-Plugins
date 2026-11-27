@@ -10,6 +10,8 @@
 
 한국어(잔다·잘게·자러 간다·자야겠다·퇴근·자리 비움·외출·내일 이어서)와 영어(going to bed/sleep·heading home/out·signing off·afk·good night)를 대소문자 없이 본다. 오탐은 한 줄 주입뿐이다 — 막지 않고, 절차 문서의 첫 단계가 지금이 적용 단계인지 다시 가른다. 그래서 문구는 넓게 잡고 판정은 문서에 둔다. 「잔디」·「sleep 함수」처럼 같은 글자를 품은 다른 말은 골든 음성 케이스가 지킨다.
 
+`<task-notification>…</task-notification>` 블록은 지운 뒤 잰다 — 백그라운드 작업 완료 알림은 사용자 프롬프트 자리로 들어오지만 사용자가 쓴 말이 아니다. 2026-11-27 Karina plan 10(e4e7d516)에서 에이전트 요약에 든 「자리를 비운」 이 부재 예고로 읽혀 주입이 났다. 블록을 통째로 거르지 않고 지우기만 하므로 알림 뒤에 사용자 말이 붙은 프롬프트는 그 말로 잰다(골든 AP-notify · AP-notify-user).
+
 ## §3 판정 불가는 침묵 · 스킬 상태 게이트
 
 stdin 이 JSON 이 아니거나 `session_id` 가 없거나 문구가 맞지 않으면 아무것도 내지 않고 exit 0 이다. 문구가 맞아도 이 세션에 `karina:plan`·`karina:chain-plan` 발동 기록(`record-work-start.ps1` 의 `.state/work-start/<sid>.json`)이나 `karina:implement` 루프 마커(`loop-continue.ps1` 의 `.state/loop-continue/<sid>.active`)가 없으면 침묵한다 — 일반 대화의 「퇴근한다」에 절차를 들이밀지 않는다. 두 경로는 그 두 스크립트의 사본이라, 경로가 바뀌면 골든 상태 갈래 케이스가 잡는다. 계획 인터뷰 단계인지는 hook 이 가를 수 없어 문서 첫 단계가 가른다(사용자 답 「인터뷰는 제외」).
