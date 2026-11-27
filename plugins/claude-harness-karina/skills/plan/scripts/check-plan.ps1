@@ -76,7 +76,7 @@
 #                                「- **Acceptance**:」 항목 수(want)보다 적음 — 항목은 그 줄 값에서 백틱 스팬을 한 글자로 바꾸고 괄호 안을 지운 뒤
 #                                「 · 」 로 가른 조각이다(항목 문면은 대조하지 않는다 — 표현만 달라도 위반이 되지 않게)
 #   no-red-evidence T<N>         Files 줄에 (RED) 가 있는데 어느 본문에도 「RED:」·「RED(구현 전):」·「RED(사후 …):」 줄이 없음
-#                                (「RED: 미확인 — <사유>」 만 있으면 위반 대신 note red-unverified T<N>)
+#                                (「RED: 미확인 — <사유>」·「RED(구현 전): 미확인 …」 같은 미확인 줄만 있으면 위반 대신 note red-unverified T<N>)
 #   no-screen-verdict T<N>       「- **화면**:」 줄이 있는 task 인데 어느 본문에도 「화면: HEAD 참|거짓」·「화면: 미촬영(HUMAN-VERIFY)」 줄이 없음
 #                                (그 task 의 T<N> 커밋 본문만 — 다른 커밋의 지목 줄 「화면: T<N> …」 은 받지 않는다)
 #   screen-false T<N>            화면 판정이 「HEAD 거짓」 뿐임(「HEAD 참」 이 하나라도 있으면 통과)
@@ -245,8 +245,9 @@ if ($Base) {
     $evidenceRx = $verify + '\s*(?:' + (Get-Text @(0xACB0, 0xACFC)) + '|:)'    # 검증 결과 · 검증:
     $lineHead = '(?m)^\s*(?:[-*]\s*)?'
     $unverified = Get-Text @(0xBBF8, 0xD655, 0xC778)    # 미확인
-    $redRx = $lineHead + 'RED(?:\((?:' + (Get-Text @(0xAD6C, 0xD604, 0x20, 0xC804)) + '|' + (Get-Text @(0xC0AC, 0xD6C4)) + '[^)\r\n]*)\))?\s*:\s*(?!' + $unverified + ')\S'    # RED: · RED(구현 전): · RED(사후 …):
-    $redUnRx = $lineHead + 'RED\s*:\s*' + $unverified
+    $redHead = $lineHead + 'RED(?:\((?:' + (Get-Text @(0xAD6C, 0xD604, 0x20, 0xC804)) + '|' + (Get-Text @(0xC0AC, 0xD6C4)) + '[^)\r\n]*)\))?\s*:\s*'    # RED: · RED(구현 전): · RED(사후 …):
+    $redRx = $redHead + '(?!' + $unverified + ')\S'
+    $redUnRx = $redHead + $unverified
     $verdictRx = $lineHead + 'Acceptance\s*:\s*\S'
     $acceptLabel = '- **Acceptance**:'
     $itemSplitRx = '\s' + [char]0xB7 + '\s'

@@ -517,6 +517,15 @@ Assert-Case -Name "check-plan 증거: 줄 머리 RED: 표지는 통과한다" -R
 $ev = New-EvidenceRepo @($cpNoRed + "`n- RED(사후 — abc1234^ 구현 복원): t.ps1 → FAIL")
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: RED(사후 …) 표지는 통과한다" -R $r -ExpectExit 0 -ExpectContains 'check-plan: 0 problems'
+$ev = New-EvidenceRepo @($cpNoRed + "`nRED(구현 전): 미확인 — 케이스와 구현을 한 번에 씀")
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: RED(구현 전): 미확인 은 위반이 아니라 note 로 낸다 (CP-redparen)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note red-unverified T1'
+$ev = New-EvidenceRepo @($cpNoRed + "`n- RED(구현 전): 미확인. 케이스를 구현과 같은 차례에 썼다.")
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: 불릿 RED(구현 전): 미확인. 도 note 로 낸다 (CP-redparen-dot)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note red-unverified T1'
+$ev = New-EvidenceRepo @($cpNoRed + "`nRED(사후 — abc1234^ 복원 불가): 미확인 — 뒤 task 가 덮음")
+$r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base
+Assert-Case -Name "check-plan 증거: RED(사후 …): 미확인 도 note 로 낸다 (CP-redparen-post)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note red-unverified T1'
 $cpGreenOnly = $cpDone.Replace('케이스 `t.ps1` (RED)', '케이스 `t.ps1` (GREEN — 회귀)')
 $ev = New-EvidenceRepo @($cpNoRed)
 $r = Invoke-CheckEvidence $cpGreenOnly $ev.dir $ev.base

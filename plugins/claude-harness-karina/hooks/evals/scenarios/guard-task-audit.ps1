@@ -257,6 +257,18 @@ try {
 
     Reset-TaRepo
     $teBase = (& git -C $taRoot rev-parse HEAD 2>$null)
+    ($tePlanText -replace '(?m)^> BASE: .*$', ('> BASE: ' + $teBase)) | Set-Content -LiteralPath $tePlan -Encoding UTF8 -NoNewline
+    $teParen = $teOk + "`n" + 'GREEN: bot_tools_model 8 통과' + "`n" + 'RED(구현 전): 미확인 — 케이스와 구현을 한 번에 씀' + "`n" + '화면: HEAD 참 — t1.png' + "`n" + 'Acceptance: 케이스 통과 — 참'
+    $r = Invoke-TaCase ('git commit -F - <<''EOF''' + "`n" + $taTitle + "`n`n" + $teParen + "`nEOF")
+    Assert-Case -Name 'task-evidence: -F - heredoc 의 「RED(구현 전): 미확인 — 사유」 줄이면 차단하지 않는다 (TE-redparen)' -R $r -ExpectExit 0 -ExpectNotContains 'RED 줄'
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + '- RED(구현 전): 미확인. 케이스를 구현과 같은 차례에 썼다.' + "`n" + '- 화면: HEAD 참 — t1.png'))
+    Assert-Case -Name 'task-evidence: 불릿 「- RED(구현 전): 미확인.」 줄이면 차단하지 않는다 (TE-redparen-dot)' -R $r -ExpectExit 0 -ExpectNotContains 'RED 줄'
+    & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m $taTitle -m $teParen 2>$null
+    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '; $teCpCode = $LASTEXITCODE
+    Assert-Case -Name 'task-evidence: 같은 이력을 check-plan -Base 도 RED 위반 대신 red-unverified note 로 낸다 (사본 정합)' -R @{ code = $teCpCode; out = "cp=$teCp" } -ExpectExit 1 -ExpectContains 'red-unverified T1' -ExpectNotContains 'no-red-evidence'
+
+    Reset-TaRepo
+    $teBase = (& git -C $taRoot rev-parse HEAD 2>$null)
     @('# plan', '', '## Goal', '', ('> BASE: ' + $teBase), '', '## 작업 단계', '', '### T1. 항목', '',
       '- [x] **T1-1** 항목을 더한다', '- **Files**: `src/lib.rs`', '- **화면**: 시나리오 열기 · 스크린샷 t1.png · 통과 조건 보인다', '',
       '### T2. 문서', '', '- [x] **T2-1** 문서', '- **Files**: `README.md` — `[면제 ①]` 문서') | Set-Content -LiteralPath $tePlan -Encoding UTF8
