@@ -278,11 +278,23 @@ try {
     Assert-Case -Name 'task-evidence: 검증 스킬 레포의 시도 칸 없는 미촬영은 경고 (TE-attempt)' -R $r -ExpectExit 0 -ExpectContains '시도 칸 없음'
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teUnshot + ' · 시도 karina-computer-use'))
     Assert-Case -Name 'task-evidence: 시도 칸이 있으면 경고 없음 (TE-attempt-ok)' -R $r -ExpectExit 0 -ExpectSilent $true
+    foreach ($teEmpty in @('없음', '—', '-', '없음 — 도구 막힘', '없음(이 커밋 뒤 바로 재실행)')) {
+        $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teUnshot + ' · 시도 ' + $teEmpty))
+        Assert-Case -Name "task-evidence: 시도 칸 값이 「$teEmpty」 면 시도 없음으로 경고 (TE-attempt-empty)" -R $r -ExpectExit 0 -ExpectContains '시도 칸 없음'
+    }
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teUnshot + ' · 시도 -NoProfile 재기동'))
+    Assert-Case -Name 'task-evidence: - 로 시작하는 실제 시도 값은 경고 없음 (TE-attempt-dashval)' -R $r -ExpectExit 0 -ExpectSilent $true
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teUnshot + ' · 시도 image-diff 재촬영'))
+    Assert-Case -Name 'task-evidence: 시도 칸에 수단이 있으면 경고 없음 (TE-attempt-means)' -R $r -ExpectExit 0 -ExpectSilent $true
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + '화면: 미촬영(HUMAN-VERIFY) · 사유 기준선 흔들림 12 px bbox 1,2,3,4'))
     Assert-Case -Name 'task-evidence: 기준선 흔들림 사유는 시도 칸 없이 경고 없음 (TE-attempt-base)' -R $r -ExpectExit 0 -ExpectSilent $true
     & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m $taTitle -m $teUnshot 2>$null
     $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '; $teCpCode = $LASTEXITCODE
     Assert-Case -Name 'task-evidence: 같은 본문을 check-plan -Base 도 screen-unshot-attempt 로 낸다 (사본 정합)' -R @{ code = $teCpCode; out = "cp=$teCp" } -ExpectExit 1 -ExpectContains 'screen-unshot-attempt T1'
+    & git -C $taRoot reset -q --soft $teBase 2>$null
+    & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m $taTitle -m ($teUnshot + ' · 시도 없음(이 커밋 뒤 바로 재실행)') 2>$null
+    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '; $teCpCode = $LASTEXITCODE
+    Assert-Case -Name 'task-evidence: 「시도 없음(…)」 본문을 check-plan -Base 도 screen-unshot-attempt 로 낸다 (사본 정합)' -R @{ code = $teCpCode; out = "cp=$teCp" } -ExpectExit 1 -ExpectContains 'screen-unshot-attempt T1'
     ('# AGENTS.md' + $nl + $taRule + $nl) | Set-Content (Join-Path $taRoot 'AGENTS.md')
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teUnshot)
     Assert-Case -Name 'task-evidence: Verify 줄이 없는 레포는 시도 칸 없어도 경고 없음 (TE-attempt-off)' -R $r -ExpectExit 0 -ExpectNotContains '시도 칸 없음'

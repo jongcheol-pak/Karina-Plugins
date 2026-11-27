@@ -215,9 +215,9 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
     if ($hasScreen -and $verifyOn -and -not [regex]::IsMatch($text, $lineHead + '화면:\s*HEAD\s*참')) {
         $tails = @([regex]::Matches($text, $lineHead + '화면:\s*미촬영\(HUMAN-VERIFY\)(.*)$') | ForEach-Object { $_.Groups[1].Value })
         $withReason = @($tails | Where-Object { $_ -match '·\s*사유\s+\S' })
-        $attempted = @($withReason | Where-Object { $_ -match '·\s*시도\s+\S' -or $_ -match '·\s*사유\s+(?:기준선 흔들림|image-diff:\s*ERROR)' })
+        $attempted = @($withReason | Where-Object { $_ -match '·\s*시도\s+(?!없음|[—-]\s*(?:$|[·(]))\S' -or $_ -match '·\s*사유\s+(?:기준선 흔들림|image-diff:\s*ERROR)' })
         if ($withReason.Count -and -not $attempted.Count) {
-            $out += "  - 미촬영 줄에 시도 칸 없음 — 검증 스킬이 있는 레포다. 범용 도구·보강을 시도한 수단을 ``· 시도 <…>`` 칸으로 단다(사유가 기준선 흔들림·image-diff: ERROR 면 면제 · skills/implement/references/screen-scenarios.md)"
+            $out += "  - 미촬영 줄에 시도 칸 없음 — 검증 스킬이 있는 레포다. 범용 도구·보강을 시도한 수단을 ``· 시도 <…>`` 칸으로 단다 — 값이 없음·—·- 면 빈 칸이다(사유가 기준선 흔들림·image-diff: ERROR 면 면제 · skills/implement/references/screen-scenarios.md)"
         }
     }
     return $out

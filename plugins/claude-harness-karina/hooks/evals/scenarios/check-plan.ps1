@@ -558,6 +558,18 @@ $ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY) · 사유 La
 Set-EvidenceAgents $ev.dir $cpVerifyOn
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
 Assert-Case -Name "check-plan 증거: 검증 스킬이 있는 레포의 시도 칸 없는 미촬영은 잡는다 (CP-attempt)" -R $r -ExpectExit 1 -ExpectContains 'screen-unshot-attempt T1'
+foreach ($cpEmpty in @('없음', '—', '-', '없음 — 도구 막힘', '없음(이 커밋 뒤 바로 재실행)')) {
+    $ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY) · 사유 회차 끝 재실행에 묶어 · 시도 " + $cpEmpty)
+    Set-EvidenceAgents $ev.dir $cpVerifyOn
+    $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+    Assert-Case -Name "check-plan 증거: 시도 칸 값이 「$cpEmpty」 면 시도 없음으로 잡는다 (CP-attempt-empty)" -R $r -ExpectExit 1 -ExpectContains 'screen-unshot-attempt T1'
+}
+foreach ($cpMeans in @('-NoProfile 재기동', 'image-diff 재촬영')) {
+    $ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY) · 사유 Launch 가 세 번 실패 · 시도 " + $cpMeans)
+    Set-EvidenceAgents $ev.dir $cpVerifyOn
+    $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base
+    Assert-Case -Name "check-plan 증거: 시도 칸 값 「$cpMeans」 은 시도로 받아 note 로 낸다 (CP-attempt-means)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: note screen-unshot-reason T1'
+}
 $ev = New-EvidenceRepo @($cpOk + "`n화면: 미촬영(HUMAN-VERIFY) · 사유 Launch ERROR 창 없음" + $cpScrTail)
 Set-EvidenceAgents $ev.dir $cpVerifyOn
 $r = Invoke-CheckEvidence $cpScrDone $ev.dir $ev.base

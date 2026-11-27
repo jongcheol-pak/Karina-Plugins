@@ -83,7 +83,7 @@
 #   screen-unshot T<N>           판정이 미촬영뿐이고 AGENTS.md(위 Plan check 와 같은 탐색)의 「- **Verify (앱 조작)**:」 값이
 #                                「없음」 이 아님 — 미촬영 줄에 「· 사유 <…> · 시도 <…>」 칸이 있으면 위반 대신 note screen-unshot-reason T<N>
 #                                (Verify 줄이 없거나 AGENTS.md 가 없으면 검증 스킬 없음 — 미촬영 통과)
-#   screen-unshot-attempt T<N>   위 screen-unshot 에서 사유 칸은 있는데 「· 시도 <…>」 칸이 없음 — 사유가 「기준선 흔들림」·
+#   screen-unshot-attempt T<N>   위 screen-unshot 에서 사유 칸은 있는데 「· 시도 <…>」 칸이 없음(값이 「없음…」·「—」·「-」 뿐이면 없음) — 사유가 「기준선 흔들림」·
 #                                「image-diff: ERROR」 로 시작하면(조작은 성공) 시도 칸 없이 note
 #                                (판정 사본: scripts/guard-task-audit.ps1 Get-TaskEvidenceLines)
 #   acceptance-evidence·no-red-evidence·no-screen-verdict 판정의 사본이 scripts/guard-task-audit.ps1 의 Get-TaskEvidenceLines 에 있다 —
@@ -256,7 +256,7 @@ if ($Base) {
     $screenFalseRx = $screenHead + 'HEAD\s*' + (Get-Text @(0xAC70, 0xC9D3))    # 거짓
     $unshotRx = $screenHead + (Get-Text @(0xBBF8, 0xCD2C, 0xC601)) + '\(HUMAN-VERIFY\)(.*)$'    # 미촬영(HUMAN-VERIFY)
     $reasonRx = [char]0xB7 + '\s*' + (Get-Text @(0xC0AC, 0xC720)) + '\s+\S'    # · 사유 <…>
-    $attemptRx = [char]0xB7 + '\s*' + (Get-Text @(0xC2DC, 0xB3C4)) + '\s+\S'    # · 시도 <…>
+    $attemptRx = [char]0xB7 + '\s*' + (Get-Text @(0xC2DC, 0xB3C4)) + '\s+(?!' + (Get-Text @(0xC5C6, 0xC74C)) + '|[' + [char]0x2014 + '-]\s*(?:$|[' + [char]0xB7 + '(]))\S'    # · 시도 <…> — 없음·—·- 는 빈 값
     $attemptFreeRx = [char]0xB7 + '\s*' + (Get-Text @(0xC0AC, 0xC720)) + '\s+(?:' + (Get-Text @(0xAE30, 0xC900, 0xC120, 0x20, 0xD754, 0xB4E4, 0xB9BC)) + '|image-diff:\s*ERROR)'    # · 사유 기준선 흔들림 | image-diff: ERROR
     $verifySkill = Test-VerifySkill (Get-AgentsFile (Resolve-Path -LiteralPath $PlanPath).Path)
     $versionRx = '^\s*' + (Get-Text @(0xC124, 0xC815)) + '\s*:\s*v(\d+\.\d+\.\d+)\s*' + [char]0x2014    # 설정: v<버전> —
