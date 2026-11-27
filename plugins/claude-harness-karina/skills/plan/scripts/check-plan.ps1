@@ -165,6 +165,7 @@ foreach ($l in $lines) {
     }
 }
 # 접두 비교는 서수로 한다 — 문화권 비교는 .NET Framework(PS 5.1)와 .NET(7)에서 한글 결과가 갈릴 수 있다.
+function Test-RootedCell([string]$Cell) { return $Cell.IndexOfAny([System.IO.Path]::GetInvalidPathChars()) -lt 0 -and [System.IO.Path]::IsPathRooted($Cell) }
 function Test-Prefix([string]$Text, [string]$Prefix) { return $Text.StartsWith($Prefix, [System.StringComparison]::Ordinal) }
 function Find-Section([string]$Title) { foreach ($s in $sections) { if ($s.Title -eq $Title) { return $s } }; return $null }
 function Get-ProseLines($Section) { if ($Section) { return @($Section.Body | Where-Object { -not $_.Code }) }; return @() }
@@ -502,7 +503,7 @@ if (Find-Section $tasksTitle) {
             if ($cut -ge 0) { $head = $head.Substring(0, $cut) }
             $paths = @([regex]::Matches($head, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value })
             $inside = @($paths | Where-Object {
-                -not $_.StartsWith('~') -and (-not [System.IO.Path]::IsPathRooted($_) -or
+                -not $_.StartsWith('~') -and (-not (Test-RootedCell $_) -or
                 ($_.Replace('\', '/') + '/').StartsWith($planTop, [System.StringComparison]::OrdinalIgnoreCase))
             })
             if ($paths.Count -and -not $inside.Count -and -not @($b.Lines | Where-Object { $_.Text.Contains('--allow-empty') }).Count) {
@@ -625,7 +626,7 @@ if (Find-Section $tasksTitle) {
                 if ($cut -ge 0) { $head = $head.Substring(0, $cut) }
                 $paths = @([regex]::Matches($head, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value })
                 if (@($paths | Where-Object {
-                    $_.StartsWith('~') -or ($planTop -and [System.IO.Path]::IsPathRooted($_) -and
+                    $_.StartsWith('~') -or ($planTop -and (Test-RootedCell $_) -and
                     -not ($_.Replace('\', '/') + '/').StartsWith($planTop, [System.StringComparison]::OrdinalIgnoreCase))
                 }).Count) { Add-Problem $group.N ('parallel-task ' + $tag + ' outside') }
                 foreach ($p in $paths) {

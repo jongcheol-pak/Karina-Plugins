@@ -629,6 +629,19 @@ $r = Invoke-CheckPlan ($cpBase.Replace($cpFilesLine, '- **Files**: `~/.claude/CL
 Assert-Case -Name "check-plan: ~ 로 시작하는 홈 경로만인 Files 도 레포 밖이라 outside-evidence" -R $r -ExpectExit 1 -ExpectContains 'outside-evidence T1'
 $r = Invoke-CheckPlan $cpOutsideOnly
 Assert-Case -Name "check-plan: git 밖 plan 은 outside-evidence 를 재지 않는다" -R $r -ExpectExit 0 -ExpectNotContains 'outside-evidence'
+$cpAngle = $cpBase.Replace($cpFilesLine, '- **Files**: `<봇 홈>\.karina\bot-tools.json` [면제 ① — 문서]')
+$cpElse = $cpBase.Replace($cpFilesLine, '- **Files**: `C:\elsewhere\a.rs` [면제 ① — 다른 레포]')
+if ($cpWinPs) {
+    $r = Invoke-CheckPlan $cpAngle $cpOutRepo $cpWinPs.Source
+    Assert-Case -Name "check-plan: PS 5.1 에서 <…> 가 든 Files 칸은 예외 없이 레포 안으로 읽는다 (CP-ps51-angle)" -R $r -ExpectExit 0 -ExpectNotContains 'Exception'
+    Assert-Case -Name "check-plan: PS 5.1 의 <…> Files 칸은 outside-evidence 가 아니다 (CP-ps51-angle-inside)" -R $r -ExpectExit 0 -ExpectNotContains 'outside-evidence'
+    $r = Invoke-CheckPlan $cpElse $cpOutRepo $cpWinPs.Source
+    Assert-Case -Name "check-plan: PS 5.1 에서도 레포 밖 절대 경로는 outside-evidence (CP-ps51-outside)" -R $r -ExpectExit 1 -ExpectContains 'outside-evidence T1'
+} else {
+    Assert-Case -Name "check-plan: PS 5.1 에서 <…> 가 든 Files 칸은 예외 없이 레포 안으로 읽는다 (CP-ps51-angle)" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectNotContains 'Exception'
+    Assert-Case -Name "check-plan: PS 5.1 의 <…> Files 칸은 outside-evidence 가 아니다 (CP-ps51-angle-inside)" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectNotContains 'outside-evidence'
+    Assert-Case -Name "check-plan: PS 5.1 에서도 레포 밖 절대 경로는 outside-evidence (CP-ps51-outside)" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 1 -ExpectContains 'outside-evidence T1'
+}
 }
 
 if (Test-ScenarioUnit 2) {
@@ -663,6 +676,13 @@ New-Item -ItemType Directory -Path $cpGrRepo -Force | Out-Null
 & git -C $cpGrRepo init -q 2>$null
 $r = Invoke-CheckPlan (New-GroupPlan 'T1·T2' @($cpGf[0], '`C:\zz-outside\x.ps1` [면제 ① — 다른 레포]') @{ 2 = '- [ ] **T2-2** 증거 커밋 `git commit --allow-empty`' }) $cpGrRepo
 Assert-Case -Name "check-plan 병렬: 레포 밖 Files task 는 parallel-task outside" -R $r -ExpectExit 1 -ExpectContains 'parallel-task T2 outside'
+$cpGrAngle = New-GroupPlan 'T1·T2' @($cpGf[0], '`<봇 홈>\.karina\bot-tools.json` · 케이스 `tb.ps1` (RED)')
+if ($cpWinPs) {
+    $r = Invoke-CheckPlan $cpGrAngle $cpGrRepo $cpWinPs.Source
+    Assert-Case -Name "check-plan 병렬: PS 5.1 에서 <…> Files 칸은 예외도 parallel-task outside 도 내지 않는다 (CP-ps51-group)" -R $r -ExpectExit 0 -ExpectNotContains 'Exception'
+} else {
+    Assert-Case -Name "check-plan 병렬: PS 5.1 에서 <…> Files 칸은 예외도 parallel-task outside 도 내지 않는다 (CP-ps51-group)" -R @{ code = 99; out = 'powershell.exe not found' } -ExpectExit 0 -ExpectNotContains 'Exception'
+}
 $r = Invoke-CheckPlan (New-GroupPlan 'T1·T2 | T3·T4' $cpGf)
 Assert-Case -Name "check-plan 병렬: 조건이 맞는 그룹 둘은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'parallel-'
 $r = Invoke-CheckPlan (New-GroupPlan '' $cpGf)
