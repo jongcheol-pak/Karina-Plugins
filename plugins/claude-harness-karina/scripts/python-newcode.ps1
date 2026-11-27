@@ -207,8 +207,9 @@ function Get-ShellNewCodeWrites([string]$Cmd, [string]$HeredocRx) {
                 foreach ($e in $exprs) {
                     $s = [regex]::Match($e, $script:SedAddrRx + 's(?<d>[^\w\s\\])(?<p>(?:\\.|(?!\k<d>).)*)\k<d>(?<r>(?:\\.|(?!\k<d>).)*)\k<d>')
                     if ($s.Success) {
-                        $repl = ConvertFrom-ShellEscapes $s.Groups['r'].Value
-                        $found.Add(@{ Target = $f; Lines = @($repl -split '\r?\n'); Known = @((ConvertFrom-ShellEscapes $s.Groups['p'].Value) -split '\r?\n'); CommentOnly = -not $repl.Contains("`n") })
+                        $repl = ConvertFrom-ShellEscapes ($s.Groups['r'].Value -replace '(?<!\\)\\[0-9]|(?<!\\)&', '')
+                        $pat = $s.Groups['p'].Value -replace '^\^|(?<!\\)\$$', '' -replace '\\?\((?:\\s|\[ \\t\])[*+]\\?\)', ''
+                        $found.Add(@{ Target = $f; Lines = @($repl -split '\r?\n'); Known = @((ConvertFrom-ShellEscapes $pat) -split '\r?\n'); CommentOnly = -not $repl.Contains("`n") })
                         continue
                     }
                     $am = [regex]::Match($e, $script:SedAddrRx + '[aic](?:\\\s*|\s+)(?<t>[\s\S]+)$')

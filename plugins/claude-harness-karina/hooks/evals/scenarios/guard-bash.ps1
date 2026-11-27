@@ -587,6 +587,17 @@ $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i '419s| origin_url: None,
 Assert-Case -Name "셸 새 코드 (음성): sed 한 줄 값 치환은 통과 (SN-sed-value)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "sed -i '140s| origin_url: None,| origin_url: remote\n    .github_slug\n    .map(f),|' src/refresh.rs")
 Assert-Case -Name "셸 새 코드 (음성): 같은 이름 필드의 값을 다줄로 바꾸는 sed 는 통과 (SN-sed-samefield)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'sed -i -E ''s/^(\s*)wide: (false|true),$/\1wide: \2,\n\1menu: None,/'' src/a.rs')
+Assert-Case -Name "셸 새 코드: sed 역참조 \1 뒤 \n 으로 새 필드 줄 → 차단 (SN-sed-backref)" -R $r -ExpectExit 2 -ExpectContains $snMsg
+Assert-Case -Name "셸 새 코드: 역참조 차단 사유 줄이 새 필드 줄을 가리킨다 (SN-sed-backref-line)" -R $r -ExpectExit 2 -ExpectContains 'menu: None,'
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'sed -i -E ''s/^(\s*)wide: false,$/\1wide: true,/'' src/a.rs')
+Assert-Case -Name "셸 새 코드 (음성): 줄바꿈 없는 역참조 값 치환은 통과 (SN-sed-backref-value)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'sed -i -E ''s/^(\s*)wide: (false|true),$/\1wide: \2,\n\1wide: \2,/'' src/a.rs')
+Assert-Case -Name "셸 새 코드 (음성): 같은 이름 필드 줄을 역참조로 되쓰는 sed 는 통과 (SN-sed-backref-same)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'sed -i ''s/^foo: x$/foo: y\nfoo: z/'' src/a.rs')
+Assert-Case -Name "셸 새 코드 (음성): 앵커 달린 패턴의 같은 이름 줄은 기존 항목이라 통과 (SN-sed-anchor 오탐 수정)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
+$r = Invoke-Hook 'guard-bash.ps1' (New-BashJson 'sed -i ''s/^mod a;$/&\nmod b;/'' src/a.rs')
+Assert-Case -Name "셸 새 코드: & 로 매치를 되쓴 뒤 \n 으로 새 선언 줄 → 차단 (SN-sed-amp)" -R $r -ExpectExit 2 -ExpectContains 'mod b;'
 $r = Invoke-Hook 'guard-bash.ps1' (New-BashJson "printf -- '- a\n- b\n' >> docs/x.md")
 Assert-Case -Name "셸 새 코드 (음성): 대상 확장자 밖(.md) printf 는 통과 (SN-printf-md)" -R $r -ExpectExit 0 -ExpectNotContains $snMsg
 $snCls = "`npublic class Probe { static void Main() { } }`nX"
