@@ -11,7 +11,7 @@ description: >-
   commands for ordinary shell work that needs no coordination state. Use
   karina-workspace for a one-shot handoff that needs no task tracking (spawn
   an agent in a worktree, then read or wait on its terminal).
-version: 1.6.0
+version: 1.7.0
 ---
 
 # Inter-Agent Orchestration (Windows)
