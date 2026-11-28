@@ -500,6 +500,15 @@ function Invoke-WarnScreenVerifier {
         if ($hit) { break }
     }
     if (-not $hit) { return New-HookResult }
+    $seen = Join-Path $userHome ('.claude/.state/screen-verifier-warn/' + ($sid -replace '[^A-Za-z0-9._-]', '_'))
+    if (Test-Path -LiteralPath $seen) {
+        $msg = '[SCREEN VERIFIER WARNING] (이 세션 반복 — 전문은 첫 경고) 검증 스킬 스크립트 직접 실행 — karina:screen-verifier 에 맡깁니다'
+        return New-HookResult -Block $false -Stderr @($msg) -Context $msg
+    }
+    try {
+        New-Item -ItemType Directory -Path (Split-Path -Parent $seen) -Force | Out-Null
+        [System.IO.File]::WriteAllText($seen, '')
+    } catch {}
     $msg = (@(
         "[SCREEN VERIFIER WARNING] implement 루프 중 메인 세션이 Verify (앱 조작) 검증 스킬 스크립트를 직접 실행합니다 — task 루프의 화면 조작은 karina:screen-verifier 에 맡깁니다(implement 스킬 references/screen-scenarios.md 「화면 시나리오 실행」).",
         "  - 메인이 직접 띄우면 앱 출력·스크린샷이 이 세션 컨텍스트에 쌓이고, 판정이 통과 조건과 대조되지 않습니다.",

@@ -385,6 +385,8 @@ dot-source 는 다섯 남아 있다 — 커밋 시점 검사인 `guard-commit-se
 
 **한계.** AGENTS.md 는 hook 입력의 cwd 로만 찾는다 — cwd 가 그 레포 밖이면 절대 경로로 실행해도 침묵한다. 변수를 다른 도구 호출이나 `source <파일>` 로 정한 경우는 값을 모르므로 침묵한다. 앞 세그먼트의 `cd <스킬 폴더>` 뒤 상대 경로 실행은 폴더 이름이 명령에 남지 않으면 침묵한다(fail-open — 경고 전용). 마커는 implement 발동 때 서고 plan 발동 때 지워지므로, 같은 세션에서 implement 회차를 끝낸 뒤 디버깅으로 검증 스킬을 돌리면 경고가 뜬다 — 메시지가 그 경우를 「그대로 진행」 으로 안내한다.
 
+**세션당 전문 1회.** 전문은 세션 첫 경고에만 내고, 그 뒤는 `[SCREEN VERIFIER WARNING] (이 세션 반복 — 전문은 첫 경고) …` 한 줄이다. 첫 경고 때 `~/.claude/.state/screen-verifier-warn/<sid>` 마커를 쓰고, 마커가 있으면 한 줄로 낸다(마커 쓰기 실패는 다음에도 전문 — fail-open). 디버깅 재현처럼 정당하게 스크립트를 되풀이 돌리는 동안 같은 세 줄이 매번 컨텍스트에 실려, Karina 세션 5eab2c76(2026-11-28 reflect)이 같은 경고를 25회 받았다. 한 줄은 남겨 둔다 — 경고 자체를 끄면 루프 안의 직접 실행이 다시 보이지 않는다. 마커는 `session-context` 의 30일 정리 목록이 걷는다(`session-context-rationale.md` §38 · 골든 SV-first·SV-repeat·SV-other).
+
 ## §26 warn-reference-cat: 스킬 참조 문서·SKILL.md 를 셸로 통째 읽으면 Read 안내
 
 **왜 경고인가.** `plan/SKILL.md` 는 참조 문서를 목차로 보고 필요한 절만 Read 로 읽게 하고, `implement/SKILL.md` 는 루프 진입 문서를 Read 하라고 적는다. 그런데도 Karina-Mobile 세션(ee7ecb4d · 2026-11-23 reflect)이 plan·implement 진입 때 `loop-stop-patterns.md`·`loop-pacing.md` 등을 `cat` 으로 통째 읽어 출력 49KB 가 파일로 빠지고 24KB 를 Read 로 다시 읽었다 — 앞선 실측(43KB 출력 뒤 23KB 재독)에 이은 재발이다. 문면은 무엇을 읽을지를 정하지만 어긴 것은 수단이라, 수단이 쓰이는 자리에서 알린다. 짧은 문서를 `cat` 하는 것은 해가 없어 막지 않는다.

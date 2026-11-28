@@ -757,6 +757,18 @@ $r = Invoke-SvCase $bwRepo 'pwsh -NoProfile -File .claude/skills/verify-app/help
 Assert-Case -Name "screen-verifier (음성): implement 발동 마커가 없으면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
 $r = Invoke-SvCase $bwNone 'pwsh -NoProfile -File .claude/skills/verify-app/helpers/launch.ps1'
 Assert-Case -Name "screen-verifier (음성): Verify (앱 조작) 이 없음이면 경고하지 않는다" -R $r -ExpectExit 0 -ExpectNotContains $svMark
+$svLaunch = 'pwsh -NoProfile -File .claude/skills/verify-app/helpers/launch.ps1 -Fresh'
+$svBody = '앱 출력·스크린샷이 이 세션 컨텍스트에 쌓이고'
+$svSidA = 'sv-dedup-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+$svSidB = 'sv-dedup-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+foreach ($s in @($svSidA, $svSidB)) { [System.IO.File]::WriteAllText((Join-Path $svState ($s + '.active')), '') }
+$r = Invoke-SvCase $bwRepo $svLaunch $svSidA
+Assert-Case -Name "screen-verifier: 세션 첫 경고는 전문을 낸다 (SV-first)" -R $r -ExpectExit 0 -ExpectContains 'task 루프의 화면 조작은 karina:screen-verifier 에 맡깁니다('
+$r = Invoke-SvCase $bwRepo $svLaunch $svSidA
+Assert-Case -Name "screen-verifier: 같은 세션 두 번째 경고는 한 줄이다 (SV-repeat)" -R $r -ExpectExit 0 -ExpectContains '이 세션 반복'
+Assert-Case -Name "screen-verifier: 같은 세션 두 번째 경고에는 전문 둘째 줄이 없다 (SV-repeat-short)" -R $r -ExpectExit 0 -ExpectNotContains $svBody
+$r = Invoke-SvCase $bwRepo $svLaunch $svSidB
+Assert-Case -Name "screen-verifier: 다른 세션의 첫 경고는 다시 전문이다 (SV-other)" -R $r -ExpectExit 0 -ExpectContains $svBody
 $rcMark = '[REFERENCE CAT WARNING]'
 $rcRef = 'C:/Users/u/.claude/plugins/cache/karina-plugins/karina/3.56.0/skills/implement/references/loop-pacing.md'
 function Invoke-RcCase([string]$Command, [string]$Tool = 'Bash') {
