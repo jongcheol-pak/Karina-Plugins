@@ -48,7 +48,7 @@ CR(-F 파일의 CRLF 줄 끝)을 걷고 공백을 정규화한 메시지에서 �
 
 **이 검사는 파서를 호출 시점에만 부른다** — 커밋 명령의 라이브러리 로드 순서가 secrets → stale-docs → task-audit → commit-comments 라, 파일 머리에서 부르면 뒤의 `guard-commit-comments.ps1` 이 `comment-lines.ps1` 을 다시 불러 이중 로드가 된다. 검사 호출 때는 넷 다 로드된 뒤라 이미 정의돼 있다. 그래도 없으면(파일 부재·로드 실패) 경고 한 줄을 내고 통과한다(fail-open — 감사 누락은 경고 전용이다).
 
-## §7 RED·화면·Acceptance 판정 줄도 완료 커밋에서 대조한다
+## §7 RED·화면·Acceptance·원본 이탈 판정 줄도 완료 커밋에서 대조한다
 
 회차 끝 증거 대조(`check-plan.ps1 -Base`)는 `[x]` task 마다 그 커밋 본문에 RED 줄(Files 줄에 `(RED)` 가 있으면)과 화면 판정 줄(`- **화면**:` 줄이 있으면)과 Acceptance 판정 줄(항목 수만큼)이 있는지 본다. 그것이 회차 끝에만 돌아, 2026-11-20 Karina plan 11 은 비서식 화면 줄(`화면(verify-karina):`)과 판정형 task 의 RED 누락 9건을 마지막에 받고 빈 보충 커밋 5개를 남겼다. task 마다 반드시 지나는 기계 자리가 완료 커밋이라(§1) 같은 대조를 그 자리에서 낸다 — RED 줄 누락은 차단, 나머지는 비차단 경고다(§2).
 
