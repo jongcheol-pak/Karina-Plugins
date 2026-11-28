@@ -336,6 +336,11 @@ try {
     (($teOrigin | Where-Object { $_ -notlike '- **원본**:*' }) + @('- 판정: T1 원본 목록 대신 표를 썼다 — 더 단순 — 근거: 없음 — 틀리면: 재작업')) | Set-Content -LiteralPath $tePlan -Encoding UTF8
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
     Assert-Case -Name 'task-evidence: 원본 줄이 없는 task 의 「대신」 판정 줄은 재지 않는다 (TE-origin-none)' -R $r -ExpectExit 0 -ExpectSilent $true
+    ($teOrigin + @('```text', '- 판정: T1 원본 목록 대신 표를 썼다 — 더 단순 — 근거: 없음 — 틀리면: 재작업', '```')) | Set-Content -LiteralPath $tePlan -Encoding UTF8
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
+    Assert-Case -Name 'task-evidence: 코드 펜스 안의 예시 판정 줄은 재지 않는다 (TE-origin-fence)' -R $r -ExpectExit 0 -ExpectSilent $true
+    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '; $teCpCode = $LASTEXITCODE
+    Assert-Case -Name 'task-evidence: 그 plan 을 check-plan -Base 도 origin-unjustified 없이 낸다 (사본 정합 · 펜스)' -R @{ code = $teCpCode; out = "cp=$teCp" } -ExpectExit 1 -ExpectNotContains 'origin-unjustified'
 } finally {
     if (Test-Path $taRoot) { Remove-Item $taRoot -Recurse -Force -ErrorAction SilentlyContinue }
 }

@@ -175,7 +175,14 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
     $originBare = @()
     if (@($block | Where-Object { $_.StartsWith('- **원본**:') }).Count) {
         $inProg = $false
-        $prog = @(foreach ($l in $plan) { if ($l -match '^##\s') { $inProg = $l -match '^##\s+Progress Log'; continue }; if ($inProg) { [string]$l } })
+        $fence = $null
+        $prog = @(foreach ($l in $plan) {
+            $fm = [regex]::Match([string]$l, '^ {0,3}(`{3,}|~{3,})')
+            if ($fence) { if ($fm.Success -and $fm.Groups[1].Value[0] -eq $fence) { $fence = $null }; continue }
+            if ($fm.Success) { $fence = $fm.Groups[1].Value[0]; continue }
+            if ($l -match '^##\s') { $inProg = $l -match '^##\s+Progress Log'; continue }
+            if ($inProg) { [string]$l }
+        })
         $originBare = @($prog | Where-Object { $_ -match ('^- 판정(?:\([^)]*\))?:\s*T' + $TaskId + '(?:-\d+)?(?!\d)') -and $_ -match '대신|옮기지 않음' } | Where-Object {
             $basis = if ($_.Contains('— 근거:')) { ($_.Substring($_.IndexOf('— 근거:') + 5) -split '— 틀리면:', 2)[0] } else { '' }
             $basis -notmatch 'ask 답|사용자 답|→\s*\S'
