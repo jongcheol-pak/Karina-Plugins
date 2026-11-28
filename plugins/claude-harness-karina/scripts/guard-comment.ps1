@@ -15,6 +15,7 @@ function Invoke-GuardComment($Data, [string]$File) {
     if ($tempRoot -and $fullPath.StartsWith($tempRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) { return $pass }
 
     $pairs = @()
+    $newWrite = ([string]$Data.tool_name -eq 'Write') -and -not (Test-Path -LiteralPath $File -PathType Leaf)
     switch ([string]$Data.tool_name) {
         'MultiEdit' { $pairs = @($Data.tool_input.edits | ForEach-Object { , @([string]$_.old_string, [string]$_.new_string) }) }
         'Edit' { $pairs = @(, @([string]$Data.tool_input.old_string, [string]$Data.tool_input.new_string)) }
@@ -29,6 +30,12 @@ function Invoke-GuardComment($Data, [string]$File) {
     if ($added.Count -gt 0) {
         $post = Get-CommentPostImage $File $Data $added
         $blocked = Get-BlockedCommentBodies $File $added $post $budget ([bool]$script:CommentPostImageFull)
+        if ($blocked.Count -gt 0 -and $newWrite) {
+            Write-GuardCommentEvent 'warn' $File $Data
+            $lines = @("[HARNESS] COMMENT WARNING: 새 파일 Write 의 새 주석은 막지 않습니다 — $File : 주석 $($blocked.Count)줄") + @(Format-CommentGatePreview $blocked) + @($script:CommentGateRule) + @(
+                '  - 이 줄은 이 파일을 커밋할 때 커밋 게이트(guard-bash)가 막습니다 — 지금 Edit 로 그 줄만 지우고, 남길 이유는 커밋 본문에 적으세요. 파일을 다시 Write 하지 마세요.')
+            return @{ Block = $false; Warn = $true; Lines = $lines }
+        }
         if ($blocked.Count -gt 0) {
             Write-GuardCommentEvent 'block' $File $Data
             $criterion = $null

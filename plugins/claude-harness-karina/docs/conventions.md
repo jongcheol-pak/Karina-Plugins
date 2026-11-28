@@ -167,7 +167,7 @@
 
 - [2026-11-21] **`hooks/evals/hook-cases.json` 에 `guard-bash.ps1` 케이스 1개를 더하면 골든 기준선은 2 오른다 — 디스패처 경로(`dispatch=guard-bash.ps1`)로 한 번 더 돈다** — `block-destructive.ps1` 케이스와 시나리오(`scenarios/*.ps1`)의 `Assert-Case` 는 1 씩이다. 기준선 세 곳을 올릴 값은 더한 케이스 수로 짐작하지 말고 무인자 실행의 `결과: N/N` 으로 맞춘다(2026-11-20 체인 plan 3 — JSON 6 + 시나리오 3 을 더해 +11).
 
-- [2026-11-17] **새 골든 시나리오·헬퍼 `.ps1` 은 처음부터 주석 없이 쓴다 — 머리 설명·케이스 번호 주석은 주석 게이트가 막는다(Write 단계 `guard-write` · 커밋 단계 `guard-bash`)** — 같은 원인으로 두 번 막혔다: 2026-11-14 골든 시나리오의 `# 7) …` 케이스 번호 주석(커밋 단계) · 2026-11-17 `image-diff` 시나리오 머리 설명과 헬퍼의 계약 포인터 한 줄(Write 단계). 무엇을 재는지는 `Assert-Case` 이름이, 출력·종료 코드 계약은 그것을 부르는 참조 문서(`skills/implement/references/screen-scenarios.md` 등)가 말하게 한다. 규칙 정본은 `skills/implement/references/code-style.md`「주석」 의 보존 대상 불릿이다(등록된 `Comment (보존)` 경로만 통과).
+- [2026-11-17] **새 골든 시나리오·헬퍼 `.ps1` 은 처음부터 주석 없이 쓴다 — 머리 설명·케이스 번호 주석은 주석 게이트가 막는다(Edit·기존 파일 Write 단계 `guard-harness` — 새 파일 Write 는 경고만 · 커밋 단계 `guard-bash`)** — 같은 원인으로 두 번 막혔다: 2026-11-14 골든 시나리오의 `# 7) …` 케이스 번호 주석(커밋 단계) · 2026-11-17 `image-diff` 시나리오 머리 설명과 헬퍼의 계약 포인터 한 줄(Write 단계). 무엇을 재는지는 `Assert-Case` 이름이, 출력·종료 코드 계약은 그것을 부르는 참조 문서(`skills/implement/references/screen-scenarios.md` 등)가 말하게 한다. 규칙 정본은 `skills/implement/references/code-style.md`「주석」 의 보존 대상 불릿이다(등록된 `Comment (보존)` 경로만 통과).
 
 - [2026-11-17] **PowerShell 에서 `Add-Type` C# 메서드의 `string` 인자에 `$null` 을 넘기면 `null` 이 아니라 빈 문자열 `""` 이 간다 — C# 쪽은 `== null` 대신 `string.IsNullOrEmpty` 로 가른다** — `image-diff.ps1` 이 「저장 경로 없음」 을 `$null` 로 넘겼다가 C# 이 `""` 를 경로로 받아 `Bitmap.Save("")` 가 `A generic error occurred in GDI+.` 로 죽었고, 그 예외가 스크립트 밖으로 새 exit 0 이 났다(골든 5/10 FAIL 실측). 메서드 호출을 `try`/`catch` 로 감싸 오류 종료 코드로 바꾸는 것도 같이 한다.
 
@@ -346,7 +346,7 @@
 
 ## 코드 주석·docstring 을 쓰거나 고칠 때
 
-- [2026-11-26] **새 스크립트를 만들 때 그 rationale 문서를 먼저 쓴다 — 스크립트 머리의 포인터 주석(`— 근거는 `rules/<새 문서>.md` §N`)은 그 `.md` 가 디스크에 있어야 주석 게이트의 「실재하는 `.md` 경로」 예외를 받는다.** 순서를 거꾸로 하면 첫 Write·Edit 가 새 주석으로 막힌다(v3.13.0 T3 — `guard-doc-owner.ps1`·`guard-harness.ps1` 편집이 같은 이유로 둘 다 막힘). (실측)
+- [2026-11-26] **새 스크립트를 만들 때 그 rationale 문서를 먼저 쓴다 — 스크립트 머리의 포인터 주석(`— 근거는 `rules/<새 문서>.md` §N`)은 그 `.md` 가 디스크에 있어야 주석 게이트의 「실재하는 `.md` 경로」 예외를 받는다.** 순서를 거꾸로 하면 첫 Edit·기존 파일 Write 가 새 주석으로 막힌다(새 파일 Write 는 경고 뒤 커밋에서 막힌다)(v3.13.0 T3 — `guard-doc-owner.ps1`·`guard-harness.ps1` 편집이 같은 이유로 둘 다 막힘). (실측)
 
 - [2026-11-06] **함수·상수를 새로 쓰거나 고칠 때 그 자리의 docstring·주석을 「새 동작에 맞게 갱신」하지 말고 먼저 `skills/implement/references/code-style.md`「주석」 의 예외·보존 대상에 드는지 가른다 — 들지 않으면 지우고 이유는 커밋 본문에 쓴다** — 코드를 되풀이하는 새 docstring 과, 예외 밖 hunk 주석을 문구만 고쳐 남긴 것이 회차 끝 주석 정리(comment-reviewer)에서 두 회차 연속 작성 위반으로 지워졌다. 보존 대상은 하니스 `AGENTS.md` 「Comment (보존)」 경로와 문서가 정본으로 지정한 머리 주석·docstring 뿐이다 (실측)
 

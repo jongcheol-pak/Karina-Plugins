@@ -2,6 +2,10 @@
 
 > 이 레포의 결정 이력(보류·기각·번복) — 규약은 karina 하니스 `skills/REPO-DECISIONS.md`. 최신이 위. 옛 이력은 `docs/decisions-archive.md`.
 
+- [2026-11-28] Karina reflect 5eab2c76 하니스 수정 5건(v3.72.0 — 채택 4) — 번복: 새 주석 편집 게이트의 새 파일 Write 첫 시도 차단(2026-11-03) → 경고로 내리고 커밋 게이트가 막는다. 막힌 새 파일을 모델이 통째 다시 써 차단 4회·재작성 4회(사용자 답 「새 파일 Write 만 경고」 — 기존 파일 Write·Edit 는 차단 유지)
+  - 범위 밖: screen-verifier tools 에 Monitor 추가 — 요구의 다른 안 「상한 있는 Bash until 루프」 가 3.71.1(aa933476)에 이미 있다 · 다른 hook 경고의 세션 디듑 — 요구가 screen-verifier 경고만 지목했다
+  - 기각: 원본 이탈 판정 근거 없음을 완료 커밋에서 차단하는 안 — 비안전 차단 신설은 사용자 지시가 필요해 경고 사본으로 둔다
+
 - [2026-11-27] Karina plan 10 reflect e4e7d516 하니스 수정 7건(v3.71.1 — 채택 7) — 기각: RED 미확인 사본 불일치를 hook 쪽(괄호형 미확인 차단)으로 맞추는 안 — 뜻이 `RED: 미확인 — 사유` 와 같아 형식만으로 커밋을 세운다 → check-plan 미확인 정규식을 넓힘 · `make` 오탐을 따옴표 인자 통째 제거로 푸는 안 — `bash -c 'make build'` 같은 정상 제안을 지운다 → 명령 자리에서만
   - 보류: `perl -pi` 등 sed 밖 명령의 새 줄 삽입 차단 — `block-python-newcode` 판정 가족 밖이라 비안전 차단 신설이고 사용자 지시가 필요하다
 

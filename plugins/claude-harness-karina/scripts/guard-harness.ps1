@@ -108,6 +108,9 @@ if (Get-Command Invoke-GuardComment -ErrorAction SilentlyContinue) {
         exit 2
     }
     if ($gcResult) { foreach ($l in $gcResult.Lines) { [Console]::Error.WriteLine($l) } }
+    if ($gcResult -and $gcResult.Warn) {
+        try { [Console]::Out.WriteLine((@{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; additionalContext = (@($gcResult.Lines) -join "`n") } } | ConvertTo-Json -Compress -Depth 5)) } catch {}
+    }
 } else {
     [Console]::Error.WriteLine('guard-harness: guard-comment.ps1 로드 실패 — 새 주석 검사 미수행(fail-open). 플러그인 재설치를 권장합니다.')
 }

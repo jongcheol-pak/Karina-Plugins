@@ -92,8 +92,18 @@ Assert-Case -Name "guard-comment: 블록 밖 * 시작 줄은 주석이 아니다
 $r = Invoke-GcEdit 'code.rs' 'let x = 1;' "let x = 1;`nlet y = 2;"
 Assert-Case -Name "guard-comment: 주석 없는 편집은 통과" -R $r -ExpectExit 0 -ExpectSilent $true
 
-$r = Invoke-GcWrite (Join-Path $gc 'new.py') "# 설명`nx = 1"
-Assert-Case -Name "guard-comment: 새 파일 Write 는 파일 전체의 주석을 센다" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+$gcWarn = '[HARNESS] COMMENT WARNING'
+$r = Invoke-GcWrite (Join-Path $gc 'new.py') "# 설명`nx = 1" 'gc-newwrite'
+Assert-Case -Name "guard-comment: 새 파일 Write 의 새 주석은 막지 않고 경고한다 (GC-newwrite)" -R $r -ExpectExit 0 -ExpectContains $gcWarn
+Assert-Case -Name "guard-comment: 새 파일 Write 경고는 파일 전체의 주석을 센다 (GC-newwrite-count)" -R $r -ExpectExit 0 -ExpectContains '주석 1줄'
+Assert-Case -Name "guard-comment: 새 파일 Write 경고는 걸린 줄을 미리 보인다 (GC-newwrite-preview)" -R $r -ExpectExit 0 -ExpectContains '# 설명'
+Assert-Case -Name "guard-comment: 새 파일 Write 경고는 커밋 게이트가 막는다고 안내한다 (GC-newwrite-commit)" -R $r -ExpectExit 0 -ExpectContains '커밋 게이트'
+Assert-Case -Name "guard-comment: 새 파일 Write 경고는 additionalContext 로도 낸다 (GC-newwrite-context)" -R $r -ExpectExit 0 -ExpectContains '"additionalContext"'
+$gcEvents = Join-Path $env:USERPROFILE ('.claude/.state/hook-events/' + (Get-Date).ToString('yyyy-MM') + '.jsonl')
+$gcWarnRows = @(if (Test-Path -LiteralPath $gcEvents) { Get-Content -LiteralPath $gcEvents | Where-Object { $_.Contains('"hook":"guard-comment"') -and $_.Contains('"session_id":"gc-newwrite"') } })
+Assert-Case -Name "guard-comment: 새 파일 Write 경고는 hook-events 에 warn 으로 남는다 (GC-newwrite-event)" -R @{ code = 0; out = ('rows=' + $gcWarnRows.Count + ' ' + ($gcWarnRows -join ' ')) } -ExpectExit 0 -ExpectContains '"decision":"warn"' -ExpectNotContains '"decision":"block"'
+$r = Invoke-GcEdit 'absent.py' 'x = 1' "# 설명`nx = 1"
+Assert-Case -Name "guard-comment: 디스크에 없는 파일의 Edit 는 그대로 차단한다 (GC-newedit)" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 $gcExisting = Join-Path $gc 'existing.go'
 [System.IO.File]::WriteAllText($gcExisting, "// 기존 설명`nvar a = 1", [System.Text.UTF8Encoding]::new($false))
 $r = Invoke-GcWrite $gcExisting "// 기존 설명`n// 새 설명`nvar a = 1"
@@ -604,23 +614,23 @@ Assert-Case -Name "guard-comment: .ps1 작은따옴표 here-string 안의 # 줄�
 $r = Invoke-GcWrite (Join-Path $gc 'fx_here2.ps1') "`$t = @`"`n# 안쪽 줄`n`"@`n`$a = 1"
 Assert-Case -Name "guard-comment: .ps1 큰따옴표 here-string 안의 # 줄은 통과" -R $r -ExpectExit 0 -ExpectNotContains 'BLOCKED'
 $r = Invoke-GcWrite (Join-Path $gc 'fx_closed.py') "Y = $gcQ`njobs:`n$gcQ`n# 닫힌 뒤 주석`nx = 1"
-Assert-Case -Name "guard-comment: .py 문자열이 닫힌 뒤의 # 주석은 차단" -R $r -ExpectExit 2 -ExpectContains '주석 1줄'
+Assert-Case -Name "guard-comment: .py 문자열이 닫힌 뒤의 # 주석은 경고" -R $r -ExpectExit 0 -ExpectContains '주석 1줄'
 $r = Invoke-GcWrite (Join-Path $gc 'fx_one.py') "Y = ${gcQ}x$gcQ`n# 다음 줄 주석`nx = 1"
-Assert-Case -Name "guard-comment: .py 한 줄에서 열고 닫은 삼중 따옴표 다음 줄의 # 주석은 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+Assert-Case -Name "guard-comment: .py 한 줄에서 열고 닫은 삼중 따옴표 다음 줄의 # 주석은 경고" -R $r -ExpectExit 0 -ExpectContains $gcWarn
 $r = Invoke-GcWrite (Join-Path $gc 'fx_cmt.py') "# 예: $gcQ`n# 다음 줄 주석`nx = 1"
-Assert-Case -Name "guard-comment: .py 주석 안의 삼중 따옴표는 문자열을 열지 않는다" -R $r -ExpectExit 2 -ExpectContains '주석 2줄'
+Assert-Case -Name "guard-comment: .py 주석 안의 삼중 따옴표는 문자열을 열지 않는다" -R $r -ExpectExit 0 -ExpectContains '주석 2줄'
 $r = Invoke-GcWrite (Join-Path $gc 'fx_sl.py') "Y = '$gcQ'`n# 다음 줄 주석`nx = 1"
-Assert-Case -Name "guard-comment: .py 한 줄 문자열 안의 삼중 따옴표는 문자열을 열지 않는다" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+Assert-Case -Name "guard-comment: .py 한 줄 문자열 안의 삼중 따옴표는 문자열을 열지 않는다" -R $r -ExpectExit 0 -ExpectContains $gcWarn
 $r = Invoke-GcWrite (Join-Path $gc 'fx_split.ps1') "`$p = `$s -split `"@`"`n# 다음 줄 주석`n`$a = 1"
-Assert-Case -Name "guard-comment: .ps1 의 -split `"@`" 는 here-string 을 열지 않는다" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+Assert-Case -Name "guard-comment: .ps1 의 -split `"@`" 는 here-string 을 열지 않는다" -R $r -ExpectExit 0 -ExpectContains $gcWarn
 $r = Invoke-GcWrite (Join-Path $gc 'fx_user.ps1') "`$u = 'user@'`n# 다음 줄 주석`n`$a = 1"
-Assert-Case -Name "guard-comment: .ps1 의 'user@' 는 here-string 을 열지 않는다" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+Assert-Case -Name "guard-comment: .ps1 의 'user@' 는 here-string 을 열지 않는다" -R $r -ExpectExit 0 -ExpectContains $gcWarn
 $r = Invoke-GcWrite (Join-Path $gc 'fx_esc.py') "s = $gcQ`nsay \$gcQ hi`n$gcQ`n# 닫힌 뒤 주석`nx = 1"
-Assert-Case -Name "guard-comment: .py 삼중 따옴표 안의 이스케이프한 삼중 따옴표가 있으면 판정을 멈추고 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
+Assert-Case -Name "guard-comment: .py 삼중 따옴표 안의 이스케이프한 삼중 따옴표가 있으면 판정을 멈추고 경고" -R $r -ExpectExit 0 -ExpectContains $gcWarn
 $r = Invoke-GcWrite (Join-Path $gc 'fx_help.ps1') "<#`n.EXAMPLE`n    `$x = @'`n    본문`n    '@`n#>`nfunction F {}`n# 다음 줄 주석"
-Assert-Case -Name "guard-comment: .ps1 블록 주석 안의 @' 는 here-string 을 열지 않는다" -R $r -ExpectExit 2 -ExpectContains '주석 5줄'
+Assert-Case -Name "guard-comment: .ps1 블록 주석 안의 @' 는 here-string 을 열지 않는다" -R $r -ExpectExit 0 -ExpectContains '주석 5줄'
 $r = Invoke-GcWrite (Join-Path $gc 'fx_open.ps1') "`$s = `"여러 줄`n@'`n`"`n# 다음 줄 주석`n`$a = 1"
-Assert-Case -Name "guard-comment: .ps1 닫히지 않은 한 줄 문자열 뒤로는 문자열 판정을 멈추고 차단" -R $r -ExpectExit 2 -ExpectContains '다음 줄 주석'
+Assert-Case -Name "guard-comment: .ps1 닫히지 않은 한 줄 문자열 뒤로는 문자열 판정을 멈추고 경고" -R $r -ExpectExit 0 -ExpectContains '다음 줄 주석'
 $r = Invoke-GcEdit 'fx_missing.py' 'jobs:' "Y = $gcQ`n# 안쪽 줄`njobs:"
 Assert-Case -Name "guard-comment: 전체 텍스트를 못 얻은 Edit 조각의 # 줄은 문자열 안으로 보지 않고 차단" -R $r -ExpectExit 2 -ExpectContains $gcBlock
 
