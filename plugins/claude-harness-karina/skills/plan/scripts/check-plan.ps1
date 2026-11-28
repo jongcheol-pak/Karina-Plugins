@@ -86,7 +86,10 @@
 #   screen-unshot-attempt T<N>   위 screen-unshot 에서 사유 칸은 있는데 「· 시도 <…>」 칸이 없음(값이 「없음…」·「—」·「-」 뿐이면 없음) — 사유가 「기준선 흔들림」·
 #                                「image-diff: ERROR」 로 시작하면(조작은 성공) 시도 칸 없이 note
 #                                (판정 사본: scripts/guard-task-audit.ps1 Get-TaskEvidenceLines)
-#   acceptance-evidence·no-red-evidence·no-screen-verdict 판정의 사본이 scripts/guard-task-audit.ps1 의 Get-TaskEvidenceLines 에 있다 —
+#   origin-unjustified T<N>      task 단위가 아니라 「## Progress Log」 줄 단위 — 「- 판정:」·「- 판정(정정):」 줄 중 콜론 뒤 첫 낱말이 T<N>(T<N>-<M> 포함)이고
+#                                그 task 블록에 「- **원본**:」 줄이 있으며 줄에 「대신」·「옮기지 않음」 이 든 것의 근거 칸(「— 근거:」 뒤 「— 틀리면:」 앞까지)에
+#                                「ask 답」·「사용자 답」·「→ <출력>」 이 없거나 근거 칸이 없음(줄 번호는 그 판정 줄 · [x] 여부와 무관 — implement/references/code-style.md「원본을 옮길 때」)
+#   acceptance-evidence·no-red-evidence·no-screen-verdict·origin-unjustified 판정의 사본이 scripts/guard-task-audit.ps1 의 Get-TaskEvidenceLines 에 있다 —
 #                                한쪽을 고치면 다른 쪽도 고친다(골든 guard-task-audit 의 「사본 정합」 케이스가 대조한다)
 #   no-goal-measure G<N>         task 단위가 아니라 「## Goal」 표의 G<N> 행 단위 — BASE..HEAD 커밋 본문(제목 무관)과 「## Progress Log」 어디에도
 #                                줄 머리 「G<N>:」(앞 「- 」 허용 · G1 은 G10 이 아니다) 줄이 없음. 측정 방법 칸이 HUMAN-VERIFY 로 시작하는 행은 재지 않는다.
@@ -322,6 +325,27 @@ if ($Base) {
                     else { Add-Problem $b.N ('screen-unshot ' + $tag) }
                 }
             }
+        }
+    }
+    $originLabel = '- **' + (Get-Text @(0xC6D0, 0xBCF8)) + '**:'    # - **원본**:
+    $originTasks = @($taskBlocks | Where-Object { @($_.Lines | Where-Object { Test-Prefix $_.Text $originLabel }).Count } | ForEach-Object { $_.Id })
+    if ($originTasks.Count) {
+        $judgeRx = '^- ' + (Get-Text @(0xD310, 0xC815)) + '(?:\([^)]*\))?:\s*T(\d+)(?:-\d+)?(?!\d)'    # - 판정: · - 판정(정정):
+        $departRx = (Get-Text @(0xB300, 0xC2E0)) + '|' + (Get-Text @(0xC62E, 0xAE30, 0xC9C0, 0x20, 0xC54A, 0xC74C))    # 대신 | 옮기지 않음
+        $basisHead = [char]0x2014 + ' ' + (Get-Text @(0xADFC, 0xAC70)) + ':'    # — 근거:
+        $wrongHead = [char]0x2014 + ' ' + (Get-Text @(0xD2C0, 0xB9AC, 0xBA74)) + ':'    # — 틀리면:
+        $basisOkRx = 'ask ' + (Get-Text @(0xB2F5)) + '|' + (Get-Text @(0xC0AC, 0xC6A9, 0xC790, 0x20, 0xB2F5)) + '|' + [char]0x2192 + '\s*\S'    # ask 답 | 사용자 답 | → <출력>
+        foreach ($l in (Get-ProseLines (Find-Section 'Progress Log'))) {
+            $jm = [regex]::Match($l.Text, $judgeRx)
+            if (-not $jm.Success -or $originTasks -notcontains [int]$jm.Groups[1].Value -or $l.Text -notmatch $departRx) { continue }
+            $basis = ''
+            $at = $l.Text.IndexOf($basisHead, [System.StringComparison]::Ordinal)
+            if ($at -ge 0) {
+                $basis = $l.Text.Substring($at + $basisHead.Length)
+                $end = $basis.IndexOf($wrongHead, [System.StringComparison]::Ordinal)
+                if ($end -ge 0) { $basis = $basis.Substring(0, $end) }
+            }
+            if ($basis -notmatch $basisOkRx) { Add-Problem $l.N ('origin-unjustified T' + $jm.Groups[1].Value) }
         }
     }
     $goalRows = @(Get-ProseLines (Find-Section 'Goal') | Where-Object { $_.Text -match '^\|\s*G\d+\s*\|' })

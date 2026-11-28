@@ -461,6 +461,28 @@ $cpGoalOpen = $cpDash + "`n## Progress Log`n`n- 4번 검증: abc · clean`n"
 $r = Invoke-CheckEvidence $cpGoalOpen $ev.dir $ev.base
 Assert-Case -Name "check-plan Goal: 열린 task 가 있으면 재지 않고 skip 을 낸다 (CG-open)" -R $r -ExpectExit 0 -ExpectContains 'check-plan: skip goal-measure open-task'
 
+$cpOrigin = $cpDone.Replace('- **Acceptance**:', "- **원본**: ``upstream/a.cs`` — 옮김`n- **Acceptance**:") + "`n## Progress Log`n`n"
+$cpNoBasis = '- 판정: T1 원본 목록 대신 표를 썼다 — 더 단순 — 근거: 없음 — 틀리면: 재작업 → 비용'
+$ev = New-EvidenceRepo @($cpOk)
+$r = Invoke-CheckEvidence ($cpOrigin + $cpNoBasis + "`n") $ev.dir $ev.base
+Assert-Case -Name "check-plan 원본: 원본 줄 task 의 근거 없는 「대신」 판정 줄을 잡는다 (CO-instead)" -R $r -ExpectExit 1 -ExpectContains 'origin-unjustified T1'
+$r = Invoke-CheckEvidence ($cpOrigin + "- 판정: T1-1 원본 정렬은 옮기지 않음 — 쓰지 않음 — 근거: ``a.ps1:3`` — 틀리면: 재작업`n") $ev.dir $ev.base
+Assert-Case -Name "check-plan 원본: 「옮기지 않음」 판정 줄의 파일 근거는 근거가 아니다 (CO-skip)" -R $r -ExpectExit 1 -ExpectContains 'origin-unjustified T1'
+$r = Invoke-CheckEvidence ($cpOrigin + "- 판정(정정): T1 원본 목록 대신 표를 썼다 — 더 단순`n") $ev.dir $ev.base
+Assert-Case -Name "check-plan 원본: 근거 칸이 없는 판정(정정) 줄도 잡는다 (CO-nobasis)" -R $r -ExpectExit 1 -ExpectContains 'origin-unjustified T1'
+$r = Invoke-CheckEvidence (($cpOrigin + $cpNoBasis + "`n").Replace('- [x] **T1-1** 한다', '- [ ] **T1-1** 한다')) $ev.dir $ev.base
+Assert-Case -Name "check-plan 원본: 열린 task 의 판정 줄도 잰다 (CO-open)" -R $r -ExpectExit 1 -ExpectContains 'origin-unjustified T1'
+$cpBasisOk = @(
+    '- 판정: T1 원본 목록 대신 표를 썼다 — API 없음 — 근거: `dotnet build` → error CS0117 — 틀리면: 재작업',
+    '- 판정: T1 원본 정렬은 옮기지 않음 — 사용자 결정 — 근거: 사용자 답 「빼라」 — 틀리면: 재작업',
+    '- 판정: T1 원본 메뉴 대신 버튼 — 코디네이터 결정 — 근거: ask 답 q-12 — 틀리면: 재작업') -join "`n"
+$r = Invoke-CheckEvidence ($cpOrigin + $cpBasisOk + "`n") $ev.dir $ev.base
+Assert-Case -Name "check-plan 원본: 출력·사용자 답·ask 답 근거는 통과한다 (CO-basis)" -R $r -ExpectExit 0 -ExpectNotContains 'origin-unjustified'
+$r = Invoke-CheckEvidence ($cpDone + "`n## Progress Log`n`n" + $cpNoBasis + "`n") $ev.dir $ev.base
+Assert-Case -Name "check-plan 원본: 원본 줄이 없는 task 의 판정 줄은 재지 않는다 (CO-none)" -R $r -ExpectExit 0 -ExpectNotContains 'origin-unjustified'
+$r = Invoke-CheckEvidence ($cpOrigin + "- 판정(정정): D1 원본 목록 대신 표 — 더 단순 — 근거: 없음`n- 판정: T1 읽기 순서를 정한다 — 근거: 없음 — 틀리면: 재작업`n") $ev.dir $ev.base
+Assert-Case -Name "check-plan 원본: T 가 아닌 지목과 이탈 낱말 없는 판정 줄은 재지 않는다 (CO-scope)" -R $r -ExpectExit 0 -ExpectNotContains 'origin-unjustified'
+
 $ev = New-EvidenceRepo @()
 [System.IO.File]::WriteAllText((Join-Path $ev.dir 'AGENTS.md'), "# AGENTS.md`n`n- **Plan check**: ``exit 3```n", (New-Object System.Text.UTF8Encoding($false)))
 $r = Invoke-CheckEvidence $cpDone $ev.dir $ev.base

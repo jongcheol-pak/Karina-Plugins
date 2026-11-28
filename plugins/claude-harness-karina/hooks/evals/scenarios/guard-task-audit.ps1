@@ -316,6 +316,26 @@ try {
     Assert-Case -Name 'task-evidence: 같은 이력에 hook 도 Acceptance 1/2 경고를 낸다 (사본 정합)' -R $r -ExpectExit 0 -ExpectContains 'Acceptance 판정 줄 1/2'
     $r = Invoke-TaCase (New-TaCommitCmd $taTitle ($teOk + "`n" + '- Acceptance: 둘째 — 참'))
     Assert-Case -Name 'task-evidence: 앞 T1 커밋과 합쳐 판정 줄이 항목 수면 경고 없음 (TE-accept-ok)' -R $r -ExpectExit 0 -ExpectSilent $true
+
+    Reset-TaRepo
+    $teBase = (& git -C $taRoot rev-parse HEAD 2>$null)
+    $teOrigin = @('# plan', '', '## Goal', '', ('> BASE: ' + $teBase), '', '## 작업 단계', '', '### T1. 항목', '',
+      '- [x] **T1-1** 항목을 옮긴다', '- **Files**: `src/lib.rs`', '- **원본**: `upstream/lib.rs` — 옮김', '',
+      '### T2. 문서', '', '- [x] **T2-1** 문서', '- **Files**: `README.md` — `[면제 ①]` 문서', '', '## Progress Log', '')
+    ($teOrigin + @('- 판정: T1 원본 목록 대신 표를 썼다 — 더 단순 — 근거: 없음 — 틀리면: 재작업')) | Set-Content -LiteralPath $tePlan -Encoding UTF8
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
+    Assert-Case -Name 'task-evidence: 원본 줄 task 의 근거 없는 「대신」 판정 줄은 경고 (TE-origin)' -R $r -ExpectExit 0 -ExpectContains '원본 이탈 판정 줄 근거 없음'
+    & git -C $taRoot -c user.email=t@t -c user.name=t commit -q --allow-empty -m $taTitle -m $teOk 2>$null
+    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '; $teCpCode = $LASTEXITCODE
+    Assert-Case -Name 'task-evidence: 같은 plan 을 check-plan -Base 도 origin-unjustified T1 로 낸다 (사본 정합)' -R @{ code = $teCpCode; out = "cp=$teCp" } -ExpectExit 1 -ExpectContains 'origin-unjustified T1'
+    ($teOrigin + @('- 판정: T1 원본 목록 대신 표를 썼다 — 원본 API 없음 — 근거: `cargo build` → error E0425 — 틀리면: 재작업')) | Set-Content -LiteralPath $tePlan -Encoding UTF8
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
+    Assert-Case -Name 'task-evidence: 근거 칸에 명령 출력이 있으면 원본 이탈 경고 없음 (TE-origin-ok)' -R $r -ExpectExit 0 -ExpectSilent $true
+    $teCp = (& pwsh -NoProfile -File $teCheck $tePlan -Base $teBase 2>&1) -join ' '; $teCpCode = $LASTEXITCODE
+    Assert-Case -Name 'task-evidence: 그 plan 을 check-plan -Base 도 origin-unjustified 없이 낸다 (사본 정합)' -R @{ code = $teCpCode; out = "cp=$teCp" } -ExpectExit 1 -ExpectNotContains 'origin-unjustified'
+    (($teOrigin | Where-Object { $_ -notlike '- **원본**:*' }) + @('- 판정: T1 원본 목록 대신 표를 썼다 — 더 단순 — 근거: 없음 — 틀리면: 재작업')) | Set-Content -LiteralPath $tePlan -Encoding UTF8
+    $r = Invoke-TaCase (New-TaCommitCmd $taTitle $teOk)
+    Assert-Case -Name 'task-evidence: 원본 줄이 없는 task 의 「대신」 판정 줄은 재지 않는다 (TE-origin-none)' -R $r -ExpectExit 0 -ExpectSilent $true
 } finally {
     if (Test-Path $taRoot) { Remove-Item $taRoot -Recurse -Force -ErrorAction SilentlyContinue }
 }

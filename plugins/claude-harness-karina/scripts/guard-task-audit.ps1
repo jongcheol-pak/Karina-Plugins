@@ -158,7 +158,7 @@ function Get-TaskAuditGrowth([string]$RuleDir, $Rule, $Scope) {
     return @{ Net = $net; Capped = $capped }
 }
 
-# RED·화면·Acceptance 판정 줄 대조 — `skills/plan/scripts/check-plan.ps1` -Base 판정의 사본이다 · 근거는 `rules/task-audit-rationale.md` §7
+# RED·화면·Acceptance·원본 이탈 판정 줄 대조 — `skills/plan/scripts/check-plan.ps1` -Base 판정의 사본이다 · 근거는 `rules/task-audit-rationale.md` §7
 function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Message) {
     $planPath = Join-Path ([System.IO.Path]::GetDirectoryName($AgentsPath)) 'plan.md'
     if (-not (Test-Path -LiteralPath $planPath -PathType Leaf)) { return @() }
@@ -172,7 +172,16 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
     $hasRed = [bool]@($block | Where-Object { $_.StartsWith('- **Files**:') -and $_.Contains('(RED)') }).Count
     $hasScreen = [bool]@($block | Where-Object { $_.StartsWith('- **화면**:') }).Count
     $acceptRow = @($block | Where-Object { $_.StartsWith('- **Acceptance**:') } | Select-Object -First 1)
-    if (-not $hasRed -and -not $hasScreen -and -not $acceptRow.Count) { return @() }
+    $originBare = @()
+    if (@($block | Where-Object { $_.StartsWith('- **원본**:') }).Count) {
+        $inProg = $false
+        $prog = @(foreach ($l in $plan) { if ($l -match '^##\s') { $inProg = $l -match '^##\s+Progress Log'; continue }; if ($inProg) { [string]$l } })
+        $originBare = @($prog | Where-Object { $_ -match ('^- 판정(?:\([^)]*\))?:\s*T' + $TaskId + '(?:-\d+)?(?!\d)') -and $_ -match '대신|옮기지 않음' } | Where-Object {
+            $basis = if ($_.Contains('— 근거:')) { ($_.Substring($_.IndexOf('— 근거:') + 5) -split '— 틀리면:', 2)[0] } else { '' }
+            $basis -notmatch 'ask 답|사용자 답|→\s*\S'
+        })
+    }
+    if (-not $hasRed -and -not $hasScreen -and -not $acceptRow.Count -and -not $originBare.Count) { return @() }
 
     $bodies = @($Message)
     $script:TaskEvidenceBaseRead = $false
@@ -209,6 +218,9 @@ function Get-TaskEvidenceLines([string]$AgentsPath, [string]$TaskId, [string]$Me
         $odd = @([regex]::Matches($Message, '(?m)^\s*(?:[-*]\s*)?화면\s*[^\s:]*\s*:.*$') | ForEach-Object { $_.Value.Trim() } | Select-Object -First 1)
         $seen = if ($odd.Count) { " — 본 줄: ``$($odd[0])``" } else { '' }
         $out += "  - 화면 판정 줄 없음 — ``- **화면**:`` 줄이 있는 task 다. 본문에 ``화면: HEAD 참|거짓 — <스크린샷>`` 또는 ``화면: 미촬영(HUMAN-VERIFY) · 사유 <…> · 시도 <…>`` 줄을 둔다$seen"
+    }
+    if ($originBare.Count) {
+        $out += "  - 원본 이탈 판정 줄 근거 없음 $($originBare.Count)줄 — ``- **원본**:`` 줄 task 의 「대신」·「옮기지 않음」 판정 줄은 근거 칸에 ``<명령> → <출력 요지>``·``사용자 답``·``ask 답 <id>`` 를 싣는다(skills/implement/references/code-style.md「원본을 옮길 때」): ``$(([string]$originBare[0]).Trim())``"
     }
     $verify = @(Get-Content -LiteralPath $AgentsPath -Encoding UTF8 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\s*-\s*\*\*Verify \(앱 조작\)\*\*\s*:\s*(.*)$' } | Select-Object -First 1)
     $verifyOn = $verify.Count -and ($verify[0] -replace '^\s*-\s*\*\*Verify \(앱 조작\)\*\*\s*:\s*', '') -notmatch '^\W*없음'
